@@ -13,7 +13,7 @@
   ```
 - [ ] 有 Pro / 学生包就给 main 开保护：Settings → Branches → 必须走 PR，status check 选 `check`
 - [ ] 填 `hackathon.conf` 的 `LEAD` `BACKUP_LEAD` `DEPLOYER` `TZ`；在 `docs/3-tasks.md` 给每人建一节 `## @handle`
-- [ ] 每个队友跑通 `bash scripts/setup.sh`，做完 README ① 的「T0 热身」：分支 `<handle>/hello/T0-hello`，只新建一张交接单，开 PR（验证 hook、CI、权限都通）
+- [ ] 把 `docs/onboarding.md`（或它导出的 PDF）发给每个队友：整份丢给 AI 就能装工具、clone、跑 setup、推 T0 热身 PR（验证 hook、CI、权限都通）
 - [ ] 在另一个目录重新 clone 跑一遍 setup，确认冷启动没问题
 - [ ] DEPLOYER 跑 `npx wrangler whoami` 确认已登录；用 starter 部署一次 hello-world 验证账号（见 `docs/deploy-cloudflare.md`）
 - [ ] 共享 key 放密码管理器，不发群

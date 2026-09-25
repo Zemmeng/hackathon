@@ -116,6 +116,7 @@ gh pr create --fill                                     # 只动了自己模块�
 
 | 文件 | 什么时候看 | 谁写 |
 |---|---|---|
+| [docs/onboarding.md](docs/onboarding.md) | 队友接入说明书：整份丢给 AI 就能装工具、clone、推 T0 PR | lead |
 | [KICKOFF.md](KICKOFF.md) | 赛前 / 开赛前 90 分钟 / 要给 AI 一段开工 prompt | lead |
 | [hackathon.conf](hackathon.conf) | 要看截止时间、冻结点、谁部署 | lead |
 | [docs/1-brief.md](docs/1-brief.md) | 赛题原文、评分标准、提交物 | lead |
