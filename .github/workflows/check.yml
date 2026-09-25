@@ -1,0 +1,69 @@
+# check.yml —— CI 跑同一份 scripts/check.sh
+#
+# 用途：绕过本地 hook（--no-verify）的人、不用 AI 的人也逃不掉同一套检查。
+#       PR 和 main 上跑的都是全量检查：[1] 扫全部已跟踪文件，[5] 跑 apps/* 和 starters/* 的全部 test.sh；
+#       只有 [3] 分支与越界按「相对 origin/main 的改动」判定（--base origin/main 本来就是默认值，写出来只为看得清）。
+#       失败时把「======== 汇总」节写进 job summary（PR 的 Checks 页一眼能看到）。
+# 触发：pull_request（opened / synchronize / reopened / labeled）；push 到 main。
+# 放行越界：lead 给 PR 打 cross-module 标签 → 本 job 设 ALLOW_CROSS=1 重跑。
+# 🔒 不用任何 secret；权限只有 contents: read。job 名固定叫 check，分支保护按这个名字要求必过。
+# 本地复现：bash scripts/check.sh --base origin/main
+
+name: check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# 同一分支只保留最新一次（新 push 会取消还在跑的旧的）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # PR 上 HEAD 是 detached 的合并提交，check.sh [3] 靠它知道分支名；push 到 main 时是 main
+      BRANCH: ${{ github.head_ref || github.ref_name }}
+      ALLOW_CROSS: ${{ contains(github.event.pull_request.labels.*.name, 'cross-module') && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # check [3] 要算 merge-base，需要完整历史和 origin/main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.9" # 与 macOS 自带 python3 对齐，防止写出 3.10+ 语法
+
+      - name: bash scripts/check.sh --base origin/main
+        run: bash scripts/check.sh --base origin/main
+
+      - name: 汇总写进 job summary
+        if: failure()
+        run: |
+          {
+            echo "## ❌ check.sh 没过"
+            echo
+            if [ -f logs/last-check.txt ] && grep -q '^======== 汇总' logs/last-check.txt; then
+              echo '```'
+              sed -n '/^======== 汇总/,$p' logs/last-check.txt
+              echo '```'
+            else
+              echo "logs/last-check.txt 里没有汇总节（check.sh 可能中途崩了），看上一步的日志。"
+            fi
+            echo
+            echo "本地复现：\`bash scripts/check.sh --base origin/main\`"
+            echo "越界是有意的：请 lead 给 PR 打 \`cross-module\` 标签后会自动重跑。"
+          } >> "$GITHUB_STEP_SUMMARY"
