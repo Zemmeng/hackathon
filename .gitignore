@@ -1,0 +1,60 @@
+# 本仓库只放源码、文档、配置和压缩后的小素材；秘密、依赖、大文件、生成产物一律不进。
+# 🔒 只有 lead 改这份文件；AI 不许改，也不许 git add -f 强加被忽略的文件。
+
+# ---- 秘密与本机配置（永远不进；值放密码管理器，示例文件只写变量名）----
+.env
+.env.*
+!.env.example
+.dev.vars
+**/.dev.vars
+!**/.dev.vars.example
+*.pem
+*.key
+keys.json
+credentials*.json
+.claude/settings.local.json
+
+# ---- 本机 AI 中间产物（多 agent 落盘区，结论归并进 docs 后可清）----
+.claude/agent-out/
+
+# ---- 依赖 ----
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# ---- 平台缓存与构建产物（.wrangler 缓存误提交过一次，别再来）----
+.wrangler/
+dist/
+build/
+.cache/
+
+# ---- 大媒体与生成产物（原图 / 录屏放网盘，入库只放压缩后的网页版）----
+raw/
+out/
+assets-src/
+art-src/
+candidates/
+*.mp4
+*.mov
+*.wav
+*.zip
+
+# ---- 数据与日志（样例数据放 fixtures/，大数据走网盘）----
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.parquet
+logs/
+*.log
+
+# ---- 个人草稿 ----
+scratch/
+
+# ---- 系统与编辑器 ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,4 @@
+# wrangler dev 读的是本目录的 .dev.vars，不是 .env：cp .dev.vars.example .dev.vars
+# 🔒 .dev.vars 已被 .gitignore 忽略；这份示例只写变量名和假值。线上密钥用 npx wrangler secret put <NAME>
+# 1 = 外部 API 走假数据（/api/health 会返回 "mock":true）
+MOCK=1

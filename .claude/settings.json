@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git show*)",
+      "Bash(git fetch*)",
+      "Bash(git merge*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git switch*)",
+      "Bash(git worktree list*)",
+      "Bash(git stash list*)",
+      "Bash(bash scripts/check.sh*)",
+      "Bash(bash scripts/sync.sh*)",
+      "Bash(bash scripts/setup.sh)",
+      "Bash(bash scripts/secret-scan.sh*)",
+      "Bash(bash apps/*/test.sh)",
+      "Bash(bash starters/*/test.sh)",
+      "Bash(node *.mjs)",
+      "Bash(npm test*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr checks*)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(git tag*)",
+      "Bash(git reset --hard*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh repo edit*)",
+      "Bash(bash scripts/deploy.sh*)",
+      "Bash(npx wrangler deploy*)",
+      "Bash(npx wrangler secret*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./**/.dev.vars)",
+      "Read(./**/.env)",
+      "Edit(./.gitignore)",
+      "Edit(./.gitattributes)",
+      "Write(./.gitignore)",
+      "Write(./.gitattributes)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git add -f*)",
+      "Bash(git add --force*)",
+      "Bash(git push origin main*)",
+      "Bash(git add * -f*)",
+      "Bash(git add *--force*)",
+      "Bash(git add -Af*)",
+      "Bash(git add -A*)",
+      "Bash(git add --all*)",
+      "Bash(git add .)",
+      "Bash(git add . *)",
+      "Bash(git commit *--no-verify*)",
+      "Bash(git commit -n*)",
+      "Bash(git commit * -n *)",
+      "Bash(python3 -m http.server*)",
+      "Bash(npm run dev*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh",
+            "timeout": 20,
+            "statusMessage": "读取导航层"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/every-prompt.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-gate.sh",
+            "timeout": 120,
+            "statusMessage": "跑收尾检查"
+          }
+        ]
+      }
+    ]
+  }
+}

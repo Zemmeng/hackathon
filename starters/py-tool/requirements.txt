@@ -1,0 +1,1 @@
+# 有依赖就锁定版本（例：requests==2.32.3）；没有就保持为空。安装：uv venv .venv && uv pip install -r requirements.txt

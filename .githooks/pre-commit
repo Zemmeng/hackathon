@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit —— commit 前的快速拦截：秘密、秘密文件、大文件
+#
+# 用途：不管用不用 AI，每个人本地 commit 都会过这一关。
+#       [1] bash scripts/secret-scan.sh --staged（脚本不存在 → ⚠️ 放行，不卡人）
+#       [2] 暂存区里有 .env / .dev.vars / settings.local.json / keys.json（及同类）→ 拦
+#       [3] 暂存区里单个文件 > 1MB → 拦（压缩，或放网盘把链接写进 README）
+# 什么时候触发：git commit 时自动触发。前提是启用过 hooks：
+#       git config core.hooksPath .githooks   （bash scripts/setup.sh 会帮你做）
+# 怎么绕过：紧急时 git commit --no-verify。CI 会用 scripts/check.sh 再查一遍，PR 里写明原因。
+# 退出码：0 放行；1 拦下
+# 兼容 macOS 自带 bash 3.2 和 ubuntu。
+set -uo pipefail
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$root" || exit 0
+
+MAX_BYTES=1048576   # 1MB
+fail=0
+scan_failed=0
+bad_secret_files=""
+bad_big_files=""
+
+echo "🔍 pre-commit：秘密扫描 / 秘密文件 / 大文件"
+
+# ---- [1] 秘密扫描 ----
+if [ -f scripts/secret-scan.sh ]; then
+  if bash scripts/secret-scan.sh --staged; then
+    echo "[1] 秘密扫描 ✅"
+  else
+    echo "[1] 秘密扫描 ❌ 暂存内容里疑似有 key / token（上面只列了 文件:行号:模式，不打印值）"
+    scan_failed=1
+    fail=1
+  fi
+else
+  echo "[1] 秘密扫描 ⚠️ 没找到 scripts/secret-scan.sh，跳过（放行）"
+fi
+
+# ---- [2] 秘密文件 + [3] 大文件：只看新增 / 修改 / 改名的（删除不拦，删除正是修法）----
+while IFS= read -r -d '' f; do
+  base=${f##*/}
+  case "$base" in
+    *.example) ;;  # .env.example / .dev.vars.example 只写变量名，允许
+    .env|.env.*|.dev.vars|.dev.vars.*|settings.local.json|keys.json|credentials*.json|*.pem|*.key)
+      bad_secret_files="$bad_secret_files    $f
+" ;;
+  esac
+  size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+  if [ "${size:-0}" -gt "$MAX_BYTES" ] 2>/dev/null; then
+    kb=$((size / 1024))
+    bad_big_files="$bad_big_files    $f（${kb}KB）
+"
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if [ -n "$bad_secret_files" ]; then
+  echo "[2] 秘密文件 ❌ 这些文件永远不进 git："
+  printf '%s' "$bad_secret_files"
+  fail=1
+else
+  echo "[2] 秘密文件 ✅"
+fi
+
+if [ -n "$bad_big_files" ]; then
+  echo "[3] 大文件 ❌ 单个文件超过 1MB："
+  printf '%s' "$bad_big_files"
+  fail=1
+else
+  echo "[3] 大文件 ✅"
+fi
+
+[ "$fail" -eq 0 ] && exit 0
+
+# ---- 失败：打印修法 ----
+echo ""
+echo "🚫 commit 被拦下。修法："
+if [ -n "$bad_secret_files" ]; then
+  echo "  · 秘密文件：git rm --cached <文件>   （只移出暂存区，本地文件保留）"
+  echo "    确认 .gitignore 已覆盖它；值放 .env / 密码管理器，示例文件只写变量名"
+fi
+if [ -n "$bad_big_files" ]; then
+  echo "  · 大文件：git restore --staged <文件>"
+  echo "    图片转 webp / 压缩（入库只放网页版），视频和原图放网盘，链接写进模块 README"
+  echo "    原始素材放 raw/ 或 assets-src/（已 gitignore）"
+fi
+if [ "$scan_failed" -eq 1 ]; then
+  echo "  · 秘密扫描命中：删掉那行里的值，改成读环境变量；误报就改写法或加进 secret-scan.sh 的白名单（找 lead）"
+  echo "    key 如果已经 commit 过（哪怕没 push）：先找 lead 轮换这个 key，再讨论清理历史"
+fi
+echo ""
+echo "  紧急情况可以 git commit --no-verify 跳过，但 CI 会再查一遍，PR 里要写明原因。"
+exit 1
