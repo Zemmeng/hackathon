@@ -43,6 +43,15 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 卡住了：
 
 
+## @louisxie316-dotcom
+
+| T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
+|---|---|---|---|---|
+| | | | | |
+
+卡住了：
+
+
 ## @<队友handle>（kickoff 前 lead 给每人建一节）
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
