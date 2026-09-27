@@ -677,6 +677,8 @@ fi
 HAS_HEAD=0; g rev-parse -q --verify HEAD >/dev/null 2>&1 && HAS_HEAD=1
 BRANCH_NAME="${BRANCH:-}"
 [ -n "$BRANCH_NAME" ] || BRANCH_NAME=$(g symbolic-ref --short -q HEAD 2>/dev/null || true)
+# Claude Code 云端会话推的分支带 claude/ 前缀（claude/<handle>/<模块>/T<n>-<slug>），去掉前缀再判
+BRANCH_NAME="${BRANCH_NAME#claude/}"
 
 BASE=""; BASE_NOTE=""
 if [ -n "$BASE_ARG" ]; then

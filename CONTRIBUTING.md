@@ -43,6 +43,7 @@
 
 - 命名：`<handle>/<模块>/T<n>-<短名>`，例 `alice/api/T3-login`；lead 用 `lead/<短名>`；pitch 工作用 `<handle>/pitch/T<n>-<短名>`
 - 🔒 名字不合规的分支 `check [3]` 直接 ❌，pre-push 会拒（`git branch -m` 改名就行）
+- Claude Code **云端会话**推的分支会自动带 `claude/` 前缀，`check` 会忽略这个前缀，后面仍要是 `<handle>/<模块>/T<n>-<短名>`：开云端会话时第一句就说清分支名
 - 从最新的 main 开：
 
 ```bash
