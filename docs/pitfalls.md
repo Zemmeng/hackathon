@@ -31,3 +31,5 @@
 | 前端 | **屏幕关着或 Chrome 在后台时，canvas 动画不动，截图只有开头一两帧** | 浏览器不给不可见页面跑 requestAnimationFrame → 仿真逻辑写成不碰 DOM 的纯函数，用 node 验证整小时结果；看动画用 preview 面板或亮屏的前台页 | lead · 09-29 |
 | env | **`bash scripts/check.sh` 报 `mod：: unbound variable`（UTF-8 环境）** | bash 把 `$mod，` 解析成变量名的一部分（全角逗号 U+FF0C）；`set -u` 找不到就崩 → 临时 `LC_ALL=C bash scripts/check.sh`；根治把 `$var` 后面紧跟非 ASCII 的改成 `${var}`（check.sh 约 22 处，独占区由 lead 改） | @Unzzip · 09-29 |
 | env | **Mac 上 `check.sh` 在队员分支崩：`mod: unbound variable`，连汇总行都没有** | `"…模块 $mod，…"` 这种 `$变量` 后面紧跟全角字符的写法，macOS 的 bash 在 UTF-8 下会把全角字符的首字节（0xEF）当成字母吞进变量名，`set -u` 直接退出；Linux bash 5.2 不复现，用 Latin-1 locale 能复现 → 一律写 `${变量}`；`check [6]` 会提醒。@Unzzip 在 #5 报的 | lead · 09-29 |
+| AI | **AI 在留言和汇报里自己估时间，写出了还没到的时刻（15:38、15:35），实际是 15:31** | 没看 hook 注入的「现在 …」就凭感觉写 → 说时间一律照抄 UserPromptSubmit hook 给的那行，不估 | lead · 09-29 |
+| AI | **两个 lead 会话同时给 louis 派了同一件事（T10 底图 vs T11 建筑），PR 撞车** | 同一个指令在两个会话里都下了，各自开了 PR → 派任务只在一个会话做；派之前先查开着的 PR / issue 有没有同类（按需求方原文为准） | lead · 09-29 |
