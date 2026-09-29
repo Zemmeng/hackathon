@@ -61,10 +61,12 @@ function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.cont
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 /* the view may pan until the map's edge meets the edge of the part the glass leaves open (insets), not the canvas edge —
    otherwise the east / south end of the map can never come out from under the panels; a map smaller than that part is centred in it */
-function setView(cx,cy,s){V.s=clamp(s,1.1,14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
-  const x0=WORLD.x0+hw-I.l/V.s,x1=WORLD.x1-hw+I.r/V.s,y0=WORLD.y0+hh-I.b/V.s,y1=WORLD.y1-hh+I.t/V.s;
+// Smallest zoom: the whole CITY fits the part of the map the glass leaves open (T27; ~0.5 on a 1440 desktop, ~0.2 on a phone)
+function cityMinS(){const I=GL.ins,vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b);return Math.min(1.1,vw/(CITY.x1-CITY.x0),vh/(CITY.y1-CITY.y0));}
+function setView(cx,cy,s){V.s=clamp(s,cityMinS(),14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
+  const x0=CITY.x0+hw-I.l/V.s,x1=CITY.x1-hw+I.r/V.s,y0=CITY.y0+hh-I.b/V.s,y1=CITY.y1-hh+I.t/V.s;
   V.cx=x0>x1?(x0+x1)/2:clamp(cx,x0,x1);V.cy=y0>y1?(y0+y1)/2:clamp(cy,y0,y1);V.ver++;}
-function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,cityMinS(),14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
@@ -90,12 +92,16 @@ function makePatterns(){
 
 /* ---------- base map ---------- */
 function renderBase(){
-  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0);if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
+  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0)+cityKey();if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
+  /* T27: the whole CBD (6c-city.js) first, then the fine window clipped to WORLD on top, then a dashed seam round it */
+  bctx.fillStyle=VEC[TK.light?'light':'dark'].land;bctx.fillRect(0,0,V.w,V.h);const city=cityDraw(bctx,V);
+  bctx.save();bctx.beginPath();bctx.rect(V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);bctx.clip();
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
   emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
+  bctx.restore();if(city)citySeam(bctx,V,TK.light);
 }
 
 /* ---------- overlays ---------- */
@@ -185,8 +191,9 @@ function drawGrid(){
   ctx.restore();
 }
 function drawScale(){
-  const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
+  const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -222,27 +229,28 @@ function render(dt){
   renderBase();
   ctx.setTransform(V.dpr,0,0,V.dpr,0,0);ctx.clearRect(0,0,V.w,V.h);ctx.drawImage(base,0,0,V.w,V.h);
   WX.dim=S.step===3?.35:1;
-  if(S.layers.weather)WX.drawGround(ctx,V);
-  if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
-  const micro=microOn();
+  const fine=V.s>=1,wx=S.layers.weather&&fine; // T27: zoomed out to the city, the fine window's layers step aside
+  if(wx)WX.drawGround(ctx,V);
+  if(S.layers.risk&&S.step>=2&&S.sim&&fine)drawRisk(S.sim);
+  const micro=microOn(),walkers=micro&&fine;
   if(S.step===4){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter){drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter)drawWorks('after');if(walkers&&S.simAfter){drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
   }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
-  else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
-  if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
+  else{engDraw('now');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}}
+  if(wx)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
-  if(S.layers.weather)WX.drawNotes(ctx,V,TK);
-  if(S.step===1&&S.layers.works&&micro)planNotes();
-  if(S.step<=2&&micro)fogRings(S.sim);
+  if(wx)WX.drawNotes(ctx,V,TK);
+  if(S.step===1&&S.layers.works&&walkers)planNotes();
+  if(S.step<=2&&walkers&&wx)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
   if(S.step===4&&S.simAfter&&S.layers.works&&micro)drawDeltas();
   engLabels();
-  if(S.layers.grid)drawGrid();
+  if(S.layers.grid&&fine)drawGrid();
   drawScale();
-  if(S.layers.weather)WX.drawFlash(ctx,V);
+  if(wx)WX.drawFlash(ctx,V);
 }
 
 /* ---------- workflow ---------- */
@@ -445,6 +453,7 @@ function rebuildWorld(nw,g,imgs){
 const nextTask=()=>new Promise(r=>setTimeout(r,0));
 function loadBuildings(){
   return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(async d=>{
+    cityData(d); // the whole-CBD layer draws every footprint (6c-city.js); the fine window clips its copy to WORLD
     const nw=d?buildWorldReal(d,geoToWorld):null;
     if(!nw||nw.buildings.length<REAL_MIN)return false;
     await nextTask();const g=buildGrids(nw);
@@ -494,7 +503,7 @@ function bindInput(){
   window.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;if(e.key===' '&&e.target===document.body){S.playing=!S.playing;e.preventDefault();}const n=+e.key;if(n>=1&&n<=6&&!e.metaKey&&!e.ctrlKey)setWeather(WX_KINDS[n-1]);});
   new ResizeObserver(()=>{resize();}).observe($('#map'));new ResizeObserver(()=>{sizeHist();}).observe(hc);
 }
-function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,1.1,14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
+function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,cityMinS(),14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
 
 /* ---------- main loop ---------- */
 let last=performance.now(),uiT=0,histT=0,legT=0,probeKey='';
@@ -515,6 +524,7 @@ function loop(now){
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
     document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));}
   if(legT>.5){legT=0;updateLegendLive();}
+  {const pb=$('#probe'),hide=V.s<1;if(pb&&pb.hidden!==hide)pb.hidden=hide;} // T27: lat/lon readout only in the fine zooms
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
 }

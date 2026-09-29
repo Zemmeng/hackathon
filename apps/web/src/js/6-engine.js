@@ -60,6 +60,38 @@ function formFromPlan(plan){
   if(ws.closes)out.foot=ws.closes.footpath||'none';
   return out;
 }
+// Page units per real metre: geoToWorld() draws 1 m of the Hoddle grid as ~0.862 units (network.json south of La Trobe:
+// east–west 0.8645, north–south 0.8600). The scale bar and anything given in metres go through it (T27)
+const K_UPM=0.862;
+const unitV=(a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;return[dx/l,dy/l];};
+// Links by the node they end at — upstreamPath() walks it
+function upstreamIndex(links){const m=new Map();for(const l of links){const a=m.get(l.to);if(a)a.push(l);else m.set(l.to,[l]);}return m;}
+// The queue's road (T27): from the works link's start, walk upstream along links of the same street (the one that carries on
+// straightest), adding their real length len_m, until maxM metres or the street runs out in the network. pts = page points
+// from the works start going upstream; cum = metres at each point; reach = metres the street allows (the sum of the links'
+// len_m); end = the cross street where it runs out (null if it didn't). A line drawn on it is never longer than those links.
+function upstreamPath(byTo,link,maxM){
+  const P0=linkPts(link);if(!P0)return{pts:[],cum:[],reach:0,end:null,ids:[]};
+  const pts=[P0[0]],cum=[0],ids=[];let cur=link,m=0,dir=unitV(P0[0],P0[P0.length-1]),ran=true;
+  for(let guard=0;m<maxM&&guard<80;guard++){
+    const ups=(byTo.get(cur.from)||[]).filter(u=>u.name===link.name&&u.from!==cur.to&&u.id!==cur.id);
+    let U=null,best=0,G=null;
+    for(const u of ups){const g=linkPts(u);if(!g)continue;const d=unitV(g[0],g[g.length-1]),dot=d[0]*dir[0]+d[1]*dir[1];if(dot>best){best=dot;U=u;G=g;}}
+    if(!U){ran=false;break;} // no same-street link carrying on: the street ends here in the network
+    let tot=0;for(let i=1;i<G.length;i++)tot+=Math.hypot(G[i][0]-G[i-1][0],G[i][1]-G[i-1][1]);
+    let acc=0;for(let i=G.length-1;i>0;i--){acc+=Math.hypot(G[i][0]-G[i-1][0],G[i][1]-G[i-1][1]);pts.push(G[i-1]);cum.push(m+(tot?acc/tot:1)*(+U.len_m||0));}
+    m+=+U.len_m||0;ids.push(U.id);dir=unitV(G[0],G[G.length-1]);cur=U;
+  }
+  let end=null;if(!ran)for(const u of byTo.get(cur.from)||[])if(u.name&&u.name!==link.name){end=u.name;break;}
+  return{pts,cum,reach:m,end,ids}; // ids: the links walked, whose len_m add up to reach
+}
+// Links drawn as this plan's ripple (T27 + T28): ≥ 2 vehicle-minutes over the same hour without the works (extra_min), not the
+// works link itself. sev 2 = red (a queue on it, or ≥ 60), 1 = amber (≥ 10), 0 = faint. Background queues (Flinders / King St
+// every morning) have extra_min ≈ 0 and are left out, however long they are against free flow
+function rippleLinks(links,worksId){const out=[];for(const l of links||[]){const ex=+l.extra_min;if(!(ex>=2)||l.id===worksId)continue;out.push({id:l.id,ex,sev:l.queue_m>0||ex>=60?2:ex>=10?1:0});}return out;}
+// Point m metres up the path (clamped to its end), and the path from the works start to that point
+function pathAt(p,m){const{pts,cum}=p;if(!pts.length)return null;if(m<=0)return pts[0];for(let i=1;i<pts.length;i++)if(cum[i]>=m){const t=(m-cum[i-1])/((cum[i]-cum[i-1])||1);return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];}return pts[pts.length-1];}
+function pathSub(p,m){const out=[p.pts[0]];for(let i=1;i<p.pts.length&&p.cum[i]<m;i++)out.push(p.pts[i]);const e=pathAt(p,m);if(e&&out.length&&(e[0]!==out[out.length-1][0]||e[1]!==out[out.length-1][1]))out.push(e);return out;}
 /* pure:end */
 
 const BE={api:null,err:null};
@@ -117,7 +149,7 @@ function engLoadPlan(plan){Object.assign(EP,formFromPlan(plan));}
 let candCache=null;
 function engCands(){
   const net=engNet();if(!net)return[];if(candCache&&candCache.net===net)return candCache.list;
-  const list=[];for(const l of net.links.values()){const pts=linkPts(l);if(!pts)continue;if(pts.every(p=>p[0]<WORLD.x0-80||p[0]>WORLD.x1+80||p[1]<WORLD.y0-80||p[1]>WORLD.y1+80))continue;list.push({id:l.id,pts,hw:l.highway});}
+  const list=[];for(const l of net.links.values()){const pts=linkPts(l);if(!pts)continue;if(pts.every(p=>p[0]<CITY.x0||p[0]>CITY.x1||p[1]<CITY.y0||p[1]>CITY.y1))continue;list.push({id:l.id,pts,hw:l.highway});}
   candCache={net,list};return list;
 }
 const geoCache=new Map();
@@ -427,15 +459,17 @@ function engAlts(plan,s){
 // Frame the work zone, its queue and every detour taking ≥ 5 % (clamped to the drawn world), sized to the part of the map the
 // glass leaves open (insets()); flyTo() then centres it there. No other junction is pulled in (T20 addendum 1)
 function engFit(){
-  if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],WORLD.x0,WORLD.x1));ys.push(clamp(p[1],WORLD.y0,WORLD.y1));};
+  if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],CITY.x0,CITY.x1));ys.push(clamp(p[1],CITY.y0,CITY.y1));};
   EP.pts.forEach(add);const s=engSumFor('now'),sh=new Map(((s&&s.routes)||[]).map(r=>[r.id,r.share||0]));
-  if(s&&s.queue_m>0)add(engUp(Math.min(s.queue_m,engWorldReach())));
-  for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
+  if(s&&s.queue_m>0)engSub(Math.min(s.queue_m,engReach())).forEach(add);
+  // every detour drawn clearly (≥ 1 %) is framed: with sign readings the three Lonsdale detours sit at 4–5 %, and a line cut at
+  // the window edge reads as a bug (T27 acceptance) — the old ≥ 5 % cut them off
+  for(const r of EP.alts)if((sh.get(r.id)||0)>=.01)for(const P of r.polys)P.forEach(add);
   // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
   // desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
   const mob=!matchMedia('(min-width: 821px)').matches,lg=document.getElementById('legend'),mt=mob?96:0,mb=mob?104:(lg&&lg.offsetHeight?lg.offsetHeight+52:0);
   const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
-  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),1.1,3.6);
+  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),cityMinS(),3.6);
   return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
 }
 function engFly(d){const f=engFit();if(f)flyTo(f[0],f[1],f[2],d);}
@@ -445,7 +479,17 @@ function engOffset(P,off){
   return out;
 }
 function engLine(P,off){const Q=engOffset(P,off);ctx.beginPath();Q.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));}
-function engUp(m){const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[a[0]-(b[0]-a[0])/l*m,a[1]-(b[1]-a[1])/l*m];}
+// The works street upstream of the works, cached per link (T27): the queue, the signs and their tags sit on it
+const NET_UP=new WeakMap();
+function engPath(){
+  const net=engNet();if(!net||!EP.link)return null;if(EP.pathFor===EP.link)return EP.path;
+  let ix=NET_UP.get(net);if(!ix){ix=upstreamIndex(net.links.values());NET_UP.set(net,ix);}
+  const l=net.links.get(EP.link);EP.path=l?upstreamPath(ix,l,3000):null;EP.pathFor=EP.link;return EP.path;
+}
+// Point m metres upstream of the works start, along the street; straight back along the works link only if there is no path
+function engUp(m){const p=engPath();if(p&&p.pts.length>1)return pathAt(p,Math.max(0,m));const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,u=m*K_UPM;return[a[0]-(b[0]-a[0])/l*u,a[1]-(b[1]-a[1])/l*u];}
+// The street from the works start to m metres upstream (works start first)
+function engSub(m){const p=engPath();return p&&p.pts.length>1?pathSub(p,Math.max(0,m)):[engUp(0),engUp(m)];}
 // Numbers that belong to what is on screen: none while the sign text is invalid or the last run failed
 function engSumFor(which){if(EP.badText||EP.runErr)return null;return which==='before'?(EP.cmp&&EP.cmp.before)||EP.sum:which==='after'?(EP.cmp&&EP.cmp.after)||EP.sum:EP.sum;}
 // Walk-link geometry for the pedestrian detour, fetched only once a plan closes a footpath (same file the engine reads)
@@ -475,13 +519,12 @@ function engDraw(which){
   if(s&&S.step!==2){
     const faint=S.step===1,share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));
     for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.005)continue;ctx.globalAlpha=faint?.55:.85;ctx.strokeStyle=TK.accent;ctx.lineWidth=(2+10*sh)*k;for(const P of r.polys){engLine(P,off);ctx.stroke();}}
-    for(const l of s.raw.links){
-      const ex=(l.v||0)*(l.delay_s||0)/60;if(!(ex>=2)&&!(l.queue_m>0))continue;if(l.id===EP.link)continue;const P=engGeo(l.id);if(!P)continue;
-      const sev=l.queue_m>0||ex>=60?2:ex>=10?1:0;
+    for(const{id,sev}of rippleLinks(s.raw.links,EP.link)){ // extra_min (T28), not v·delay_s against free flow
+      const P=engGeo(id);if(!P)continue;
       ctx.globalAlpha=(faint?.5:.9)*(sev?1:.7);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.6)*k;engLine(P,off);ctx.stroke();
     }
-    if(s.queue_m>0){const q=engUp(Math.min(s.queue_m,engWorldReach())),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
-    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
+    if(s.queue_m>0){const Q=engSub(Math.min(s.queue_m,engReach())).reverse();ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine(Q,off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine(Q,off);ctx.stroke();ctx.setLineDash([]);}
+    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${engQueueTxt(s,vis)}`,which==='before'?TK.risk:TK.accent);}
   }
   if(s&&S.step!==2){engTransitDraw(s,S.step===1);engPedDraw(s,S.step===1);}
   ctx.globalAlpha=1;ctx.strokeStyle=TK.works;ctx.lineWidth=9*k;engLine(EP.pts,off);ctx.stroke();
@@ -498,21 +541,29 @@ function engLabels(){
   const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
   // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
   drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
-  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
+  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis),TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}
   }
   if(S.step===3&&s){
     const share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));let k2=0;
-    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
-    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
+    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
+    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
 }
-// How far upstream stays on the drawn map: a queue longer than that stops at the map's edge (its tag says "→"), instead of
-// running on under the glass panels
-function engWorldReach(){let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>=WORLD.x0&&p[0]<=WORLD.x1&&p[1]>=WORLD.y0&&p[1]<=WORLD.y1)lo=mid;else hi=mid;}return lo;}
+// How far upstream the queue can be drawn: along its street to where the street runs out in the network, and inside CITY.
+// The engine's queue is a point queue on the works link (engine assign.js) — it is drawn back along the street as far as the
+// street goes, never stretched further; the tag keeps the engine's number and says where the line stops
+function engReach(){
+  const p=engPath(),R=p&&p.pts.length>1?p.reach:2000,inC=q=>q[0]>=CITY.x0&&q[0]<=CITY.x1&&q[1]>=CITY.y0&&q[1]<=CITY.y1;
+  if(inC(engUp(R)))return R;let lo=0,hi=R;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(inC(engUp(mid)))lo=mid;else hi=mid;}return lo;
+}
+function engQueueTxt(s,vis){
+  const p=engPath(),cut=s.queue_m>engReach()+1,end=p&&p.end?shortSt(p.end):null;
+  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
+}
 // How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
 function engVisible(){
-  const x0=Math.max(WORLD.x0,V.wx(24)),x1=Math.min(WORLD.x1,V.wx(V.w-24)),y0=Math.max(WORLD.y0,V.wy(V.h-24)),y1=Math.min(WORLD.y1,V.wy(70));
+  const x0=Math.max(CITY.x0,V.wx(24)),x1=Math.min(CITY.x1,V.wx(V.w-24)),y0=Math.max(CITY.y0,V.wy(V.h-24)),y1=Math.min(CITY.y1,V.wy(70));
   let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>x0&&p[0]<x1&&p[1]>y0&&p[1]<y1)lo=mid;else hi=mid;}return Math.max(0,lo-4);
 }
 // Tag offset that keeps the box on screen: point it back toward the middle of the view
@@ -527,7 +578,7 @@ function engBindMap(){
   cv.addEventListener('dblclick',cancel);
   cv.addEventListener('pointerup',e=>{
     lift(e);const d=down;down=null;if(!d||d[2]!==e.pointerId||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
-    if(S.step!==1||!BE.api)return;
+    if(S.step!==1||!BE.api||V.s<1)return; // zoomed out, the pick tolerance (≥ 14 px) spans whole blocks: don't move the works
     const x=V.wx(e.offsetX),y=V.wy(e.offsetY),tol=Math.max(9,14/V.s);
     pending=setTimeout(()=>{ // wait out a double-click (that one zooms)
       pending=0;const id=pickLink(engCands(),x,y,tol);
