@@ -115,7 +115,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T2 | 网页面板（`apps/web`）：GIS 地图 + 六种极端天气 + 四步红队流程 + 中英切换；交接单 `handoff/unicornnnnnny-T2-0929-1440.md` | ✅ 已合（#19） | `unicornnnnnny/web/T2-gis-weather-ui` | 09-29 14:40 |
 | T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | ✅ 已合 #47、#50，已上线 b1ef637 | `unicornnnnnny/web/T14-liquid-glass` | 09-29 17:30 |
-| T20 | 删掉页面上写死的假数（安全分、查表的修复前后对比、复现种子、第 2 步假进度 / 变体、「AI 红队」字样）+ 天气标示意、默认晴天 + 评委 5 条（地图对准 Lonsdale、引擎数字不折叠、单位、一个施工一个时间、假设亮出来）；交接单 `handoff/unicornnnnnny-T20-0929-2201.md` | 🔨 待 review | `unicornnnnnny/web/T20-no-fake-numbers` | 09-29 21:40 |
+| T20 | 删掉页面上写死的假数（安全分、查表的修复前后对比、复现种子、第 2 步假进度 / 变体、「AI 红队」字样）+ 天气标示意、默认晴天 + 评委 5 条（地图对准 Lonsdale、引擎数字不折叠、单位、一个施工一个时间、假设亮出来）；交接单 `handoff/unicornnnnnny-T20-0929-2201.md`。后续：页面和执行包补数据来源署名（© OpenStreetMap contributors、DataVic SCATS / GTFS、墨尔本市开放数据） | ✅ 已合 #60、已上线 7e035d9；署名 🔨 待 review | `unicornnnnnny/web/T20-credits` | 09-29 21:40 |
 
 卡住了：
 
