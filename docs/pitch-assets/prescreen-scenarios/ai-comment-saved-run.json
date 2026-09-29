@@ -1,0 +1,149 @@
+{
+  "requested_at": "2026-09-29T15:49:15.582Z",
+  "requests": 1,
+  "status": 200,
+  "request": {
+    "lang": "en",
+    "options": [
+      {
+        "id": "A",
+        "label": "Minimum",
+        "metrics": {
+          "delay_veh_min": 10493,
+          "queue_m": 918,
+          "mean_delay_s": 509,
+          "detour_share": 0.14,
+          "transit_pax_min": 18693,
+          "transit_blocked_pax_h": 0,
+          "peds_extra_min": 0,
+          "blocked_vph": 0,
+          "hire_aud": 515,
+          "days": 5
+        },
+        "per_capita_min": {},
+        "flags": {
+          "params_assumed": true,
+          "reading_rules": false
+        }
+      },
+      {
+        "id": "B",
+        "label": "Standard",
+        "metrics": {
+          "delay_veh_min": 10493,
+          "queue_m": 918,
+          "mean_delay_s": 509,
+          "detour_share": 0.14,
+          "transit_pax_min": 18693,
+          "transit_blocked_pax_h": 0,
+          "peds_extra_min": 0,
+          "blocked_vph": 0,
+          "hire_aud": 1765,
+          "days": 5
+        },
+        "per_capita_min": {},
+        "flags": {
+          "params_assumed": true,
+          "reading_rules": false
+        }
+      },
+      {
+        "id": "C",
+        "label": "Guided",
+        "metrics": {
+          "delay_veh_min": 937,
+          "queue_m": 79,
+          "mean_delay_s": 47,
+          "detour_share": 0.607,
+          "transit_pax_min": 1651,
+          "transit_blocked_pax_h": 0,
+          "peds_extra_min": 0,
+          "blocked_vph": 0,
+          "hire_aud": 1765,
+          "days": 5
+        },
+        "per_capita_min": {},
+        "flags": {
+          "params_assumed": true,
+          "reading_rules": false
+        }
+      }
+    ]
+  },
+  "response": {
+    "ok": true,
+    "explain": {
+      "src": "llm",
+      "lang": "en",
+      "options": [
+        {
+          "id": "A",
+          "summary": "The Minimum plan keeps hire costs low but leaves heavy traffic delay and long queues.",
+          "pros": [
+            "Lowest equipment hire at 515 AUD.",
+            "No tram or bus passengers blocked from service.",
+            "No pedestrians blocked and no vehicles fully blocked."
+          ],
+          "cons": [
+            "Delay of 10493 vehicle-minutes.",
+            "Queue reaches 918 m with mean delay of 509 s per car.",
+            "Transit passengers lose 18693 passenger-minutes."
+          ],
+          "hardest_hit": null,
+          "risks": [
+            "Some inputs are assumptions; read the numbers as ranges",
+            "Parameters are assumed, so real delay could differ.",
+            "Only 0.14 detour_share may overload the main route."
+          ]
+        },
+        {
+          "id": "B",
+          "summary": "The Standard plan matches the Minimum plan on traffic outcomes but costs much more in hire.",
+          "pros": [
+            "No tram or bus passengers blocked from service.",
+            "No pedestrians blocked and no vehicles fully blocked.",
+            "Same traffic delay as the Minimum plan."
+          ],
+          "cons": [
+            "Hire of 1765 AUD buys no delay reduction versus the Minimum plan.",
+            "Delay of 10493 vehicle-minutes.",
+            "Queue reaches 918 m with mean delay of 509 s per car."
+          ],
+          "hardest_hit": null,
+          "risks": [
+            "Some inputs are assumptions; read the numbers as ranges",
+            "Parameters are assumed, so the higher spend may not deliver expected outcomes.",
+            "Paying more without traffic benefit may be hard to justify."
+          ]
+        },
+        {
+          "id": "C",
+          "summary": "The Guided plan sharply cuts vehicle, queue and transit delay at the same hire cost as Standard.",
+          "pros": [
+            "Delay drops to 937 vehicle-minutes and queue to 79 m.",
+            "Mean delay is 47 s per car.",
+            "Transit delay falls to 1651 passenger-minutes with nobody blocked."
+          ],
+          "cons": [
+            "Hire is 1765 AUD, higher than the Minimum plan.",
+            "Relies on drivers following signs."
+          ],
+          "hardest_hit": null,
+          "risks": [
+            "61% of drivers detour, so the detour itself may clog",
+            "Some inputs are assumptions; read the numbers as ranges",
+            "Parameters are assumed, so actual results may vary.",
+            "Sign-reading is a keyword-rule estimate and may not reflect real driver behaviour."
+          ]
+        }
+      ],
+      "lean": {
+        "option": "C",
+        "why": "The Guided plan gives much lower delay, queue and transit delay than the other plans while blocking no passengers, pedestrians or vehicles. Its higher detour share and hire cost are worth noting, but "
+      },
+      "decide": "This is advice only. The person responsible chooses the plan and records why.",
+      "model": "deepseek-flash",
+      "prompt_v": "e2"
+    }
+  }
+}
