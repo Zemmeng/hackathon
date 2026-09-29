@@ -137,6 +137,15 @@ function normEquipment(list) {
       if (!Number.isInteger(e.char_mm) || e.char_mm < 100 || e.char_mm > 600) throw bad("bad_equipment", `${at}.char_mm 要是 100–600 的整数（毫米）`);
       out.char_mm = e.char_mm;
     }
+    // 可选：对应 RPM 库存（apps/roads 的 equipment.json）哪一种、几件。不写由 pack.js 按类型 / 屏上字 / 路段长度推（引擎不看这两个字段）
+    if (e.item !== undefined && e.item !== null) {
+      if (typeof e.item !== "string" || !/^[a-z0-9_]{1,40}$/.test(e.item)) throw bad("bad_equipment", `${at}.item 要是 equipment.json 的 id（小写字母、数字、_）`);
+      out.item = e.item;
+    }
+    if (e.qty !== undefined && e.qty !== null) {
+      if (!Number.isInteger(e.qty) || e.qty < 1 || e.qty > 500) throw bad("bad_equipment", `${at}.qty 要是 1–500 的整数`);
+      out.qty = e.qty;
+    }
     return out;
   });
 }

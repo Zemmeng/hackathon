@@ -67,7 +67,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | ✅ 已上线（`DEMO_URL`，lead 备份部署） | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
 | T21 | 叠加冲突上页面（D-0929-2011 ②）：真 CBD 路网上两处施工的冲突成本 + 一键错开，引擎已有 `conflict()` / `shiftWorksite()`，页面加第二处施工 | ⬜ | — | — |
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ⬜ | — | — |
-| T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 只加字段 `kind` `status` `options[]` `decision`；§HTTP API 补 #53 `/api/worksites`、#54 `/api/explain` | ⬜ | — | — |
+| T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 
 卡住了：
 
@@ -99,6 +99,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）。已合 #22 #26 #29；DeepSeek 卡 #37；大模型接口由 lead 在 T19 留好，演示先用规则（D-0929-1718 / 1830） | ✅ | #22 #26 #29 #37 | 09-29 14:40 |
 | T5 | 施工登记表（提案 #48 第 ⑤ 步，只做后端）：`/api/worksites` GET / POST、`/api/worksites/<id>` GET / PATCH，Durable Object `WorksiteRegister`，改要凭 `edit_token`；预置 3 条演示施工（含一条和 Lonsdale 叠加的）；浏览器端 `public/js/worksites.js` 等网页来接（D-0929-2011：页面接入不排在冻结前） | ✅ | #53 | 09-29 20:20 |
+| T5 | AI 解读（提案 #48 第 ⑥ 步，只做后端）：`POST /api/explain` 规则版 + 数字追溯（解读里的数只能来自引擎）+ 浏览器端 `explainOptions()` / `optionFromRun()`；大模型版后续（D-0929-2011：页面接入不排在冻结前） | ✅ | #54 | 09-29 20:55 |
+| T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它 | ✅ | #55 | 09-29 21:10 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 
 卡住了：
