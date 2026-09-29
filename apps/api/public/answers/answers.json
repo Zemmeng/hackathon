@@ -1,8 +1,0 @@
-{
-  "version": 1,
-  "prompt_v": "p1",
-  "model": "",
-  "generated": null,
-  "note": "演示文案的预热答案（tools/prewarm.mjs --run 写入）。键 = cardKey(场景卡, prompt_v)；每条含 4 类人的 by_type。现在是空的：大模型还没定，全部走 Worker / 规则估算。",
-  "entries": {}
-}

@@ -117,6 +117,16 @@ if flows is not None:
         names = {l['id']: l.get('name') or '' for l in net['links']}
         lat = [days['wd'][k][17] for k in days.get('wd', {}) if 'la trobe' in str(names.get(k, '')).lower()]
         ok(any(100 <= v <= 2000 for v in lat), '常识：La Trobe 至少一条路段工作日 17 点在 100–2000 辆 / 小时（找到 %d 条）' % len(lat))
+        # 校准：按路口估的每车道流量（site_split）不能和按车道实测的（detector_map）差出 2 倍
+        meth = flows.get('method', {}); lanes = {l['id']: l['lanes'] for l in net['links']}
+        per_lane = lambda m: sorted(days['wd'][k][17] / lanes[k] for k, v in meth.items() if v == m and k in lanes)
+        dm, ss = per_lane('detector_map'), per_lane('site_split')
+        if dm and ss:
+            a, b = dm[len(dm) // 2], ss[len(ss) // 2]
+            ok(0.5 <= b / max(a, 1) <= 2, '校准：site_split 每车道 17 点中位数 %d，detector_map %d，相差在 2 倍内' % (b, a))
+        cap = {l['id']: l['cap_vph'] for l in net['links']}
+        over = [k for k in days.get('wd', {}) if k in cap and max(days['wd'][k]) > 1.2 * cap[k]]
+        ok(len(over) <= 0.05 * max(1, len(cap)), '工作日任一小时车流超过通行能力 1.2 倍的路段不超过 5%%（%d 条）' % len(over))
     cov = flows.get('coverage', {})
     ok(cov.get('links') == cov.get('measured', -1) + cov.get('estimated', -1), 'coverage：links = measured + estimated')
 

@@ -52,6 +52,7 @@ bash scripts/secret-scan.sh --history # 转 public 前扫全部历史
 | 为什么这么定 | `docs/decisions.md` |
 | 坑 | `docs/pitfalls.md` |
 | 外部 API 怎么调 | 模块 README 的「外部 API」节 |
+| 候选大模型 API（谁有 key、多少钱、实测响应） | `docs/llm-apis/` 各人的卡 |
 | 怎么部署、队友怎么拿权限 | `docs/deploy-cloudflare.md` |
 
 ❌ 不要通读：别的模块源码、`handoff/done/`、`node_modules`、`.claude/agent-out/` 全文。

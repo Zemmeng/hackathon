@@ -6,15 +6,22 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 ## 现在停在哪（只有 lead 改，写时间）
 
-- 里程碑：M0 选题完成，架构已定（09-29 13:10）· 倒计时：到 10-01 12:00 · main：绿 · 冻结：否
+- 里程碑：M0 完成，M1 未到（09-29 14:45）· 倒计时 45h · main：绿（`check.sh` 全量 `0 ❌ 0 ⚠️`）· 冻结：否
 - 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址）
+- 已合：#9 路网数据、#15 数据文件上限 2MB、#16 契约 v2 + T5 派人、#17 `docs/llm-apis/`（T8 人人可传卡）
+- 开着的 PR：#14 T7 行人 / 公交 / 设备 ✅（已提醒 louis 自己合）；#12 PRD-2（内容已被 #14 实现，等 jinmingq 合）；#5 赛题材料 ❌ 越界（已留言让作者拆）
+- T2 网页：`unicornnnnnny/web/T2-gis-weather-ui` 已推、还没开 PR；方向按 D-0929-1445 接回计划（见 R5）
 - 下一个集成点：**09-29 17:00**，然后 21:00；整点前把自己的分支 push 上来
 
 ## 风险与 P0（lead 写，`/demo` 的结果也写这）
 
 | # | 问题 | 严重度 | 负责人 | 状态 |
 |---|---|---|---|---|
-| | | | | |
+| R1 | T4 路网计算没人认领（@Unzzip 名下为空）；T5 已派给 @jinmingq（14:30，D-0929-1436） | 高 | lead | T4 17:00 集成点定 |
+| R2 | 初筛 3 页幻灯片 09-30 12:30 截止，还没人负责 | 高 | lead | 17:00 集成点定 |
+| R3 | `apps/web` 已由 T2 分支自建（登记表、CODEOWNERS、launch.json 已补）；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | starters 待删 |
+| R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | ✅ 已解决：数据 JSON 上限 2MB、不再报 500KB（D-0929-1430） |
+| R5 | T2 网页做成「极端天气压力测试」为主线，全是模拟数字，没接 T3 真路网，和 D-0929-1310 的 6 步不一致 | 高 | @unicornnnnnny | D-0929-1445：主路径接回计划，天气留作加分层；17:00 前对齐 |
 
 ## 额度台账（付费 API）
 
@@ -31,8 +38,10 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T0 | 热身：分支 `<handle>/hello/T0-hello`，只新建一张交接单，开 PR（做法见 README ①） | 15m | — |
 | T2 | 给 @unicornnnnnny：**网页面板**（第 1、2、6 步）——地图显示 CBD、在路上选一段施工、摆护栏 / 标志牌 / VMS、写屏上文案、显示结果和前后对比；17:00 前先做到地图 + 选路段 + 文案输入，结果用假数据上色。模块 `apps/web`（lead 今天建好空架子）；看 `docs/2-plan.md` 和 `docs/arch/` | 2h | — |
 | T3 | 给 @louisxie316-dotcom：**路网数据**——CBD 真实路网 + 真实车流整理成 `network.json` / `flows.json` / `signals.json`。**详细要求全在 `apps/roads/PRD.md`**；分支 `louisxie316-dotcom/roads/T3-network`；17:00 前先交最小版 `network.json`（draft PR） | 2h + 2h | — |
-| T4 | **路网计算**（第 4、5 步，创新点）——**骨架已在 `apps/engine`（T7，方格路网上三幕都跑通），接着做：换 T3 真路网、公交电车乘客 / 行人 / 骑车 / 轮椅的影响、和路口放大联动**。原说明：封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
-| T5 | **大模型和云端**（第 3、5 步，创新点）——**骨架已在 `apps/api`（T7，MOCK 全通），接着做：定用哪家大模型和谁的 key（D-0929-1333）→ 实现 `src/llm.js`、绑 KV / D1、`tools/prewarm.mjs` 预热、核实校准锚点**。原说明：4 类路人的画像和提问模板、Cloudflare 接口、缓存、施工清单；17:00 前接口先返回假数据（MOCK）。看 `docs/arch/` 的「Agent 接入架构」 | 2h | — |
+| T4 | **路网计算**（第 4、5 步，创新点）——**骨架在 `apps/engine`（T9，PR #20），认领后在它上面接着做**。原说明：封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
+| T5 | 给 @jinmingq：**大模型读懂屏上的字**（第 ③ 步，D-0929-1435 / 1436）——新建模块 `apps/api`：浏览器端 `readSigns()`、关键词规则兜底、Cloudflare Worker `/api/read` + KV 缓存、`prompts.md`。**要求全在 `docs/arch/T5-PRD.md`**，接口见 `docs/contract.md` §路人读数；分支 `jinmingq/api/T5-reader`；17:00 前 `readSigns()` 用规则返回读数 + `test.sh` 绿 + draft PR（不调大模型、不花钱） | 2h + 3h | — |
+| T7 | 给 @louisxie316-dotcom：**T3 第二期**——行人、公交、设备库存（`apps/roads/PRD-2.md`，PR #12）。**先做 A `equipment.json`**（T2 设备面板要用），B 公交、C 行人排在后面；分支 `louisxie316-dotcom/roads/T7-equipment`，#9 合完再开 | 1h + 4h | T3（PR #9） |
+| T8 | 任何人：**传一张大模型 API 卡**——手里有哪家的 key / 免费额度，照 `docs/llm-apis/README.md` 写一张卡（只写变量名）；分支 `<handle>/llm-apis/T8-<服务商>`，像 T0 一样人人可做、不用认领 | 15m | — |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -43,7 +52,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
-| T7 | AI 流程基础架构（`docs/arch/4-ai-flow.md`）：`apps/engine` 第 ①②④⑤⑥ 步 + ⑦ 重算，`apps/api` 第 ③⑦ 步 Worker + askPersonas + 规则兜底，全 MOCK；契约 v2 | ✅ | `claude/lead/ai-infra` / draft PR | 09-29 13:50 |
+| T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | 🔨 | `claude/lead/ai-infra` / PR #20（draft） | 09-29 13:50 |
 
 卡住了：
 
@@ -53,6 +62,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T0 | 热身：验证本机环境、hooks、CI 与仓库权限 | ✅ | `louisxie316-dotcom/hello/T0-hello` / PR #3 | 09-27 14:48 |
+| T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | ✅ | `louisxie316-dotcom/roads/T3-network` / PR #9 | 09-29 13:19 |
 
 卡住了：
 
