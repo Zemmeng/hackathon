@@ -21,6 +21,8 @@
 /docs/contract.md             @Zemmeng
 /docs/deploy-cloudflare.md    @Zemmeng
 /handoff/README.md            @Zemmeng
+/docs/llm-apis/README.md      @Zemmeng
+/docs/llm-apis/TEMPLATE.md    @Zemmeng
 /.claude/                     @Zemmeng
 /.github/                     @Zemmeng
 /.githooks/                   @Zemmeng
@@ -31,6 +33,11 @@
 
 # ---- 模块：kickoff 时由 lead 追加（scripts/new-app.sh 会打印要加的行）----
 # /apps/<模块>/                 @<负责人>
+/apps/sim/                    @Zemmeng
+/apps/roads/                  @louisxie316-dotcom
+/apps/web/                    @unicornnnnnny
+/apps/api/                    @jinmingq
+/apps/params/                 @Unzzip
 # /docs/4-demo.md               @<pitch owner>
 # /docs/pitch-assets/           @<pitch owner>
 # pitch owner 用 <handle>/pitch/T<n>-x 分支写 docs/4-demo.md 与 docs/pitch-assets/

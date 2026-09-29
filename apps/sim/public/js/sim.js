@@ -1,0 +1,327 @@
+// sim.js —— Swanston St / La Trobe St 路口仿真引擎（纯逻辑，不碰 DOM；浏览器和 node 都能直接 import）
+// 用法：const s = new Sim({ data, hour: 17, day: 'wd', wz: false, seed: hashStr('wd:17') });
+//       while (s.t < HOUR) s.step();  s.summary();
+// data = public/demand/demand_2921.json（tools/build_demand.py 生成）。同一个 seed 结果完全一样。
+// 坐标：米，路口中心为原点，x 向东、y 向北；可视范围 ±HALF。
+const HALF = 90, WARM = 300, HOUR = 3600, DT = 0.25;
+// Simplified from the site's phasing diagram (sequence C-A-B): A = Swanston through movements, B = Swanston left turners only, C = La Trobe.
+// Keys are the phases a stream may move in; the 100 s cycle is assumed, the real site is SCATS-adaptive.
+const SIG = { cycle: 100, A: { g0: 0, g: 30, y: 3 }, AB: { g0: 0, g: 45, y: 3 }, C: { g0: 50, g: 44, y: 4 } };
+// walk windows per crosswalk: E (crossed by the left turners) walks in A only; W walks through A and B; N and S walk with La Trobe
+const WALK = { E: [0, 21], W: [0, 31], N: [50, 81], S: [50, 81] };
+function cyc(t) { return ((t % SIG.cycle) + SIG.cycle) % SIG.cycle; }
+function sigState(ph, t) { const p = SIG[ph], d = cyc(t) - p.g0; if (d >= 0 && d < p.g) return 'G'; if (d >= p.g && d < p.g + p.y) return 'Y'; return 'R'; }
+function walkOn(xw, t) { const c = cyc(t), w = WALK[xw]; return c >= w[0] && c < w[1]; }
+
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function gauss(r) { let u = 0; while (u === 0) u = r(); const v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+
+// ---------- geometry ----------
+function seg(a, b, step = 1) { const out = [], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), n = Math.max(1, Math.ceil(L / step)); for (let i = 0; i <= n; i++) out.push([a[0] + dx * i / n, a[1] + dy * i / n]); return out; }
+function arcPts(cx, cy, r, a0, a1, step = 0.5) { const out = [], n = Math.max(2, Math.ceil(Math.abs(a1 - a0) * r / step)); for (let i = 0; i <= n; i++) { const t = a0 + (a1 - a0) * i / n; out.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } return out; }
+function joinPts(...parts) { const out = []; for (const p of parts) for (const q of p) { const l = out[out.length - 1]; if (l && Math.hypot(l[0] - q[0], l[1] - q[1]) < 1e-6) continue; out.push(q); } return out; }
+function makePath(pts) { const n = pts.length, xs = new Float64Array(n), ys = new Float64Array(n), ss = new Float64Array(n); let acc = 0; for (let i = 0; i < n; i++) { xs[i] = pts[i][0]; ys[i] = pts[i][1]; if (i > 0) acc += Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]); ss[i] = acc; } return { xs, ys, ss, len: acc, n }; }
+function pathAt(P, s, o) {
+  let lo = 0, hi = P.n - 2;
+  if (s <= 0) hi = 0; else if (s >= P.len) lo = P.n - 2;
+  else { while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (P.ss[mid] <= s) lo = mid; else hi = mid - 1; } }
+  const i = Math.min(lo, P.n - 2), dx = P.xs[i + 1] - P.xs[i], dy = P.ys[i + 1] - P.ys[i], L = Math.hypot(dx, dy) || 1, f = (s - P.ss[i]) / L;
+  o.x = P.xs[i] + dx * f; o.y = P.ys[i] + dy * f; o.hx = dx / L; o.hy = dy / L; return o;
+}
+function crossS(P, axis, value) { const c = axis === 'x' ? P.xs : P.ys; for (let i = 0; i < P.n - 1; i++) { const a = c[i] - value, b = c[i + 1] - value; if (a === 0) return P.ss[i]; if (a * b < 0) return P.ss[i] + (P.ss[i + 1] - P.ss[i]) * (a / (a - b)); } return null; }
+function rectInterval(P, r, pad) { const o = {}; let sIn = null, sOut = null; for (let s = 0; s <= P.len; s += 0.2) { pathAt(P, s, o); const ins = o.x >= r[0] - pad && o.x <= r[1] + pad && o.y >= r[2] - pad && o.y <= r[3] + pad; if (ins) { if (sIn === null) sIn = s; sOut = s; } else if (sIn !== null) break; } return sIn === null ? null : [sIn, sOut]; }
+
+// ---------- modes ----------
+const MP = {
+  car: { len: 4.5, w: 1.8, a: 1.6, b: 2.2, s0: 2.0, T: 1.2, v0: 11.1, sd: 0.8, lo: 8.5, hi: 13.0 },
+  bike: { len: 1.8, w: 0.7, a: 1.0, b: 1.8, s0: 1.0, T: 0.8, v0: 5.2, sd: 0.9, lo: 3.2, hi: 7.5 },
+  tram: { len: 33, w: 2.65, a: 1.0, b: 1.3, s0: 3.0, T: 1.5, v0: 8.3, sd: 0, lo: 5, hi: 12 },
+  ped: { len: 0.5, w: 0.5, v0: 1.35, sd: 0.18, lo: 0.9, hi: 1.9 }
+};
+function idm(v, v0, gap, dv, m) { const ss = m.s0 + Math.max(0, v * m.T + v * dv / (2 * Math.sqrt(m.a * m.b))); return m.a * (1 - Math.pow(v / v0, 4) - (ss / gap) * (ss / gap)); }
+
+// ---------- scene ----------
+const WZ = { x0: 20, x1: 60 };
+// streams whose vehicles merge into another stream's lane mid-turn: followers accept a wider heading difference for these leaders
+const MERGE_FROM = { car_eb: ['car_sbl'] };
+function vehicleStreams(wz) {
+  const L = (a, b) => seg(a, b, 1);
+  return [
+    { id: 'car_eb', mode: 'car', phase: 'C', key: 'car_eb', pts: L([-90, 5.3], [90, 5.3]), stop: ['x', -14] },
+    { id: 'car_wb', mode: 'car', phase: 'C', key: 'car_wb', pts: L([90, -5.3], [-90, -5.3]), stop: ['x', 14] },
+    { id: 'car_sbl', mode: 'car', phase: 'AB', key: 'car_sb_left', v0: 8.3, pts: joinPts(L([5.3, 90], [5.3, 11.3]), arcPts(11.3, 11.3, 6, Math.PI, 1.5 * Math.PI), L([11.3, 5.3], [90, 5.3])), stop: ['y', 14], slow: ['y', 16, 'x', 12, 5.0] },
+    { id: 'bike_nb', mode: 'bike', phase: 'A', key: 'bike_nb_swanston', pts: L([-8, -90], [-8, 90]), stop: ['y', -14] },
+    { id: 'bike_sb', mode: 'bike', phase: 'A', key: 'bike_nb_swanston', assumed: true, pts: L([8, 90], [8, -90]), stop: ['y', 14] },
+    { id: 'bike_eb', mode: 'bike', phase: 'C', key: 'bike_wb_latrobe', assumed: true, pts: L([-90, 8], [90, 8]), stop: ['x', -14] },
+    { id: 'bike_wb', mode: 'bike', phase: 'C', key: 'bike_wb_latrobe', stop: ['x', 14],
+      pts: wz ? joinPts(L([90, -8], [72, -8]), L([72, -8], [62, -5.3]), L([62, -5.3], [-18, -5.3]), L([-18, -5.3], [-28, -8]), L([-28, -8], [-90, -8])) : L([90, -8], [-90, -8]) },
+    { id: 'tram_nb', mode: 'tram', phase: 'A', key: 'tram_nb_swanston', v0: 8.3, pts: L([-1.8, -90], [-1.8, 90]), stop: ['y', -14], dwell: ['y', 55] },
+    { id: 'tram_sb', mode: 'tram', phase: 'A', key: 'tram_sb_swanston', v0: 8.3, pts: L([1.8, 90], [1.8, -90]), stop: ['y', 14], dwell: ['y', -55] },
+    { id: 'tram_eb', mode: 'tram', phase: 'C', key: 'tram_wb_latrobe', assumed: true, v0: 11.1, pts: L([-90, 1.8], [90, 1.8]), stop: ['x', -14] },
+    { id: 'tram_wb', mode: 'tram', phase: 'C', key: 'tram_wb_latrobe', v0: 11.1, pts: L([90, -1.8], [-90, -1.8]), stop: ['x', 14] }
+  ];
+}
+const C = 11.5;
+const CORNER = { SW: [-C, -C], SE: [C, -C], NW: [-C, C], NE: [C, C] };
+const XW = { W: { axis: 'y' }, E: { axis: 'y' }, S: { axis: 'x' }, N: { axis: 'x' } };
+const PEDSPAWN = [
+  { id: 'p_sw_n', key: 'ped_swanston_west', dir: 0, start: [-C, -90], corner: 'SW', straight: ['W', 'NW', [-C, 90]], outward: [-90, -C], inward: ['S', 'SE', [90, -C]] },
+  { id: 'p_sw_s', key: 'ped_swanston_west', dir: 1, start: [-C, 90], corner: 'NW', straight: ['W', 'SW', [-C, -90]], outward: [-90, C], inward: ['N', 'NE', [90, C]] },
+  { id: 'p_se_n', key: 'ped_swanston_east', dir: 0, start: [C, -90], corner: 'SE', straight: ['E', 'NE', [C, 90]], outward: [90, -C], inward: ['S', 'SW', [-90, -C]] },
+  { id: 'p_se_s', key: 'ped_swanston_east', dir: 1, start: [C, 90], corner: 'NE', straight: ['E', 'SE', [C, -90]], outward: [90, C], inward: ['N', 'NW', [-90, C]] },
+  { id: 'p_ln_e', key: 'ped_latrobe_north_w', dir: 0, start: [-90, C], corner: 'NW', straight: ['N', 'NE', [90, C]], outward: [-C, 90], inward: ['W', 'SW', [-C, -90]] },
+  { id: 'p_ln_w', key: 'ped_latrobe_north_e', dir: 1, start: [90, C], corner: 'NE', straight: ['N', 'NW', [-90, C]], outward: [C, 90], inward: ['E', 'SE', [C, -90]] },
+  { id: 'p_ls_e', key: 'ped_latrobe_north_w', dir: 0, assumed: true, start: [-90, -C], corner: 'SW', straight: ['S', 'SE', [90, -C]], outward: [-C, -90], inward: ['W', 'NW', [-C, 90]] },
+  { id: 'p_ls_w', key: 'ped_latrobe_north_e', dir: 1, assumed: true, start: [90, -C], corner: 'SE', straight: ['S', 'SW', [-90, -C]], outward: [C, -90], inward: ['E', 'NE', [C, 90]] }
+];
+function buildPed(def, choice, ox, oy) {
+  const sh = p => [p[0] + ox, p[1] + oy];
+  const start = sh(def.start), c1 = sh(CORNER[def.corner]);
+  let pts, cross = null;
+  if (choice === 'outward') pts = joinPts(seg(start, c1), seg(c1, sh(def.outward)));
+  else {
+    const [xw, to, end] = def[choice], c2 = sh(CORNER[to]);
+    pts = joinPts(seg(start, c1), seg(c1, c2), seg(c2, sh(end)));
+    const ax = XW[xw].axis, k = ax === 'y' ? 1 : 0;
+    cross = { xw, axis: ax, dir: Math.sign(CORNER[to][k] - CORNER[def.corner][k]) };
+  }
+  const P = makePath(pts);
+  if (cross) { cross.sWait = crossS(P, cross.axis, cross.dir > 0 ? -9.4 : 9.4); if (cross.sWait == null) cross = null; }
+  return { P, cross };
+}
+// conflict zones: the left-turning car (Swanston north → La Trobe east) must give way to both
+const ZONES = [
+  { id: 'z1', rect: [7, 9, 5.0, 8.0], label: '左转车 × 直行自行车', yieldStream: 'car_sbl', prio: a => a.st.id === 'bike_sb' },
+  { id: 'z2', rect: [9.5, 13.5, 3.6, 7.0], label: '左转车 × 过街行人', yieldStream: 'car_sbl', prio: a => a.mode === 'ped' && a.cross && a.cross.xw === 'E' }
+];
+
+function rateFor(data, st, day, hour) {
+  if (st.mode === 'ped') { const r = data.ped[st.key][day][hour]; return r ? r[st.dir] : 0; }
+  const r = data.scats[st.key][day][hour]; return r == null ? 0 : r;
+}
+
+class Sim {
+  constructor(opt) {
+    this.hour = opt.hour; this.day = opt.day; this.wz = !!opt.wz; this.seed = opt.seed >>> 0;
+    this.t = -WARM; this.agents = []; this.nextId = 1; this.events = []; this.pairSeen = new Set();
+    const vs = vehicleStreams(this.wz).map(s => {
+      const P = makePath(s.pts), st = { ...s, P };
+      st.stopS = crossS(P, s.stop[0], s.stop[1]);
+      st.dwellS = s.dwell ? crossS(P, s.dwell[0], s.dwell[1]) : null;
+      if (s.slow) st.slowR = [crossS(P, s.slow[0], s.slow[1]), crossS(P, s.slow[2], s.slow[3]), s.slow[4]];
+      st.zi = {};
+      for (const z of ZONES) { if (z.yieldStream === s.id || z.prio({ st: { id: s.id }, mode: s.mode })) st.zi[z.id] = rectInterval(P, z.rect, MP[s.mode].w / 2); }
+      return st;
+    });
+    const ps = PEDSPAWN.map(d => ({ ...d, mode: 'ped' }));
+    this.streams = [...vs, ...ps].map(st => {
+      st.rate = rateFor(opt.data, st, this.day, this.hour) / 3600;
+      st.rng = mulberry32(this.seed ^ hashStr(st.id));
+      st.pending = []; st.last = null; st.spawned = 0;
+      st.nextT = st.rate > 0 ? this.t - Math.log(1 - st.rng()) / st.rate : Infinity;
+      return st;
+    });
+    this.zones = ZONES.map(z => ({ ...z, inside: { Y: new Set(), P: new Set() }, lastExit: { Y: -1e9, P: -1e9 }, lastId: { Y: 0, P: 0 } }));
+    this.stats = { spawned: { car: 0, bike: 0, tram: 0, ped: 0 }, delay: { car: [0, 0], bike: [0, 0], tram: [0, 0], ped: [0, 0] }, qEB: 0, qWB: 0, byStream: {} };
+    this.expected = { car: 0, bike: 0, tram: 0, ped: 0 };
+    for (const st of this.streams) this.expected[st.mode] += st.rate * 3600;
+    this._qt = 0;
+  }
+  makeAgent(st, arrT) {
+    const r = st.rng, m = MP[st.mode];
+    const a = { id: this.nextId++, st, mode: st.mode, len: m.len, w: m.w, arrT, s: 0, sPrev: 0, v: 0, pos: { x: 0, y: 0, hx: 1, hy: 0 } };
+    const base = st.v0 || m.v0;
+    a.v0 = clamp(base + m.sd * gauss(r), Math.min(m.lo, base), Math.max(m.hi, base));
+    if (st.mode === 'ped') {
+      const u = r(), choice = u < 0.6 ? 'straight' : u < 0.85 ? 'outward' : 'inward';
+      const ox = (r() - 0.5) * 2.4, oy = (r() - 0.5) * 2.4;
+      const b = buildPed(st, choice, ox, oy);
+      a.P = b.P; a.cross = b.cross; a.qoff = r() * 2.2; a.waiting = false; a.crossing = false;
+      a.zi = {};
+      if (a.cross && a.cross.xw === 'E') a.zi.z2 = rectInterval(a.P, ZONES[1].rect, 0.25);
+    } else {
+      a.P = st.P; a.zi = st.zi;
+      a.attentive = st.mode !== 'car' || r() > 0.10;
+      if (st.dwellS != null) { a.dwellLeft = 8 + 10 * r(); a.dwellTotal = a.dwellLeft; a.dwelled = false; }
+    }
+    a.free = (a.mode === 'tram' ? a.P.len + a.len : a.P.len) / a.v0 + (a.dwellTotal || 0);
+    return a;
+  }
+  enter(st, a) {
+    a.v = a.mode === 'ped' ? a.v0 : a.v0 * 0.85;
+    if (st.last && !st.last.done && a.mode !== 'ped' && st.last.s - st.last.len < 25) a.v = Math.min(a.v, st.last.v + 1);
+    this.agents.push(a); st.last = a;
+    if (a.arrT >= 0 && a.arrT < HOUR) this.stats.spawned[a.mode]++;
+  }
+  addEvent(kind, label, a, bId, x, y, val) {
+    if (this.t < 0 || this.t >= HOUR) return;
+    const k = kind + ':' + Math.min(a.id, bId) + '-' + Math.max(a.id, bId);
+    if (this.pairSeen.has(k)) return; this.pairSeen.add(k);
+    this.events.push({ t: this.t, kind, label, x, y, val });
+  }
+  accel(a, veh, t) {
+    const m = MP[a.mode], st = a.st;
+    let v0 = a.v0;
+    if (st.slowR && a.s > st.slowR[0] && a.s < st.slowR[1]) v0 = Math.min(v0, st.slowR[2]);
+    let acc = m.a * (1 - Math.pow(a.v / v0, 4));
+    // leader: nearest vehicle ahead in the same corridor, heading roughly the same way
+    let best = null, bestGap = 1e9;
+    const p = a.pos;
+    const merge = MERGE_FROM[st.id];
+    for (const b of veh) {
+      if (b === a) continue;
+      if (b.st === st) { const gap = b.s - b.len - a.s; if (b.s > a.s && gap < bestGap) { bestGap = gap; best = b; } continue; }
+      const dx = b.pos.x - p.x, dy = b.pos.y - p.y, fw = dx * p.hx + dy * p.hy;
+      if (fw <= 0 || fw > 80) continue;
+      const lat = Math.abs(dx * p.hy - dy * p.hx);
+      if (lat > (a.w + b.w) / 2 + 0.35) continue;
+      const dot = p.hx * b.pos.hx + p.hy * b.pos.hy;
+      if (dot < (merge && merge.includes(b.st.id) ? 0.5 : 0.9)) continue;
+      const gap = fw - b.len;
+      if (gap < bestGap) { bestGap = gap; best = b; }
+    }
+    if (best) {
+      acc = Math.min(acc, idm(a.v, v0, Math.max(0.1, bestGap), a.v - best.v, m));
+      if (a.mode === 'car' && best.mode === 'bike') {
+        const cl = a.v - best.v, dot = p.hx * best.pos.hx + p.hy * best.pos.hy;
+        if (cl > 0.5 && dot > 0.95 && bestGap / cl < 1.5) this.addEvent('ttc', '汽车逼近同车道自行车', a, best.id, p.x, p.y, bestGap / cl);
+      }
+    }
+    // signal
+    if (!a.passed) {
+      const d = st.stopS - a.s;
+      if (d < -0.2) a.passed = true;
+      else if (d < 120) {
+        const s = sigState(st.phase, t);
+        let stop = false;
+        if (s === 'G') a.goAmber = undefined;
+        else if (s === 'Y') { if (a.goAmber === undefined) a.goAmber = d < a.v * a.v / 6 + 0.5; stop = !a.goAmber; }
+        else stop = !a.goAmber;
+        if (stop) acc = Math.min(acc, idm(a.v, v0, Math.max(0.1, d + m.s0 - 0.3), a.v, m));
+      }
+    }
+    // tram stop
+    if (a.dwellLeft !== undefined && !a.dwelled) { const d = st.dwellS - a.s; if (d > -1) acc = Math.min(acc, idm(a.v, v0, Math.max(0.1, d + m.s0 - 0.3), a.v, m)); }
+    // give way
+    if (st.id === 'car_sbl') acc = Math.min(acc, this.yieldAcc(a, v0, m, t));
+    else if (a.mode === 'bike') { const ob = this.blockedByCar(a); if (ob !== null) acc = Math.min(acc, idm(a.v, v0, Math.max(0.1, ob - a.s + m.s0 - 0.3), a.v, m)); }
+    return clamp(acc, -9, m.a);
+  }
+  yieldAcc(a, v0, m, t) {
+    let acc = 1e9;
+    // distracted drivers, and drivers who have waited more than 15 s inside the junction, only give way to someone right in front of them
+    const bold = !a.attentive || (a.waitT || 0) > 15;
+    for (const z of this.zones) {
+      const zi = a.zi[z.id]; if (!zi) continue;
+      const dIn = zi[0] - a.s;
+      if (dIn < 0.3 || dIn > 35) continue;
+      const vv = Math.max(a.v, 2.5), tIn = dIn / vv, tOut = (zi[1] + a.len - a.s) / vv;
+      let clash = false;
+      for (const b of this.agents) {
+        if (!z.prio(b)) continue;
+        const bz = b.zi && b.zi[z.id]; if (!bz) continue;
+        const bIn = bz[0] - b.s, bOut = bz[1] + b.len - b.s;
+        if (bOut < 0) continue;
+        let vb;
+        if (b.mode === 'ped') { if (b.waiting && !walkOn(b.cross.xw, t)) continue; vb = Math.max(b.v, 1.1); }
+        else { if (!b.passed && b.st.stopS - b.s > 0 && sigState(b.st.phase, t) !== 'G') continue; vb = Math.max(b.v, 3.5); }
+        const btIn = Math.max(0, bIn) / vb, btOut = bOut / vb;
+        if (bold ? btIn < 0.8 : (btIn < tOut + 0.4 && btOut > tIn - 0.3)) { clash = true; break; }
+      }
+      if (clash) acc = Math.min(acc, idm(a.v, v0, Math.max(0.1, dIn - 1.0 + m.s0 - 0.3), a.v, m));
+    }
+    return acc;
+  }
+  // bikes and pedestrians stop short of a zone while a turning car is physically inside it
+  blockedByCar(a) {
+    for (const z of this.zones) {
+      const zi = a.zi && a.zi[z.id]; if (!zi || !z.inside.Y.size || !z.prio(a)) continue;
+      const d = zi[0] - a.s; if (d > 0.3 && d < 15) return zi[0] - 0.8;
+    }
+    return null;
+  }
+  zoneTick(t) {
+    for (const z of this.zones) {
+      for (const a of this.agents) {
+        const zi = a.zi && a.zi[z.id]; if (!zi) continue;
+        const side = a.st.id === z.yieldStream ? 'Y' : z.prio(a) ? 'P' : null; if (!side) continue;
+        const inside = a.s >= zi[0] && a.s - a.len <= zi[1];
+        const was = !!(a.inZ && a.inZ[z.id]);
+        if (inside && !was) {
+          const o = side === 'Y' ? 'P' : 'Y';
+          let pet, other;
+          if (z.inside[o].size) { pet = 0; other = z.inside[o].values().next().value; }
+          else { pet = t - z.lastExit[o]; other = z.lastId[o]; }
+          if (pet < 1.5 && other) this.addEvent(z.id, z.label, a, other, (z.rect[0] + z.rect[1]) / 2, (z.rect[2] + z.rect[3]) / 2, pet);
+          z.inside[side].add(a.id); (a.inZ || (a.inZ = {}))[z.id] = true;
+        } else if (!inside && was) this.leaveZone(z, side, a, t);
+      }
+    }
+  }
+  leaveZone(z, side, a, t) { z.inside[side].delete(a.id); z.lastExit[side] = t; z.lastId[side] = a.id; a.inZ[z.id] = false; }
+  step() {
+    const t = this.t, dt = DT;
+    for (const st of this.streams) {
+      while (st.nextT <= t) { st.pending.push(this.makeAgent(st, st.nextT)); st.nextT += st.mode === 'tram' ? (0.75 + 0.5 * st.rng()) / st.rate : -Math.log(1 - st.rng()) / st.rate; }
+      while (st.pending.length) {
+        if (st.mode !== 'ped' && st.last && !st.last.done && st.last.s - st.last.len < 3.5) break;
+        this.enter(st, st.pending.shift());
+      }
+    }
+    const veh = [];
+    for (const a of this.agents) { a.sPrev = a.s; pathAt(a.P, a.s, a.pos); if (a.mode !== 'ped') veh.push(a); }
+    for (const a of veh) a.acc = this.accel(a, veh, t);
+    for (const a of veh) {
+      const v1 = Math.max(0, a.v + a.acc * dt);
+      a.s += (a.v + v1) * 0.5 * dt; a.v = v1;
+      if (a.dwellLeft !== undefined && !a.dwelled && a.s >= a.st.dwellS - 0.6 && a.v < 0.2) { a.dwellLeft -= dt; if (a.dwellLeft <= 0) a.dwelled = true; }
+      if (a.st.id === 'car_sbl' && a.passed && a.v < 0.3) a.waitT = (a.waitT || 0) + dt;
+    }
+    for (const p of this.agents) {
+      if (p.mode !== 'ped') continue;
+      const next = p.s + p.v0 * dt;
+      const ob = p.cross && p.cross.xw === 'E' ? this.blockedByCar(p) : null;
+      if (ob !== null && next >= ob) { p.v = 0; continue; }
+      if (!p.cross || p.crossing || next < p.cross.sWait - p.qoff) { p.s = next; p.v = p.v0; p.waiting = false; }
+      else if (walkOn(p.cross.xw, t)) { p.crossing = true; p.waiting = false; p.s = next; p.v = p.v0; }
+      else { p.s = Math.max(p.s, p.cross.sWait - p.qoff); p.v = 0; p.waiting = true; }
+    }
+    this.zoneTick(t);
+    const keep = [];
+    for (const a of this.agents) {
+      const endS = a.mode === 'tram' ? a.P.len + a.len : a.P.len;
+      if (a.s >= endS) {
+        a.done = true;
+        if (a.inZ) for (const z of this.zones) if (a.inZ[z.id]) this.leaveZone(z, a.st.id === z.yieldStream ? 'Y' : 'P', a, t);
+        if (a.arrT >= 0 && t <= HOUR) { const dl = Math.max(0, (t - a.arrT) - a.free), d = this.stats.delay[a.mode], b = this.stats.byStream[a.st.id] || (this.stats.byStream[a.st.id] = [0, 0]); d[0] += dl; d[1]++; b[0] += dl; b[1]++; }
+      } else keep.push(a);
+    }
+    this.agents = keep;
+    this._qt += dt;
+    if (t >= 0 && this._qt >= 1) {
+      this._qt = 0;
+      // queue = contiguous line of slow vehicles (< 1.5 m/s) that starts at the stop line
+      const q = id => {
+        const L = this.agents.filter(a => (a.st.id === id || (this.wz && id === 'car_wb' && a.st.id === 'bike_wb')) && !a.passed).map(a => ({ f: a.st.stopS - a.s, r: a.st.stopS - (a.s - a.len), v: a.v })).sort((x, y) => x.f - y.f);
+        let end = 0;
+        for (const x of L) { if (x.f - end > 10 || x.v > 1.5) break; end = x.r; }
+        return end;
+      };
+      this.stats.qEB = Math.max(this.stats.qEB, q('car_eb'));
+      this.stats.qWB = Math.max(this.stats.qWB, q('car_wb'));
+    }
+    this.t = t + dt;
+  }
+  summary() {
+    const d = this.stats.delay, avg = k => d[k][1] ? d[k][0] / d[k][1] : null;
+    const byLabel = {};
+    for (const e of this.events) byLabel[e.label] = (byLabel[e.label] || 0) + 1;
+    const outside = this.streams.filter(x => x.mode === 'car').reduce((n, x) => n + x.pending.filter(a => a.arrT < HOUR).length, 0);
+    const bs = id => { const b = this.stats.byStream[id]; return b && b[1] ? b[0] / b[1] : null; };
+    return { delayCarWB: bs('car_wb'), delayCarEB: bs('car_eb'), outside, spawned: { ...this.stats.spawned }, expected: { ...this.expected }, delay: { car: avg('car'), bike: avg('bike'), tram: avg('tram'), ped: avg('ped') }, qEB: this.stats.qEB, qWB: this.stats.qWB, conflicts: this.events.length, severe: this.events.filter(e => e.val < 0.5).length, byLabel };
+  }
+}
+
+export { Sim, HALF, WARM, HOUR, DT, WZ, SIG, WALK, sigState, walkOn, pathAt, hashStr, mulberry32 };
