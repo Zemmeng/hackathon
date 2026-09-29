@@ -1,7 +1,7 @@
 # 大模型 API 候选卡
 
 > 每人把自己手里能用的大模型 API 写成一张卡放在这里，T5 和 lead 看卡定用哪家（D-0929-1333「大模型的api到时候再定」）。
-> **接入代码已经留好（T19）**：不管选哪家，Worker 只认 `LLM_API_KEY`（secret）、`LLM_BASE_URL`、`LLM_MODEL` 三个变量，任何 OpenAI 兼容的 `/chat/completions` 都能接。放 key、打开开关的两步和换服务商的表见 `apps/api/README.md`「怎么接大模型」。卡上的 `DEEPSEEK_API_KEY` 这类名字只管本机 `.env`，上线时放进 Worker 的是 `LLM_API_KEY`。
+> **接入代码已经留好（T19）**：不管选哪家，Worker 只认 `LLM_API_KEY`（secret）、`LLM_BASE_URL`、`LLM_MODEL` 三个变量，任何 OpenAI 兼容的 `/chat/completions` 都能接。放 key、打开开关的两步和换服务商的表见 `apps/api/README.md`「怎么接大模型」。花钱有两道闸：Worker 里全局每天最多 `LLM_MAX_CALLS_PER_DAY` 次（默认 600），服务商那边只充少量余额。卡上的 `DEEPSEEK_API_KEY` 这类名字只管本机 `.env`，上线时放进 Worker 的是 `LLM_API_KEY`。
 > 🔒 **卡上只写变量名，不写 key 的值。** key 只放自己的 `.env`，上线时由部署人放进 Cloudflare（D-0929-1310）。
 > 贴了 key 会在 commit 时被 pre-commit 拦下（前提是跑过一次 `bash scripts/setup.sh`）；没装 hook 的话，要等 push 之后 CI 才报红，**那时 key 已经泄露了**，必须马上作废。
 

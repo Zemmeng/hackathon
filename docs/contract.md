@@ -159,12 +159,14 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
-| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"none", "prompt_v", "provider" } }`；`key` 只说有没有，**永远不给值**；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
-| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB 413 | api |
+| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`；`key` 只说有没有，**永远不给值**；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
+| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB（按字节）413 | api |
+| `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
 
 - `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
-- `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
-| `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
+- 真调用前还要向全局每日计数（Durable Object 绑定 `BUDGET`）预留 3 次：超了 `LLM_MAX_CALLS_PER_DAY`（`llm.per_day`）、没绑上或出错都不调用，读数回规则并带 `note`（`llm_daily_cap` / `llm_no_budget` / `llm_budget_error`）
+- `llm.cache`：`kv` = 有 KV 绑定 `READINGS`（跨实例）；`cache-api` = Workers 自带的 Cache API（只在自己的域名上生效）；`memory` = 只有每个实例的内存缓存（`*.workers.dev` 上就是这个）
+- `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`，不开自己的 `workers.dev` 网址）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
 
 ## WebSocket 消息（`/ws?room=<CODE>`）
 
@@ -206,7 +208,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
-| v3.2 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |
+| v3.2 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`（含每日上限 `budget` / `per_day` / `per_min`，`cache` ∈ `kv / cache-api / memory`）；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |
 | v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |

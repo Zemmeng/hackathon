@@ -89,7 +89,7 @@ git pull && bash scripts/check.sh --e2e
 3. **部署人** `bash scripts/deploy.sh all`：先部署 api，再部署 site
 4. 验证：`<网址>/api/health` 变成 T5 的 `{"ok":true,"v":"0.2.0","mock":true,"llm":{"mode":"rules",…}}`（不再有 `"api":false`），`POST /api/read` 不再 503
 5. 大模型的 key 放在 **api Worker** 上，不放 site：`cd apps/api && npx wrangler secret put LLM_API_KEY`，再把 MOCK 改成 `"0"` 重新部署（两步详见 `apps/api/README.md`「怎么接大模型」）。site 不需要任何 key
-6. 可选：api Worker 自己也有一个 `hackathon-api.<账号子域>.workers.dev` 网址。想只留同源入口，把 `apps/api/wrangler.jsonc` 的 `workers_dev` 改成 `false`，服务绑定不受影响
+6. ✅ api Worker 不开自己的 `hackathon-api.<账号子域>.workers.dev` 网址（`apps/api/wrangler.jsonc` 的 `workers_dev: false`），公开入口只有这里的 `/api/*`；服务绑定不受影响。部署 api 时 wrangler 会打印 `No targets deployed for hackathon-api`，是正常的
 
 `apps/api/public/`（`reader.js`、答案文件）照常挂在 `/api/public/…`，是静态文件，不转发给 T5。引擎从 `/api/public/js/reader.js` 引 `readSigns()`，`reader.js` 再同源调 `/api/read`。
 
