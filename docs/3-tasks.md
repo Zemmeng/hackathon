@@ -102,7 +102,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T2 | 网页面板（`apps/web`）：GIS 地图 + 六种极端天气 + 四步红队流程 + 中英切换；交接单 `handoff/unicornnnnnny-T2-0929-1440.md` | ✅ 已合（#19） | `unicornnnnnny/web/T2-gis-weather-ui` | 09-29 14:40 |
-| T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | 🔨 待 review | `unicornnnnnny/web/T14-liquid-glass` | 09-29 17:30 |
+| T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | ✅ 已合 #47、已上线 e84aec5；按 lead 意见再调透（底色 0.30）🔨 待 review | `unicornnnnnny/web/T14-more-clear` | 09-29 17:30 |
 
 卡住了：
 

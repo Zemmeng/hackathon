@@ -323,16 +323,16 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
    Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
    the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
    comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
-   Apple-style clear glass (09-29 ask): the tint is light (~.4); --glass-tone dims the map behind it (dark) or lifts it
+   Apple-style clear glass (09-29 ask, lead: clearer still): the tint is light (~.3); --glass-tone dims the map behind it (dark) or lifts it
    (light) so text still clears 4.5:1. Reduced transparency or no backdrop-filter → solid surfaces.
    ============================================================ */
 :root,:root[data-theme="dark"]{
   --bg:#07090B;--raised:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.24);
   --fg:#F7F9FA;--fg-2:#CDD4D9;--fg-3:#B8C1C7;
-  --panel:rgba(22,27,34,.40);--glass:rgba(22,27,34,.38);--glass-line:rgba(255,255,255,.18);
-  --shell:rgba(22,27,34,.40);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
-  --glass-tone:brightness(.5) saturate(1.9);
-  --tone-deep:brightness(.5) saturate(1.9);--shell-deep:rgba(22,27,34,.40);--glass-deep:rgba(22,27,34,.38);--tone-fog:brightness(.33) saturate(1.6);--tone-fog-deep:brightness(.33) saturate(1.6);
+  --panel:rgba(22,27,34,.30);--glass:rgba(22,27,34,.28);--glass-line:rgba(255,255,255,.18);
+  --shell:rgba(22,27,34,.30);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
+  --glass-tone:brightness(.44) saturate(1.9);
+  --tone-deep:brightness(.44) saturate(1.9);--shell-deep:rgba(22,27,34,.30);--glass-deep:rgba(22,27,34,.28);--tone-fog:brightness(.29) saturate(1.6);--tone-fog-deep:brightness(.29) saturate(1.6);
   --shadow:0 20px 50px rgba(0,0,0,.36);
   --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.05),inset 0 26px 40px -34px rgba(255,255,255,.38);
   --hl:rgba(255,255,255,.08);--hl-2:rgba(255,255,255,.05);--hl-edge:rgba(255,255,255,.18);
@@ -343,10 +343,10 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   :root:not([data-theme="dark"]){
     --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
     --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
-    --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
-    --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
-    --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
-    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+    --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+    --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+    --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
     --shadow:0 18px 44px rgba(28,40,50,.14);
     --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
     --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
@@ -357,10 +357,10 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 :root[data-theme="light"]{
   --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
   --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
-  --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
-  --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
-  --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
-  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+  --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+  --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+  --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
   --shadow:0 18px 44px rgba(28,40,50,.14);
   --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
   --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
