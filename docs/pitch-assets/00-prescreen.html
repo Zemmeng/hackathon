@@ -96,14 +96,20 @@
   /* 第 1 页头条 */
   .headline { position: absolute; left: 48px; right: 48px; top: 110px; height: 50px; border-radius: 12px; background: var(--green);
     color: #fff; display: flex; align-items: center; gap: 16px; padding: 0 22px; }
-  .headline b { font-size: 24px; letter-spacing: -.2px; }
+  .headline b { font-size: 23px; letter-spacing: -.2px; }
   .headline span { font-size: 16px; opacity: .92; }
-  .p1 .left, .p1 .right { top: 174px; gap: 12px; }
+  .p1 .left, .p1 .right { top: 172px; gap: 10px; }
   .p1 .card { padding: 12px 18px 11px; }
   .p1 .card li, .p1 ol.steps li { font-size: 16.5px; margin-bottom: 5px; }
   .p1 .wide li { font-size: 15.5px; margin-bottom: 3px; }
   .p1 .right { left: 668px; width: 564px; gap: 10px; }
-  .p1 .foot { left: 668px; right: 48px; bottom: 14px; }
+  .p1 .foot { left: 668px; right: 100px; bottom: 14px; }
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ba figure { margin: 0; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px; background: #F4F4F2; }
+  .ba figcaption { font-size: 14px; font-weight: 700; margin: 0 0 6px 2px; }
+  .ba figcaption span { font-weight: 400; color: var(--muted); }
+  .ba img { display: block; width: 100%; height: auto; border-radius: 6px; }
+  .ba img + img { margin-top: 6px; }
   .demo { margin-top: 12px; font-size: 15px; color: var(--green-ink); }
   .demo b { font-weight: 700; }
 </style>
@@ -126,13 +132,13 @@
     </div>
   </div>
 
-  <div class="headline"><b>Adding “USE RUSSELL ST” to one VMS board cut Lonsdale St delay by 45%*</b><span>10,493 → 5,746 vehicle-minutes</span></div>
+  <div class="headline"><b>One extra line on a VMS — “USE RUSSELL ST” — cut Lonsdale St delay by 45%*</b><span>bus riders −40%</span></div>
 
   <div class="left">
     <div class="card c-orange">
       <h2>Problem statement</h2>
       <ul>
-        <li>Councils and contractors struggle to foresee how a road closure — alone or <b>overlapping other works</b> — hits traffic, trams and pedestrians.</li>
+        <li>Councils and contractors can’t foresee how a closure — alone or <b>overlapping other works</b> — hits traffic, trams and pedestrians.</li>
         <li>Sign effects are guessed: in London, real diversions were <b>one-fifth</b> of what drivers said they would do (Chatterjee 2002).</li>
       </ul>
     </div>
@@ -141,26 +147,29 @@
       <ol class="steps">
         <li>Close a lane on the <b>real Melbourne CBD</b> network; add barriers, signs and the exact <b>VMS wording</b>.</li>
         <li>Four driver types — commuter, local, tourist, delivery — <b>read each sign</b> (keyword rules today, <span class="ai">AI</span> LLM next).</li>
-        <li>A deterministic engine computes <b>detours, queues and delay</b>, then re-tests each suggested fix.</li>
+        <li>A deterministic engine computes <b>detours, queues and delay</b> for drivers, riders and pedestrians, then re-tests each fix.</li>
       </ol>
       <div class="principle">AI interprets — the engine calculates.</div>
     </div>
     <div class="card c-blue wide"><h2>Who uses it &amp; pays</h2><ul>
         <li>Contractors &amp; councils: impact evidence for each permit.</li>
-        <li>RPM Hire: the value of each extra VMS or barrier → the hire quote (planned).</li>
+        <li>RPM Hire: shows what each extra VMS or barrier is worth → the hire quote (planned).</li>
       </ul></div>
   </div>
 
   <div class="right">
-    <div class="shot"><img src="01-live-lonsdale.jpg" alt="Live RippleTwin page: Lonsdale St westbound lane closure at 08:00 with the VMS reading ROADWORK AHEAD; the engine reports a 918 m queue and 10,493 vehicle-minutes of network delay"></div>
-    <div class="cap">Live demo, 29 Sep: Lonsdale St lane closure, 8 am — engine on real CBD traffic counts</div>
+    <div class="ba">
+      <figure><figcaption>Before <span>· generic warning</span></figcaption><img src="01-before-vms.jpg" alt="VMS reads ROADWORK AHEAD"><img src="01-before-engine.jpg" alt="Engine: queue 918 m, network delay 10,493 veh-min per hour, 15 tram/bus routes +18,693 rider-min"></figure>
+      <figure><figcaption>After <span>· names the detour</span></figcaption><img src="01-after-vms.jpg" alt="VMS adds a second frame USE RUSSELL ST"><img src="01-after-engine.jpg" alt="Engine: queue 548 m, network delay 5,746 veh-min per hour, 15 tram/bus routes +11,206 rider-min"></figure>
+    </div>
+    <div class="cap">Live demo, 29 Sep — Lonsdale St westbound, 1 lane closed, 8 am, real CBD traffic counts</div>
     <div class="card c-purple wide"><h2>What's different</h2><ul>
         <li>RPM's VMS Preview shows how a sign <b>looks</b>; we show its <b>effect</b>.</li>
         <li>Mooven forecasts from past delays; we test the <b>wording</b> before deployment.</li>
         <li>one.network flags clashes; we count the <b>minutes they add</b>.</li>
       </ul></div>
   </div>
-  <div class="foot">* Single run (1 lane closed, 8 am); keyword-rule sign reading; assumed traveller mix.</div>
+  <div class="foot">* Single run (1 lane closed, 8 am); keyword-rule sign reading; assumed traveller mix and bus loads (25 per trip).</div>
   <div class="pageno">1 / 3</div>
 </section>
 
@@ -191,25 +200,25 @@
       <div class="tiles">
         <div class="tile"><b>Live</b><span>public demo on Cloudflare since 29 Sep</span></div>
         <div class="tile"><b>1,513</b><span>CBD road links with 8 weeks of traffic-signal counts (SCATS)</span></div>
-        <div class="tile"><b>−45%</b><span>Lonsdale St delay when the VMS adds “USE RUSSELL ST” (1 lane, 8 am)*</span></div>
-        <div class="tile"><b>29,850</b><span>extra veh-min when two works overlap (3,515 apart; test grid) — a 5-day stagger → 0*</span></div>
-        <div class="tile"><b>4 modes</b><span>cars, bikes, trams and pedestrians simulated at Swanston × La Trobe</span></div>
-        <div class="tile"><b>16</b><span>equipment types from RPM Hire's range: barriers, signs, VMS</span></div>
+        <div class="tile"><b>−45%</b><span>Lonsdale St driver delay when the VMS adds “USE RUSSELL ST” (1 lane, 8 am)*</span></div>
+        <div class="tile"><b>−40%</b><span>delay for riders on the 15 bus routes through the closure, same sign*</span></div>
+        <div class="tile"><b>+176 m</b><span>walk and 2 extra crossings for 185 people/h if one footpath closes*</span></div>
+        <div class="tile"><b>29,850</b><span>extra veh-min when two works overlap (test grid) — a 5-day stagger → 0*</span></div>
       </div>
       <div class="demo"><b>Try it:</b> [demo link + QR — team to confirm]</div>
     </div>
     <div class="card c-purple">
       <h2>MVP by 1 Oct</h2>
       <ul class="tl">
-        <li><span class="when">30 Sep</span>Clash cost on real CBD streets, shown in the app</li>
-        <li><span class="when">1 Oct</span>Delay for tram riders and pedestrians (47 routes and 71 counters already loaded)</li>
-        <li><span class="when">1 Oct</span>Advisor's 3 fixes — reword, move, stagger — compared on the CBD map</li>
+        <li><span class="when">30 Sep</span>Clash cost between nearby works on real CBD streets, in the app, with a one-click stagger</li>
+        <li><span class="when">30 Sep</span>3 traffic plans built from RPM Hire's inventory, each with its hire cost</li>
+        <li><span class="when">1 Oct</span>Compare plans side by side for drivers, riders and pedestrians; pick one and export a one-page pack</li>
         <li><span class="when">Stretch</span>LLM sign reading with cached answers and ranges</li>
         <li><span class="when">1 Oct 10:00</span>Code freeze, tagged release, public repo</li>
       </ul>
     </div>
   </div>
-  <div class="foot">* Keyword-rule sign reading, single runs; 29 of 37 behaviour parameters (incl. the traveller mix) are assumed or low-confidence and flagged in the app; 74% of link flows are estimated from nearby counts. Data © OpenStreetMap contributors (ODbL); DataVic SCATS &amp; GTFS (CC BY 4.0); City of Melbourne open data (CC BY). Status: 29 Sep 2026, 17:40 AEST.</div>
+  <div class="foot">* Keyword-rule sign reading, single runs; 29 of 37 behaviour parameters (incl. traveller mix) assumed or low-confidence, flagged in the app; most road and footpath flows estimated from nearby counts; bus loads assumed. Data © OpenStreetMap contributors (ODbL); DataVic (CC BY 4.0); City of Melbourne (CC BY). Status: 29 Sep, 21:00 AEST.</div>
   <div class="pageno">2 / 3</div>
 </section>
 

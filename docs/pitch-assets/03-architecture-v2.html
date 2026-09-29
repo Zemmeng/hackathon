@@ -102,7 +102,7 @@ text(800, 116, t('Know the ripple before you close the road',
 const TOP = 152, BOT = 500;
 
 group(40, TOP, 300, BOT - TOP, 'orange', t('Real data', '真实数据'));
-[t('OSM street network', 'OSM 真实路网'), t('SCATS traffic counts', 'SCATS 真实车流'), t('Tram & ped data (next)', '行人 · 电车（下一步）'),
+[t('OSM street network', 'OSM 真实路网'), t('SCATS traffic counts', 'SCATS 真实车流'), t('Pedestrians & trams', '行人 · 电车'),
  t('RPM Hire equipment', 'RPM Hire 设备'), t('Research evidence', '研究文献')].forEach((title, i) => {
   box({ x: 56, y: 212 + i * 56.5, w: 268, h: 46, kind: 'orange', fill: '#fff', sw: 2, rx: 10, title, ts: 20, tw: 600 });
 });
