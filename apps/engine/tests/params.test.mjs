@@ -34,7 +34,7 @@ await t('applyParams：合格的数照用，缺的逐项回退', async () => {
   ok(p.personas.commuter.hurry === 1.2 && p.personas.commuter.familiar === 0.5 && p.used.persona.commuter.hurry === 'params', 'persona：给了的项用 params');
   ok(p.personas.commuter.trust === PERSONAS.commuter.trust && p.used.persona.commuter.trust === 'default', 'persona：没给的项用假设值');
   ok(p.personas.tourist.familiar === PERSONAS.tourist.familiar && p.personas.tourist.trust === 0.9 && p.used.errors.length === 0, 'value 是 null（没找到）→ 回退，不算错');
-  ok(JSON.stringify(p.used.ignored) === JSON.stringify(['value_of_time', 'vms']), '引擎还不用的字段列在 ignored');
+  ok(JSON.stringify(p.used.ignored) === JSON.stringify(['anchors.stated_to_actual', 'value_of_time', 'vms']), '引擎还不用的字段列在 ignored（带完整路径，含嵌套的 anchors.stated_to_actual）');
   ok(TYPES.every(t => near(applyParams({ mix: { commuter: 0.505, local: 0.25, tourist: 0.1, delivery: 0.15 } }).mix[t] * 1.005, [0.505, 0.25, 0.1, 0.15][TYPES.indexOf(t)], 1e-9)), 'mix 加起来 1.005（在容差里）→ 归一');
 });
 
@@ -75,6 +75,30 @@ await t('反向断言：params.json 不能塞进引擎不认识的类型、不�
   ok(snap() === before, 'MIX / PERSONAS / ANCHORS 本身没被改动（applyParams 返回副本）');
 });
 
+await t('审查确认的 8 条（review-params-correctness / interop）', async () => {
+  const { network, flows } = makeGrid();
+  const raw = { version: 1, used: ['VicRoads 2019'], mix: { commuter: v(0.5), local: v(0.25), tourist: v(0.1), delivery: v(0.15) } };
+  const eu = createEngine({ network, flows, readSigns: mockReadSigns, params: raw });
+  const planU = { when: WHEN, worksites: [wsA()] };
+  await eu.prepare(planU);
+  ok(eu.params.src === 'params' && eu.params.ignored.includes('used') && Number.isFinite(eu.evaluate(planU).delay_min) && eu.calib.ok, 'params.json 顶层恰好有 used 键：照样按原文处理，不崩');
+  const str = applyParams({ anchors: { generic_warning_divert: v('0.05'), named_route_divert: v('0.25') }, persona: { commuter: { hurry: '1.5' } } });
+  ok(str.used.anchors === 'default' && str.used.persona.commuter.hurry === 'default' && str.used.errors.filter(e => /不是数/.test(e)).length === 3, '值写成字符串 → 用假设值，但每个都报「不是数」');
+  const clip = applyParams({ persona: { commuter: { sign_trust: 0.2 }, local: { sign_trust: 0.2 }, tourist: { sign_trust: 0.8 }, delivery: { sign_trust: 0.2 } } });
+  ok(clip.personas.tourist.trust === 3 && clip.used.persona.tourist.trust === 'sign_trust' && near(clip.personas.commuter.trust, 0.2 / 0.26) && clip.used.errors.length === 1, 'sign_trust 换算超上限 → 截到 3（不退回假设值 1.1），报一条');
+  const three = applyParams({ persona: { commuter: { sign_trust: 0.4 }, local: { sign_trust: 0.2 }, tourist: { sign_trust: v(null) }, delivery: { sign_trust: 0.3 } } });
+  const w3 = MIX.commuter + MIX.local + MIX.delivery, m3 = (MIX.commuter * 0.4 + MIX.local * 0.2 + MIX.delivery * 0.3) / w3;
+  ok(near(three.personas.commuter.trust, 0.4 / m3) && three.used.persona.tourist.trust === 'default' && three.personas.tourist.trust === PERSONAS.tourist.trust && three.used.errors.length === 0, '只有 3 类有 sign_trust：这 3 类照换算（在它们之间加权平均 = 1），第 4 类用假设值');
+  ok(applyParams({ persona: { local: { familiar: 0.015 } } }).used.persona.local.familiar === 'default', 'familiar 下限和 choice.js 一致（0.02）：0.015 不收');
+  const nest = applyParams({ mix: { commuter: 0.5, local: 0.25, tourist: 0.1, delivery: 0.15, visitor: 0.1 }, persona: { commuter: { speed: 1 }, pedestrian: {} } });
+  ok(['mix.visitor', 'persona.commuter.speed', 'persona.pedestrian'].every(k => nest.used.ignored.includes(k)), '嵌套的不认识字段也列进 ignored（带路径）');
+  const read = async which => Object.fromEntries(await Promise.all(TYPES.map(async t => [t, await mockReadSigns(anchorRequest(which, t))])));
+  const lo = await read('lo'), hi = await read('hi');
+  lo.tourist = { ...lo.tourist, advice: { 'La Trobe Street': 'avoid' }, trust: 0.2 };
+  const c = calibrate(lo, hi, { anchors: { lo: 0.002, hi: 0.2 } });
+  ok(c.ok === false && c.lo_detour > 0.003, `低点目标 0.2%、实际 ${c.lo_detour}（差一倍）→ ok = false（相对容差）`);
+});
+
 await t('loadParams：读得到就用，读不到不抛错', async () => {
   let asked = null;
   const r = await loadParams({ fetch: async url => { asked = url; return { ok: true, status: 200, json: async () => good() }; } });
@@ -97,7 +121,7 @@ await t('createEngine({ params })：校准目标、占比、每类人参数都�
   const e1 = createEngine({ network, flows, readSigns: mockReadSigns, params: good() });
   await e1.prepare(plan);
   ok(e1.params.src === 'params' && e1.params.mix.commuter === 0.4 && e1.params.personas.commuter.hurry === 1.2, 'engine.params 报出用的是哪组数');
-  ok(e1.params.used.mix === 'params' && e1.params.used.anchors === 'params' && e1.params.used.persona.commuter.hurry === 'params' && e1.params.used.persona.local.hurry === 'default' && JSON.stringify(e1.params.ignored) === '["value_of_time","vms"]', 'engine.params.used 逐项报来源（params / default）');
+  ok(e1.params.used.mix === 'params' && e1.params.used.anchors === 'params' && e1.params.used.persona.commuter.hurry === 'params' && e1.params.used.persona.local.hurry === 'default' && JSON.stringify(e1.params.ignored) === '["anchors.stated_to_actual","value_of_time","vms"]', 'engine.params.used 逐项报来源（params / default）');
   ok(e1.calib.ok && near(e1.calib.lo_detour, 0.05, 1e-3) && near(e1.calib.hi_detour, 0.25, 1e-3) && e1.calib.target.hi === 0.25, `校准目标换成 5% / 25%（A ${e1.calib.A}、B ${e1.calib.B}）`);
   const r0 = e0.evaluate(plan), r1 = e1.evaluate(plan);
   ok(r1.delay_min !== r0.delay_min && Number.isFinite(r1.delay_min), `结果跟着参数变（总延误 ${r0.delay_min} → ${r1.delay_min}）`);

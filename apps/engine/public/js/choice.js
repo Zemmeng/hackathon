@@ -18,6 +18,7 @@ export const PERSONAS = {
   tourist: { hurry: 0.5, familiar: 0.1, trust: 1.1, queue_averse: 0.5, truck_only: false },
   delivery: { hurry: 0.9, familiar: 0.7, trust: 0.8, queue_averse: 0.8, truck_only: true },
 };
+export const FAMILIAR_MIN = 0.02; // 熟悉度进 ln()，低于这个按这个算（params.js 的合法下限用同一个数）
 export const BETA = 0.4; // 每分钟的效用（工程假设）
 export const QUEUE_MIN_PER_M = 0.004; // 看到前面排 1 公里 ≈ 觉得要多堵 4 分钟（工程假设）
 export const DEFAULT_AB = { A: 4, B: 3 }; // 没有校准时的默认值（校准后会被覆盖）
@@ -52,7 +53,7 @@ export function chooseShares(p, routes, sign, ctx) {
     base[r.id] = -BETA * p.hurry * t;
     told[r.id] = base[r.id];
     if (r.id !== 'stay') {
-      const fam = Math.log(Math.max(0.02, p.familiar));
+      const fam = Math.log(Math.max(FAMILIAR_MIN, p.familiar));
       base[r.id] += -ctx.A + fam;
       told[r.id] += -ctx.A + (sign.use.has(r.id) ? ctx.B + BETA * p.hurry * (sign.saving_min || 0) : fam);
       if (sign.avoid.has(r.id)) told[r.id] -= ctx.B;

@@ -21,7 +21,7 @@ const result = engine.evaluate(plan);
 
 ## 怎么测
 
-`bash apps/engine/test.sh`（2026-09-29 15:35 实跑：108 passed, 0 failed）。
+`bash apps/engine/test.sh`（2026-09-29 15:50 实跑：115 passed, 0 failed）。
 
 | 文件 | 测什么 |
 |---|---|
@@ -52,11 +52,12 @@ const result = engine.evaluate(plan);
 | `persona.<类型>.hurry` | 赶不赶时间，乘在每分钟的效用上（平均 ≈ 1，0.05–5） | 这一项用假设值 |
 | `persona.<类型>.familiar`（或 `route_familiarity`，T12 #31 的叫法） | 熟不熟路：知道 / 会自己想到这条绕行的比例（0.01–1，进 `ln()`）；两个都给用 `familiar` | 同上 |
 | `persona.<类型>.trust` | 信不信屏：乘在读数的 `trust` 上的**相对倍数**（平均的人 = 1，0–3） | 同上 |
-| `persona.<类型>.sign_trust` | 照屏上说的走的比例（0–1）。没给 `trust` 的类型用它换算：`sign_trust ÷ 按占比加权的平均`；要 4 类都有才换算 | 报一条错，trust 用假设值 |
+| `persona.<类型>.sign_trust` | 照屏上说的走的比例（0–1）。没给 `trust` 的类型用它换算：`sign_trust ÷ 给了数的几类人按占比加权的平均`；至少 2 类有数才换算，超过 3 截到 3 | 只有 1 类有数：报一条错，trust 用假设值 |
 | `persona.<类型>.queue_averse` | 怕不怕堵：乘在「看到的排队」上（0–5） | 这一项用假设值 |
 | `persona.<类型>.truck_only` | 只能走货车路（布尔） | 这一项用假设值 |
 
-- **收下但还没用**（列在 `engine.params.ignored`）：`anchors.stated_to_actual`（D-0929-1435 后大模型不回比例，用不上问卷→实际的换算）、`value_of_time`、`vms`。要让它们进模型，先在这里加一行再改代码
+- 值写成字符串、布尔（`"0.05"`、`"3%"`）→ 报「不是数」并用假设值；`value: null` = 没找到，不报错
+- **收下但还没用**（列在 `engine.params.ignored`，带完整路径，嵌套的也列，如 `anchors.stated_to_actual`、`persona.commuter.xxx`）：`anchors.stated_to_actual`（D-0929-1435 后大模型不回比例，用不上问卷→实际的换算）、`value_of_time`、`vms`。要让它们进模型，先在这里加一行再改代码
 - 绝对的「信不信」由两点校准的推荐力度 B 吸收，所以 `trust` / `sign_trust` 只有**各类人之间的相对高低**会改结果
 
 ## 外部 API
