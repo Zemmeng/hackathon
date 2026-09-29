@@ -27,10 +27,16 @@ def bundle():
     return page, head + style + body + script
 
 
+def write(path, text):
+    # Path.write_text(newline=) 要 Python 3.10；Mac 自带的 python3 是 3.9
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
 if __name__ == "__main__":
     page, artifact = bundle()
     (root / "public").mkdir(exist_ok=True)
-    (root / "public" / "index.html").write_text(page, encoding="utf-8", newline="\n")
+    write(root / "public" / "index.html", page)
     (root / "out").mkdir(exist_ok=True)
-    (root / "out" / "web-artifact.html").write_text(artifact, encoding="utf-8", newline="\n")
+    write(root / "out" / "web-artifact.html", artifact)
     print(f"public/index.html {len(page.encode('utf-8'))} bytes")
