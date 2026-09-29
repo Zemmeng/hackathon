@@ -60,7 +60,7 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,.score';
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4';
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -75,7 +75,7 @@ function compactPanel(){
     if(sec===tools||!sec.classList.contains('stack'))continue;
     const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
     const key=`${S.step}${tab}:${n++}`;
-    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
     const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
     sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
     head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
