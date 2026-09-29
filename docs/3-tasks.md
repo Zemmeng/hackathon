@@ -57,7 +57,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
-| T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
+| T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff`；初筛架构图 `claude/lead/arch-v2` / PR #42 ✅（`docs/pitch-assets/03-architecture*`；要按 D-0929-1718 / 2011 改，见 `handoff/Zemmeng-T6-0929-2255.md`） | 09-29 13:05 |
 | T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | ✅ | `claude/lead/ai-infra` / PR #20 ✅；`claude/lead/engine-fixes` / PR #34 ✅（后端接线层 `backend.js`、不走小巷、审查 15 条、契约 v3.1、派 T13） | 09-29 13:50 |
 | T13 | 网页接后端（接手原派给 @unicornnnnnny 的 T13，D-0929-1650）：第 1 步真路网上放封道 / 写 VMS / 选时段、第 3 步路网涟漪 + 每类人理由、第 4 步顾问改法 + 前后对比，数字全由引擎算；然后部署上线 | ✅ | `Zemmeng/web/T13-wiring` / PR #43 | 09-29 16:30 |
 | T16 | 地图画真实建筑：`buildings.json`（OSM + 墨尔本市轮廓 + 2024 普查）换掉随机楼块，取不到时退回合成的 | ✅ | `lead/integrate-t16-19`（合并 `Zemmeng/web/T15-buildings`（合并时改名 T16；T15 已被初筛幻灯片会话占用）） | 09-29 17:36 |
