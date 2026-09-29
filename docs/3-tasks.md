@@ -7,7 +7,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 ## 现在停在哪（只有 lead 改，写时间）
 
 - 里程碑：M0 完成，M1 未到（09-29 15:48）· 倒计时 44h · main：绿（`check.sh` 全量 `0 ❌`，8 个模块 728 passed）· 冻结：否
-- 线上版本：还没有（目标 09-29 21:00；部署外壳在引擎会话的 `claude/lead/deploy-site`（T10）还没推，部署人 @unicornnnnnny）
+- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `8fdbff5`（#43，T13 网页接上引擎）· 09-29 17:14 由 @Zemmeng 备份部署（D-0929-1650）；线上冒烟 `check.sh --e2e` 0 ❌
 - main 上已有：T3/T7 路网 + 行人 / 公交 / 设备、T11 临街建筑、T9 引擎（契约 v3）、T5 读屏规则版、T12 有出处的参数、`docs/llm-apis/` 百炼卡
 - **没有开着的 PR**；最大缺口是 T2 网页还没把这些串起来（R5）
 - 交接：`handoff/Zemmeng-T6-0929-1548.md`（17:00 集成点的待办和要拍板的事）

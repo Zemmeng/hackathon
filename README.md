@@ -1,6 +1,6 @@
 # Hackathon Team Template —— 一句话说清项目（kickoff 后 lead 改）
 
-> 赛事：`<EVENT_NAME>` · 截止：`<DEADLINE>`（`<TZ>`）· Demo：`<DEMO_URL>` · 视频：`<VIDEO_URL>` · Lead：@Zemmeng
+> 赛事：`<EVENT_NAME>` · 截止：`<DEADLINE>`（`<TZ>`）· Demo：[https://hackathon-site.zemmmeng.workers.dev](https://hackathon-site.zemmmeng.workers.dev) · 视频：`<VIDEO_URL>` · Lead：@Zemmeng
 > （以上取自 [hackathon.conf](hackathon.conf)，`check.sh [9]` 会核对 Demo 链接一致）
 
 ## English Quick Start
