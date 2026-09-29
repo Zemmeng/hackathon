@@ -10,7 +10,8 @@ import { readSeconds, cleanName } from './cards.js';
 
 export function signsOn(ap, ws) {
   return (ws.equipment || [])
-    .filter(e => (e.type === 'vms' || e.type === 'sign' || e.type === 'arrow') && (!e.dir || e.dir === ap.dir))
+    // at_m < 0 = 施工起点下游（如施工段末端的 END ROADWORK）：开到那里已经没法改道，不交给读屏，也不占 6 块的名额
+    .filter(e => (e.type === 'vms' || e.type === 'sign' || e.type === 'arrow') && (!e.dir || e.dir === ap.dir) && (Number(e.at_m) || 0) >= 0)
     .map(e => ({ m: Number(e.at_m) || 0, kind: e.type, ...(e.type === 'vms' ? { frames: e.frames } : { text: e.text }), read_s: readSeconds(ap.kmh, e.type === 'vms' ? e.char_mm : 200) }))
     .sort((a, b) => b.m - a.m)
     .slice(-6); // T5 的请求最多收 6 块：多的只留离施工最近的 6 块
