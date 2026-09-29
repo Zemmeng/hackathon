@@ -11,7 +11,20 @@ Owner: @louisxie316-dotcom
 python3 apps/roads/tools/fetch_scats.py --sites                  # 站点表 → raw/
 apps/roads/.venv/bin/python apps/roads/tools/fetch_osm.py        # OSM 路网 + 电车轨道 → raw/（约 30 秒）
 apps/roads/.venv/bin/python apps/roads/tools/build_network.py    # → public/cbd/network.json、signals.json（约 2 秒）
+python3 apps/roads/tools/fetch_scats.py --range 2026-08-01..2026-09-27   # SCATS 8 周 → raw/（约 270 MB、30 分钟，抽过的天跳过）
+python3 apps/roads/tools/build_flows.py                          # → public/cbd/flows.json
 ```
+
+`flows.json` 里每条路段的 `method`：
+
+| method | 怎么算 | 准不准 |
+|---|---|---|
+| `detector_map` | 站点在 `build_flows.py` 的 `DETECTOR_MAP` 里、进口朝向对得上：直接用那几个检测器之和 | 最准；目前只有 2921 |
+| `site_split` | 终点是有 SCATS 数据的路口：车道数 × 该路口有效检测器的平均每小时流量（信号灯检测器基本一车道一个） | 量级对；会把自行车 / 电车检测器一起平均进去 |
+| `street_interp` | 同名街道上下游相邻路段的每车道流量平均 × 本段车道数，沿街传 | 中 |
+| `class_default` | 同道路等级已测路段每车道流量的中位数 × 车道数 | 最粗；多是没信号灯的小街和没名字的转弯匝道 |
+
+核对：2921 东行进口（`detector_map`，7 号检测器）工作日 17 点约 430 辆 / 小时，sim 实测约 450。
 
 换街区：三条都加同一个 `--bbox 南,西,北,东`，`build_network.py` 再加 `--area <名>`。
 
@@ -40,6 +53,7 @@ apps/roads/.venv/bin/python apps/roads/tools/build_network.py    # → public/cb
 | `tools/fetch_scats.py` | 远程抽 SCATS 一天 / 站点表 / 单个路口配置表 |
 | `tools/fetch_osm.py` | 拉 OSM 机动车路网（不简化）和电车轨道到 `raw/` |
 | `tools/build_network.py` | 生成 `network.json` + `signals.json` |
+| `tools/build_flows.py` | 生成 `flows.json`（只用标准库） |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
 | `raw/` | 原始数据（已 gitignore，不提交） |
@@ -60,4 +74,6 @@ apps/roads/.venv/bin/python apps/roads/tools/build_network.py    # → public/cb
 - `speed_kmh` 是路段内多个限速按时间加权的等效速度（`len_m / t0_s`），不一定是整数
 - 路段车道数取沿途最小值（瓶颈）；约 190 条路段没有街名（多是转弯匝道）
 - 151 个信号灯站点里 27 个在 30 米内没有节点（17 个行人灯 POS、5 个闪黄灯、5 个路口 INT），`node` 为 `null`
-- `flows.json` 还没做（下一步 `tools/build_flows.py`）
+- SCATS 检测器不能按流量大小区分车 / 自行车 / 电车：2921 的 1 号是 Swanston 自行车检测器，一天 5500 次，和车道一样多 → `site_split` 用「每检测器平均 × 车道数」，不用「路口总量按车道分摊」（后者会把自行车、电车全算成车，高估 2–3 倍）
+- 双向有中央隔离带的路（如 La Trobe，电车在中间）在 OSM 里是两条单行道，一个路口由 2–4 个节点组成；这些节点都标同一个站点号，节点之间的连接段不算进口，走插值
+- 2921 的 3 号检测器（Swanston 南行左转）挂不上：OSM 机动车路网里没有 Swanston 从北往南进这个路口的路段
