@@ -1,10 +1,11 @@
 // Worker 薄路由：入口校验 + 分发；读屏规则在 public/js/rules.js（浏览器和这里共用），大模型在 src/llm.js
-// GET /api/health 自检 · POST /api/read 读懂屏上的字 · /api/worksites 施工登记表（src/register.js）· 其余交给静态资源 public/
+// GET /api/health 自检 · POST /api/read 读懂屏上的字 · POST /api/explain 方案解读 · /api/worksites 施工登记表（src/register.js）· 其余交给静态资源 public/
 // 默认（MOCK 不是 "0" 或没有 LLM_API_KEY）只用规则、不花钱；打开大模型见 README「怎么接大模型」（T19）
 import { normalizeRequest, SignError } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
 import { llmConfig, llmStatus, serverReading } from "./llm.js";
 import { handleWorksites } from "./register.js";
+import { ruleExplain, ExplainError } from "../public/js/explain.js";
 import { readLimited, json, fail } from "./http.js";
 
 // Durable Object 类必须从入口模块导出（wrangler.jsonc 的 durable_objects / migrations 认这个名字）
@@ -48,6 +49,25 @@ export default {
         throw e;
       }
       return json({ ok: true, reading: await read(req, env, url.origin) });
+    }
+
+    // AI 解读（提案 #48 第 ⑥ 步）：现在只有规则版，确定、不花钱；大模型版以后接在这里，回来的字过 sanitizeExplain()
+    if (path === "/api/explain") {
+      if (request.method !== "POST") return fail(405, "method", "只接受 POST");
+      const text = await readLimited(request, MAX_BODY);
+      if (text === null) return fail(413, "too_large", `请求体超过 ${MAX_BODY} 字节`);
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        return fail(400, "bad_json", "请求体不是合法 JSON");
+      }
+      try {
+        return json({ ok: true, explain: ruleExplain(body) });
+      } catch (e) {
+        if (e instanceof ExplainError) return fail(400, e.code, e.message);
+        throw e;
+      }
     }
 
     if (path === "/api/worksites" || path.startsWith("/api/worksites/")) {

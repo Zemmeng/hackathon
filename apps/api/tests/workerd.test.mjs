@@ -93,6 +93,15 @@ if (unstable_dev) {
       const js = await worker.fetch("/js/worksites.js");
       ok(js.status === 200 && (await js.text()).includes("export async function listWorksites"), "浏览器端 worksites.js 能拿到");
     });
+
+    await sec("AI 解读 POST /api/explain（规则版）", async () => {
+      const opt = (id, label, delay) => ({ id, label, metrics: { delay_veh_min: delay, queue_m: delay / 10 } });
+      const r = await worker.fetch("/api/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: "zh", options: [opt("a", "只写前方施工", 10000), opt("b", "加一帧 USE RUSSELL ST", 5000)] }) });
+      const b = await r.json();
+      eq([r.status, b.explain?.src, b.explain?.lean?.option], [200, "rule", "b"], "200 · 规则版 · 倾向延误少的那套");
+      const js = await worker.fetch("/js/explain.js");
+      ok(js.status === 200 && (await js.text()).includes("export async function explainOptions"), "浏览器端 explain.js 能拿到");
+    });
   } finally {
     await worker.stop();
   }
