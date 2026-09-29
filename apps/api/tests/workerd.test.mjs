@@ -101,6 +101,8 @@ if (unstable_dev) {
       eq([r.status, b.explain?.src, b.explain?.lean?.option], [200, "rule", "b"], "200 · 规则版 · 倾向延误少的那套");
       const js = await worker.fetch("/js/explain.js");
       ok(js.status === 200 && (await js.text()).includes("export async function explainOptions"), "浏览器端 explain.js 能拿到");
+      const pk = await worker.fetch("/js/pack.js");
+      ok(pk.status === 200 && (await pk.text()).includes("export function buildPack"), "浏览器端 pack.js（执行包）能拿到");
     });
   } finally {
     await worker.stop();
