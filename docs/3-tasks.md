@@ -6,15 +6,19 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 ## 现在停在哪（只有 lead 改，写时间）
 
-- 里程碑：M0 选题完成，架构已定（09-29 13:10）· 倒计时：到 10-01 12:00 · main：绿 · 冻结：否
+- 里程碑：M0 完成，M1 未到（09-29 14:00）· 倒计时 46h · main：绿（`check.sh` 全量 `0 ❌`，155 passed）· 冻结：否
 - 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址）
+- 开着的 PR：#9 路网数据 ✅、#12 PRD-2 ✅（都已提醒作者自己合）；#5 赛题材料 ❌ 越界（已留言让作者拆）
 - 下一个集成点：**09-29 17:00**，然后 21:00；整点前把自己的分支 push 上来
 
 ## 风险与 P0（lead 写，`/demo` 的结果也写这）
 
 | # | 问题 | 严重度 | 负责人 | 状态 |
 |---|---|---|---|---|
-| | | | | |
+| R1 | T4 路网计算、T5 大模型和云端没人认领（@Unzzip、@jinmingq 名下为空） | 高 | lead | 17:00 集成点定 |
+| R2 | 初筛 3 页幻灯片 09-30 12:30 截止，还没人负责 | 高 | lead | 17:00 集成点定 |
+| R3 | `apps/web` 空架子还没建，T2 网页面板开不了工；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | 待做 |
+| R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | 已提醒 |
 
 ## 额度台账（付费 API）
 
@@ -33,6 +37,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T3 | 给 @louisxie316-dotcom：**路网数据**——CBD 真实路网 + 真实车流整理成 `network.json` / `flows.json` / `signals.json`。**详细要求全在 `apps/roads/PRD.md`**；分支 `louisxie316-dotcom/roads/T3-network`；17:00 前先交最小版 `network.json`（draft PR） | 2h + 2h | — |
 | T4 | **路网计算**（第 4、5 步，创新点）——封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
 | T5 | **大模型和云端**（第 3、5 步，创新点）——4 类路人的画像和提问模板、Cloudflare 接口、缓存、施工清单；17:00 前接口先返回假数据（MOCK）。看 `docs/arch/` 的「Agent 接入架构」 | 2h | — |
+| T7 | 给 @louisxie316-dotcom：**T3 第二期**——行人、公交、设备库存（`apps/roads/PRD-2.md`，PR #12）。**先做 A `equipment.json`**（T2 设备面板要用），B 公交、C 行人排在后面；分支 `louisxie316-dotcom/roads/T7-equipment`，#9 合完再开 | 1h + 4h | T3（PR #9） |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
