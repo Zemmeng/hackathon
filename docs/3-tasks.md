@@ -108,6 +108,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js`；导出排成一页 A4（中 / 英）；09-29 22:50 线上验过 | ✅ | #61 | 09-29 21:55 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 
+| T15（汇报完善） | Uncapped 三页英文初筛：运行车流截图、真实数据来源、AI 角色差异、架构及方案导出；队名和可点击演示入口；PDF / 可编辑 HTML / SVG 与素材已整理 | ✅ 待审 | `jinmingq/pitch/T15-prescreen-review` | 09-30 00:50 |
+
 卡住了：
 
 
