@@ -3,9 +3,9 @@
 // 默认（MOCK 不是 "0" 或没有 LLM_API_KEY）只用规则、不花钱；打开大模型见 README「怎么接大模型」（T19）
 import { normalizeRequest, SignError } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
-import { llmConfig, llmStatus, serverReading } from "./llm.js";
+import { llmConfig, llmStatus, serverReading, serverExplain } from "./llm.js";
 import { handleWorksites } from "./register.js";
-import { ruleExplain, ExplainError } from "../public/js/explain.js";
+import { normalizeExplainRequest, ruleExplain, ExplainError } from "../public/js/explain.js";
 import { readLimited, json, fail } from "./http.js";
 
 // Durable Object 类必须从入口模块导出（wrangler.jsonc 的 durable_objects / migrations 认这个名字）
@@ -26,7 +26,7 @@ export default {
     const path = url.pathname;
 
     if (path === "/api/health") {
-      // llm：{ mode, model, key: 有没有（不给值）, cache: kv / cache-api / memory（按主机名）, prompt_v, provider, budget, per_day, per_min }
+      // llm：{ mode, model, key: 有没有（不给值）, cache: kv / cache-api / memory（按主机名）, prompt_v, explain_v, provider, budget, per_day, per_min }
       // register：施工登记表的 Durable Object 绑上没有（没绑 = 只有预置的演示施工，只读）
       return json({ ok: true, v: env.VERSION || VERSION, mock: isMock(env), llm: llmStatus(env, url.hostname), register: hasRegister(env) });
     }
@@ -51,7 +51,7 @@ export default {
       return json({ ok: true, reading: await read(req, env, url.origin) });
     }
 
-    // AI 解读（提案 #48 第 ⑥ 步）：现在只有规则版，确定、不花钱；大模型版以后接在这里，回来的字过 sanitizeExplain()
+    // AI 解读（提案 #48 第 ⑥ 步）：开了大模型（同 /api/read 的条件）问 1 次，回来的字过 sanitizeExplain()；否则 / 出错回规则版（D-0929-2307）
     if (path === "/api/explain") {
       if (request.method !== "POST") return fail(405, "method", "只接受 POST");
       const text = await readLimited(request, MAX_BODY);
@@ -62,12 +62,14 @@ export default {
       } catch {
         return fail(400, "bad_json", "请求体不是合法 JSON");
       }
+      let req;
       try {
-        return json({ ok: true, explain: ruleExplain(body) });
+        req = normalizeExplainRequest(body);
       } catch (e) {
         if (e instanceof ExplainError) return fail(400, e.code, e.message);
         throw e;
       }
+      return json({ ok: true, explain: await explain(req, env, url.origin) });
     }
 
     if (path === "/api/worksites" || path.startsWith("/api/worksites/")) {
@@ -92,5 +94,16 @@ export async function read(req, env = {}, origin) {
     return await serverReading(req, env, { origin });
   } catch {
     return { ...ruleReading(req), note: "llm_error" }; // 不透传报错内容
+  }
+}
+
+// req 已规范化（normalizeExplainRequest）。MOCK 或没 key → 规则版（和以前一模一样，没有 note）；
+// 否则 内存 → KV / Cache API → 大模型（1 次）→ 清洗；任何一步失败回规则版 + note
+export async function explain(req, env = {}, origin) {
+  if (llmConfig(env).mode !== "llm") return ruleExplain(req);
+  try {
+    return await serverExplain(req, env, { origin });
+  } catch {
+    return { ...ruleExplain(req), note: "llm_error" }; // 不透传报错内容
   }
 }
