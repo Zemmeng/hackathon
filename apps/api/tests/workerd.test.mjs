@@ -68,6 +68,31 @@ if (unstable_dev) {
       const ans = await worker.fetch("/answers/demo.json");
       eq([ans.status, typeof (await ans.json()).answers], [200, "object"], "answers/demo.json 200");
     });
+
+    await sec("施工登记表：workerd 里真的 Durable Object（persist:false，不落盘）", async () => {
+      const h = await (await worker.fetch("/api/health")).json();
+      eq(h.register, true, "wrangler.jsonc 的 REGISTER 绑上了");
+      const ws = {
+        title: "workerd smoke",
+        links: ["l595594354_9756035316"],
+        closes: { lanes: 1 },
+        time: { from: "2026-10-12", to: "2026-10-13", hours: [9, 15] },
+      };
+      const c = await worker.fetch("/api/worksites", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(ws) });
+      const cb = await c.json();
+      eq([c.status, cb.worksite?.seed], [201, false], "POST → 201");
+      const lt = await (await worker.fetch("/api/worksites")).text();
+      const lb = JSON.parse(lt);
+      eq([lb.register, lb.n], ["do", 4], "列表 = 3 条预置 + 1 条新登记");
+      ok(!lt.includes(cb.edit_token), "反向：列表里没有 edit_token");
+      const patch = (token) =>
+        worker.fetch(`/api/worksites/${cb.worksite.id}`, { method: "PATCH", headers: { "content-type": "application/json", "x-edit-token": token }, body: JSON.stringify({ status: "assessed" }) });
+      eq((await patch("0".repeat(32))).status, 403, "token 不对 → 403");
+      const p = await patch(cb.edit_token);
+      eq([p.status, (await p.json()).worksite?.status], [200, "assessed"], "带对 token → 200");
+      const js = await worker.fetch("/js/worksites.js");
+      ok(js.status === 200 && (await js.text()).includes("export async function listWorksites"), "浏览器端 worksites.js 能拿到");
+    });
   } finally {
     await worker.stop();
   }

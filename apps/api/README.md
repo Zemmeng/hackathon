@@ -1,4 +1,6 @@
-# api —— 大模型读懂屏上的字（第 ③ 步）：某一类路人看到这串标志后，看到没、看懂没、叫你走哪条、信不信
+# api —— 大模型读懂屏上的字（第 ③ 步）+ 施工登记表（提案 #48 第 ⑤ 步）
+
+读屏：某一类路人看到这串标志后，看到没、看懂没、叫你走哪条、信不信。登记表：大家登记的施工存在一处，多处施工才能互相影响。
 Owner: @jinmingq
 
 任务 T5，要求全在 `docs/arch/T5-PRD.md`；决定 D-0929-1435（大模型只读懂，比例由引擎算）、D-0929-1436。
@@ -9,7 +11,7 @@ Owner: @jinmingq
 - 引擎里直接 import `apps/api/public/js/reader.js` 的 `readSigns`（上线后的网址由 T6 集成时定）
 - 本地起 Worker（先在本目录 `npm i`）：`cp .dev.vars.example .dev.vars` → `npx wrangler dev --port 8788`
   - Claude 会话里：等 lead 把 `api` 加进 `.claude/launch.json` 后用 preview 工具按名字起
-  - 自检：`curl -s localhost:8788/api/health` → `{"ok":true,"v":"0.2.0","mock":true,"llm":{"mode":"rules","model":"deepseek-flash","key":false,"cache":"cache-api","prompt_v":"r2","provider":"deepseek","budget":true,"per_day":600,"per_min":60}}`（线上 `*.workers.dev` 的 `cache` 是 `memory`，见下面 KV）
+  - 自检：`curl -s localhost:8788/api/health` → `{"ok":true,"v":"0.3.0","mock":true,"llm":{"mode":"rules","model":"deepseek-flash","key":false,"cache":"cache-api","prompt_v":"r2","provider":"deepseek","budget":true,"per_day":600,"per_min":60},"register":true}`（线上 `*.workers.dev` 的 `cache` 是 `memory`，见下面 KV）
   - 已在 workerd（真 Workers 运行时）里跑通：`node tests/workerd.test.mjs`（wrangler 的 `unstable_dev`，按 `wrangler.jsonc` 起，查 health / read / 400 / 413 / 静态资源；再起一个 MOCK=0 的，大模型地址指向测试进程里的假服务器，查 Durable Object 每日封顶）。变量用 `vars` 显式覆盖，**不受 `wrangler.jsonc` 的 MOCK 和本机 `.dev.vars` 影响**，不会连真服务商
 - 默认（`MOCK` 不是 `"0"`，或没有 `LLM_API_KEY`）**只走规则，不会有任何付费调用**，和 T19 以前一模一样。打开大模型见下一节
 
@@ -98,11 +100,60 @@ node apps/api/tools/precompute.mjs --check                # 校验；然后提�
 | `BUDGET` | Durable Object 绑定（`wrangler.jsonc` 里已配） | 类 `LlmBudget` | 每日计数；没绑上 = 不调用 |
 | `READINGS` | KV 绑定（推荐） | 无 | 读数缓存 30 天 |
 
+## 施工登记表（`/api/worksites` · 提案 #48 第 ⑤ 步）
+
+多处施工要互相影响，系统得先知道「别处有哪些施工」。登记表把大家登记的施工存在一处（Durable Object `WorksiteRegister`，全局一个实例），网页拿去逐对调引擎的 `conflict(a, b)` 算冲突成本。**只做后端**：网页还没接，接的时候 import `/api/public/js/worksites.js`。
+
+**「施工」对象** = `docs/contract.md` §施工方案（`links` / `closes` / `time` / `equipment`，原样）+ 登记表字段：
+
+```json
+{
+  "id": "W-7KQ2MX", "title": "Collins St water main", "kind": "utility", "status": "decided",
+  "links": ["l595594354_9756035316"], "closes": { "lanes": 1, "footpath": "left" },
+  "time": { "from": "2026-10-12", "to": "2026-10-14", "hours": [9, 15] },
+  "equipment": [{ "id": "VMS-1", "type": "vms", "at_m": 200, "frames": [["USE", "RUSSELL ST"]] }],
+  "decision": { "option": "o2", "by": "council", "reason": "least tram delay", "at": "2026-09-30T02:00:00.000Z" },
+  "seed": false, "created": "2026-09-30T01:00:00.000Z", "updated": "2026-09-30T02:00:00.000Z"
+}
+```
+
+- `kind` ∈ `road / utility / building / event / other`（默认 other）；`status` ∈ `draft / assessed / decided / exported / withdrawn`（默认 draft；`decided` / `exported` 必须有 `decision`）；`decision.by` ∈ `contractor / council`，`decision.at` 由服务端盖
+- `id`、`seed`、`created`、`updated` 由服务端给，客户端给的不算；**白名单以外的字段一律丢掉**（邮箱、名字不会被存）
+- `title` ≤ 80 字、`decision.reason` ≤ 280 字，不许有 `< >` 和控制字符（网页用 innerHTML 拼模板）
+- `links` 1–20 个；`closes.lanes` 0–8（0 要配人行道封闭）；`time.hours` 每天 `[开始, 结束)` 整点，**跨午夜的夜间施工要拆两条**；工期 ≤ 366 天
+- `equipment` ≤ 30 件，id 不重复，`at_m` 0–2000；屏上文字沿用读屏的规范（`signs.js`：2 帧 × 4 行 × 10 字符、8 个词，短码也一样，例 `too_many_lines`）
+
+| 接口 | 说明 |
+|---|---|
+| `GET /api/worksites?from=&to=&status=` | `{ ok, register: "do" \| "seed", n, worksites }`：预置 + 登记的，按开工日期排；`from` / `to` 是 YYYY-MM-DD，工期和窗口有交集就算。没绑 DO 或 DO 出错时 `register: "seed"`，只回预置的 |
+| `GET /api/worksites/<id>` | `{ ok, worksite }`；没有 404 |
+| `POST /api/worksites` | 请求体 = 「施工」→ 201 `{ ok, worksite, edit_token }`。**`edit_token` 只回这一次**，库里只存它的 SHA-256；页面自己存好（localStorage） |
+| `PATCH /api/worksites/<id>` | 请求头 `x-edit-token` + 要改的字段（`title / kind / status / links / closes / time / equipment / decision`）→ `{ ok, worksite }`；合并后整份重新校验 |
+
+错误都是 §错误格式 `{ ok:false, error, msg }`：`400` 字段短码（`bad_title` `bad_text` `bad_links` `bad_closes` `bad_time` `bad_equipment` `bad_decision` `bad_status` `bad_patch` `bad_query` `bad_json`，屏上文字沿用 `signs.js` 的）· `403 bad_token`（没带 / 不对，包括拿别人那条的 token）· `403 locked`（预置的演示施工）· `404 not_found` · `405 method`（没有删除，要撤就改成 `withdrawn`）· `409 full`（满 200 条）· `413 too_large`（> 16KB）· `429 daily_cap`（全局每天写 500 次，UTC 0 点清零）· `503 no_register` / `register_error`。
+
+**预置的演示施工**（`public/js/worksites-seed.js`，只读、不进库）：`W-LONSDALE` / `W-LATROBE` 同引擎演示方案（`backend.js` 的 `DEMOS`）；`W-LTLBOURKE` 封在 Lonsdale 演示的绕行路线上（Russell St → Little Bourke St），和 Lonsdale 有 3 天重叠。09-29 本地用 main 上的引擎试过：10-07、10-08 早 8 点两个时刻，`conflict()` 的冲突成本约 1 万车·分钟（同样两个时刻，改封 Russell St 本身的一条车道，算出来是 0）。**数以引擎现场算的为准**。
+
+**浏览器端**（`public/js/worksites.js`，同源部署时 apiBase 留空；`opts: { fetch, apiBase, timeoutMs }`）：
+
+| 函数 | 说明 |
+|---|---|
+| `listWorksites(query?, opts?)` → `{ src: "api" \| "seed", worksites }` | 接口不通（断网、site 没绑 api 回 503）就退回预置的 3 条，页面照样能演 |
+| `createWorksite(施工, opts?)` → `{ worksite, edit_token }` | 先在浏览器里规范化，不合规范直接抛 `WorksiteError`（`.code` 短码），不发请求 |
+| `updateWorksite(id, 改动, token, opts?)` → `worksite` · `getWorksite(id, opts?)` | 接口的错误短码原样抛 |
+| `overlapping(施工, 列表)` | 时间上重叠的其他施工（撤回的不算）→ 逐对调引擎 `conflict(a, b)` |
+| `toEngineWorksite(施工)` | → 引擎 §施工方案 对象（去掉 title / status 这些） |
+| `normalizeWorksite` · `applyPatch` · `timeOverlap` · `selectWorksites` · `parseQuery` | 纯函数，Worker 用的是同一份 |
+
+**部署**：新加的 Durable Object 走 `wrangler.jsonc` 的 migration `v2`（`new_sqlite_classes`，免费版可用），部署人照常 `bash scripts/deploy.sh api`，不用另外操作；`/api/health` 的 `register` 变 `true`。已部署的 `v1` 不能改（`config.test.mjs` 查）。
+
 ## 怎么测
 
 `bash apps/api/test.sh`（只要 node ≥ 18；`tests/workerd.test.mjs` 要先 `npm i`，没装 wrangler 就自动跳过）—— 规则、规范校验、读数校验、取数顺序、Worker 路由，含 PRD 要求的 5 条（反向断言：AVOID 永远不读成 use、游客看缩写不比本地人懂得多、屏上写指令 advice 仍为空、超规范被拒；另有「MOCK 下外部请求 0 次」）。最后一行 `N passed, M failed`。
 
-T19 加的（全用假 fetch，一次真调用都没有）：`llm.test.mjs`（默认不花钱、3 次合成、兜底、缓存、`*.workers.dev` 上报 `memory`、限流熔断、**全局每日上限**（40 条换 `read_s` 的请求、每 5 条换一个实例，外部调用仍正好等于上限）、没绑 `BUDGET` 不调用、DeepSeek 参数、key 不出现在任何响应 / 报错里）、`worker.test.mjs`（请求体按字节限 8KB，超了不整个读进内存）、`prompt.test.mjs`（`src/prompt.js` 和 `prompts.md` 一致、消息逐行对模板）、`precompute.test.mjs`（dry-run 不调用、`--run` 写文件、`--check`、写出的文件 `readSigns()` 真能用）、`config.test.mjs`（Worker 名、vars 里没有 key、`workers_dev: false`、`BUDGET` 是 SQLite DO、锁文件、`workerd.test.mjs` 用 vars 覆盖）。
+T19 加的（全用假 fetch，一次真调用都没有）：`llm.test.mjs`（默认不花钱、3 次合成、兜底、缓存、`*.workers.dev` 上报 `memory`、限流熔断、**全局每日上限**（40 条换 `read_s` 的请求、每 5 条换一个实例，外部调用仍正好等于上限）、没绑 `BUDGET` 不调用、DeepSeek 参数、key 不出现在任何响应 / 报错里）、`worker.test.mjs`（请求体按字节限 8KB，超了不整个读进内存）、`prompt.test.mjs`（`src/prompt.js` 和 `prompts.md` 一致、消息逐行对模板）、`precompute.test.mjs`（dry-run 不调用、`--run` 写文件、`--check`、写出的文件 `readSigns()` 真能用）、`config.test.mjs`（Worker 名、vars 里没有 key、`workers_dev: false`、`BUDGET` / `REGISTER` 是 SQLite DO、migration `v1` 没被改、锁文件、`workerd.test.mjs` 用 vars 覆盖）。
+
+登记表加的：`worksites.test.mjs`（规范化、白名单、各种短码、PATCH 合并、查询、和引擎 `overlaps()` / `validateWorksite()` 对得上、预置路段都在 `network.json`、浏览器端客户端和退回预置）、`register.test.mjs`（假 storage 跑 Worker + DO：登记 → 查 → 改，**反向断言** token 和哈希不出现在任何 GET / PATCH 响应、库里不存 token 原文、别人的 token 改不了、预置改不了、被拒的改动不落库、库满 409、每日写入 429、DO 出错不透传报错）、`workerd.test.mjs` 多一节真 DO 冒烟。
 
 ## 对外接口（→ docs/contract.md §路人读数、§HTTP API）
 
@@ -112,6 +163,7 @@ T19 加的（全用假 fetch，一次真调用都没有）：`llm.test.mjs`（�
 | `checkSigns(请求) → { ok, error?, warnings[] }` | 给 T2 文案输入框用（`public/js/check.js`），不抛错。`error` = 超规范（接口会 400）；`warnings` = 没超但不好读：`many_lines`（> 3 行）、`long_line`（> 8 字符，整行是路名不算）、`frames_too_fast`（两帧轮一遍要 2 秒 / 帧、4 行 3 秒）、`short_read`（每词 1 秒读不完）、`odd_abbrev`。每条 `{ sign, code, msg }`，`msg` 是中文、`code` 可以拿去映射英文。出处：RPM VMS 产品页「理想 3 行 × 8 字符，每屏 2 秒 / 4 行 3 秒」 |
 | `answerKey(请求) → Promise<string>` | 答案文件的键 = SHA-256(persona + 规范化 signs + 排序后的 roads)；kmh 不进键（read_s 已含车速） |
 | `GET /api/health` | `{ ok, v, mock, llm: { mode, model, key, cache, prompt_v, provider, budget, per_day, per_min } }`；没配 MOCK 也算 `mock: true`，只有 `MOCK=0` 才关；`mode` = `llm` 只在 MOCK=0 且有 key；`key` 只说有没有，不给值；`cache` ∈ `kv / cache-api / memory`；`budget` = 每日计数绑上没有 |
+| `GET / POST /api/worksites`、`GET / PATCH /api/worksites/<id>` | 施工登记表，见上面「施工登记表」一节 |
 | `POST /api/read` | 请求体同 `readSigns` → `{ ok: true, reading }`；`reading.src` ∈ `llm`（刚问的）/ `kv`（服务端缓存）/ `rule`（兜底时另带 `note` 短码）；不合规范 400 `{ ok:false, error:"<短码>", msg }`；> 8KB（按字节）413 |
 
 `opts`：`{ fetch, apiBase, answersUrl, timeoutMs }`，默认同源、8 秒超时；测试里注入 `fetch`。
@@ -156,7 +208,11 @@ T19 加的（全用假 fetch，一次真调用都没有）：`llm.test.mjs`（�
 | `public/js/signs.js` | 屏上文字规范、请求规范化、读数校验（外来读数当不可信数据）、缓存键 |
 | `public/answers/demo.json` | 演示提前问好的读数（`tools/precompute.mjs --run` 生成，现在是空的），断网也能演 |
 | `fixtures/demo-signs.json` | 演示文案清单：封 La Trobe Street，8 句 × 4 类人 = 32 个请求；路名用 `network.json` 的写法 |
-| `src/worker.js` | `GET /api/health`、`POST /api/read`（MOCK / 没 key → 规则，否则交给 `llm.js`） |
+| `src/worker.js` | `GET /api/health`、`POST /api/read`（MOCK / 没 key → 规则，否则交给 `llm.js`）、`/api/worksites*` 交给 `register.js` |
+| `src/register.js` | 施工登记表：Durable Object `WorksiteRegister` + `handleWorksites()`（token、预置只读、封顶） |
+| `src/http.js` | 按字节限长读请求体、JSON 响应、§错误格式（两个接口共用） |
+| `public/js/worksites.js` | 「施工」对象的规范化、时间重叠、引擎格式，加浏览器端客户端 |
+| `public/js/worksites-seed.js` | 预置的 3 条演示施工 |
 | `src/llm.js` | 大模型那一层：配置、拼消息、调用（超时 6 秒）、3 次合成、内存 / KV / Cache API 缓存、限流、熔断 |
 | `src/budget.js` | 全局每日调用计数：Durable Object `LlmBudget` + `takeBudget()`；拿不到额度就不调用 |
 | `src/prompt.js` | ⚠️ 自动生成：`prompts.md` 的拷贝（Worker 不能 import .md），别手改 |
@@ -172,10 +228,16 @@ T19 加的（全用假 fetch，一次真调用都没有）：`llm.test.mjs`（�
 - 🔒 `why` 在界面上用 `textContent` 显示，不用 `innerHTML`
 - 🔒 屏上文字不许有 `< >`：提示词里用 `<sign>` 标签包屏上的字
 - 🔒 提示词只改 `prompts.md`，改完跑 `gen-prompt.mjs` 并把 `prompt_v` 加 1（`prompt.test.mjs` 查两边一致）
+- 🔒 登记表的 `edit_token` 只在 POST 响应里出现一次，库里只存 SHA-256；任何 GET / PATCH 响应都不带（`register.test.mjs` 反向断言）
+- 🔒 登记表只收白名单字段；给人看的字（`title`、`reason`）挡掉 `< >`
 - 🔒 key 只在发请求那一刻从 `env.LLM_API_KEY` 读：不进配置对象、日志、报错、响应（`llm.test.mjs` 反向断言）；报错只带短码
 
 ## 已知问题
 
+- 登记表没有登录：谁都能登记，改只凭 `edit_token`（丢了就改不了，只能重新登记）；市政 / 施工方两个视角还没做。每天 500 次写入、最多 200 条是防刷，不是权限
+- 登记表只按时间找重叠（`overlapping()`）；两处施工在路网上会不会互相影响，由引擎 `conflict()` 算，登记表不判断远近
+- 跨午夜的夜间施工要拆成两条（`hours` 和引擎同口径，`[开始, 结束)` 不能跨 0 点）
+- 登记表线上尚未部署（要部署人 `deploy.sh api`）；Durable Object 只在本机 workerd 里测过
 - 规则认不出没写动词的建议（例 `RUSSELL ST` / `SAVE 8 MIN` 没有 USE），这类留给大模型
 - T19 没做任何真调用：Worker → 服务商的连通、`response_format` 在百炼 / OpenAI 上的表现都**尚未实测**；Durable Object 每日计数只在本机 workerd 里测过，线上尚未部署过；答案文件还是空的
 - 限流 `LLM_MAX_CALLS_PER_MIN` 是每个 Worker 实例一个计数器，**不是账单上限**；账单上限是全局的 `LLM_MAX_CALLS_PER_DAY` + 服务商余额。每日计数每次调用前要多走一趟 Durable Object（几十毫秒）
