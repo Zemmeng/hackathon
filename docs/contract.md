@@ -107,13 +107,13 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 
 - `links` 同方向连着的算一段；双向施工两个方向都列。`closes.lanes` ≥ 车道数 = 全封；没全封时剩下车道的通行能力再 × 0.9
 - `closes.footpath`（T17，可选）∈ `left / right / both`：封哪一侧人行道。相对施工路段的行车方向，和 `walk.json` 的 `side` 同口径（靠左行驶，`left` = 挨着被封车道那边的路缘）；不写 / `null` / `"none"` = 人行道不封。别的值（`"LEFT"`、`"north"`、`1` …）`validatePlan()` 报错，`backend.run / advise` 抛 `code: "bad_plan"`（`.errors` 是每条原因；页面可先调 `be.validate(方案)` → 错误列表）。只影响行人（`summary.peds`），不改车的数字
-- `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
+- `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米（负数 = 施工起点下游，如摆在施工段末端的 END ROADWORK；引擎只把 `at_m ≥ 0` 的牌交给读屏，下游的牌只进清单和租金）；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
 - 屏上文字（`frames`）：≤ 2 帧 × ≤ 4 行 × ≤ 10 字符、合计 ≤ 8 个词、大写（校验归 T5 / T2）
 - 「什么时候」= `when: { date: "YYYY-MM-DD", hour: 0–23, day?: "wd" | "we" }`；`hour` 是 `flows.json` 的下标
 
 ### 按库存出方案 `options[]`（T22，v3.7，只加字段）
 
-`be.options(施工 | 方案, { n = 3, when?, worksite? })`（`apps/engine/public/js/backend.js`）→ 一处施工配 3 套方案，每套都用引擎跑同一个小时；不调大模型，同样输入同样输出。引擎侧见 `apps/engine/README.md`「按库存出方案」。
+`be.options(施工 | 方案, { n = 3, when?, worksite? })`（`apps/engine/public/js/backend.js`）→ 一处施工配 3 套方案，每套都用引擎跑同一个小时。`options()` 本身不调大模型（引导那一帧用规则顾问的写法）；每套的读数走 `run()` 同一条读屏链（T5 答案文件 → `/api/read` → 规则），读数一样时结果逐字一样。演示前要把 `options()` 生成的屏上文字（END ROADWORK、FOOTPATH CLOSED、DETOUR AHEAD、引导帧等）预算进 T5 答案文件，否则正式环境会现场问 `/api/read`，数字也可能和规则读数不同。引擎侧见 `apps/engine/README.md`「按库存出方案」。
 
 ```json
 { "worksite": "B-12", "when": { "date": "2026-10-06", "hour": 8 }, "days": 5,
@@ -124,9 +124,9 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
     "plan": { "when": {}, "worksites": [{ "…": "原施工，equipment 换成这一套；每件带 item + qty" }] },
     "hire": { "lines": [{ "item": "barrier_water", "name": "…", "qty": 22, "day_rate_aud": 4, "days": 5, "cost_aud": 440 }],
               "days": 5, "per_day_aud": 103, "total_aud": 515, "unpriced": [], "assumed": true, "note": "…" },
-    "stock": { "ok": true, "short": [] },
+    "stock": { "ok": true, "short": [], "shared_with": [] },
     "result": { "queue_m": 918, "delay_min": 10493, "affected_min": 4354, "mean_delay_s": 509, "detour_share": 0.14, "routes": [], "transit": {}, "peds": {} },
-    "flags": { "ok": true, "stock_ok": true, "vms_text_ok": null, "guided": false, "no_faster_detour": false, "assumed": ["hire.day_rate_aud", "stock.qty"] },
+    "flags": { "ok": true, "stock_ok": true, "vms_text_ok": null, "vms_read": null, "guided": false, "inactive": false, "no_faster_detour": false, "assumed": ["hire.day_rate_aud", "stock.qty"] },
     "vs": null
   }]
 }
@@ -135,9 +135,10 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 - `id` 固定 `o1` Minimum（护栏 + 静态标志）/ `o2` Standard（+ 箭头板 + VMS「ROADWORK / AHEAD」）/ `o3` Guided（同一块 VMS 加一帧点名引擎算出的最快绕行，另带 `guide: { frames, at_m, why }`）
 - `plan` 是完整的 §施工方案 方案，可以直接交给 `run / compare`；每件设备带 `item`（`equipment.json` 的 id）和 `qty`，和 `equipment[].item / qty` 同口径
 - `hire.assumed` 恒为 `true`：库存件数和日租价是假设值，界面要标「假设值」（D-0929-1536）；天数 = `time.from`–`time.to` 日历天数含两头
-- 每种设备件数 ≤ 库存；不够的只摆剩下的，缺口进 `stock.short[{ equipment, item, need, got, stock, why }]`，`flags.ok = false`
+- 每种设备件数 + 同一份方案里时间重叠（`overlaps()`：日期和每天时段都有交集）的其他施工已经带的件数（按它们 `equipment[].item / qty` 数）≤ 库存；不够的只摆剩下的，缺口进 `stock.short[{ equipment, item, need, got, stock, why }]`，`flags.ok = false`；`stock.shared_with` = 共用库存的那些施工 id
+- `flags.vms_read` = VMS 有没有进读数请求（T5 一次最多读离施工最近的 6 块，被挤掉就是 `false`，`flags.guided` 和 `flags.ok` 跟着 `false`）；`flags.inactive` = 这处施工在 `when` 那个小时不施工（数字都是 0，`flags.ok = false`）
 - `vs` = 和 `o1` 比（后 − 前）：`{ id, delay_min, affected_min, queue_m, hire_aud }`；哪套更少堵以引擎结果为准，不保证 `o3` 最好
-- 错误：方案不合格 / 路段不在路网 / 没 `time` 又没 `when` → `code: "bad_plan"`；库存取不到 → `code: "no_inventory"`
+- 错误：方案不合格 / 有路段不在路网（哪怕只一条）/ 没 `time` 又没 `when` / `time.from`、`to` 不是真实日期或 `from` 晚于 `to` / `time.hours` 不是 `[开始, 结束)`（0 ≤ 开始 < 结束 ≤ 24）/ `when` 不是 `{ date, hour: 0–23 }` → `code: "bad_plan"`；库存取不到 → `code: "no_inventory"`
 
 ## evaluate（engine → web）
 

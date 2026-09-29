@@ -3,7 +3,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { ok, t, done } from './_t.mjs';
 import { connect, PATHS } from '../public/js/backend.js';
-import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS } from '../public/js/options.js';
+import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS, tierNeeds, vmsRead } from '../public/js/options.js';
+import { signsOn } from '../public/js/reading.js';
 const clone = x => JSON.parse(JSON.stringify(x));
 
 const APPS = new URL('../../', import.meta.url); // apps/
@@ -72,6 +73,56 @@ await t('不超库存（反向断言）', async () => {
   const { equipment, short } = resolveNeeds([{ id: 'X', type: 'sign', at_m: 0, text: 'ROADWORK AHEAD', items: ['no_such_item'] }], INV);
   ok(equipment.length === 0 && short[0].why === 'not_in_inventory', '库存里没有的条目不摆，记 not_in_inventory');
   ok(hireOf([{ id: 'X', item: 'no_such_item', qty: 1 }], INV, 3).unpriced[0] === 'no_such_item', '对不上价格的设备列进 unpriced，不当 0 元');
+  // 多件设备抢同一种库存：封车道 + 两侧人行道，水马 5 件、FOOTPATH CLOSED 1 块
+  set('sign_footpath_closed', 1);
+  const fpT = be.demo('lonsdale'); fpT.worksites[0].closes = { lanes: 1, footpath: 'both' };
+  const o4 = (await (await connect({ fetch: fakeFetch, importer: noImporter, equipment: tiny })).options(fpT, { n: 1 })).options[0];
+  ok([...usedByItem(o4.plan)].every(([id, q]) => q <= stockOfItem(tiny, id)), `几件设备抢同一种库存时合计照样 ≤ 库存：${JSON.stringify(Object.fromEntries(usedByItem(o4.plan)))}`);
+  ok(['B-1', 'B-FL', 'B-FR', 'S-FR'].every(id => o4.stock.short.some(s => s.equipment === id)) && o4.stock.short.find(s => s.equipment === 'B-FL').got === 5 && !o4.flags.ok,
+    '缺口逐件记：人行道先拿到 5 件水马，右侧人行道、车道护栏、第二块 FOOTPATH CLOSED 都进 stock.short');
+});
+
+await t('护栏分配：封人行道只用能封人行道的，先配人行道（反向断言）', async () => {
+  const site = (len_m, footpath) => ({ len_m, lanes: 2, close_lanes: 1, full: false, footpath, missing: [] });
+  const noWater = clone(INV); noWater.items.find(i => i.id === 'barrier_water').qty = 0;
+  const a = resolveNeeds(tierNeeds(TIERS[0], {}, site(43, 'left')), noWater);
+  ok(!a.equipment.some(e => e.id === 'B-FL') && a.short.some(s => s.equipment === 'B-FL' && s.item === 'barrier_water' && s.got === 0) && a.equipment.find(e => e.id === 'B-1')?.item === 'barrier_klemmfix',
+    '水马没货：人行道不拿塑料隔板 / 钢护栏顶（can_close 没有 footpath），缺口进 short；车道照样用塑料隔板');
+  const b = resolveNeeds(tierNeeds(TIERS[0], {}, site(300, 'left')), INV);
+  ok(b.short.length === 0 && b.equipment.find(e => e.id === 'B-FL').item === 'barrier_water' && b.equipment.find(e => e.id === 'B-1').item === 'barrier_klemmfix' && b.equipment[0].id === 'B-1',
+    '封 300 米 + 一侧人行道：人行道拿 150 件水马，车道改用塑料隔板，不误报缺货；输出顺序不变');
+  const c = resolveNeeds(tierNeeds(TIERS[0], {}, site(150, 'both')), INV);
+  ok(c.short.length === 0 && c.equipment.filter(e => e.item === 'barrier_water').reduce((n, e) => n + e.qty, 0) <= 200, '封 150 米 + 两侧人行道：真库存够，stock 不误报');
+});
+
+await t('END ROADWORK 不占读数名额：VMS 在远处也照样被读到（反向断言）', async () => {
+  const site = { len_m: 43, lanes: 2, close_lanes: 1, full: false, footpath: 'both', missing: [] };
+  const eq = tierNeeds(TIERS[2], {}, site, { vmsAt: 400, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL']] }).map(({ items, close, len_m, ...e }) => e);
+  const seen = signsOn({ kmh: 40 }, { equipment: eq });
+  ok(eq.some(e => e.text === 'END ROADWORK' && e.at_m < 0) && !seen.some(x => x.text === 'END ROADWORK') && seen.some(x => x.kind === 'vms' && x.m === 400) && seen.length === 6 && vmsRead(eq),
+    '两侧人行道 + VMS 在 400 米：施工段末端的 END ROADWORK（at_m < 0）不进读数请求，上游 6 块都读到');
+  ok(!vmsRead([...eq, { id: 'X', type: 'sign', at_m: 10, text: 'ROADWORK AHEAD' }]), '上游第 7 块牌把最远的 VMS 挤掉 → vmsRead = false');
+  const fp = be.demo('lonsdale'); fp.worksites[0].closes = { lanes: 1, footpath: 'both' };
+  const [, o2, o3] = (await be.options(fp)).options;
+  ok(o2.flags.vms_read && o3.flags.vms_read, '两侧人行道：o2、o3 的 VMS 都进了读数请求（flags.vms_read）');
+  ok(!o3.flags.guided || o3.result.queue_m !== o2.result.queue_m || o3.result.delay_min !== o2.result.delay_min, `两侧人行道：引导档点名了绕行，引擎结果就和标准档不同（o2 ${o2.result.queue_m} 米 · o3 ${o3.result.queue_m} 米）`);
+  if (o3.flags.guided) {
+    const far = clone(o3.plan); far.worksites[0].equipment.find(e => e.type === 'vms').at_m = 400;
+    const s = await be.run(far);
+    ok(s.queue_m !== o2.result.queue_m || s.delay_min !== o2.result.delay_min, `同一份引导方案 VMS 挪到 400 米照样起作用（${s.queue_m} 米，标准档 ${o2.result.queue_m} 米）`);
+  }
+});
+
+await t('同一份方案里时间重叠的其他施工共用库存（反向断言）', async () => {
+  const other = { ...clone(be.demo('latrobe').worksites[0]), id: 'C-1', time: clone(LON.worksites[0].time) };
+  other.equipment = [...(other.equipment || []), { id: 'V-C', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD']], item: 'vms_a', qty: 4 }];
+  const two = { when: clone(LON.when), worksites: [clone(LON.worksites[0]), other] };
+  const r = await be.options(two);
+  ok(r.options.every(o => [...usedByItem(o.plan)].every(([id, q]) => q <= stockOfItem(INV, id))), '整份 plan 合计（含 C-1 带的 4 块 A 类 VMS）每种设备 ≤ 库存');
+  ok(vmsOf(r.options[1]).item === 'vms_c' && r.options.every(o => o.stock.shared_with.includes('C-1')), 'A 类 VMS 被 C-1 占满 → 这处换 C 类；stock.shared_with 记 C-1');
+  const later = clone(two); later.worksites[1].time = { from: '2026-11-02', to: '2026-11-03', hours: [7, 19] };
+  const rl = await be.options(later);
+  ok(vmsOf(rl.options[1]).item === 'vms_a' && rl.options.every(o => o.stock.shared_with.length === 0), '另一处施工不在同几天 → 不共用库存，照常用 A 类');
 });
 
 await t('引导档 VMS 文字合规范（反向断言）', async () => {
@@ -116,6 +167,12 @@ await t('输入形式：单条施工、when、n、worksite', async () => {
   const rc = await be.options(two, { worksite: 'C-1' });
   ok(rc.worksite === 'C-1' && rc.options.every(o => JSON.stringify(o.plan.worksites[0]) === JSON.stringify(two.worksites[0])), '整份方案 + worksite 指定 → 只换那一条的设备，别的施工原样一起算');
   const bad = async (x, o) => { try { await be.options(x, o); return null; } catch (e) { return e.code; } };
+  ok(await bad({ ...ws, links: [ws.links[0], 'no-such-link'] }) === 'bad_plan', '只有一部分路段不在路网 → 也是 bad_plan（不按 0 米少算护栏）');
+  ok(await bad({ ...ws, time: { ...ws.time, from: '2026-10-09', to: '2026-10-05' } }) === 'bad_plan' && await bad({ ...ws, time: { ...ws.time, from: '2026-13-01' } }) === 'bad_plan'
+    && await bad({ ...ws, time: { ...ws.time, hours: [] } }) === 'bad_plan' && await bad(ws, { when: { date: '2026-10-06', hour: null } }) === 'bad_plan',
+    'from 晚于 to、日期不存在、hours 为空、when.hour 不是 0–23 → bad_plan（不再悄悄按 1 天、0 排队）');
+  const off = await be.options(ws, { when: { date: '2026-10-06', hour: 3 } });
+  ok(off.options.every(o => o.flags.inactive && !o.flags.ok), `施工在 when 那个小时不施工（3 点，时段 ${JSON.stringify(ws.time.hours)}）→ flags.inactive、flags.ok = false`);
   ok(await bad({ ...ws, links: ['no-such-link'] }) === 'bad_plan' && await bad({ ...ws, time: undefined }) === 'bad_plan' && await bad(two, { worksite: 'nope' }) === 'bad_plan' && await bad({ ...ws, closes: { lanes: 1, footpath: 'north' } }) === 'bad_plan',
     '路段不在路网、没 time 又没 when、指定的施工不存在、closes.footpath 写错 → bad_plan');
   const noInv = await connect({ fetch: async url => (url.endsWith('equipment.json') ? { ok: false, status: 404 } : fakeFetch(url)), importer: noImporter });

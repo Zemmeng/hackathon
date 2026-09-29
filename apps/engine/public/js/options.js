@@ -1,9 +1,10 @@
 // options.js —— T22（D-0929-2011 ③）：按 RPM Hire 库存（apps/roads 的 equipment.json）给一处施工配 3 套交通管理方案、算租金。纯函数。
 // 这里只管「摆什么设备、摆几件、摆在哪、多少钱、库存够不够」；每套方案的排队、延误由 backend.js 的 be.options() 交给引擎算（D-0929-1310：引擎算数字）。
 // 🔒 库存件数和日租价是假设值（equipment.json 每条的 assumed、sources 写明官网没有公开价格）→ hire.assumed 恒为 true（D-0929-1536）
-// 🔒 不超库存：方案里每种设备的件数 ≤ 库存；不够的写进 short，不硬塞
+// 🔒 不超库存：方案里每种设备的件数（加上同一份方案里时间重叠的其他施工已经带走的）≤ 库存；不够的写进 short，不硬塞
 // 设备条目带 item（equipment.json 的 id）和 qty（件数），和 docs/contract.md 的 equipment[].item / qty 同口径，api 的 pack.js 能按同一份方案报价
-import { footpathOf } from './worksite.js';
+import { footpathOf, overlaps } from './worksite.js';
+import { signsOn } from './reading.js';
 
 // 三档：最省 = 护栏 + 静态标志；标准 = 再加箭头板 + 一块写「前方施工」的 VMS；引导 = 同一块 VMS 点名引擎算出的最快绕行
 export const TIERS = [
@@ -20,7 +21,26 @@ export const HIRE_NOTE = 'Stock and day rates are assumed values (RPM Hire publi
 
 const dayNum = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-// 租几天 = time.from 到 time.to 的日历天数（含两头）；没写日期按 1 天算（flags.no_time 标出来）
+const okDate = s => DATE_RE.test(String(s)) && new Date(dayNum(s) * 86400000).toISOString().slice(0, 10) === s;
+// time 写错会让租金悄悄按 1 天算、施工在 when 那个小时不生效 → be.options() 先拿它挡，抛 bad_plan
+export function timeErrors(time, who = '施工') {
+  if (time == null) return [];
+  if (typeof time !== 'object' || Array.isArray(time)) return [`${who}：time 要是 { from, to, hours? } 对象`];
+  const errs = [];
+  if (!okDate(time.from) || !okDate(time.to)) errs.push(`${who}：time.from / to 要是真实日期 YYYY-MM-DD（现在是 ${JSON.stringify(time.from)} / ${JSON.stringify(time.to)}）`);
+  else if (time.from > time.to) errs.push(`${who}：time.from ${time.from} 晚于 time.to ${time.to}`);
+  const h = time.hours;
+  if (h != null && !(Array.isArray(h) && h.length === 2 && h.every(Number.isFinite) && h[0] >= 0 && h[1] <= 24 && h[0] < h[1])) {
+    errs.push(`${who}：time.hours 要是 [开始, 结束)，0 ≤ 开始 < 结束 ≤ 24（现在是 ${JSON.stringify(h)}）`);
+  }
+  return errs;
+}
+export function whenErrors(when) {
+  const ok = when && typeof when === 'object' && okDate(when.date) && Number.isInteger(when.hour) && when.hour >= 0 && when.hour <= 23;
+  return ok ? [] : [`when 要是 { date: 'YYYY-MM-DD', hour: 0–23 }（现在是 ${JSON.stringify(when ?? null)}）`];
+}
+
+// 租几天 = time.from 到 time.to 的日历天数（含两头）；没写日期按 1 天算（flags.no_time 标出来）。日期写错的输入 be.options() 已经用 timeErrors 挡掉
 export function daysOf(time) {
   if (!time || !DATE_RE.test(String(time.from)) || !DATE_RE.test(String(time.to))) return 1;
   return Math.max(1, dayNum(time.to) - dayNum(time.from) + 1);
@@ -79,37 +99,54 @@ export function tierNeeds(tier, ws, site, { vmsAt = VMS_AT_M, frames = [WARN_FRA
       : { id: 'S-2', type: 'sign', at_m: AT_M.lane, text: `${side.toUpperCase()} LANE CLOSED`, items: [`sign_lane_closed_${side}`] });
   }
   for (const s of sides) out.push({ id: `S-F${s}`, type: 'sign', at_m: 0, text: 'FOOTPATH CLOSED', items: ['sign_footpath_closed'] });
-  // 「施工结束」摆在施工段末端（at_m 为负 = 施工起点下游）：清单完整、要付租金；引擎里谁都来不及按它改道（prefix 请求只收 m ≥ 分岔点的牌）
+  // 「施工结束」摆在施工段末端（at_m 为负 = 施工起点下游）：清单完整、要付租金；reading.js 的 signsOn() 只收 at_m ≥ 0 的牌，
+  // 所以它不进读数请求、不占 T5 一次最多读 6 块的名额（上游最多 6 块：S-1、S-2、S-FL、S-FR、A-1、VMS-1）
   out.push({ id: 'S-9', type: 'sign', at_m: -Math.max(1, site.len_m), text: 'END ROADWORK', items: ['sign_end_roadwork'] });
   if (tier.arrow && lanes && !site.full) out.push({ id: 'A-1', type: 'arrow', at_m: AT_M.arrow, items: ['arrow_board'] });
   if (tier.vms) out.push({ id: 'VMS-1', type: 'vms', at_m: vmsAt, frames: frames.map(f => [...f]), items: VMS_PREF });
   return out;
 }
 
+// 同一批施工已经带走的设备件数（item → 件数）：库存是共用的，配这一处之前先扣掉时间重叠的其他施工
+export function usageOf(worksites) {
+  const m = new Map();
+  for (const w of worksites || []) for (const e of w.equipment || []) if (e.item) m.set(e.item, (m.get(e.item) || 0) + (Number(e.qty) || 1));
+  return m;
+}
+export const sharingWith = (worksites, ws) => (worksites || []).filter(w => w !== ws && overlaps(w, ws));
+
+// VMS 会不会进读数请求：signsOn() 只把离施工最近的 6 块牌交给 T5，VMS 被挤掉就等于没摆（引导档悄悄变成和标准档一样）
+export function vmsRead(equipment) {
+  const seen = signsOn({ dir: null, kmh: 40 }, { equipment });
+  return (equipment || []).filter(e => e.type === 'vms').every(v => seen.some(x => x.kind === 'vms' && x.m === (Number(v.at_m) || 0)));
+}
+
 // 对库存：每件按优先顺序挑第一个「剩下的库存够」的条目；都不够就用首选条目、只摆剩下那么多（0 件就不摆），缺口记进 short。
-// 护栏件数 = ⌈封闭长度 ÷ 每节长度 unit_len_m⌉；封人行道只用 can_close 里有 footpath 的护栏
-export function resolveNeeds(needs, inventory) {
+// 护栏件数 = ⌈封闭长度 ÷ 每节长度 unit_len_m⌉；封人行道只用 can_close 里有 footpath 的护栏。
+// 先配可选条目少的（人行道只能用水马）：免得车道护栏先把水马拿光、人行道报缺而塑料隔板闲着；输出仍按 needs 的顺序。
+// used0 = 别的施工已经占掉的件数（usageOf），从库存里先扣
+export function resolveNeeds(needs, inventory, used0) {
   const inv = new Map((inventory?.items || []).map(i => [i.id, i]));
-  const used = new Map();
-  const equipment = [], short = [];
-  for (const n of needs) {
-    const cands = n.items.map(id => inv.get(id)).filter(it => it && (!n.close || (it.can_close || []).includes(n.close)));
+  const used = new Map(used0 || []);
+  const eqAt = [], shortAt = [];
+  const slots = needs.map((n, i) => ({ n, i, cands: n.items.map(id => inv.get(id)).filter(it => it && (!n.close || (it.can_close || []).includes(n.close))) }));
+  for (const { n, i, cands } of [...slots].sort((a, b) => a.cands.length - b.cands.length || a.i - b.i)) {
     const want = it => (n.len_m != null ? Math.max(1, Math.ceil(n.len_m / (Number(it.unit_len_m) || 1))) : n.qty || 1);
     const left = it => Math.max(0, Math.floor(Number(it.qty) || 0) - (used.get(it.id) || 0));
     let it = cands.find(c => left(c) >= want(c));
     let qty = it ? want(it) : 0;
     if (!it) {
       it = cands[0];
-      if (!it) { short.push({ equipment: n.id, item: n.items[0] ?? null, need: n.qty || 1, got: 0, stock: 0, why: 'not_in_inventory' }); continue; }
+      if (!it) { shortAt[i] = { equipment: n.id, item: n.items[0] ?? null, need: n.qty || 1, got: 0, stock: 0, why: 'not_in_inventory' }; continue; }
       qty = left(it);
-      short.push({ equipment: n.id, item: it.id, need: want(it), got: qty, stock: Math.floor(Number(it.qty) || 0), why: 'over_stock' });
+      shortAt[i] = { equipment: n.id, item: it.id, need: want(it), got: qty, stock: Math.floor(Number(it.qty) || 0), why: 'over_stock' };
       if (!qty) continue;
     }
     used.set(it.id, (used.get(it.id) || 0) + qty);
     const { items, close, len_m, qty: _q, ...rest } = n;
-    equipment.push({ ...rest, item: it.id, qty });
+    eqAt[i] = { ...rest, item: it.id, qty };
   }
-  return { equipment, short };
+  return { equipment: eqAt.filter(Boolean), short: shortAt.filter(Boolean) };
 }
 
 // 方案里的设备 → 租金明细（按首次出现的顺序，一种设备一行）：件数 × 日租价 × 天数。价钱、库存都是假设值
@@ -135,11 +172,12 @@ export function hireOf(equipment, inventory, days) {
   };
 }
 
-// 方案用的件数 vs 库存（单处施工；多处施工同几天共用库存看 api 的 pack.js stockCheck()）
-export function stockOf(equipment, inventory, short = []) {
+// 方案用的件数 vs 库存：这一处的件数 + 时间重叠的其他施工已经带走的（used0）≤ 库存
+export function stockOf(equipment, inventory, short = [], used0) {
   const inv = new Map((inventory?.items || []).map(i => [i.id, i]));
   const need = new Map();
   for (const e of equipment) if (e.item) need.set(e.item, (need.get(e.item) || 0) + (Number(e.qty) || 1));
-  const over = [...need].filter(([id, q]) => q > (Number(inv.get(id)?.qty) || 0)).map(([item, q]) => ({ item, need: q, stock: Number(inv.get(item)?.qty) || 0 }));
+  const tot = id => need.get(id) + ((used0 && used0.get(id)) || 0);
+  const over = [...need.keys()].filter(id => tot(id) > (Number(inv.get(id)?.qty) || 0)).map(item => ({ item, need: tot(item), stock: Number(inv.get(item)?.qty) || 0 }));
   return { ok: !short.length && !over.length, short: [...short, ...over.map(o => ({ equipment: null, item: o.item, need: o.need, got: o.need, stock: o.stock, why: 'over_stock' }))] };
 }

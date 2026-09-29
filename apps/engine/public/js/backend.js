@@ -17,7 +17,8 @@ import {
   requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit, validatePlan, pedImpact, pedsUnavailable, footpathActive,
   advisorSummary, sampleHours,
 } from './index.js';
-import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk } from './options.js';
+import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk, timeErrors, whenErrors, usageOf, sharingWith, vmsRead } from './options.js';
+import { isActive } from './worksite.js';
 
 export const PEDS_WAIT_MS = 8000; // 封了人行道、行人数据还在路上时 run() 最多等几毫秒（再慢就先给车的数字，summary.peds.src = null、pending = true）
 
@@ -327,7 +328,9 @@ export async function connect(opts = {}) {
 
   // 按库存出方案（T22，D-0929-2011 ③）：一处施工 → 最省 / 标准 / 引导 3 套交通管理方案，每套都用引擎跑同一个小时，带租金和库存检查。
   // 输入：一条施工方案（要给 when，或施工写了 time → 默认开工那天、时段里第一个采样小时），或整份方案 { when, worksites }（配 worksites[0]，
-  // 或 opts.worksite 指定哪一条；别的施工原样留着一起算）。不改输入；同样输入同样输出；不调大模型（引导那一帧用规则顾问 mockAdvise 的写法）。
+  // 或 opts.worksite 指定哪一条；别的施工原样留着一起算，时间重叠的施工带走的设备先从库存里扣）。不改输入。
+  // options() 自己不调大模型（引导那一帧用规则顾问 mockAdvise 的写法）；每套的读数走 run() 同一条读屏链（T5 答案文件 → /api/read → 规则），
+  // 读数一样时结果逐字一样。演示前要把 options() 生成的屏上文字预算进 T5 答案文件，否则正式环境会现场问 /api/read。
   let inventory = opts.equipment || null;
   let invSrc = inventory ? 'given' : null;
   async function inventoryOf() {
@@ -361,11 +364,19 @@ export async function connect(opts = {}) {
     const idx = worksite != null ? plan0.worksites.findIndex(w => w.id === worksite) : 0;
     if (idx < 0 || !plan0.worksites[idx]) throw planError([worksite != null ? `方案里没有施工 ${worksite}` : '方案里没有施工']);
     const ws = plan0.worksites[idx];
+    const tErrs = timeErrors(ws.time, `施工 ${ws.id ?? '?'}`);
+    if (tErrs.length) throw planError(tErrs);
     if (when) plan0.when = clone(when);
     if (!plan0.when && ws.time?.from) plan0.when = { date: ws.time.from, hour: sampleHours([ws])[0] };
     if (!plan0.when) throw planError(['施工没写 time，要给 when（{ date, hour }）']);
+    const wErrs = whenErrors(plan0.when);
+    if (wErrs.length) throw planError(wErrs);
     const site = siteOf(engine.net, ws);
-    if (site.lanes == null) throw planError([`施工 ${ws.id ?? '?'}：links 里的路段都不在路网里`]);
+    if (site.missing.length) throw planError([`施工 ${ws.id ?? '?'}：路段不在路网里：${site.missing.join(', ')}（长度按 0 算会少算护栏）`]);
+    if (site.lanes == null) throw planError([`施工 ${ws.id ?? '?'}：links 是空的`]);
+    const active = isActive(ws, plan0.when); // false = 这处施工在 when 那个小时不施工，三套的数字都是 0，不能当真
+    const shared = sharingWith(plan0.worksites, ws); // 时间重叠的其他施工：库存共用
+    const used0 = usageOf(shared);
     const days = daysOf(ws.time);
     const count = Math.max(1, Math.min(TIERS.length, Math.floor(Number(n)) || TIERS.length));
     const planWith = equipment => ({ when: clone(plan0.when), worksites: plan0.worksites.map((w, i) => (i === idx ? { ...clone(w), equipment } : clone(w))) });
@@ -375,7 +386,7 @@ export async function connect(opts = {}) {
     for (const tier of TIERS.slice(0, count)) {
       const frames = tier.guided && guide?.frames ? guide.frames : [WARN_FRAME];
       const needs = tierNeeds(tier, ws, site, { vmsAt: guide?.at_m ?? VMS_AT_M, frames });
-      const { equipment, short } = resolveNeeds(needs, inv);
+      const { equipment, short } = resolveNeeds(needs, inv, used0);
       const plan = planWith(equipment);
       const s = await run(plan);
       if (tier.id === 'o1' && count > 1) {
@@ -385,15 +396,17 @@ export async function connect(opts = {}) {
         guide = { frames: fr, at_m: Number.isFinite(sug?.at_m) ? sug.at_m : VMS_AT_M, why: sug?.why ?? null };
       }
       const vms = equipment.find(e => e.type === 'vms');
-      const stock = stockOf(equipment, inv, short);
+      const stock = { ...stockOf(equipment, inv, short, used0), shared_with: shared.map(w => w.id ?? null) };
+      const read = vms ? vmsRead(equipment) : null; // VMS 有没有进读数请求（没被 6 块上限挤掉）
       const flags = {
-        ok: s.flags.ok && stock.ok && (!vms || vmsTextOk(vms.frames)),
+        ok: s.flags.ok && active && stock.ok && (!vms || (vmsTextOk(vms.frames) && read)),
         stock_ok: stock.ok,
         vms_text_ok: vms ? vmsTextOk(vms.frames) : null,
-        guided: Boolean(tier.guided && guide?.frames && vms),
+        vms_read: read,
+        guided: Boolean(tier.guided && guide?.frames && vms && read),
         no_faster_detour: Boolean(tier.guided && !guide?.frames), // 引擎算下来没有哪条绕行更快：引导档的屏上文字和标准档一样
         sign_errors: s.flags.sign_errors, reading_src: s.flags.reading_src, params: s.flags.params, failed: s.flags.failed, missing: s.flags.missing,
-        inactive: s.flags.inactive, full_closure: site.full, footpath: site.footpath, no_time: !ws.time, missing_links: site.missing,
+        inactive: !active, full_closure: site.full, footpath: site.footpath, no_time: !ws.time, missing_links: site.missing,
         assumed: ['hire.day_rate_aud', 'stock.qty'], // D-0929-1536：租金和库存是假设值，界面标「假设值」
       };
       const hire = hireOf(equipment, inv, days), result = brief(s), first = out[0];
