@@ -86,5 +86,15 @@ check(f"JS 里有中文文案（{cjk} 个汉字）", cjk > 800)
 # 10. 页面里没有写死 localhost（线上冒烟 check --e2e 也查这一条）
 check("没有写死 localhost", "localhost" not in PAGE)
 
+# 11. 部署配置：纯静态（只托管 public/，没有 Worker 代码 / 绑定），deploy.sh 调得到 npm run deploy
+import json  # noqa: E402
+wr_txt = (ROOT / "wrangler.jsonc").read_text(encoding="utf-8")
+wr = json.loads(re.sub(r"(?m)^\s*//.*$|\s//[^\"\n]*$", "", wr_txt))
+check("wrangler.jsonc 用 assets 托管 public/", wr.get("assets", {}).get("directory") == "public")
+check("wrangler.jsonc 是纯静态：没有 main / durable_objects / vars", not any(k in wr for k in ("main", "durable_objects", "vars", "kv_namespaces")))
+pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+check("package.json 的 deploy 是 wrangler deploy", pkg.get("scripts", {}).get("deploy") == "wrangler deploy")
+check("反向断言：部署配置里没有 token / account_id", not re.search(r"api[_-]?token|account_id|CLOUDFLARE_", wr_txt, re.I))
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

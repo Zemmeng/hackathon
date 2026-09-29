@@ -9,6 +9,14 @@ Owner: @unicornnnnnny
 - 也可以直接双击 `public/index.html`（单文件，不 fetch 任何数据）
 - 改了 `src/` 之后：`python3 apps/web/build.py` 重新生成 `public/index.html`（测试会检查两者一致）
 
+## 怎么部署
+
+纯静态页：`wrangler.jsonc` 只用 `assets` 托管 `public/`，没有 Worker 代码、没有绑定、不需要任何 secret。
+
+- 正式部署只走 `bash scripts/deploy.sh web`（DEPLOYER 在 main 上跑；前提：`hackathon.conf` 的 `DEPLOY_MODULES` 含 `web`，本机 `npx wrangler login` 登的是团队的 Cloudflare 账号）
+- 上线后链接是 `rippletwin.<账号子域>.workers.dev`，写进 `hackathon.conf` 的 `DEMO_URL`
+- 本地核对配置不用登录：`cd apps/web && npm ci && npx wrangler deploy --dry-run`
+
 ## 怎么测
 
 `bash apps/web/test.sh` —— 不开浏览器的静态断言：打包产物与源码一致、体积 < 2MB、页面不向任何服务器发数据（只加载 Google Fonts）、没有 key、四步和六种天气配置齐全、修复方案在每种天气下都比原方案好、方案 v2 的几何和文案对得上（护栏西移 8 m 等）、中英文案成对。最后一行 `N passed, M failed`。
