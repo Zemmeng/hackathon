@@ -38,12 +38,43 @@ check("public/index.html 与 src/ 打包结果一致", committed == PAGE, "先�
 size = len(PAGE.encode("utf-8"))
 check(f"打包后 {size} 字节 < 2MB", size < 2 * 1024 * 1024)
 
-# 3. 反向断言（隐私）：页面不向任何服务器发数据，只允许加载 Google Fonts
-check("JS 里没有 fetch / XMLHttpRequest / WebSocket / sendBeacon",
-      not re.search(r"\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon", JS))
+# 3. 反向断言（隐私）：页面只从同源取东西（/engine/ /roads/ /params/ /api/，T13 PRD 第 6 节），不往别的服务器发数据
+SAME_ORIGIN = ("/engine/", "/roads/", "/params/", "/api/")
+loads = re.findall(r"\b(import|fetch)\s*\(\s*([^)]*?)\s*[,)]", JS)
+bad = [f"{k}({a})" for k, a in loads if not re.fullmatch(r"'(/[^']*)'", a) or not a.strip("'").startswith(SAME_ORIGIN)]
+check(f"import() / fetch() 只用同源的固定路径（{len(loads)} 处）", loads and not bad, f"不合规 {bad}")
+check("JS 里没有 XMLHttpRequest / WebSocket / sendBeacon", not re.search(r"XMLHttpRequest|WebSocket|sendBeacon", JS))
 hosts = set(re.findall(r"https?://([a-zA-Z0-9.-]+)", PAGE))
 allowed = {"fonts.googleapis.com", "fonts.gstatic.com", "www.w3.org"}
 check("外部地址只有 Google Fonts", hosts <= allowed, f"多出 {sorted(hosts - allowed)}")
+
+# 3b. 接后端（T13）：只接 backend.js 的 connect()；连不上走 BE.err，页面留着预设数字
+ENG = (SRC / "js" / "6-engine.js").read_text(encoding="utf-8")
+check("6-engine.js 加载 /engine/public/js/backend.js 并调 connect()",
+      "import('/engine/public/js/backend.js')" in ENG and re.search(r"\.then\(m=>m\.connect\(\)\)", ENG))
+check("后端加载失败的分支：catch 里记 BE.err，不往外抛",
+      re.search(r"\.catch\(e=>\{BE\.err=e;", ENG) and "engOfflineCard" in ENG)
+check("引擎连不上时第 4 步仍显示预设的小汽车延误（RESULTS.car）",
+      re.search(r"\$\{eng\?'':row\(L\('Mean car delay'", JS) is not None)
+
+# 3c. 反向断言（注入）：引擎 / T5 / 顾问给的文字（why、路名、报错）不原样拼进 HTML
+#     why 只用 textContent；路名、报错进模板一律过 esc()；画在 canvas 上的（drawTag）和剪贴板文字（engPlaybook）不算 HTML
+html_part = re.sub(r"function engPlaybook\(\)\{.*?\n\}\n", "", ENG, flags=re.S)
+html_part = re.sub(r"/\* pure:begin.*?/\* pure:end \*/", "", html_part, flags=re.S)  # 拼方案的纯数据，不进 HTML
+interp = [m.group(0) for m in re.finditer(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", html_part)]
+raw_why = [x for x in interp if re.search(r"\.why\b", x)]
+check("why 不拼进 HTML（只用 textContent）", not raw_why, str(raw_why[:3]))
+check("why 用 textContent 写（第 3 步读数、第 4 步顾问）", ENG.count(".textContent=w||''") + ENG.count(".textContent=o&&o.why||''") >= 2)
+lines = [ln for ln in html_part.splitlines() if "drawTag(" not in ln and "toast(" not in ln]
+unsafe = []
+for ln in lines:
+    for m in re.finditer(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", ln):
+        x = m.group(1)
+        if re.search(r"\b(street|name|msg|message|reading_src|src|equipment)\b", x) and "esc(" not in x and not x.startswith("L("):
+            unsafe.append(x[:60])
+check("路名 / 报错 / 来源进 HTML 模板都过 esc()", not unsafe, str(unsafe[:4]))
+app_js = (SRC / "js" / "5-app.js").read_text(encoding="utf-8")
+check("第 1 步标题里的路名过 esc()", "esc(shortSt(EP.street))" in app_js and "${shortSt(EP.street)" not in app_js)
 
 # 4. 反向断言（秘密）：源码里没有 key / token 形状的字符串
 check("源码里没有 key / token", not re.search(r"(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9])", JS + BODY, re.I))

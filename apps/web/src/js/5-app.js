@@ -193,17 +193,18 @@ function render(dt){
   if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
   if(S.step===4&&S.simAfter){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
-  }else if(S.step===3){drawWorks('before');}
-  else{drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
+  }else if(S.step===3){engDraw('now');drawWorks('before');}
+  else{engDraw('now');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
-  if(S.step===3)drawReplay(dt);
+  if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   if(S.layers.weather)WX.drawNotes(ctx,V,TK);
   if(S.step===1&&S.layers.works)planNotes();
   if(S.step<=2)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
   if(S.step===4&&S.simAfter&&S.layers.works)drawDeltas();
+  engLabels();
   if(S.layers.grid)drawGrid();
   drawScale();
   if(S.layers.weather)WX.drawFlash(ctx,V);
@@ -214,15 +215,16 @@ const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
 function activeSims(){return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
-  S.step=n;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
-  if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;flyTo(HOME.cx,HOME.cy,HOME.s);}
+  S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
+  if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
   if(n===2){S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}
   if(n===3){
     if(!S.stress||!S.stress.critical){S.stress=S.stress&&S.stress.script?S.stress:newStress('before');let guard=0;while((!S.stress.critical||!S.stress.critical.frozen)&&guard++<3000)S.stress.step(.05);S.clock=CLOCK_EVENT+(S.stress.t-45);}
     else{let g2=0;while(!S.stress.critical.frozen&&g2++<200)S.stress.step(.05);}
-    S.sim=S.stress;S.event=S.stress.critical;S.playing=false;S.replayT=0;if(S.event){S.nodes=causal(S.event);flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));}
+    S.sim=S.stress;S.event=S.stress.critical;S.playing=false;S.replayT=0;if(S.event)S.nodes=causal(S.event);
+    if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
-  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=.5;flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));}
+  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=.5;if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
   updateSteps();renderPanel();updateSafety();
 }
 function causal(ev){
@@ -257,9 +259,11 @@ const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
   const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
   if(S.step===1){
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span><span class="pill">${L('Draft · v1','草案 · v1')}</span></div>
-    <div class="stack"><h2>${L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Deployed assets','部署设施')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
+    const eng=!!BE.api&&!!EP.street;
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
+    <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street))} ${dirL(EP.dir)} lane closure`,`${esc(shortSt(EP.street))} ${dirL(EP.dir)}封道`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
+    ${engPanel1()}
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
@@ -269,6 +273,7 @@ function renderPanel(){
     <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
+    engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
@@ -282,9 +287,11 @@ function renderPanel(){
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Variations','变体')}</span><span class="eyebrow">${L('22 of 30','22 / 30')}</span></div><div class="list" id="varList"></div></div>
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
+  }else if(S.step===3&&BE.api&&EP.tab3==='net'){
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event,n=SEEDS[S.wx];
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
@@ -293,13 +300,14 @@ function renderPanel(){
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
       <div><b style="color:var(--a-bus)"><i class="dot" style="background:var(--a-bus)"></i>BUS 250</b><span>${L('12.5 m rigid','12.5 m 单节公交')}</span><small>${ev&&ev.bmin<-.5?(-ev.bmin).toFixed(1)+L(' m/s² braking',' m/s² 减速'):L('follows 34 m back','跟随在后方 34 m')}</small></div></div></div>
     <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Generate a safer layout →','生成更安全的方案 →')}</button></div>`;
-    $('#repairBtn').onclick=()=>goStep(4);
+    $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
   }else{
     const g=R.score[1],C=2*Math.PI*30;
     const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
     const mn=L(' min',' 分钟');
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
+    const eng=!!BE.api;
+    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--accent)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
     <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
       <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">
@@ -308,18 +316,18 @@ function renderPanel(){
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Before → after · 1 h','修复前 → 修复后 · 1 小时')} · ${wl}</span><span class="eyebrow">${L('simulated','模拟结果')}</span></div><div class="table">
-      ${row(L('Severe conflicts','严重冲突'),R.severe[0],R.severe[1],'var(--accent)')}${row(L('All conflicts','全部冲突'),R.conf[0],R.conf[1],'var(--accent)')}${row(L('Users with no route','无路可走的用户'),R.noRoute[0],R.noRoute[1],'var(--accent)')}${row(L('Bus extra delay','公交额外延误'),R.bus[0]+mn,R.bus[1]+mn,'var(--accent)')}${row(L('Emergency lane blocked','应急通道受阻'),R.emerg[0]+' s',R.emerg[1]+' s','var(--accent)')}${row(L('Mean car delay','小汽车平均延误'),R.car[0]+' s',R.car[1]+' s',R.car[1]>R.car[0]?'var(--works)':'var(--accent)')}</div></div>
+      ${row(L('Severe conflicts','严重冲突'),R.severe[0],R.severe[1],'var(--accent)')}${row(L('All conflicts','全部冲突'),R.conf[0],R.conf[1],'var(--accent)')}${row(L('Users with no route','无路可走的用户'),R.noRoute[0],R.noRoute[1],'var(--accent)')}${row(L('Bus extra delay','公交额外延误'),R.bus[0]+mn,R.bus[1]+mn,'var(--accent)')}${row(L('Emergency lane blocked','应急通道受阻'),R.emerg[0]+' s',R.emerg[1]+' s','var(--accent)')}${eng?'':row(L('Mean car delay','小汽车平均延误'),R.car[0]+' s',R.car[1]+' s',R.car[1]>R.car[0]?'var(--works)':'var(--accent)')}</div></div>
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
-    ${R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
+    ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
     <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
-    $('#copyBtn').onclick=copyPlaybook;$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:.5;$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
+    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:.5;$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
 function copyPlaybook(){
-  const R=RESULTS[S.wx],wl=wxLabel(S.wx);
-  const txt=L(`RippleTwin incident playbook — La Trobe St westbound cycle-lane closure (layout v2)\nScenario: weekday peak 17:00–18:00 · weather: ${wl}\n\nChanges\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream\n\nSimulated effect (1 h)\nSevere conflicts ${R.severe[0]} → ${R.severe[1]}\nAll conflicts ${R.conf[0]} → ${R.conf[1]}\nUsers with no route ${R.noRoute[0]} → ${R.noRoute[1]}\nBus extra delay ${R.bus[0]} → ${R.bus[1]} min\nEmergency lane blocked ${R.emerg[0]} → ${R.emerg[1]} s\nSafety score ${R.score[0]} → ${R.score[1]}\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — VMS-1 "CYCLISTS MERGING 30 km/h".\nRed: TTC < 1.5 s events — traffic controller holds the cycle transition.\nSensor fault: fall back to amber and request manual confirmation.`,
-`RippleTwin 事件处置手册 — La Trobe St 西行自行车道封闭（方案 v2）\n情景：工作日晚高峰 17:00–18:00 · 天气：${wl}\n\n改动\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m\n\n模拟效果（1 小时）\n严重冲突 ${R.severe[0]} → ${R.severe[1]}\n全部冲突 ${R.conf[0]} → ${R.conf[1]}\n无路可走的用户 ${R.noRoute[0]} → ${R.noRoute[1]}\n公交额外延误 ${R.bus[0]} → ${R.bus[1]} 分钟\n应急通道受阻 ${R.emerg[0]} → ${R.emerg[1]} s\n安全分 ${R.score[0]} → ${R.score[1]}\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，VMS-1 显示「前方骑行者并道 限速 30」。\n红色：出现 TTC < 1.5 s 事件，交通指挥员暂停自行车过渡段。\n传感器故障：降级为黄色并要求人工确认。`);
+  const R=RESULTS[S.wx],wl=wxLabel(S.wx),ex=engPlaybook();
+  const txt=L(`RippleTwin incident playbook — La Trobe St westbound cycle-lane closure (layout v2)\nScenario: weekday peak 17:00–18:00 · weather: ${wl}\n\nChanges\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream\n\nSimulated effect (1 h)\nSevere conflicts ${R.severe[0]} → ${R.severe[1]}\nAll conflicts ${R.conf[0]} → ${R.conf[1]}\nUsers with no route ${R.noRoute[0]} → ${R.noRoute[1]}\nBus extra delay ${R.bus[0]} → ${R.bus[1]} min\nEmergency lane blocked ${R.emerg[0]} → ${R.emerg[1]} s\nSafety score ${R.score[0]} → ${R.score[1]}\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — VMS-1 "CYCLISTS MERGING 30 km/h".\nRed: TTC < 1.5 s events — traffic controller holds the cycle transition.\nSensor fault: fall back to amber and request manual confirmation.`+ex[0],
+`RippleTwin 事件处置手册 — La Trobe St 西行自行车道封闭（方案 v2）\n情景：工作日晚高峰 17:00–18:00 · 天气：${wl}\n\n改动\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m\n\n模拟效果（1 小时）\n严重冲突 ${R.severe[0]} → ${R.severe[1]}\n全部冲突 ${R.conf[0]} → ${R.conf[1]}\n无路可走的用户 ${R.noRoute[0]} → ${R.noRoute[1]}\n公交额外延误 ${R.bus[0]} → ${R.bus[1]} 分钟\n应急通道受阻 ${R.emerg[0]} → ${R.emerg[1]} s\n安全分 ${R.score[0]} → ${R.score[1]}\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，VMS-1 显示「前方骑行者并道 限速 30」。\n红色：出现 TTC < 1.5 s 事件，交通指挥员暂停自行车过渡段。\n传感器故障：降级为黄色并要求人工确认。`+ex[1]);
   const fb=()=>{$('#copyFallback').innerHTML=`<p class="small muted">${L('Copying is blocked here. Select the text below instead.','此处无法自动复制，请手动选中下面的文字。')}</p><div class="pre">${txt.replace(/</g,'&lt;')}</div>`;};
   try{navigator.clipboard.writeText(txt).then(()=>toast(L('Playbook copied to the clipboard','处置手册已复制到剪贴板')),fb);}catch(e){fb();}
 }
@@ -476,7 +484,7 @@ function boot(){
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
-  resize();sizeHist();bindInput();
+  resize();sizeHist();bindInput();engBindMap();
   WX.set(S.wx);renderWxSwitcher();renderLegend();updateBasemapUI();
   const start=()=>{if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
   if(S.basemap==='streets')start();else setTimeout(start,40);

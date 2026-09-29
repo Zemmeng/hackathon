@@ -15,12 +15,12 @@ for f in tests/test_*.py; do
   out=$(PYTHONIOENCODING=utf-8 "$PY" "$f" 2>&1); code=$?
   last=$(printf '%s\n' "$out" | tail -n 1 | tr -d '\r')
   if ! printf '%s\n' "$last" | grep -Eq '^[0-9]+ passed, [0-9]+ failed$'; then
-    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 $code）"; F=$((F + 1)); printf '%s\n' "$out" | tail -n 20 | sed 's/^/   /'
+    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 ${code}）"; F=$((F + 1)); printf '%s\n' "$out" | tail -n 20 | sed 's/^/   /'
     continue
   fi
   p=${last%% passed*}; q=${last##*, }; q=${q%% failed}
   P=$((P + p)); F=$((F + q))
-  if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f $last，但退出码是 $code"; F=$((F + 1))
+  if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f ${last}，但退出码是 $code"; F=$((F + 1))
   elif [ "$q" -gt 0 ]; then echo "❌ $f $last"; printf '%s\n' "$out" | grep '^❌' | sed 's/^/   /'
   else echo "✅ $f $last"; fi
 done
