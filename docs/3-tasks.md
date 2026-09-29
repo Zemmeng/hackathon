@@ -52,6 +52,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
+| T10 | 同源网站外壳 apps/site：各模块 public/ 挂到 /<模块>/public/，/api/* 预留给 T5；高h 按 README 部署 | ✅ | claude/lead/deploy-site | 09-29 15:00 |
 
 卡住了：
 

@@ -105,9 +105,10 @@
 | engine 路网计算 · T4 | `apps/engine/`（待建） | 待认领 | 待定 | 待定 |
 | api 大模型和云端 · T5 | `apps/api/`（待建） | 待认领 | 待定 | 待定 |
 | sim 路口放大 · T6 集成上线 | `apps/sim/` | @Zemmeng（lead） | 4174 | `/sim/public/` |
+| site 同源网站外壳 · T10 | `apps/site/` | 代码 @Zemmeng · 部署 @unicornnnnnny | 8790 | `/`（= `DEMO_URL`） |
 | pitch | `docs/4-demo.md` | 待定 | — | — |
 
-- 线上地址前面要加域名 = `hackathon.conf` 的 `DEMO_URL`（现在还空着，M1 后 lead 填）。部署规则：每个模块的 `public/` 原样挂到 `/<模块>/public/`
+- 线上地址前面要加域名 = `hackathon.conf` 的 `DEMO_URL`（现在还空着，M1 后 lead 填）。部署规则：每个模块的 `public/` 原样挂到 `/<模块>/public/`，由 `apps/site` 一个 Worker 实现（`/api/*` 经服务绑定转给 T5，步骤见 `apps/site/README.md`）
 - T6 = lead 管集成、合 PR，另管 sim 路口放大；**部署由 @unicornnnnnny 执行**（DEPLOYER，`D-0929-1322`），lead 是备份部署人
 - sim 的界面文件（`apps/sim/public/` 下 index.html、style.css、js/ui.js）归 @unicornnnnnny 改，引擎、数据、测试归 @Zemmeng（`D-0929-1226`）
 - T4 和 T5 怎么交接：T4 交出「4 类路人各自看到了什么、能走哪几条路、各要多久」，T5 交回「每类人注意到没、看懂没、每条路的概率、一句理由」。字段定稿后写进 `docs/contract.md`

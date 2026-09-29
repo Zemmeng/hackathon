@@ -15,6 +15,7 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 | sim | @Zemmeng | 没用 starter（手工建的静态页） | 4174 | — |
 | roads | @louisxie316-dotcom | 没用 starter（数据管线 + 静态 JSON） | — | — |
 | web | @unicornnnnnny | 没用 starter（单文件静态页；`src/` 由 `build.py` 拼成 `public/index.html`） | 4175 | — |
+| site | @unicornnnnnny（部署）· @Zemmeng（代码） | 没用 starter（手写 Worker：各模块 `public/` 挂到 `/<模块>/public/`，`/api/*` 转给 T5） | 8790 | `DEMO_URL`（部署后 lead 填） |
 
 ## 端口约定
 

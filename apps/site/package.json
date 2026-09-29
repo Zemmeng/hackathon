@@ -1,0 +1,15 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && wrangler dev --port 8790",
+    "dry-run": "node build.mjs && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "deploy": "node build.mjs && wrangler deploy",
+    "test": "bash test.sh"
+  },
+  "devDependencies": {
+    "wrangler": "4.143.0"
+  }
+}
