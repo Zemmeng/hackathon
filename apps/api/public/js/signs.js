@@ -9,17 +9,18 @@ export const LIMITS = {
   lines: 4, // 每帧最多 4 行
   chars: 10, // 每行最多 10 个字符
   words: 8, // 一块屏所有帧合计最多 8 个词；静态标志牌同样按 8 个词算
-  signChars: 40, // 静态标志牌一整句最多 40 个字符（例 RIGHT LANE CLOSED 是 17 个）
+  signChars: 40, // 静态标志牌 / 箭头板一整句最多 40 个字符（例 RIGHT LANE CLOSED 是 17 个）
   signs: 8, // 一次请求最多 8 块标志
   roads: 8, // 当前路 + 候选绕行路最多 8 条
   roadChars: 40,
-  readS: 120, // 能读的秒数上限
+  readS: 120, // 能读的秒数：超过按 120 算（引擎在 5 km/h 排队时会算出 100 多秒），负数才拒
   kmh: 130,
 };
 
 // 屏上只允许大写字母、数字、空格和常见标点；不许 < > 这类字符，免得有人在屏上拼出提示词里的标签
 const SIGN_CHARS = /^[A-Z0-9 .,'&:!?()+/-]*$/;
-const ROAD_CHARS = /^[A-Za-z0-9 .'&-]+$/;
+// 路名和引擎的 cleanName() 同一套字符（#20 apps/engine/public/js/cards.js）；路名不进 <sign>，括号斜杠无妨
+const ROAD_CHARS = /^[A-Za-z0-9 .,'&/()-]+$/;
 
 export class SignError extends Error {
   constructor(code, msg) {
@@ -47,10 +48,10 @@ function normSign(s, i) {
   const at = `signs[${i}]`;
   if (!isObj(s)) throw bad("bad_sign", `${at} 要是对象`);
   const readS = s.read_s;
-  if (typeof readS !== "number" || !Number.isFinite(readS) || readS < 0 || readS > LIMITS.readS) {
-    throw bad("bad_read_s", `${at}.read_s 要是 0–${LIMITS.readS} 的秒数`);
+  if (typeof readS !== "number" || !Number.isFinite(readS) || readS < 0) {
+    throw bad("bad_read_s", `${at}.read_s 要是不小于 0 的秒数`);
   }
-  const read_s = Math.round(readS);
+  const read_s = Math.round(Math.min(readS, LIMITS.readS));
 
   if (s.kind === "vms") {
     const fr = s.frames;
@@ -73,22 +74,23 @@ function normSign(s, i) {
     return { kind: "vms", frames, read_s };
   }
 
-  if (s.kind === "sign") {
-    const text = signText(s.text, `${at}.text`);
-    if (!text) throw bad("empty_sign", `${at}.text 没有字`);
+  // 箭头板（arrow）可以只有箭头没有字：text 缺省当空串
+  if (s.kind === "sign" || s.kind === "arrow") {
+    const text = signText(s.kind === "arrow" && (s.text === undefined || s.text === null) ? "" : s.text, `${at}.text`);
+    if (!text && s.kind === "sign") throw bad("empty_sign", `${at}.text 没有字`);
     if (text.length > LIMITS.signChars) throw bad("line_too_long", `${at}.text 超过 ${LIMITS.signChars} 个字符`);
     if (countWords(text) > LIMITS.words) throw bad("too_many_words", `${at}.text 超过 ${LIMITS.words} 个词`);
-    return { kind: "sign", text, read_s };
+    return { kind: s.kind, text, read_s };
   }
 
-  throw bad("bad_kind", `${at}.kind 只能是 vms 或 sign`);
+  throw bad("bad_kind", `${at}.kind 只能是 vms / sign / arrow`);
 }
 
 function normRoad(r, i) {
   if (typeof r !== "string") throw bad("bad_road", `roads[${i}] 要是字符串`);
   const t = squash(r);
   if (!t || t.length > LIMITS.roadChars || !ROAD_CHARS.test(t)) {
-    throw bad("bad_road", `roads[${i}] 要是 1–${LIMITS.roadChars} 个字符的路名（字母、数字、空格、. ' & -）`);
+    throw bad("bad_road", `roads[${i}] 要是 1–${LIMITS.roadChars} 个字符的路名（字母、数字、空格、. , ' & / ( ) -）`);
   }
   return t;
 }

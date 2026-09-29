@@ -59,7 +59,7 @@ Candidate roads (current road and possible detours): {roads, shuffled}
 {ask}
 ```
 
-- `kind_label`：`vms` → `Electronic message board (frames alternate)`；`sign` → `Fixed roadwork sign`
+- `kind_label`：`vms` → `Electronic message board (frames alternate)`；`sign` → `Fixed roadwork sign`；`arrow` → `Flashing arrow board`（没有字时 `<sign>` 里写 `(arrow only, no text)`，这句在标签外面由程序写，不是屏上的字）
 - `{ask}` 三种问法，第 n 次用第 n 种：
   1. `How would this road user read these signs? Reply with the JSON object only.`
   2. `Describe, as the JSON object, what this road user takes away from these signs.`
