@@ -102,8 +102,9 @@
 |---|---|---|---|---|
 | web 网页面板 · T2 | `apps/web/`（待建） | @unicornnnnnny（高he） | 待定 | 待定 |
 | roads 路网数据 · T3 | `apps/roads/` | @louisxie316-dotcom | 待定 | `/roads/public/cbd/` |
-| engine 路网计算 · T4 | `apps/engine/`（待建） | 待认领 | 待定 | 待定 |
-| api 大模型和云端 · T5 | `apps/api/`（待建） | 待认领 | 待定 | 待定 |
+| engine 路网计算 · T4 | `apps/engine/`（#20 在建） | lead 的「AI流程基础架构」会话（T9，D-0929-1500） | 待定 | 待定 |
+| api 大模型和云端 · T5 | `apps/api/` | @jinmingq | 8788 | 待定 |
+| params 引擎参数 · T12 | `apps/params/`（待建） | @Unzzip | — | `/params/public/params.json` |
 | sim 路口放大 · T6 集成上线 | `apps/sim/` | @Zemmeng（lead） | 4174 | `/sim/public/` |
 | pitch | `docs/4-demo.md` | 待定 | — | — |
 
