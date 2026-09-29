@@ -12,7 +12,6 @@
       <button type="button" data-step="4"><span class="n">04</span><span data-zh="修复">Repair</span></button>
     </nav>
     <div class="top-right">
-      <div class="chip" id="safetyChip" title="Safety score for the current layout and weather" data-zh-title="当前方案与天气下的安全分"><span class="eyebrow" data-zh="安全分">Safety</span><b id="safetyVal">— / 100</b></div>
       <button type="button" class="lang-toggle" id="langToggle" aria-label="Switch language: English / 中文" data-zh-aria-label="切换语言：English / 中文"><span data-l="en">EN</span><span data-l="zh">中</span></button>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch between light and dark theme" data-zh-aria-label="切换浅色 / 深色主题">
         <span class="moon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 9.8A5.2 5.2 0 0 1 6.2 3.2a5.2 5.2 0 1 0 6.6 6.6z"/></svg></span>
@@ -58,7 +57,7 @@
       <section class="legend glass" id="legend" aria-label="Weather layer legend" data-zh-aria-label="天气图层图例"></section>
       <div class="probe glass" id="probe"><span><span class="k" data-zh="纬度">LAT</span> <span class="v" id="pLat">—</span></span><span><span class="k" data-zh="经度">LON</span> <span class="v" id="pLon">—</span></span><span id="pVal" class="hl">Move over the map</span></div>
       <div class="alert glass" id="alert" hidden></div>
-      <div class="swipe" id="swipe" hidden><div class="line"></div><span class="tag l" data-zh="修复前 · 方案 v1">BEFORE · LAYOUT v1</span><span class="tag r" data-zh="AI 修复后 · v2">AI-REPAIRED · v2</span><button type="button" class="knob" id="swipeKnob" aria-label="Drag to compare before and after" data-zh-aria-label="拖动以对比修复前后"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></button></div>
+      <div class="swipe" id="swipe" hidden><div class="line"></div><span class="tag l" data-zh="修改前">BEFORE</span><span class="tag r" data-zh="修改后">AFTER</span><button type="button" class="knob" id="swipeKnob" aria-label="Drag to compare before and after" data-zh-aria-label="拖动以对比修复前后"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></button></div>
       <div class="toast glass" id="toast" hidden></div>
       <div class="loading" id="loading">RENDERING ORTHOPHOTO…</div>
     </div>
