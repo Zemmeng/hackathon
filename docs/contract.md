@@ -27,7 +27,7 @@ T3 产出，放在 `apps/roads/public/cbd/`，本地和线上都从 `/roads/publ
 
 ## 路人读数（api → engine）
 
-D-0929-1430：大模型只「读懂」屏上的字，比例由引擎算。T5 在 `apps/api/public/js/reader.js` 导出 `readSigns(请求) → Promise<读数>`，引擎只调这一个函数。背后按顺序：随网页发布的答案文件 → `POST /api/read`（Cloudflare Worker，先查 KV）→ 大模型 → 任何一步失败都用关键词规则（`src: "rule"`）。
+D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在 `apps/api/public/js/reader.js` 导出 `readSigns(请求) → Promise<读数>`，引擎只调这一个函数。背后按顺序：随网页发布的答案文件 → `POST /api/read`（Cloudflare Worker，先查 KV）→ 大模型 → 任何一步失败都用关键词规则（`src: "rule"`）。
 
 **请求**（一类人 × 一串标志）：
 
@@ -131,6 +131,6 @@ T4 在 `apps/engine/public/js/` 导出 `evaluate(方案, { seed }) → 结果`�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
-| v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1430）和「evaluate」草案（engine → web） | lead |
+| v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
 | v1 | 2026-09-29 | 加「路网数据文件」一节（roads → engine、web）；HTTP / WS 节还是模板预置，T5 定了再改 | lead |
 | v0 | 2026-09-26 | 模板预置：health / create / ws 骨架 | lead |
