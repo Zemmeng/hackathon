@@ -51,7 +51,7 @@ check("B1 处置手册不再抄查表的效果（严重冲突 / 安全分）", "
 check("B2 第 2 步没有假进度、「变体 22/30」和变体清单", not re.search(r"data-live=\"(var|pct|dps)\"|varList|22 / 30|22 of 30", APP))
 check("B2 没有「智能体决策 / 秒」（= 智能体数 × 10 × 倍速）", "agent decisions" not in APP and "智能体决策" not in APP)
 check("B2 第 2 步写明是路口微观仿真、计数来自这一次运行，不是方案的引擎数字", "Junction micro-simulation" in APP and "不是方案的引擎数字" in APP)
-check("B3 没有「AI 红队」字样和「250 个智能体 × 30 种行为变体」", not re.search(r"red team|红队|250 agents|250 个智能体", PAGE, re.I))
+check("B3 没有「AI 红队」「250 个智能体 × 30 种行为变体」「随机种子 4218」字样", not re.search(r"red team|红队|250 agents|250 个智能体|seed 4218|随机种子|行为变体|behaviour variations", PAGE, re.I))
 check("B3 按钮改名「运行路口仿真」", "Run the junction simulation" in APP and "运行路口仿真" in APP)
 check("第 3 步回放不再写「复现 n / 50 个种子」，告警卡也不写", "Reproduced in" not in APP and "SEEDS" not in APP)
 check("时间轴只画这次仿真数到的冲突，没有编出来的「预期」曲线", "PROFILE" not in APP and "hash2(m,7" not in APP)
@@ -88,7 +88,7 @@ check("4 滑动对比的标签不再写「AI 修复后 · v2」", "AI 修复后"
 
 # ---- 补充 5：假设亮出来 ----
 why = fn(ENG, "engWhy")
-check("5 引擎数字下写「施工段车流 X 辆/时 vs 封道后通行能力 Y 辆/时」（施工路段 raw.links 的 v 和 cap）", "l.v" in why and "l.cap" in why and "EP.link" in why and "a.volume" not in why)
+check("5 引擎数字下写「施工段车流 X 辆/时 vs 封道后通行能力 Y 辆/时」（施工路段 raw.links 的 v 和 cap）", "l.v" in why and "l.cap" in why and "EP.link" in why and "const over=l.v>l.cap" in why)
 check("5 写明绕行靠的假设（路线选择模型 + T12 参数 + 读懂标志的比例）", "路线选择模型" in why and "engInformed(s)" in why)
 check("5 第 4 步绕行前后对比旁有假设说明", "绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提" in ENG)
 check("5 假设说明不用 .muted（简洁视图也看得到）", '<div class="eng-assume">' in why and ".eng-assume{" in CSS)

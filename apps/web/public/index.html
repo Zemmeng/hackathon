@@ -686,12 +686,12 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="var(--accent)" aria-hidden="true"><circle cx="13" cy="13" r="3" fill="var(--accent)" stroke="none"/><circle cx="13" cy="13" r="7" stroke-opacity=".7" stroke-width="1.5"/><circle cx="13" cy="13" r="11.4" stroke-opacity=".35" stroke-width="1.5"/></svg>
       <span class="brand-name">RippleTwin</span>
     </div>
-    <div class="scene"><span class="eyebrow" data-zh="场景">Scene</span><span class="scene-name" data-zh="Swanston St × La Trobe St · 墨尔本 CBD">Swanston St × La Trobe St · Melbourne CBD</span></div>
+    <div class="scene"><span class="eyebrow" data-zh="场景">Scene</span><span class="scene-name" id="sceneName">Melbourne CBD</span></div>
     <nav class="stepper" id="stepper" aria-label="Workflow" data-zh-aria-label="工作流程">
       <button type="button" data-step="1"><span class="n">01</span><span data-zh="方案">Plan</span></button>
-      <button type="button" data-step="2"><span class="n">02</span><span data-zh="压力测试">Stress test</span></button>
-      <button type="button" data-step="3"><span class="n">03</span><span data-zh="涟漪追踪">Ripple trace</span></button>
-      <button type="button" data-step="4"><span class="n">04</span><span data-zh="修复">Repair</span></button>
+      <button type="button" data-step="2"><span class="n">02</span><span data-zh="路口仿真">Junction sim</span></button>
+      <button type="button" data-step="3"><span class="n">03</span><span data-zh="影响">Impact</span></button>
+      <button type="button" data-step="4"><span class="n">04</span><span data-zh="改进">Improve</span></button>
     </nav>
     <div class="top-right">
       <button type="button" class="lang-toggle" id="langToggle" aria-label="Switch language: English / 中文" data-zh-aria-label="切换语言：English / 中文"><span data-l="en">EN</span><span data-l="zh">中</span></button>
@@ -713,7 +713,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   </aside>
 
   <main class="map" id="map">
-    <canvas id="mapCanvas" aria-label="Map of Swanston St and La Trobe St with simulated road users and weather layers" data-zh-aria-label="Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层"></canvas>
+    <canvas id="mapCanvas" aria-label="Map of the Melbourne CBD"></canvas>
     <div class="hud">
       <div class="wx glass" id="wx" role="radiogroup" aria-label="Weather scenario" data-zh-aria-label="天气情景"></div>
       <div class="basemap glass" id="basemap" aria-label="Basemap" data-zh-aria-label="底图">
@@ -1798,6 +1798,14 @@ function microOn(){
   if(!BE.api)return false; // still connecting: don't flash the other junction first
   return /la trobe/i.test(EP.street||'');
 }
+// Top bar + map label name the scene on screen: the engine's works zone, or the La Trobe × Swanston micro-model (T26 2.1)
+function updateScene(){
+  const el=$('#sceneName'),micro=microOn();if(!el)return;
+  const st=shortSt(EP.street)||L('Unnamed road','无名道路'),on=engOn()&&!micro;
+  const t=micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
+  if(el.textContent!==t)el.textContent=t;
+  cv.setAttribute('aria-label',micro?L('Map of Swanston St and La Trobe St with simulated road users and weather layers','Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层'):on?L(`Map of the ${st} ${dirL(EP.dir)} works at ${engHour(EP.hour)} on real CBD streets, with the engine's queue and detours`,`${st} ${dirL(EP.dir)} 施工地图（${engHour(EP.hour)}）：真实 CBD 路网上引擎算出的排队和绕行`):L('Map of the Melbourne CBD','墨尔本 CBD 地图'));
+}
 function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.contains('no-time')===on){app.classList.toggle('no-time',!on);readInsets();}}
 
 /* ---------- view ---------- */
@@ -2035,7 +2043,7 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
@@ -2057,7 +2065,7 @@ function renderPanel(){
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
     <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
-      <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
+      <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
@@ -2070,11 +2078,11 @@ function renderPanel(){
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
-    <div class="stack"><span class="eyebrow">${L('Agents involved','涉及的智能体')}</span><div class="agents3">
+    <div class="stack"><span class="eyebrow">${L('Road users involved','涉及的道路使用者')}</span><div class="agents3">
       <div><b style="color:var(--a-bike)"><i class="dot" style="background:var(--a-bike)"></i>C-17</b><span>${L('Cyclist','骑行者')}</span><small>${ev&&ev.cv?(ev.cv*3.6).toFixed(0):'19'} km/h ${L('at merge','并道时')}</small></div>
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
       <div><b style="color:var(--a-bus)"><i class="dot" style="background:var(--a-bus)"></i>BUS 250</b><span>${L('12.5 m rigid','12.5 m 单节公交')}</span><small>${ev&&ev.bmin<-.5?(-ev.bmin).toFixed(1)+L(' m/s² braking',' m/s² 减速'):L('follows 34 m back','跟随在后方 34 m')}</small></div></div></div>
-    <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Generate a safer layout →','生成更安全的方案 →')}</button></div>`;
+    <div class="cta"><button type="button" class="btn" id="repairBtn">${L('See the revised layout →','看改过的布局 →')}</button></div>`;
     $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
   }else{
@@ -2143,7 +2151,7 @@ function renderLegend(){
   const k=S.wx,Lg=LEG[k],col=wxCol(k),el=$('#legend');el.style.setProperty('--wxc',col);el.style.setProperty('--wxc-tint',rgba(col,.16));
   el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${L('ILLUSTRATIVE','示意')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
   <div class="legend-body">${Lg.min?`<div class="legend-ramp" style="background:${rampCss(k)}"></div><div class="legend-scale"><span>${Lg.min}</span><span class="u">${Lp(Lg.u)}</span><span>${Lg.max}</span></div>`:''}
-  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
+  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('EFFECT ON ROAD USERS','对道路使用者的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
   $('#legToggle').onclick=()=>el.classList.toggle('collapsed');
   updateLegendLive();
 }
@@ -2221,7 +2229,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -2478,17 +2486,21 @@ function engMetrics(s){
   const top=s.routes.filter(r=>r.id!=='stay').sort((a,b)=>(b.share||0)-(a.share||0))[0],q=engWorstQ(s),elsewhere=q.m>(s.queue_m||0);
   return`<div class="metrics">
     <div class="metric"><span class="eyebrow">${elsewhere?L('Worst queue','最长排队'):L('Queue','排队')}</span><div class="v" style="color:${q.m>0?'var(--risk)':engFull(s)?'var(--fg)':'var(--accent)'}">${fmtN(q.m)}<small>m${elsewhere?' · '+esc(shortSt(q.name)):''}</small></div></div>
-    <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
+    <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${L('main approach','主进口道')} ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Detouring','绕行')}</span><div class="v">${pctS(s.detour_share)}<small>${top?esc(shortSt(top.name))+' '+pctS(top.share):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Network delay','全网延误')}</span><div class="v">${fmtN(s.delay_min)}<small>${L('veh·min / h','车·分钟 / 时')}</small></div></div></div>`;
 }
 // T20 addendum 5: what the detour share rests on, and why there is a queue (demand vs capacity past the works)
 function engInformed(s){const a=s.approaches&&s.approaches[s.main];if(!a)return null;let v=0,n=0;for(const t of TYPES4){const k=(s.by_type[t]||{}).vehicles||0,x=a.by_type&&a.by_type[t];if(!x||!k)continue;v+=k*(x.informed||0);n+=k;}return n?v/n:null;}
 function engWhy(s){
-  const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),out=[];
+  const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),st=esc(shortSt(EP.street)),ap=s.approaches&&s.approaches[s.main],out=[];
   // total flow still using the works section (after detours) against what fits past it: the gap is the queue
-  if(l&&l.cap>0&&l.v>0){const st=esc(shortSt(EP.street)),over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
-  out.push(L(`Assumption: detours follow the engine's route-choice model (T12 parameters)${inf!=null?`; about ${pctS(inf)} of drivers read and act on the signs`:''}. Fewer compliant drivers → fewer detours, longer queue.`,`假设：绕行按引擎的路线选择模型（T12 参数）算${inf!=null?`，约 ${pctS(inf)} 的司机读懂并照标志 / 屏走`:''}。照做的人越少，绕行越少、排队越长。`));
+  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
+  // full closure: nothing fits past the works (cap 0) — say where the queue comes from instead of dropping the line (T26 2.5)
+  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} is shut at the works: the ${vol}veh/h on the main approach have to detour${s.blocked_vph>0?`, and ${fmtN(s.blocked_vph)} veh/h have no way round`:''} — the queue builds on the streets they turn into.`,`${st} 施工段全封、过不去：主进口道 ${vol}辆/时只能绕行${s.blocked_vph>0?`，其中 ${fmtN(s.blocked_vph)} 辆/时无路可绕`:''} —— 排队出在它们拐进去的那几条街上。`));}
+  // inf = the share who read and understand the sign — not who obey it. Whether they turn is the route-choice model's call, and
+  // how far drivers trust signs has no source yet (T12 sign_trust is null): an assumed value (D-0929-1536)
+  out.push(L(`${inf!=null?`About ${pctS(inf)} of drivers read and understand the sign. `:''}Whether they change route comes from the route-choice model's per-driver-type parameters (trust in signs is an assumed value) — this time ${pctS(s.detour_share)} detour.`,`${inf!=null?`约 ${pctS(inf)} 的司机读懂屏上的字；`:''}改不改道由路线选择模型按各类司机的参数算（对标志的信任度是假设值），这次 ${pctS(s.detour_share)} 绕行。`));
   return`<div class="eng-assume">${out.map(t=>`<p>${t}</p>`).join('')}</div>`;
 }
 const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
@@ -2518,9 +2530,15 @@ function engOutHTML(){
   if(EP.runErr&&!EP.sum)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   const s=EP.sum;if(!s)return`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`;
   const stale=EP.busy||EP.badText||!!EP.runErr;
-  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}</div>`;
 }
-function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
+// Step 1, under the sign text: why there is a queue, trams / people on foot, where the numbers come from (T26 2.3)
+function engMoreHTML(){
+  const s=BE.api&&EP.link?EP.sum:null;if(!s)return'';
+  const stale=EP.busy||EP.badText||!!EP.runErr;
+  return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -2551,7 +2569,8 @@ function engPanel1(){
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>
-    <div id="engCheck" class="stack"></div></div>`;
+    <div id="engCheck" class="stack"></div></div>
+  <div id="engMore" class="stack eng-more"></div>`;
 }
 function engBind1(){
   const P=document.getElementById('panel');if(!P||!BE.api)return;
@@ -2650,9 +2669,9 @@ function eng4HTML(){
     else if(!c)h+=`<div class="card eng-note"><b>${EP.cmpBusy?L('Recomputing both plans…','两份方案都在重算…'):L('Comparison unavailable','对比没算出来')}</b></div>`;
     else{
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
-      const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better?'var(--accent)':'var(--works)'}">${y}</span></div>`;
-      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
-      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} assumes drivers react to the changed sign as the route-choice model (T12 parameters) predicts; if fewer comply, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：司机按路线选择模型（T12 参数）对改后的屏 / 标志做出反应；照做的人少，收益就小。`)}</p>
+      const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better==null?'var(--fg)':better?'var(--accent)':'var(--works)'}">${y}</span></div>`; // better null = neither good nor bad
+      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),null)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
+      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is what the route-choice model predicts drivers do with the changed sign (trust in signs is an assumed value); if fewer follow it, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型按各类司机的参数推算他们看到改后的屏会怎么走（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags,A)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
@@ -2704,7 +2723,8 @@ function engFit(){
   if(s&&s.queue_m>0)add(engUp(Math.min(s.queue_m,engWorldReach())));
   for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
   // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
-  const mob=!matchMedia('(min-width: 821px)').matches,mt=mob?96:0,mb=mob?104:0;
+  // desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
+  const mob=!matchMedia('(min-width: 821px)').matches,lg=document.getElementById('legend'),mt=mob?96:0,mb=mob?104:(lg&&lg.offsetHeight?lg.offsetHeight+52:0);
   const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
   const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),1.1,3.6);
   return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
@@ -2767,7 +2787,8 @@ function engDraw(which){
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
   const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
-  drawTag(ctx,mx,my,engDx(mx,36),54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
+  // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
+  drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
   if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}

@@ -4,12 +4,12 @@
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="var(--accent)" aria-hidden="true"><circle cx="13" cy="13" r="3" fill="var(--accent)" stroke="none"/><circle cx="13" cy="13" r="7" stroke-opacity=".7" stroke-width="1.5"/><circle cx="13" cy="13" r="11.4" stroke-opacity=".35" stroke-width="1.5"/></svg>
       <span class="brand-name">RippleTwin</span>
     </div>
-    <div class="scene"><span class="eyebrow" data-zh="场景">Scene</span><span class="scene-name" data-zh="Swanston St × La Trobe St · 墨尔本 CBD">Swanston St × La Trobe St · Melbourne CBD</span></div>
+    <div class="scene"><span class="eyebrow" data-zh="场景">Scene</span><span class="scene-name" id="sceneName">Melbourne CBD</span></div>
     <nav class="stepper" id="stepper" aria-label="Workflow" data-zh-aria-label="工作流程">
       <button type="button" data-step="1"><span class="n">01</span><span data-zh="方案">Plan</span></button>
-      <button type="button" data-step="2"><span class="n">02</span><span data-zh="压力测试">Stress test</span></button>
-      <button type="button" data-step="3"><span class="n">03</span><span data-zh="涟漪追踪">Ripple trace</span></button>
-      <button type="button" data-step="4"><span class="n">04</span><span data-zh="修复">Repair</span></button>
+      <button type="button" data-step="2"><span class="n">02</span><span data-zh="路口仿真">Junction sim</span></button>
+      <button type="button" data-step="3"><span class="n">03</span><span data-zh="影响">Impact</span></button>
+      <button type="button" data-step="4"><span class="n">04</span><span data-zh="改进">Improve</span></button>
     </nav>
     <div class="top-right">
       <button type="button" class="lang-toggle" id="langToggle" aria-label="Switch language: English / 中文" data-zh-aria-label="切换语言：English / 中文"><span data-l="en">EN</span><span data-l="zh">中</span></button>
@@ -31,7 +31,7 @@
   </aside>
 
   <main class="map" id="map">
-    <canvas id="mapCanvas" aria-label="Map of Swanston St and La Trobe St with simulated road users and weather layers" data-zh-aria-label="Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层"></canvas>
+    <canvas id="mapCanvas" aria-label="Map of the Melbourne CBD"></canvas>
     <div class="hud">
       <div class="wx glass" id="wx" role="radiogroup" aria-label="Weather scenario" data-zh-aria-label="天气情景"></div>
       <div class="basemap glass" id="basemap" aria-label="Basemap" data-zh-aria-label="底图">
