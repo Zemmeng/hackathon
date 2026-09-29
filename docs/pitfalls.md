@@ -29,3 +29,4 @@
 | AI | **AI 说「我没有出图/部署工具」把活推回给人** | 没先查本机 → 先看 `gh` `wrangler` `codex` `python3` 在不在，能跑的自己跑 | 模板预置 |
 | 前端 | **仿真里左转车和直行自行车互相等，路口死锁** | 用「朝向射线」找前车，把正在穿过自己路线的车也当成了前车 → 同一路线按弧长找前车，别的路线只认朝向几乎平行的（点积 ≥ 0.9），并道单独列出；用 node 跑整小时的测试能抓到（进场量会远低于数据） | lead · 09-29 |
 | 前端 | **屏幕关着或 Chrome 在后台时，canvas 动画不动，截图只有开头一两帧** | 浏览器不给不可见页面跑 requestAnimationFrame → 仿真逻辑写成不碰 DOM 的纯函数，用 node 验证整小时结果；看动画用 preview 面板或亮屏的前台页 | lead · 09-29 |
+| env | **`bash scripts/check.sh` 报 `mod：: unbound variable`（UTF-8 环境）** | bash 把 `$mod，` 解析成变量名的一部分（全角逗号 U+FF0C）；`set -u` 找不到就崩 → 临时 `LC_ALL=C bash scripts/check.sh`；根治把 `$var` 后面紧跟非 ASCII 的改成 `${var}`（check.sh 约 22 处，独占区由 lead 改） | @Unzzip · 09-29 |
