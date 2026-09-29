@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 用途：跑本模块全部测试（tests/*.test.mjs），逐个执行并汇总
-# 用法：bash apps/sim/test.sh（任意目录都能跑）；前置条件：node ≥ 18，不需要 npm i
+# 用法：bash apps/engine/test.sh（任意目录都能跑）；前置条件：node ≥ 18，不需要 npm i
 # 退出码：0 全部通过；1 有失败（断言失败 / 崩溃 / 缺计数行 / 超时 / 没找到测试都算）
 # 最后一行固定是「N passed, M failed」，scripts/check.sh 靠它汇总
 cd "$(dirname "$0")" || exit 1
@@ -12,7 +12,7 @@ if ! command -v node >/dev/null 2>&1; then
   echo "❌ 没找到 node（需要 ≥ 18）"; echo "0 passed, 1 failed"; exit 1
 fi
 
-OUT=$(mktemp "${TMPDIR:-/tmp}/sim-test.XXXXXX") || exit 1
+OUT=$(mktemp "${TMPDIR:-/tmp}/engine-test.XXXXXX") || exit 1
 PID=""
 trap '[ -n "$PID" ] && kill "$PID" 2>/dev/null; rm -f "$OUT"' EXIT
 trap 'exit 130' INT TERM
@@ -33,11 +33,11 @@ for f in tests/*.test.mjs; do
     echo "❌ $f 超时（>${LIMIT}s）"; F=$((F + 1))
   elif ! printf '%s\n' "$last" | grep -Eq '^[0-9]+ passed, [0-9]+ failed$'; then
     # 崩溃不许伪装成绿：没有计数行一律记 1 个失败
-    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 ${code}）"; F=$((F + 1)); tail -n 20 "$OUT" | sed 's/^/   /'
+    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 $code）"; F=$((F + 1)); tail -n 20 "$OUT" | sed 's/^/   /'
   else
     p=${last%% passed*}; q=${last##*, }; q=${q%% failed}
     P=$((P + p)); F=$((F + q))
-    if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f ${last}，但退出码是 $code"; F=$((F + 1))
+    if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f $last，但退出码是 $code"; F=$((F + 1))
     elif [ "$q" -gt 0 ]; then echo "❌ $f $last"; grep '^❌' "$OUT" | sed 's/^/   /'
     else echo "✅ $f $last"; fi
   fi
