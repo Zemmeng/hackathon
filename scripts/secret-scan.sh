@@ -67,7 +67,7 @@ PATTERNS = [
     ('groq_key', re.compile(r'(?<![A-Za-z0-9_])gsk_[A-Za-z0-9]{40,}'), 0),
     ('xai_key', re.compile(r'(?<![A-Za-z0-9_-])xai-[A-Za-z0-9]{40,}'), 0),
     ('replicate_token', re.compile(r'(?<![A-Za-z0-9_])r8_[A-Za-z0-9]{30,}'), 0),
-    # 请求头里直接写的值：Bearer $VAR、Bearer ${…}、Bearer <你的key> 都不算（字符集里没有 $ { <）
+    # 请求头里直接写的值：Bearer $VAR / Bearer ${…} / Bearer <你的key> 都不算（字符集里没有 $ { <）
     ('perplexity_key', re.compile(r'(?<![A-Za-z0-9_-])pplx-[A-Za-z0-9]{40,}'), 0),
     ('nvidia_key', re.compile(r'(?<![A-Za-z0-9_-])nvapi-[A-Za-z0-9_-]{40,}'), 0),
     ('fireworks_key', re.compile(r'(?<![A-Za-z0-9_])fw_[A-Za-z0-9]{20,}'), 0),
@@ -211,9 +211,9 @@ if [ "$rc" -eq 0 ]; then
   [ "$MODE" = "history" ] && echo "✅ secret-scan --history：全部历史零命中" >&2
   exit 0
 fi
-[ "$rc" -ne 1 ] && { echo "❌ secret-scan 自己出错了（python 退出码 $rc）" >&2; exit 2; }
+[ "$rc" -ne 1 ] && { echo "❌ secret-scan 自己出错了（python 退出码 ${rc}）" >&2; exit 2; }
 {
-  echo "🔑 secret-scan（--$MODE）：上面每行是「位置:模式名」，只列位置，不打印值。"
+  echo "🔑 secret-scan（--${MODE}）：上面每行是「位置:模式名」，只列位置，不打印值。"
   echo "   修法：把值从文件里删掉，改成读环境变量（本地放 .env / .dev.vars，线上用 wrangler secret put）。"
   [ "$MODE" = "staged" ] && echo "   暂存区的：改完重新 git add；秘密文件本身用 git rm --cached <文件>。"
   echo "   误报：改成占位写法（<KEY>、your_…），或找 lead 调整本脚本白名单。"

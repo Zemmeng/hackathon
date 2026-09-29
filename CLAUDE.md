@@ -86,8 +86,8 @@ bash scripts/secret-scan.sh --history # 转 public 前扫全部历史
 
 | 规模 | 做法 |
 |---|---|
-| 1–10 个 | 直接开。只用 `.claude/agents/` 里的定义，或显式传 `model: opus`。**禁用 fable** |
-| > 10 个，或任何 `Workflow` | 先报方案（几个、做什么、预计 token、产出落在哪），等人说「开始」 |
+| 任意数量，含 `Workflow` | 直接开，求快（D-0929-1429 推翻了「超过 10 个先问」）。只用 `.claude/agents/` 里的定义，或显式传 `model: opus`。**禁用 fable** |
+| 开之前 | 一句话报：几个、做什么、产出落在哪；不用等人说「开始」 |
 
 - 有队友正在赶功能时不跑大批量审查；每批只跑 2–3 个维度
 - 每个 agent 的 prompt 写明：只读哪些文件；工具调用 ≤ 20 次；先查 `.claude/agent-out/<名>.md` 有没有现成的；做完先 Write 落盘再返回（被叫停也不丢）
