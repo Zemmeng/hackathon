@@ -93,7 +93,7 @@ def unsafe_in(text):
         # 引擎 / 读屏 / 顾问 / check 给的字段，和用户打的字（f1 f2 sign）、顾问改法（what kind frames）
         if re.fullmatch(r"\s*(fmtN|pctS|engHour)\([^()]*(\([^()]*\))?[^()]*\)\s*", code):  # 数字格式化，输出只有数字
             continue
-        if re.search(r"(?<![.\w])(street|name|msg|message|reading_src|src|equipment|f1|f2|sign|what|kind|frames|text|m)\b|\.(street|name|msg|message|reading_src|src|equipment|f1|f2|sign|kind|frames|text)\b", code) and "esc(" not in code:
+        if re.search(r"(?<![.\w])(street|name|msg|message|reading_src|src|equipment|f1|f2|sign|what|kind|frames|text|headsign|short|m)\b|\.(street|name|msg|message|reading_src|src|equipment|f1|f2|sign|kind|frames|text|headsign|short)\b", code) and "esc(" not in code:
             bad.append(x[:60])
     return bad
 

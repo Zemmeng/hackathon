@@ -312,3 +312,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-legend span{display:inline-flex;align-items:center;gap:6px}
 .eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
 .eng-wrap{flex-wrap:wrap;gap:8px}
+.eng-impacts>div{padding:7px 11px;font-size:12px}
+.eng-impacts .val{font:600 10.5px/1.2 var(--f-mono);color:var(--works)}
+.eng-trs>div{align-items:flex-start}
+.eng-tr .md{min-width:30px;height:20px;padding:0 5px;border-radius:4px;display:inline-grid;place-items:center;font:700 10.5px/1 var(--f-mono);color:#fff;flex:none}
+.eng-tr small{display:block;font:400 10.5px/1.4 var(--f-mono);margin-top:3px;white-space:normal}
