@@ -27,7 +27,7 @@ argument-hint: <赛题链接或文件>
 
 - `docs/2-plan.md`：MVP 三列、模块表、里程碑实际时间、mock 方案、风险
 - `docs/contract.md` v0
-- 选栈默认 `starters/`；换栈要追加理由
+- 选栈默认见 D-03（`starters/` 已按 D-0929-1311 删掉）；换栈要追加理由
 
 ## 第四步：骨架与派任务
 

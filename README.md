@@ -131,7 +131,6 @@ gh pr create --fill                                     # 只动了自己模块�
 | [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md) | 怎么部署到 Cloudflare、队友怎么拿到部署权限 | lead |
 | [handoff/](handoff/README.md) | 交接单怎么写 | 所有人 |
 | [apps/README.md](apps/README.md) | 模块规则、端口表、模块 README 模板 | lead |
-| [starters/README.md](starters/README.md) | 可选的起步骨架（零构建前端 + Cloudflare Worker / Python 工具） | lead |
 | [scripts/README.md](scripts/README.md) | 脚本和 hook 一览 | lead |
 | [CLAUDE.md](CLAUDE.md) | 给 AI 的操作规则 | lead |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | 协作规矩的唯一出处 | lead |
@@ -178,4 +177,4 @@ gh pr create --fill                                     # 只动了自己模块�
 
 ## 披露与 License
 
-本仓库的工具脚本、hook 和 `starters/` 骨架是赛前准备的模板，不含业务代码；业务代码全部在比赛期间写。用到的第三方 API 和 AI 工具在 `docs/4-demo.md` 的提交清单里列明。[MIT](LICENSE)。
+本仓库的工具脚本、hook 和流程文档是赛前准备的协作工具，不含业务代码；赛前写的 `starters/` 通用骨架已按 D-0929-1311 删掉，业务代码全部在比赛期间写。用到的第三方 API 和 AI 工具在 `docs/4-demo.md` 的提交清单里列明。[MIT](LICENSE)。

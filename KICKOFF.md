@@ -43,7 +43,7 @@
 - 模块表：**模块边界就是人的边界**，模块数 ≤ 人数，另指定 pitch owner
 - 契约 v0 写进 `docs/contract.md`：端点、消息、带 `v` 的状态形状、错误格式、mock
 - 在 `docs/2-plan.md` 的里程碑表里填实际时间
-- 默认用 `starters/`；要换栈先在 decisions 写理由
+- 默认栈见 D-03（赛前的 `starters/` 已按 D-0929-1311 删掉，模块手工建）；要换栈先在 decisions 写理由
 
 ### 第 4 步 · 骨架与派任务（15 分钟，只有 lead 动手）
 

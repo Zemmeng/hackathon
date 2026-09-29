@@ -5,7 +5,7 @@
 #   [1] 秘密扫描   [2] 秘密文件被跟踪   [3] 分支与越界   [4] 模块结构   [5] 模块测试
 #   [6] 仓库卫生   [7] RULES 块一致     [8] 交接单格式   [9] hackathon.conf 可解析
 # 用法：
-#   bash scripts/check.sh                  全量：扫全部文件，跑 apps/* 和 starters/* 的全部 test.sh
+#   bash scripts/check.sh                  全量：扫全部文件，跑 apps/* 的全部 test.sh
 #   bash scripts/check.sh --quick          快速：秘密扫描和测试只覆盖相对 base 改动过的文件 / 模块
 #   bash scripts/check.sh --base <ref>     对比基准（默认 origin/main → main；都没有就跳过 diff 类检查并 ⚠️）
 #   bash scripts/check.sh --e2e [URL]      只做线上冒烟（不给 URL 就读 hackathon.conf 的 DEMO_URL）：
@@ -1006,11 +1006,11 @@ check_5() {
   local t m all="" run="" n_all=0 n_run=0 n_fail=0 total_p=0 failed_mods=""
   reset_item
   [ -n "$TIMEOUT_NOTE" ] && add_w "$TIMEOUT_NOTE"
-  for t in apps/*/test.sh starters/*/test.sh; do
+  for t in apps/*/test.sh; do
     [ -f "$t" ] || continue
     all="$all$t"$'\n'; n_all=$((n_all + 1))
   done
-  if [ "$n_all" -eq 0 ]; then add_w "没有任何 apps/*/test.sh 或 starters/*/test.sh"; finish_item 5 "模块测试"; return; fi
+  if [ "$n_all" -eq 0 ]; then add_w "没有任何 apps/*/test.sh"; finish_item 5 "模块测试"; return; fi
   if [ "$MODE" = quick ] && [ -n "$MB" ]; then
     while IFS= read -r t; do
       [ -n "$t" ] || continue

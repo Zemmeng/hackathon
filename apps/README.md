@@ -1,6 +1,6 @@
 # apps/ —— 各模块的代码放这里
 
-kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.sh` 从 `starters/` 生成模块。
+kickoff 前这个目录只有这份 README。模块全部开赛后手工建（赛前的 `starters/` 已按 D-0929-1311 删掉，`new-app.sh` 随之停用）。
 
 ## 规则
 
@@ -24,16 +24,13 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 
 | 类型 | 从哪起 | 谁分配 |
 |---|---|---|
-| Worker（`wrangler dev`） | 8787 被 `starter-worker` 占用，模块从 **8788** 起 | `new-app.sh` 自动分配，写进 `.claude/launch.json` |
-| Python 服务 | 8000 | `new-app.sh` 自动分配 |
-| 静态页（`python3 -m http.server`） | 4173 被 `starter-static` 占用 | 不自动分配；要单独预览某模块的 `public/` 就照 `starter-static` 那条手动加 |
+| Worker（`wrangler dev`） | **8788** 起（8787 原是 starter-worker，已删） | lead 手工分配，写进 `.claude/launch.json` |
+| Python 服务 | 8000 | lead 手工分配 |
+| 静态页（`python3 -m http.server`） | 4174 起（4173 原是 starter-static，已删） | 要单独预览某模块的 `public/` 就照 `sim` 那条手动加 |
 
-## 生成新模块（只能 lead 在 `lead/*` 分支执行）
+## 加新模块（只能 lead 在 `lead/*` 分支执行）
 
-```bash
-bash scripts/new-app.sh <模块名> web-worker --owner <handle>
-bash scripts/new-app.sh <模块名> py-tool --owner <handle>
-```
+`new-app.sh` 已停用（它只会复制 `starters/`，D-0929-1311 删了）。手工建：`apps/<模块名>/` 放下一节要求的文件 → 登记表加一行 → `.github/CODEOWNERS` 加 `/apps/<模块名>/ @<handle>` → 要本地预览再往 `.claude/launch.json` 加一条。
 
 ## 每个模块必须有
 

@@ -27,11 +27,10 @@
 /.github/                     @Zemmeng
 /.githooks/                   @Zemmeng
 /scripts/                     @Zemmeng
-/starters/                    @Zemmeng
 /.gitignore                   @Zemmeng
 /.gitattributes               @Zemmeng
 
-# ---- 模块：kickoff 时由 lead 追加（scripts/new-app.sh 会打印要加的行）----
+# ---- 模块：kickoff 时由 lead 追加（手工加；new-app.sh 已随 starters/ 停用，D-0929-1311）----
 # /apps/<模块>/                 @<负责人>
 /apps/sim/                    @Zemmeng
 /apps/roads/                  @louisxie316-dotcom

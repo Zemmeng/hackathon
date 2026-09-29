@@ -29,7 +29,7 @@
 | 只新建区 | `handoff/` | 所有人 | 新建带自己 handle 的文件，不改别人的 |
 | API 卡区 | `docs/llm-apis/` | 所有人 | 建、改、删自己的卡 `<handle>-<服务商>.md`，不碰别人的；只写变量名，不写 key 的值（`README.md` `TEMPLATE.md` 归 lead） |
 | pitch 区 | `docs/4-demo.md` · `docs/pitch-assets/` | pitch owner | 用 `<handle>/pitch/T<n>-<短名>` 分支（模块段写 `pitch`，不需要有 `apps/pitch/`），随便改 |
-| 独占区 | README · CLAUDE.md · AGENTS.md · CONTRIBUTING · KICKOFF · hackathon.conf · `docs/1-brief` `2-plan` `contract` `deploy-cloudflare` · `.claude/` `.github/` `.githooks/` `scripts/` `starters/` · `.gitignore` `.gitattributes` | 只有 lead | 在 `lead/*` 分支上改 |
+| 独占区 | README · CLAUDE.md · AGENTS.md · CONTRIBUTING · KICKOFF · hackathon.conf · `docs/1-brief` `2-plan` `contract` `deploy-cloudflare` · `.claude/` `.github/` `.githooks/` `scripts/` · `.gitignore` `.gitattributes` | 只有 lead | 在 `lead/*` 分支上改 |
 
 判定链：**分支名 → 模块 → 可写路径**，`scripts/check.sh [3]` 自动查，不靠人盯。
 
