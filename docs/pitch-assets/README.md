@@ -14,3 +14,9 @@
 - 导出 PDF：浏览器打印 → 目标「另存为 PDF」→ 边距「无」→ 勾上「背景图形」，页面大小是 16:9；覆盖同名的 `-en.pdf` / `-zh.pdf`
 - 导出 PNG（可选）：截图整张图，存成 `-en.png` / `-zh.png`，保持 < 500KB
 - 谁都能改：开 `<handle>/pitch/T<n>-arch` 分支（模块段写 `pitch`），`check [3]` 放行 `docs/pitch-assets/`
+
+## 架构图 SVG 版 `03-architecture-rippletwin-en.svg`
+
+- 1920×1080 英文，文字、框、箭头都是矢量，能在 Figma / Illustrator / 浏览器里直接改字（不是贴图）
+- 字体：Inter + Source Serif 4（Google Fonts，OFL 授权）。浏览器打开时在线加载，没网或在编辑器里退回 Charter / Georgia + Helvetica / Arial，两套都量过不出框。**第三方素材要在提交里列出**
+- 状态标签（planned / working）照 09-29 初筛稿画的，没按最新实现核对：行人、电车、顾问、大模型接口都已往前走了，讲之前核一下
