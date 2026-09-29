@@ -17,7 +17,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | # | 问题 | 严重度 | 负责人 | 状态 |
 |---|---|---|---|---|
 | R1 | T4 路网计算由 lead 的引擎会话做（T9，#20 已合）；引擎把 `readSigns()` 报错静默当成「没人被说动」，已转引擎会话另开 PR | 中 | @Zemmeng | 等引擎会话修 |
-| R2 | 初筛 3 页幻灯片 09-30 12:30 截止，还没人负责 | 高 | lead | 17:00 集成点定 |
+| R2 | 初筛 3 页幻灯片 09-30 12:30 截止 | 高 | lead | 草稿已出（T15，PR #44，21:00 按 T16–T19 更新）；等全队定队名、放不放链接、谁提交 |
 | R3 | `apps/web` 已合（#19）；`starters/` 还没删（D-0929-1311） | 低 | @Zemmeng（T6） | starters 待删 |
 | R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | ✅ 已解决：数据 JSON 上限 2MB、不再报 500KB（D-0929-1430） |
 | R5 | T2 网页还没把路网 / 建筑 / 引擎 / 读屏 / 参数串起来（D-0929-1445）；高he 15:00 后无推送 | 高 | @unicornnnnnny | 17:00 前要看到进展 |
@@ -62,7 +62,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T17 | 电车 / 公交受的影响：引擎按 PTV 时刻表算经过施工的线路、每班多等几秒、乘客·分钟、全封时停运 / 改线；页面第 1/3/4 步和地图显示 | ✅ | `lead/integrate-t16-19`（合并 `lead/t16-transit` + `Zemmeng/web/T17-impacts-ui`） | 09-29 17:36 |
 | T18 | 行人受的影响：方案加 `closes.footpath`，引擎按行人计数和人行道网络算绕行距离、多过几次马路；页面第 1 步加人行道开关 | ✅ | `lead/integrate-t16-19`（合并 `lead/t17-peds` + `Zemmeng/web/T17-impacts-ui`） | 09-29 17:36 |
 | T19 | 大模型接口留好：api Worker 接 OpenAI 兼容接口（默认 DeepSeek）+ 缓存 + 失败回规则 + 预算演示答案脚本，部署并绑到 site；默认 MOCK=1 不花钱，lead 之后只放 key | ✅ | `lead/integrate-t16-19`（合并 `lead/t19-llm-ready`） | 09-29 17:37 |
-| T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | 🔨 代码已合，等高h 部署 | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
+| T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | ✅ 已上线（`DEMO_URL`，lead 备份部署） | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
 
 卡住了：
 
