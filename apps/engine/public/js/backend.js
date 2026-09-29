@@ -19,7 +19,10 @@ import {
 } from './index.js';
 import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk, timeErrors, whenErrors, usageOf, sharingWith, vmsRead } from './options.js';
 import { isActive } from './worksite.js';
+import { requestKey } from './reading.js';
 
+const jclone = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+export const AI_LOG_MAX = 200; // AI 调用日志最多留几条（环形，旧的先丢）；只在内存里，不上传
 export const PEDS_WAIT_MS = 8000; // 封了人行道、行人数据还在路上时 run() 最多等几毫秒（再慢就先给车的数字，summary.peds.src = null、pending = true）
 
 export const PATHS = {
@@ -160,6 +163,7 @@ async function loadPeds(opts, base, f) {
 }
 
 // opts：base（前缀，默认同源）、fetch、importer（动态 import，测试里注入）；也可以直接给 network / flows / transit / params / readSigns / checkSigns / walk / peds
+//   onAiLog（每次读屏调用回调一条记录）、aiLogMax（日志条数上限，默认 AI_LOG_MAX）
 export async function connect(opts = {}) {
   const base = opts.base ?? '';
   const f = 'fetch' in opts ? opts.fetch : globalThis.fetch;
@@ -200,11 +204,38 @@ export async function connect(opts = {}) {
   }
   // 读屏抛错：请求不合规范（SignError，带 .code）→ 照抛，引擎把这类人按「没人被说动」算，summary.flags.failed 报条数；
   // 其他错（比如非 https 页面上没有 crypto.subtle，T5 算缓存键就抛）→ 这一条改用引擎自带的规则读数，不让数字悄悄变差
+  // AI 调用日志（网页第 3 步「AI 路人」和「AI 调用日志」）：每次读屏调用记一条 { seq, t, persona, signs, roads, kmh, read_s, src, model, ms, reading }，
+  // 规则兜底也照实记（src: rule + fallback 原因），抛错记 src: error。只包一层，不多发请求、不改读数；引擎按「字 + 人」缓存读数，同一句话只问一次
+  const aiLog = [];
+  const logMax = Number.isInteger(opts.aiLogMax) && opts.aiLogMax > 0 ? opts.aiLogMax : AI_LOG_MAX; // 测试可以改小
+  const aiSubs = new Set(typeof opts.onAiLog === 'function' ? [opts.onAiLog] : []);
+  const aiByKey = new Map(); // requestKey → 这一次会话里这个请求的那条记录（readingsOf 用）
+  let aiSeq = 0;
+  const clk = () => (globalThis.performance?.now ? globalThis.performance.now() : Date.now());
+  function aiRecord(req, r, t0, extra = {}) {
+    const e = {
+      seq: ++aiSeq, t: new Date().toISOString(), persona: req?.persona ?? null,
+      signs: jclone(req?.signs || []), roads: jclone(req?.roads || []), kmh: req?.kmh ?? null,
+      read_s: (req?.signs || []).map(x => x?.read_s ?? null),
+      src: r ? (r.src ?? null) : 'error', model: r?.model ?? null, ms: Math.max(0, Math.round(clk() - t0)),
+      reading: r ? jclone(r) : null, ...extra,
+    };
+    aiLog.push(e);
+    if (aiLog.length > logMax) aiLog.splice(0, aiLog.length - logMax);
+    try { aiByKey.set(requestKey(req), e); } catch { /* 请求不合规范也照样记日志 */ }
+    for (const fn of aiSubs) { try { fn(jclone(e)); } catch { /* 页面的回调出错不影响读数 */ } }
+  }
   const reader = async req => {
-    try { return await rs(req); } catch (e) {
+    const t0 = clk();
+    try { const r = await rs(req); aiRecord(req, r, t0); return r; } catch (e) {
       const k = e?.code || 'fallback: ' + (e?.message || String(e));
       status.reader_errors[k] = (status.reader_errors[k] || 0) + 1;
-      if (!e?.code && rs !== mockReadSigns) return mockReadSigns(req);
+      if (!e?.code && rs !== mockReadSigns) {
+        const r = await mockReadSigns(req);
+        aiRecord(req, r, t0, { fallback: String(e?.message || e).slice(0, 200) });
+        return r;
+      }
+      aiRecord(req, null, t0, { error: String(e?.code || e?.message || e).slice(0, 200) });
       throw e;
     }
   };
@@ -241,6 +272,8 @@ export async function connect(opts = {}) {
     } catch (e) { return { ...pedsUnavailable(plan), error: String(e?.message || e) }; } // 数据有毛病也不拖垮车的数字（也不留没人接的 rejected promise）
   }
   const validate = plan => validatePlan(plan);
+  const runPlans = new WeakMap(), readCache = new WeakMap(); // run() 的 summary → 它的方案 / 读数（readingsOf 用）
+  let lastRun = null;
 
   // 屏上文字合不合规范：按引擎实际会发的请求查（每段受影响的路 × 通勤者那一份「全部标志」）。
   // 文字合不合规范和时段无关：方案里所有施工都查，不只查这个时段在做的
@@ -275,7 +308,39 @@ export async function connect(opts = {}) {
     const res = engine.evaluate(plan);
     const s = summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan), transit: transitFor(plan, res) });
     s.peds = await pedsP1; // 封人行道的行人绕行（T17）；没封 / 不在施工时段 = 全 0，数据没加载上 = { src: null }
+    runPlans.set(s, jclone(plan)); lastRun = s;
     return s;
+  }
+
+  // 某次 run() 的主路段上，每类人读到的是哪几块屏（按经过顺序）、读成了什么、从哪来（file / kv / llm / rule）、花了几毫秒。
+  // 只查已有的读数和日志（不再问读屏、不发请求）；summary 不是 run() 出的、没有主路段 → null
+  function readingsOf(s) {
+    if (!s || !runPlans.has(s)) return null;
+    if (readCache.has(s)) return jclone(readCache.get(s));
+    let out = null;
+    try {
+      const plan = runPlans.get(s), m = s.main == null ? null : s.approaches[s.main];
+      const ws = m && (plan.worksites || []).find(w => w.id === m.worksite);
+      if (ws) {
+        const active = (plan.worksites || []).filter(w => isActive(w, plan.when));
+        // 和引擎 structure() 同一种算法（结构和时段无关），拿到同一段 approach → 同样的读数请求
+        const ap = affected(engine.net, null, ws, { date: '2000-01-03', hour: 0 }, capFactors(engine.net, active)).find(a => a.entry === m.entry);
+        if (ap) {
+          const full = requestsFor(ap, ws, TYPES).full;
+          const personas = {};
+          for (const t of TYPES) {
+            const req = full[t];
+            if (!req) { personas[t] = null; continue; }
+            const k = requestKey(req), hit = aiByKey.get(k), r = engine.readings.get(k) ?? hit?.reading ?? null;
+            personas[t] = { signs: jclone(req.signs), roads: jclone(req.roads), kmh: req.kmh, reading: r ? jclone(r) : null,
+              src: r?.src ?? hit?.src ?? null, model: r?.model ?? null, ms: hit?.ms ?? null, t: hit?.t ?? null, fallback: hit?.fallback ?? null };
+          }
+          out = { when: s.when, worksite: m.worksite, entry: m.entry, street: m.street, dir: m.dir, personas };
+        }
+      }
+    } catch { out = null; }
+    readCache.set(s, out);
+    return jclone(out);
   }
 
   // 前后对比（第 4 步）：同一时段两份方案，负数 = 变好
@@ -518,6 +583,10 @@ export async function connect(opts = {}) {
     status: () => JSON.parse(JSON.stringify({ ...status, calib: engine.calib, params_used: engine.params.used })),
     run, compare, advise, check: checkPlan, validate,
     pedsReady: () => pedsP, // 行人数据取完（不管成没成）→ status().peds：fetched / given / none
+    // AI 调用日志：aiLog() → 这次会话每次读屏调用（时间顺序，最多 AI_LOG_MAX 条）；onAiLog(fn) 每来一条调 fn(记录)，回退订函数
+    aiLog: () => jclone(aiLog),
+    onAiLog: fn => { if (typeof fn !== 'function') return () => {}; aiSubs.add(fn); return () => aiSubs.delete(fn); },
+    readingsOf, lastReadings: () => readingsOf(lastRun),
     demo: demoPlan, demos: DEMO_NAMES,
   };
 }

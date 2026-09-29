@@ -60,8 +60,12 @@ Owner: @unicornnnnnny
 | `src/js/4-sim.js` | 多智能体仿真：IDM 跟驰、信号相位、行人放行、TTC 冲突检测、脚本化的 C-17 / D-42 / Bus 250 事件 |
 | `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑，分几个 task 先建好轮廓、栅格、当前底图的影像，最后 `rebuildWorld(nw, g, imgs)` 在一帧里换掉 `W / G / IMG`（`WX.rebind()` 重建天气栅格）；存下来的天气（如高温）的栅格只在 `start()` 里建一次 |
 | `src/js/6-engine.js` | 接引擎（T13）：连 `backend.js`、第 1 步方案表单、第 3 步路网涟漪、第 4 步顾问 + 前后对比、地图上的施工区 / 排队 / 绕行 / 变慢路段；开头 `pure:begin…pure:end` 是测试要跑的纯函数（坐标换算、选路段、拼方案） |
+| `src/js/8-compare.js` | T23（@jinmingq，D-0929-2011 ④）：第 4 步顾问下面的「方案对比 · 选一套」——T22 的 `be.options()` 按 RPM 库存配的 3 套（最省 / 标准 / 引导，引擎算好延误、租金、库存检查；拿不到时退回「现在的方案 + 顾问的改法」逐套 `run()`），并排比车延误 / 电车公交 / 行人 / 租金，标「最少」，库存不够、此时段不施工另起一行提示；选定 + 施工方 / 市政 + 理由，导出一页执行包（T5 的 `/api/public/js/pack.js`，打印 / 存 PDF / 复制）。开头 `pure:begin…pure:end` 是测试要跑的纯函数 |
+| `src/js/9-ai.js` | AI 面板（lead，D-0929-2307）：第 3 步「AI 路人 · 各自读到了什么」——主路段上 4 类人各自看到的屏（按经过顺序，VMS 各帧用 ▸ 连）、看到 / 看懂 / 相信的条和区间、路线建议、一句理由（textContent）、来源（大模型 · 预先算好 / 缓存 / 现场 + 毫秒，规则 · 兜底）；下面可展开的「AI 调用日志（N）」列出这次打开页面以来每次读屏调用，可在浏览器里导出 JSON（不上传）。第 4 步方案卡片的 AI 解读归 T23（`8-compare.js`，#73），本文件不管。数据只来自 `backend.js` 的 `aiLog()` / `onAiLog()` / `readingsOf()`。开头 `pure:begin…pure:end` 是测试要跑的纯函数；`6-engine.js` 的读屏 pill / 图例也用这里的 `aiSrcLabel()` |
 | `build.py` | 打包成 `public/index.html`（进仓库）和 `out/web-artifact.html`（不进仓库） |
 | `tests/test_web.py` `tests/test_engine.py` `tests/engine_glue.mjs` | 上面「怎么测」的断言 |
+| `tests/test_compare.py` `tests/compare_glue.mjs` | T23：`8-compare.js` 的纯函数（选哪几套、三个数、「最少」）+ 真 `backend.js` 顾问的改法逐套 `run()` + 真 `pack.js` 执行包（选了谁、理由、租金标假设值） |
+| `tests/test_ai.py` `tests/ai_glue.mjs` | AI 面板：来源标签（中英）、屏上文字 / 建议 / 百分比、卡片和日志行全部转义（反向：why 不进 HTML、`<img>` 进不去）、下载的 JSON 只放白名单字段（反向：token / header 不进文件）、接真 `backend.js`（假读屏 file / llm / kv / 规则兜底）出 4 张卡片；静态：挂载钩子、不发请求、解读只用 textContent、签名守卫 |
 
 ## 本模块固定模式
 
@@ -71,6 +75,7 @@ Owner: @unicornnnnnny
 
 ## 已知问题
 
+- T23 方案对比：对比的是 T22 `be.options()` 的 3 套；它出错（例如库存没加载上）才退回「现在的方案 + 顾问的改法」，错开日期那种改法不进对比（它按整个施工期算、不是这一小时）。车、电车公交、行人是这一小时的数，租金是整个工期（假设日租价）；T22 的租金和 `pack.js` 报价逐套一致（`compare_glue.mjs` 查）。理由只存在页面里（没接施工登记表，D-0929-2011 定了冻结前不接）
 - 冲突数、急刹、TTC、公交、应急通道、安全分仍是微观仿真 / 预设值（引擎不算这些），页面标「模拟结果」；排队、延误、分流、顾问改法是引擎算的
 - 真路网画在页面的理想化方格上：Queen…Exhibition × Bourke…La Trobe 之间误差 ≤ 1.4 m；La Trobe 以北页面把街区画高了（Little La Trobe 真实 55 m 画在 100、A'Beckett 109 m 画在 200），按分段线性拉伸
 - 排队线按「施工起点往上游直线」画（CBD 方格路是直的），超出画面范围的用「→」标出
@@ -83,3 +88,7 @@ Owner: @unicornnnnnny
 - 真建筑的屋顶反照率、屋顶设备、「历史建筑」归类（按名字里有 Library Victoria / Church / Cathedral / Gaol / Watch House）都是假设值，数据里没有；高温图层的「冷屋顶」标注因此只是示意
 - 数据里有 4 个「外框」把一整片楼圈起来（如 Melbourne Central 外框带着 211 m 塔楼的高度）：里面的楼占外框 ≥ 30% 时外框改用里面楼高的中位数，塔楼本身不动
 - 州立图书馆的穹顶、Melbourne Central 的玻璃锥和制弹塔仍是页面手摆的位置，只在落进对应真楼时保留；门前草坪按原样保留（楼画在上面）
+
+## T23 AI 解读（#71 接口）
+
+每套方案评分后调用 `explainOptions({lang, options})`，options 来自 `optionFromRun()` 并带引擎租金和天数。卡片显示 summary / pros / cons，下面显示 lean 与服务端固定 decide；全部用 textContent。切换语言重新解读，过期响应丢弃；读数不变的重绘不重复请求。接口断线或超时由 explain.js 回规则解读，页面标「规则兜底」。解读不阻塞选定、理由和导出。

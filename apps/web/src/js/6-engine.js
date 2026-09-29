@@ -178,12 +178,13 @@ function engOfflineCard(){
     :`<div class="card eng-note"><b>${L('Loading the CBD road network and engine…','正在加载 CBD 路网和引擎…')}</b><span>${L('1,513 road links · real hourly flows · about a second','1513 个路段 · 真实逐时车流 · 大约一秒')}</span></div>`;
 }
 // Where the numbers come from (PRD §5): yellow when they shouldn't be taken at face value
-function engBadges(f){
+function engBadges(f,s){
   if(!f)return'';const b=[];
   if(!f.ok)b.push(`<span class="pill warn" title="${esc(L('Missing readings, calibration miss, sign-rule error or a full closure with no way round','读数没拿到、校准没命中、屏上文字不合规范，或全封又无路可绕'))}">${L('Check inputs','输入待核')}</span>`);
   if(f.inactive)b.push(`<span class="pill warn">${L('No works this hour','此时段不施工')}</span>`);
   if(f.blocked_vph>0)b.push(`<span class="pill risk">${fmtN(f.blocked_vph)} ${L('veh/h stuck','辆/时 无路可走')}</span>`);
-  b.push(f.reading_src==='rule'?`<span class="pill warn">${L('Sign reading · estimate','读屏 · 规则估算')}</span>`:`<span class="pill ok">${L('Sign reading','读屏')} · ${esc(f.reading_src)}</span>`);
+  const rs=aiPlanSrc(s,f); // this plan's persona readings, not the calibration anchors in f.reading_src (9-ai.js)
+  b.push(`<span class="pill ${rs.tone}">${L('Sign reading','读屏')} · ${esc(aiSrcLabel(rs.src))}</span>`);
   b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
@@ -194,17 +195,21 @@ function engMetrics(s){
   const top=s.routes.filter(r=>r.id!=='stay').sort((a,b)=>(b.share||0)-(a.share||0))[0],q=engWorstQ(s),elsewhere=q.m>(s.queue_m||0);
   return`<div class="metrics">
     <div class="metric"><span class="eyebrow">${elsewhere?L('Worst queue','最长排队'):L('Queue','排队')}</span><div class="v" style="color:${q.m>0?'var(--risk)':engFull(s)?'var(--fg)':'var(--accent)'}">${fmtN(q.m)}<small>m${elsewhere?' · '+esc(shortSt(q.name)):''}</small></div></div>
-    <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
+    <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${L('main approach','主进口道')} ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Detouring','绕行')}</span><div class="v">${pctS(s.detour_share)}<small>${top?esc(shortSt(top.name))+' '+pctS(top.share):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Network delay','全网延误')}</span><div class="v">${fmtN(s.delay_min)}<small>${L('veh·min / h','车·分钟 / 时')}</small></div></div></div>`;
 }
 // T20 addendum 5: what the detour share rests on, and why there is a queue (demand vs capacity past the works)
 function engInformed(s){const a=s.approaches&&s.approaches[s.main];if(!a)return null;let v=0,n=0;for(const t of TYPES4){const k=(s.by_type[t]||{}).vehicles||0,x=a.by_type&&a.by_type[t];if(!x||!k)continue;v+=k*(x.informed||0);n+=k;}return n?v/n:null;}
 function engWhy(s){
-  const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),out=[];
+  const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),st=esc(shortSt(EP.street)),ap=s.approaches&&s.approaches[s.main],out=[];
   // total flow still using the works section (after detours) against what fits past it: the gap is the queue
-  if(l&&l.cap>0&&l.v>0){const st=esc(shortSt(EP.street)),over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
-  out.push(L(`Assumption: detours follow the engine's route-choice model (T12 parameters)${inf!=null?`; about ${pctS(inf)} of drivers read and act on the signs`:''}. Fewer compliant drivers → fewer detours, longer queue.`,`假设：绕行按引擎的路线选择模型（T12 参数）算${inf!=null?`，约 ${pctS(inf)} 的司机读懂并照标志 / 屏走`:''}。照做的人越少，绕行越少、排队越长。`));
+  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
+  // full closure: nothing fits past the works (cap 0) — say where the queue comes from instead of dropping the line (T26 2.5)
+  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} is shut at the works: the ${vol}veh/h on the main approach have to detour${s.blocked_vph>0?`, and ${fmtN(s.blocked_vph)} veh/h have no way round`:''} — the queue builds on the streets they turn into.`,`${st} 施工段全封、过不去：主进口道 ${vol}辆/时只能绕行${s.blocked_vph>0?`，其中 ${fmtN(s.blocked_vph)} 辆/时无路可绕`:''} —— 排队出在它们拐进去的那几条街上。`));}
+  // inf = the share who read and understand the sign — not who obey it. Whether they turn is the route-choice model's call, and
+  // how far drivers trust signs has no source yet (T12 sign_trust is null): an assumed value (D-0929-1536)
+  out.push(L(`${inf!=null?`About ${pctS(inf)} of drivers read and understand the sign. `:''}Whether they change route comes from the route-choice model's per-driver-type parameters (trust in signs is an assumed value) — this time ${pctS(s.detour_share)} detour.`,`${inf!=null?`约 ${pctS(inf)} 的司机读懂屏上的字；`:''}改不改道由路线选择模型按各类司机的参数算（对标志的信任度是假设值），这次 ${pctS(s.detour_share)} 绕行。`));
   return`<div class="eng-assume">${out.map(t=>`<p>${t}</p>`).join('')}</div>`;
 }
 const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
@@ -234,9 +239,15 @@ function engOutHTML(){
   if(EP.runErr&&!EP.sum)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   const s=EP.sum;if(!s)return`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`;
   const stale=EP.busy||EP.badText||!!EP.runErr;
-  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engWhy(s)}${engImpacts(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}</div>`;
 }
-function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
+// Step 1, under the sign text: why there is a queue, trams / people on foot, where the numbers come from (T26 2.3)
+function engMoreHTML(){
+  const s=BE.api&&EP.link?EP.sum:null;if(!s)return'';
+  const stale=EP.busy||EP.badText||!!EP.runErr;
+  return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -267,7 +278,8 @@ function engPanel1(){
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>
-    <div id="engCheck" class="stack"></div></div>`;
+    <div id="engCheck" class="stack"></div></div>
+  <div id="engMore" class="stack eng-more"></div>`;
 }
 function engBind1(){
   const P=document.getElementById('panel');if(!P||!BE.api)return;
@@ -309,14 +321,14 @@ function engPanel3(){
   const f=s.flags;
   return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
-  ${engMetrics(s)}${engWhy(s)}${engBadges(f)}
+  ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
-  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${f.reading_src==='rule'?'keyword rules (LLM reader pending)':esc(f.reading_src)}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${f.reading_src==='rule'?'关键词规则（大模型读屏待接）':esc(f.reading_src)}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
+  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(aiPlanSrc(s,f).src))}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(aiPlanSrc(s,f).src))}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
 }
 function engTransit3(s){
@@ -342,7 +354,7 @@ function engBind3(){
 }
 
 // Step 4: advisor options (each re-scored by the engine) + before / after for the picked one
-function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div>`:'';}
+function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div><div id="cmp4" class="stack cmp4"></div>`:'';} // cmp4 = T23 compare / choose / export (8-compare.js)
 function eng4HTML(){
   if(!engOn())return engOfflineCard();
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
@@ -366,11 +378,11 @@ function eng4HTML(){
     else if(!c)h+=`<div class="card eng-note"><b>${EP.cmpBusy?L('Recomputing both plans…','两份方案都在重算…'):L('Comparison unavailable','对比没算出来')}</b></div>`;
     else{
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
-      const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better?'var(--accent)':'var(--works)'}">${y}</span></div>`;
-      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
-      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} assumes drivers react to the changed sign as the route-choice model (T12 parameters) predicts; if fewer comply, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：司机按路线选择模型（T12 参数）对改后的屏 / 标志做出反应；照做的人少，收益就小。`)}</p>
+      const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better==null?'var(--fg)':better?'var(--accent)':'var(--works)'}">${y}</span></div>`; // better null = neither good nor bad
+      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),null)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
+      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is what the route-choice model predicts drivers do with the changed sign (trust in signs is an assumed value); if fewer follow it, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型按各类司机的参数推算他们看到改后的屏会怎么走（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
-      ${engBadges(A.flags)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
+      ${engBadges(A.flags,A)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
     h+='</div>';
   }
@@ -384,6 +396,7 @@ function engWindowTxt(w){
     :L(`Savings are vehicle-hours summed over ${w.whens} sampled hours of the works period. The table below is one hour, in vehicle-minutes.`,`节省量是施工期采样的 ${w.whens} 个小时合计（车·时）。下面的对比表只算一小时，单位车·分钟。`);
 }
 function engRender4(){
+  cmpRender(); // T23: follows the advisor (8-compare.js)
   const el=document.getElementById('eng4');if(!el)return;const h=eng4HTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
   const a=EP.adv;
   el.querySelectorAll('[data-optwhy]').forEach(b=>{const o=a&&a.options[+b.dataset.optwhy];b.textContent=o&&o.why||'';});
@@ -419,7 +432,8 @@ function engFit(){
   if(s&&s.queue_m>0)add(engUp(Math.min(s.queue_m,engWorldReach())));
   for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
   // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
-  const mob=!matchMedia('(min-width: 821px)').matches,mt=mob?96:0,mb=mob?104:0;
+  // desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
+  const mob=!matchMedia('(min-width: 821px)').matches,lg=document.getElementById('legend'),mt=mob?96:0,mb=mob?104:(lg&&lg.offsetHeight?lg.offsetHeight+52:0);
   const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
   const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),1.1,3.6);
   return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
@@ -482,7 +496,8 @@ function engDraw(which){
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
   const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
-  drawTag(ctx,mx,my,engDx(mx,36),54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
+  // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
+  drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
   if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}

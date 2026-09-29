@@ -22,6 +22,22 @@ const S={step:1,wx:'clear',basemap:'imagery',layers:{agents:true,weather:true,ri
 const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
+/* ---------- data credits ----------
+   The licences ask for attribution: OpenStreetMap (ODbL), DataVic (CC BY 4.0), City of Melbourne (CC BY). One list, the same
+   sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the execution pack and in the playbook
+   (creditLines). The hosts are plain links for people to follow — nothing is fetched from them. */
+const CREDITS=[
+  {href:'https://www.openstreetmap.org/copyright',short:['© OpenStreetMap contributors','© OpenStreetMap contributors'],
+    full:['© OpenStreetMap contributors, ODbL — road and walking network, building outlines','© OpenStreetMap contributors，ODbL 许可 —— 路网、人行网、建筑轮廓']},
+  {href:'https://discover.data.vic.gov.au/dataset/traffic-signal-volume-data',short:['SCATS volumes © State of Victoria (DTP), DataVic CC BY 4.0','SCATS 车流 © 维多利亚州交通与规划部，DataVic CC BY 4.0'],
+    full:['Traffic Signal Volume Data (SCATS) and Victorian traffic signals © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — hourly traffic at signals','交通信号车流数据（SCATS）和维州信号灯站点（Traffic Signal Volume Data、Victorian traffic signals）© 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 路口逐时车流']},
+  {href:'https://discover.data.vic.gov.au/dataset/gtfs-schedule',short:['PTV GTFS, DataVic CC BY 4.0','PTV 时刻表，DataVic CC BY 4.0'],
+    full:['PTV GTFS Schedule © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — tram and bus timetables','PTV GTFS Schedule 时刻表 © 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 电车、公交班次']},
+  {href:'https://data.melbourne.vic.gov.au/',short:['City of Melbourne open data, CC BY','墨尔本市开放数据，CC BY'],
+    full:['City of Melbourne open data, CC BY — Pedestrian Counting System, 2018 Building Footprints, CLUE building information','City of Melbourne 开放数据，CC BY —— 行人计数（Pedestrian Counting System）、2018 建筑轮廓（Building Footprints）、CLUE 建筑信息']}];
+function creditLines(){return CREDITS.map(c=>`${L(c.full[0],c.full[1])} · ${c.href}`);}
+function renderCredits(){const el=$('#credits');if(!el)return;el.innerHTML=`<span class="cr-k">${L('Data','数据')}</span>`+CREDITS.map(c=>`<a href="${c.href}" target="_blank" rel="noopener noreferrer">${L(c.short[0],c.short[1])}</a>`).join('<span class="cr-sep">·</span>');}
+
 /* The La Trobe × Swanston micro-model (scripted road users, barrier B-12, the 17:00 timeline) is its own scene. It is drawn
    only where it is the subject: step 2, the junction-replay tab of step 3, a plan that is on La Trobe St, or when the engine
    is offline. Everywhere else the screen shows one works zone — the engine's (T20 addendum 4). */
@@ -30,6 +46,14 @@ function microOn(){
   if(BE.err&&!BE.api)return true;
   if(!BE.api)return false; // still connecting: don't flash the other junction first
   return /la trobe/i.test(EP.street||'');
+}
+// Top bar + map label name the scene on screen: the engine's works zone, or the La Trobe × Swanston micro-model (T26 2.1)
+function updateScene(){
+  const el=$('#sceneName'),micro=microOn();if(!el)return;
+  const st=shortSt(EP.street)||L('Unnamed road','无名道路'),on=engOn()&&!micro;
+  const t=micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
+  if(el.textContent!==t)el.textContent=t;
+  cv.setAttribute('aria-label',micro?L('Map of Swanston St and La Trobe St with simulated road users and weather layers','Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层'):on?L(`Map of the ${st} ${dirL(EP.dir)} works at ${engHour(EP.hour)} on real CBD streets, with the engine's queue and detours`,`${st} ${dirL(EP.dir)} 施工地图（${engHour(EP.hour)}）：真实 CBD 路网上引擎算出的排队和绕行`):L('Map of the Melbourne CBD','墨尔本 CBD 地图'));
 }
 function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.contains('no-time')===on){app.classList.toggle('no-time',!on);readInsets();}}
 
@@ -268,7 +292,7 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
@@ -290,24 +314,24 @@ function renderPanel(){
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
     <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
-      <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
+      <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
-    <div class="stack"><span class="eyebrow">${L('Agents involved','涉及的智能体')}</span><div class="agents3">
+    <div class="stack"><span class="eyebrow">${L('Road users involved','涉及的道路使用者')}</span><div class="agents3">
       <div><b style="color:var(--a-bike)"><i class="dot" style="background:var(--a-bike)"></i>C-17</b><span>${L('Cyclist','骑行者')}</span><small>${ev&&ev.cv?(ev.cv*3.6).toFixed(0):'19'} km/h ${L('at merge','并道时')}</small></div>
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
       <div><b style="color:var(--a-bus)"><i class="dot" style="background:var(--a-bus)"></i>BUS 250</b><span>${L('12.5 m rigid','12.5 m 单节公交')}</span><small>${ev&&ev.bmin<-.5?(-ev.bmin).toFixed(1)+L(' m/s² braking',' m/s² 减速'):L('follows 34 m back','跟随在后方 34 m')}</small></div></div></div>
-    <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Generate a safer layout →','生成更安全的方案 →')}</button></div>`;
+    <div class="cta"><button type="button" class="btn" id="repairBtn">${L('See the revised layout →','看改过的布局 →')}</button></div>`;
     $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
   }else{
@@ -330,8 +354,8 @@ function copyPlaybook(){
   const planZh=eng?`${EP.street} ${dirL(EP.dir)} —— ${EP.all?'全封':'封一条道'}\n施工 ${WORKS_TIME.from} 至 ${WORKS_TIME.to}，${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · 按 ${engHour(EP.hour)} 计算\nVMS-1 上游 ${EP.vmsAt} m：${frames||'（空）'}\n标志牌 S-1 ${EP.signAt} m：${EP.sign||'（无）'}`:'';
   const dEn=micro?`\n\nJunction layout v2 (La Trobe × Swanston micro-model)\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream`:'';
   const dZh=micro?`\n\n路口方案 v2（La Trobe × Swanston 微观仿真）\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m`:'';
-  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.`,
-`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。`);
+  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.\n\nData sources\n${creditLines().map(s=>'- '+s).join('\n')}`,
+`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。\n\n数据来源\n${creditLines().map(s=>'- '+s).join('\n')}`);
   const fb=()=>{$('#copyFallback').innerHTML=`<p class="small muted">${L('Copying is blocked here. Select the text below instead.','此处无法自动复制，请手动选中下面的文字。')}</p><div class="pre">${txt.replace(/</g,'&lt;')}</div>`;};
   try{navigator.clipboard.writeText(txt).then(()=>toast(L('Playbook copied to the clipboard','处置手册已复制到剪贴板')),fb);}catch(e){fb();}
 }
@@ -376,8 +400,8 @@ function renderLegend(){
   const k=S.wx,Lg=LEG[k],col=wxCol(k),el=$('#legend');el.style.setProperty('--wxc',col);el.style.setProperty('--wxc-tint',rgba(col,.16));
   el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${L('ILLUSTRATIVE','示意')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
   <div class="legend-body">${Lg.min?`<div class="legend-ramp" style="background:${rampCss(k)}"></div><div class="legend-scale"><span>${Lg.min}</span><span class="u">${Lp(Lg.u)}</span><span>${Lg.max}</span></div>`:''}
-  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
-  $('#legToggle').onclick=()=>{el.classList.toggle('collapsed');ls.set('rt-leg',el.classList.contains('collapsed')?'1':'0');};
+  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('EFFECT ON ROAD USERS','对道路使用者的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
+  $('#legToggle').onclick=()=>el.classList.toggle('collapsed');
   updateLegendLive();
 }
 function updateLegendLive(){const m=$('#legM');if(!m)return;const html=legendMetrics().map(([a,b])=>`<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');if(m.innerHTML!==html)m.innerHTML=html;}
@@ -395,7 +419,7 @@ function setLang(lang){
   LANG.cur=lang==='zh'?'zh':'en';ls.set('rt-lang',LANG.cur);applyLangDom();
   document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   if(S.step===3&&S.event)S.nodes=causal(S.event);
-  renderWxSwitcher();renderLegend();renderPanel();renderAlert();updateBasemapUI();
+  renderWxSwitcher();renderLegend();renderPanel();renderAlert();updateBasemapUI();renderCredits();
   if(!S.mouse)$('#pVal').textContent=L('Move over the map','将鼠标移到地图上');
   $('#play').dataset.i='';probeKey='';baseKey='';
   if(LANG.cur==='zh'&&document.fonts&&document.fonts.load)document.fonts.load('500 10px "Noto Sans SC"','拉筹伯街').then(()=>{baseKey='';},()=>{});
@@ -428,8 +452,7 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
-function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
-  const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
+function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));}
 
 /* ---------- histogram ---------- */
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
@@ -455,7 +478,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -490,8 +513,7 @@ function loop(now){
   if(toastT>0){toastT-=dt;if(toastT<=0)$('#toast').hidden=true;}
   if(histT>.2){histT=0;drawHist();}
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
-    document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));
-    $('#metaAcq').textContent=microOn()?`2026-09-29 ${fmtClock(S.clock)} AEST`:`${WORKS_TIME.from} ${engHour(EP.hour)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
+    document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));}
   if(legT>.5){legT=0;updateLegendLive();}
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
@@ -504,10 +526,10 @@ function boot(){
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
-  const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
+  $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
   initGlass();resize();sizeHist();bindInput();engBindMap();
-  renderWxSwitcher();renderLegend();updateBasemapUI();
+  renderWxSwitcher();renderLegend();updateBasemapUI();renderCredits();
   /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
      on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
   const start=()=>{if(WX.kind!==S.wx)WX.set(S.wx);if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};

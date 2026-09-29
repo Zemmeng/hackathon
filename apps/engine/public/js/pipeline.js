@@ -210,8 +210,10 @@ export function createEngine({ network, flows, readSigns, params, personas, mix 
     const hot = [];
     for (const [id, x] of ev.links) {
       const l = net.links.get(id), bx = b.links.get(id);
-      links.push({ id, v: Math.round(x.v), cap: Math.round(x.cap), delay_s: round1(x.t - l.t0_s), queue_m: Math.round(x.queue_m) });
+      // extra_min（T28）：这一段比同一小时不施工时多出的车·分钟，可 < 0（车绕走了）。delay_s 是和自由流比的，
+      // 早高峰本来就堵的路（Flinders / King St）也很大；页面画「施工造成的变慢」要用 extra_min
       const extra = (x.v * x.t - bx.v * bx.t) / 60;
+      links.push({ id, v: Math.round(x.v), cap: Math.round(x.cap), delay_s: round1(x.t - l.t0_s), queue_m: Math.round(x.queue_m), extra_min: round1(extra) });
       if (extra > 0.5) hot.push({ id, name: l.name, extra_min: Math.round(extra), v: Math.round(x.v), cap: Math.round(x.cap), queue_m: Math.round(x.queue_m) });
     }
     hot.sort((a, z) => z.extra_min - a.extra_min);
