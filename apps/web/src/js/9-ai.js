@@ -14,7 +14,7 @@
 /* pure:begin — tests/ai_glue.mjs runs this block in node */
 const AI_LOG_KEEP=200; // same bound as backend.js AI_LOG_MAX
 const AI_SRC={file:['LLM · precomputed','大模型 · 预先算好'],kv:['LLM · cached','大模型 · 缓存'],llm:['LLM · live','大模型 · 现场'],
-  rule:['Rules · fallback','规则 · 兜底'],mixed:['Mixed sources','多种来源'],error:['Not read','没读成']};
+  rule:['Rules · fallback','规则 · 兜底'],mixed:['Mixed sources','多种来源'],error:['Not read','没读成'],none:['None this hour','这个小时没有']};
 // reading src → friendly label (plain text: esc() it in templates). llm + ms → "LLM · live · 840 ms"
 function aiSrcLabel(src,ms){
   const k=AI_SRC[src];if(!k)return src?String(src).slice(0,32):L('Unknown','未知');
@@ -22,6 +22,19 @@ function aiSrcLabel(src,ms){
   return src==='llm'&&Number.isFinite(ms)?`${t} · ${Math.round(ms)} ms`:t;
 }
 function aiSrcTone(src){return src==='file'||src==='kv'||src==='llm'?'ok':src==='error'?'risk':'warn';}
+// Where THIS plan's sign readings came from (6-engine.js badge + legend), from readingsOf(s) — not flags.reading_src, which
+// is the 8 fixed calibration readings only. All 4 agree → that source; else 'mixed' (green only when every one is an LLM
+// source; any rule / missing reading → yellow). rd null → null (caller decides); no persona with signs → 'none'
+function aiSrcOf(rd){
+  if(!rd||!rd.personas||typeof rd.personas!=='object')return null;
+  const ss=Object.values(rd.personas).filter(Boolean).map(p=>p.reading?String(p.src||'error'):'error');
+  if(!ss.length)return{src:'none',tone:'',rule:false};
+  const llm=ss.every(x=>x==='file'||x==='kv'||x==='llm');
+  return{src:ss.every(x=>x===ss[0])?ss[0]:'mixed',tone:llm?'ok':'warn',rule:ss.includes('rule')};
+}
+// Same rule as engPanel3 (6-engine.js): the panel has current numbers only in 'ok'. Anything else → no persona cards,
+// so a failed run never shows the previous plan's readings. ep = EP
+function aiState(ep){return!ep?'wait':ep.badText?'bad':ep.runErr&&!ep.busy?'err':!ep.sum?'wait':'ok';}
 const AI_EX={llm:['AI explanation · LLM','AI 解读 · 大模型'],kv:['AI explanation · LLM cached','AI 解读 · 大模型缓存'],rule:['AI explanation · rules','AI 解读 · 规则'],api:['AI explanation · API','AI 解读 · 接口']};
 function aiExplainLabel(src){const k=AI_EX[src]||AI_EX.api;return L(k[0],k[1]);}
 function aiExplainTone(src){return src==='llm'||src==='kv'?'ok':'warn';}
@@ -106,11 +119,21 @@ function aiMount(){
   aiRender();
 }
 function aiReadings(){
-  const s=EP.sum;if(!s||EP.badText||!BE.api||typeof BE.api.readingsOf!=='function')return null;
-  try{return BE.api.readingsOf(s);}catch(e){console.warn('readingsOf failed',e);return null;}
+  if(aiState(EP)!=='ok'||!BE.api||typeof BE.api.readingsOf!=='function')return null; // same guard as engPanel3
+  try{return BE.api.readingsOf(EP.sum);}catch(e){console.warn('readingsOf failed',e);return null;}
 }
-function aiHTML(rd){
+// Badge / legend source for summary s (6-engine.js engBadges, engPanel3). Older backend without readingsOf → calibration flag
+function aiPlanSrc(s,f){
+  const api=BE.api;f=f||(s&&s.flags)||{};
+  if(s&&api&&typeof api.readingsOf==='function'){let rd=null;try{rd=api.readingsOf(s);}catch(e){rd=null;}return aiSrcOf(rd)||{src:'none',tone:'',rule:false};}
+  return{src:f.reading_src,tone:aiSrcTone(f.reading_src)==='ok'?'ok':'warn',rule:f.reading_src==='rule'};
+}
+const AI_NO={err:['No readings — the engine could not score this plan.','没有读数 —— 引擎算不了这个方案。'],
+  bad:['No readings — fix the sign text in step 1 first.','没有读数 —— 先回第 1 步把屏上文字改合规范。'],
+  wait:['Readings appear once the engine has scored this plan.','引擎算完这个方案后，这里显示各类路人的读数。']};
+function aiHTML(rd,st){
   const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
   const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
     <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
@@ -124,7 +147,7 @@ function aiLogHTML(){
 }
 function aiRender(){
   const el=document.getElementById('aiBox');if(!el)return;
-  const rd=aiReadings(),h=aiHTML(rd);
+  const st=aiState(EP),rd=aiReadings(),h=aiHTML(rd,st);
   const whys=rd?TYPES4.map(t=>{const p=rd.personas&&rd.personas[t];return p&&p.reading&&p.reading.why||'';}).join('\u0001'):'';
   const sig=h+'\u0000'+whys;
   if(el.dataset.sig===sig)return; // signature guard: same state → keep the DOM (open log, scroll position, button under the pointer)

@@ -21,7 +21,7 @@ ok(!!escLine && !!typeLine, '从 6-engine.js 取到 esc() 和 TYPE_L');
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(i18n + '\n' + escLine + '\n' + typeLine + '\n' + m[1] +
-  '\n;globalThis.G={LANG,aiSrcLabel,aiSrcTone,aiExplainLabel,aiExplainTone,aiPct,aiSigns,aiAdvice,aiLabel,aiPersonaHTML,aiLogRowHTML,aiLogJSON,AI_LOG_KEEP};', ctx);
+  '\n;globalThis.G={LANG,aiSrcLabel,aiSrcTone,aiExplainLabel,aiExplainTone,aiPct,aiSigns,aiAdvice,aiLabel,aiPersonaHTML,aiLogRowHTML,aiLogJSON,AI_LOG_KEEP,aiSrcOf,aiState};', ctx);
 const G = ctx.G;
 const zh = f => { G.LANG.cur = 'zh'; try { return f(); } finally { G.LANG.cur = 'en'; } };
 
@@ -33,7 +33,24 @@ ok(G.aiSrcLabel('llm', 842.4) === 'LLM · live · 842 ms' && G.aiSrcLabel('file'
 ok(G.aiSrcLabel('mixed') === 'Mixed sources' && G.aiSrcLabel(null) === 'Unknown' && G.aiSrcLabel('deepseek-x') === 'deepseek-x', 'mixed / 空 / 不认识的原样（调用方再 esc）');
 ok(['file', 'kv', 'llm'].every(k => G.aiSrcTone(k) === 'ok') && G.aiSrcTone('rule') === 'warn' && G.aiSrcTone('error') === 'risk' && G.aiSrcTone('mixed') === 'warn', '颜色：大模型绿、规则黄、出错红');
 ok(G.aiExplainLabel('llm') === 'AI explanation · LLM' && G.aiExplainLabel('kv') === 'AI explanation · LLM cached' && G.aiExplainLabel('rule') === 'AI explanation · rules' && G.aiExplainTone('rule') === 'warn', '第 4 步解读的来源：大模型 / 缓存 / 规则');
-ok(!/'Sign reading · estimate'|LLM reader pending|大模型读屏待接/.test(eng) && (eng.match(/esc\(aiSrcLabel\(f\.reading_src\)\)/g) || []).length === 3, '6-engine.js 的 pill 和图例（中英）都换成 aiSrcLabel，不再印原始 reading_src');
+ok(!/'Sign reading · estimate'|LLM reader pending|大模型读屏待接/.test(eng) && (eng.match(/esc\(aiSrcLabel\(rs\.src\)\)/g) || []).length === 1 && (eng.match(/esc\(aiSrcLabel\(aiPlanSrc\(s,f\)\.src\)\)/g) || []).length === 2, '6-engine.js 的 pill 和图例（中英）都换成 aiSrcLabel(aiPlanSrc(…))，不再印原始 reading_src');
+ok(!/aiSrcLabel\(f\.reading_src\)|aiSrcTone\(f\.reading_src\)/.test(eng), '反向：pill / 图例不再用 flags.reading_src（那是 8 条校准读数的来源，不是屏上这套方案的）');
+ok(!/engBadges\([^)s]*\.flags\)|engBadges\(f\)/.test(eng), '每处 engBadges() 都带上 summary（按这份方案的读数算来源）');
+
+// 1b 这份方案的读屏来源：4 类人一致 → 那个；不一致 → mixed；有规则 / 没读成 → 黄
+const P = (...xs) => ({ personas: Object.fromEntries(['commuter', 'local', 'tourist', 'delivery'].map((t, i) => [t, xs[i] === null ? null : { src: xs[i], reading: xs[i] === 'none' ? null : { src: xs[i] } }])) });
+ok(G.aiSrcOf(P('file', 'file', 'file', 'file')).src === 'file' && G.aiSrcOf(P('file', 'file', 'file', 'file')).tone === 'ok', '4 类都是 file → file，绿');
+ok(G.aiSrcOf(P('rule', 'rule', 'rule', 'rule')).src === 'rule' && G.aiSrcOf(P('rule', 'rule', 'rule', 'rule')).tone === 'warn', '4 类都是规则 → 规则，黄');
+ok(G.aiSrcOf(P('file', 'kv', 'llm', 'file')).src === 'mixed' && G.aiSrcOf(P('file', 'kv', 'llm', 'file')).tone === 'ok', '大模型的几种来源混着 → mixed，仍是绿');
+ok(G.aiSrcOf(P('file', 'file', 'rule', 'file')).src === 'mixed' && G.aiSrcOf(P('file', 'file', 'rule', 'file')).tone === 'warn' && G.aiSrcOf(P('file', 'file', 'rule', 'file')).rule, '有一类是规则兜底 → mixed，黄');
+ok(G.aiSrcOf(P('file', 'none', 'file', null)).tone === 'warn', '有一类没读成 → 黄；没有屏的那类不算');
+ok(G.aiSrcOf(P(null, null, null, null)).src === 'none' && G.aiSrcOf(null) === null, '这段路没有屏 → none；没有读数对象 → null（调用方决定）');
+ok(G.aiSrcLabel('none') === 'None this hour' && zh(() => G.aiSrcLabel('none')) === '这个小时没有', 'none 的标签');
+// 1c 面板状态：和 engPanel3 同一个判断，出错 / 屏上文字不合规 / 还没算完都不画路人卡片
+ok(G.aiState({ sum: {}, runErr: null, busy: false, badText: false }) === 'ok', '有当前数字 → ok');
+ok(G.aiState({ sum: {}, runErr: new Error('x'), busy: false, badText: false }) === 'err', '反向：run() 出错但留着上一份 EP.sum → err（不画上一份方案的读数）');
+ok(G.aiState({ sum: {}, runErr: new Error('x'), busy: true, badText: false }) === 'ok', '出错后又在重算 → 和面板一样先显示上一份');
+ok(G.aiState({ sum: {}, runErr: null, busy: false, badText: true }) === 'bad' && G.aiState({ sum: null, runErr: null, busy: true, badText: false }) === 'wait', '屏上文字不合规 → bad；还没算完 → wait');
 
 // 2 屏上文字、建议、百分比
 const signs = [{ kind: 'vms', frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']], read_s: 5 }, { kind: 'sign', text: 'RIGHT LANE CLOSED' }, { kind: 'arrow', text: 'ARROW LEFT' }];
@@ -90,6 +107,14 @@ else {
   const out = JSON.parse(G.aiLogJSON(lg, {}));
   ok(lg.length > 0 && out.count === lg.length && out.entries.every(e => e.persona && e.src && Array.isArray(e.signs)), `真日志 ${lg.length} 条 → 下载文件 ${out.count} 条`);
   ok(lg.map(G.aiLogRowHTML).every(h => h.includes('class="ai-row"')), '每条日志都能画成一行');
+  ok(G.aiSrcOf(rd).src === 'mixed' && G.aiSrcOf(rd).tone === 'warn', '真 backend：file / llm / kv / 规则混着 → 徽章写 mixed、黄');
+
+  // 审查复现：校准的 8 条读数来自 file，屏上这套方案的读数全走规则 → flags.reading_src 说 file，徽章要说规则
+  const { anchorRequest } = await import(pathToFileURL(APPS + 'engine/public/js/calibrate.js').href);
+  const calib = new Set(['lo', 'hi'].flatMap(w => ['commuter', 'local', 'tourist', 'delivery'].map(t => JSON.stringify(anchorRequest(w, t).signs))));
+  const be2 = await connect({ fetch: fakeFetch, importer: noImporter, readSigns: async req => ({ ...(await mockReadSigns(req)), src: calib.has(JSON.stringify(req.signs)) ? 'file' : 'rule' }) });
+  const s2 = await be2.run(be2.demo('lonsdale')), rs2 = G.aiSrcOf(be2.readingsOf(s2));
+  ok(s2.flags.reading_src === 'file' && rs2 && rs2.src === 'rule' && rs2.tone === 'warn', `校准读数 ${s2.flags.reading_src}、方案读数 ${rs2 && rs2.src} → 徽章跟方案走（规则 · 兜底，黄）`);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

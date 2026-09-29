@@ -72,6 +72,11 @@ cmp = body("aiCmp", AI)
 check("解读请求 = explainOptions({ lang, options: optionFromRun(卡片) })，模块用 T23 已加载的 explain.js",
       "ex.optionFromRun(r.id,aiLabel(cmpLabel(r)),r.s,{hire_aud:r.hire,days:r.days})" in cmp and "ex.explainOptions(req)" in cmp and "CP.mod&&CP.mod.ex" in cmp)
 check("过期的解读丢掉（seq），失败只写一行灰字", "if(seq!==x.seq)return;" in cmp and "AI explanation unavailable" in paint)
+# 6 审查修复：出错 / 不合规 / 还没算完时不画上一份方案的读数；徽章按这份方案的读数算来源
+check("反向：aiReadings 和 engPanel3 同一个判断（run() 出错留着的旧 EP.sum 不拿来画卡片）",
+      "if(aiState(EP)!=='ok'" in body("aiReadings", AI) and "ep.runErr&&!ep.busy?'err'" in AI)
+check("aiRender 按状态画：不是 ok 就只写一行和面板一致的说明 + 调用日志",
+      "aiHTML(rd,st)" in body("aiRender", AI) and "if(st&&st!=='ok')" in body("aiHTML", AI))
 check("中英：面板标题和日志标题两边都有", "L('AI road users · what each one read','AI 路人 · 各自读到了什么')" in AI and "L(`AI call log (${n})`,`AI 调用日志（${n}）`)" in AI)
 
 node = shutil.which("node")
