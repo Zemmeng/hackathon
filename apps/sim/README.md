@@ -1,5 +1,5 @@
 # sim —— Swanston St / La Trobe St 路口仿真（车、自行车、电车、行人，一小时 20 秒回放）
-Owner: @Zemmeng
+Owner: @Zemmeng（引擎、数据、测试）· 界面：@unicornnnnnny（`public/` 下的 index.html、style.css、js/ui.js，见 D-0929-1226）
 
 第 5 题（RPM Hire：Digital Tool for Temporary Infrastructure）的第一个 demo：用真实开放数据驱动一个路口的多类道路使用者仿真，可以打开「施工模式」看封掉一段自行车道后的排队和冲突。纯前端，不需要后端，不花钱。
 

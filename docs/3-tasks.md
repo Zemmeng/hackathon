@@ -29,7 +29,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 预计 | 依赖 |
 |---|---|---|---|
 | T0 | 热身：分支 `<handle>/hello/T0-hello`，只新建一张交接单，开 PR（做法见 README ①） | 15m | — |
-| T1 | `<>` | | |
+| T2 | 给 @unicornnnnnny：sim 前端界面打磨（只动 `apps/sim/public/` 的 index.html / style.css / js/ui.js；分支 `unicornnnnnny/sim/T2-ui`；引擎接口见 `apps/sim/README.md`「对外接口」，改完跑 `bash apps/sim/bump.sh`） | 2h | T1 |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
