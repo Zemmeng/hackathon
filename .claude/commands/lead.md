@@ -69,4 +69,4 @@ bash scripts/check.sh --e2e           # 地址读 conf 的 DEMO_URL
 
 ## 🔒 不做的事
 
-不写功能 · 不 force push · 不删交接单 · 超过 10 个 subagent 或任何 Workflow 先问
+不写功能 · 不 force push · 不删交接单 · subagent 一律 opus、数量不限（D-0929-1429）

@@ -30,6 +30,13 @@
       "autoPort": true
     },
     {
+      "name": "api",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd apps/api && npx wrangler dev --port ${PORT:-8788} --var MOCK:1"],
+      "port": 8788,
+      "autoPort": true
+    },
+    {
       "name": "site",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "cd apps/site && node build.mjs && npx wrangler dev --port ${PORT:-8790}"],

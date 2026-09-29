@@ -25,7 +25,7 @@ f=$(printf '%s\n' "$last" | sed -E 's/.* ([0-9]+) failed$/\1/')
 
 if [ "$code" -ne 0 ] || [ "$f" -ne 0 ]; then
   [ "$f" -eq 0 ] && f=1   # 计数全绿但退出码非 0：也算失败
-  echo "❌ 测试未通过（退出码 $code）"
+  echo "❌ 测试未通过（退出码 ${code}）"
   echo "$p passed, $f failed"
   exit 1
 fi
