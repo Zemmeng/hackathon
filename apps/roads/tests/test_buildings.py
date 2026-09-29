@@ -48,6 +48,8 @@ else:
     ok(not bad, '每栋楼 footprint ≥ 3 个点且都在 bbox 内%s' % ('（坏的 %d 栋，如 %s）' % (len(bad), bad[:3]) if bad else ''))
     bad = [b['id'] for b in bs if not (0 < b['height_m'] < 350) or b['height_src'] not in SRCS or b['use'] not in USES]
     ok(not bad, '0 < height_m < 350，height_src、use 都在枚举内%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    tall = {b['name']: b['height_m'] for b in bs if b.get('name') in ('Eureka Tower', 'Rialto Towers')}
+    ok(all(h >= 200 for h in tall.values()), '常识：Eureka Tower、Rialto Towers 高度 ≥ 200 m（%s；OSM 外轮廓只标裙楼 20 m）' % tall)
     share = sum(1 for b in bs if b['height_src'] != 'default') / max(1, len(bs))
     ok(share >= 0.7, '高度来源不是 default 的占 %.0f%%（要求 ≥ 70%%）' % (share * 100))
     if net is not None:
@@ -55,8 +57,8 @@ else:
         bad = [f['link'] for b in bs for f in b['frontage'] if f['link'] not in lk]
         ok(not bad, 'frontage 的路段 id 都在 network.json 里%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
     near = lambda b: min(dist_m(SWANSTON_LATROBE, tuple(q)) for q in b['footprint'])
-    for want in ('State Library', 'Melbourne Central'):
-        hit = [b['name'] for b in bs if b.get('name') and want.lower() in b['name'].lower() and near(b) <= 150]
+    for want in ('State Library Victoria', 'Melbourne Central'):  # 全名精确匹配：子串会把「State Library Station」地铁站也算进来
+        hit = [b['name'] for b in bs if b.get('name') == want and near(b) <= 150]
         ok(hit, '地标：Swanston × La Trobe 150 m 内按名字找得到「%s」（%s）' % (want, hit[:2]))
     # 反向断言：不能有 key / token，也不能有住户等个人信息（只允许约定的字段）
     ok(not re.search(r'(sk-[A-Za-z0-9]{16,}|api[_-]?key|secret|token|Bearer\s)', raw, re.I), '反向：文件里没有 key / token 字样')

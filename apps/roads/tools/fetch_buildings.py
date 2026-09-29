@@ -6,16 +6,16 @@
       第一次（或 --refresh）从 OSM 拉 building=* 存到 raw/osm_buildings.gpkg，之后只用本地文件重算
 前置：public/<area>/network.json（tools/build_network.py）；
       可选 raw/com_footprints_2018.geojson（市政 2018 建筑轮廓，补 OSM 缺的高度；下载命令见 README）
-高度优先级：OSM height → OSM building:levels × 3.2 → 市政轮廓 → 默认 12 m（height_src 记来源）
+高度优先级：市政 2018 轮廓实测 → OSM height → OSM building:levels × 3.2 → 默认 12 m（height_src 记来源）
+      （和 issue #21 写的顺序不同：OSM 外轮廓的 height 常只是裙楼，见 build() 里的注释和 README）
 退出码：0 成功；1 所有 Overpass 服务器都失败，或缺 network.json
-依赖：osmnx 2.x（带 geopandas、shapely）
+依赖：osmnx 2.x 装好的 requests、geopandas、shapely（下载不经过 osmnx）
 数据许可证：ODbL，页面要写「© OpenStreetMap contributors」。
-坑：OSMnx 的 bbox 是 (西, 南, 东, 北)；Overpass 主站时常拒连，按 OVERPASS 顺序自动换镜像。
+坑：Overpass 主站时常拒连、镜像常回 504：每台只试一次、硬超时，按 OVERPASS 顺序换；进度逐行打印。
 """
 import argparse, os, sys, warnings
 
 warnings.filterwarnings('ignore')
-import osmnx as ox
 
 MOD = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_BBOX = (-37.8235, 144.9480, -37.8060, 144.9760)
@@ -24,29 +24,60 @@ DEFAULT_HEIGHT = 12.0    # OSM 和市政数据都没有高度时
 FRONTAGE_M = 30          # 临街：楼离路段中心线多远以内
 FRONTAGE_MAX = 4         # 每栋楼最多记几条临街路段（控制体积）
 SIMPLIFY_DEG = 0.000005  # 轮廓抽稀约 0.5 米
-# private.coffee 和 kumi 是同一台机器（193.219.97.30），09-29 常回 504，OSMnx 遇 504 会无限重试卡住 → 排最后
+TIMEOUT_S = 120          # 每台 Overpass 服务器最多等多久
+KEEP_TAGS = ['name', 'building', 'height', 'building:levels', 'amenity', 'shop', 'office', 'tourism']
+# private.coffee 和 kumi 是同一台机器（193.219.97.30），09-29 常回 504 → 排最后
 OVERPASS = ['https://overpass-api.de/api', 'https://maps.mail.ru/osm/tools/overpass/api',
             'https://overpass.private.coffee/api', 'https://overpass.kumi.systems/api']
 
 
 def fetch(bbox, raw):
-    """→ raw/osm_buildings.gpkg；主站拒连就换镜像。"""
+    """→ raw/osm_buildings.gpkg。直接发 Overpass 请求，每台服务器只试一次、硬超时 TIMEOUT_S 秒。
+    不用 ox.features_from_bbox：它请求前会查 /status 按服务器给的时间排队，遇 504 还会无限重试，外面看就是卡住。"""
+    import requests
+    import geopandas as gpd
+    from shapely.geometry import LineString, Polygon
+    from shapely.ops import polygonize, unary_union
+
     s, w, n, e = bbox
-    ox.settings.cache_folder = os.path.join(raw, 'osm_cache')
-    ox.settings.requests_timeout = 300
+    q = ('[out:json][timeout:%d];(way["building"](%f,%f,%f,%f);relation["building"]["type"="multipolygon"](%f,%f,%f,%f););out tags geom;'
+         % (TIMEOUT_S, s, w, n, e, s, w, n, e))
+    data = None
     for url in OVERPASS:
-        ox.settings.overpass_url = url
+        print('·  试 %s（最多 %d 秒）…' % (url, TIMEOUT_S), flush=True)
         try:
-            B = ox.features_from_bbox((w, s, e, n), {'building': True})
+            r = requests.post(url + '/interpreter', data={'data': q}, timeout=TIMEOUT_S + 30,
+                              headers={'User-Agent': 'hackathon-roads/1.0 (T11 buildings)'})
+            if r.status_code != 200:
+                print('   HTTP %d，换下一台' % r.status_code, flush=True); continue
+            data = r.json(); break
         except Exception as ex:
-            print('·  %s 失败：%s' % (url, str(ex)[:120]), flush=True); continue
-        B = B[B.geometry.geom_type.isin(['Polygon', 'MultiPolygon'])]
-        B = B[[c for c in B.columns if not isinstance(B[c].iloc[0] if len(B) else None, (list, dict))]]
-        p = os.path.join(raw, 'osm_buildings.gpkg')
-        B.reset_index().to_file(p, driver='GPKG')
-        print('✅ OSM 建筑 %d 个（%s）→ %s' % (len(B), url, p), flush=True)
-        return p
-    print('❌ 所有 Overpass 服务器都失败'); sys.exit(1)
+            print('   失败：%s，换下一台' % str(ex)[:120], flush=True)
+    if data is None:
+        print('❌ 所有 Overpass 服务器都失败'); sys.exit(1)
+    rows = []
+    for el in data.get('elements', []):
+        tags = el.get('tags', {})
+        if el['type'] == 'way':
+            pts = [(g['lon'], g['lat']) for g in el.get('geometry', [])]
+            if len(pts) < 4 or pts[0] != pts[-1]:
+                continue
+            geom = Polygon(pts)
+        else:  # multipolygon：把 outer 成员拼成环
+            lines = [LineString([(g['lon'], g['lat']) for g in m['geometry']])
+                     for m in el.get('members', []) if m.get('role') == 'outer' and len(m.get('geometry', [])) >= 2]
+            polys = list(polygonize(unary_union(lines))) if lines else []
+            if not polys:
+                continue
+            geom = unary_union(polys)
+        row = {'element': 'way' if el['type'] == 'way' else 'relation', 'id': el['id'], 'geometry': geom}
+        row.update({k: tags.get(k) for k in KEEP_TAGS})
+        rows.append(row)
+    B = gpd.GeoDataFrame(rows, geometry='geometry', crs=4326)
+    p = os.path.join(raw, 'osm_buildings.gpkg')
+    B.to_file(p, driver='GPKG')
+    print('✅ OSM 建筑 %d 个（%s）→ %s' % (len(B), url, p), flush=True)
+    return p
 
 
 def num(v):
@@ -138,13 +169,17 @@ def build(bbox, raw, area):
             continue
         pxy = Polygon([xy(la, lo) for la, lo in ring])
         levels = num(r.get('building:levels'))
-        h, src = num(r.get('height')), 'osm_height'
-        if h is None and levels:
-            h, src = levels * M_PER_LEVEL, 'osm_levels'
-        if h is None and com_tree is not None:
+        # 市政实测优先：CBD 高楼在 OSM 里外轮廓的 height 常常只是裙楼（塔楼另画成 building:part），
+        # 例 Eureka Tower OSM 20 m、市政 298 m（实际约 297 m）；Rialto OSM 20 m、市政 249 m（实际约 251 m）
+        h, src = None, None
+        if com_tree is not None:
             hits = [com[i][1] for i in com_tree.query(pxy, predicate='contains')]
             if hits:
                 h, src = max(hits), 'com'
+        if h is None and num(r.get('height')):
+            h, src = num(r.get('height')), 'osm_height'
+        if h is None and levels:
+            h, src = levels * M_PER_LEVEL, 'osm_levels'
         if h is None:
             h, src = DEFAULT_HEIGHT, 'default'
         h = min(h, 340.0)
