@@ -183,7 +183,8 @@ function engBadges(f){
   if(!f.ok)b.push(`<span class="pill warn" title="${esc(L('Missing readings, calibration miss, sign-rule error or a full closure with no way round','读数没拿到、校准没命中、屏上文字不合规范，或全封又无路可绕'))}">${L('Check inputs','输入待核')}</span>`);
   if(f.inactive)b.push(`<span class="pill warn">${L('No works this hour','此时段不施工')}</span>`);
   if(f.blocked_vph>0)b.push(`<span class="pill risk">${fmtN(f.blocked_vph)} ${L('veh/h stuck','辆/时 无路可走')}</span>`);
-  b.push(f.reading_src==='rule'?`<span class="pill warn">${L('Sign reading · estimate','读屏 · 规则估算')}</span>`:`<span class="pill ok">${L('Sign reading','读屏')} · ${esc(f.reading_src)}</span>`);
+  const rt=aiSrcTone(f.reading_src)==='ok'?'ok':'warn'; // labels and tone: 9-ai.js
+  b.push(`<span class="pill ${rt}">${L('Sign reading','读屏')} · ${esc(aiSrcLabel(f.reading_src))}</span>`);
   b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
@@ -316,7 +317,7 @@ function engPanel3(){
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
-  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${f.reading_src==='rule'?'keyword rules (LLM reader pending)':esc(f.reading_src)}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${f.reading_src==='rule'?'关键词规则（大模型读屏待接）':esc(f.reading_src)}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
+  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(f.reading_src))}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(f.reading_src))}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
 }
 function engTransit3(s){

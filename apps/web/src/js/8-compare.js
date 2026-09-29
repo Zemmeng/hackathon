@@ -165,6 +165,7 @@ function cmpRender(){
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
   const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
   const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
+  aiCmp(); // AI explanation under each card + lean / decide (9-ai.js)
 }
 
 // Chosen plan → pack.js execution pack → a print / copy sheet. Every string goes in with textContent.

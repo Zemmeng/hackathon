@@ -639,6 +639,48 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print{display:none!important}
 }
+
+/* AI panel (9-ai.js): step 3 road-user readings + call log, step 4 explanation on the compare cards */
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:8px;min-width:0}
+.ai-p{padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ai-ph{display:flex;align-items:center;justify-content:space-between;gap:6px 8px;flex-wrap:wrap}
+.ai-ph b{font-size:12.5px}
+.ai-signs{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ai-sign{display:flex;gap:6px;align-items:baseline;min-width:0}
+.ai-sign .kd{font:700 9px/1.4 var(--f-mono);letter-spacing:.06em;color:var(--fg-3);text-transform:uppercase;flex:none;width:52px}
+.ai-sign .tx{font:500 11px/1.4 var(--f-mono);color:var(--works);overflow-wrap:anywhere;min-width:0}
+.ai-bars{display:flex;flex-direction:column;gap:6px}
+.ai-bar{display:grid;grid-template-columns:68px minmax(0,1fr) 58px;align-items:center;gap:8px;font-size:11px}
+.ai-bar .k{color:var(--fg-2)}
+.ai-bar .tr{position:relative;height:6px;border-radius:3px;background:var(--line)}
+.ai-bar .tr .v{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
+.ai-bar .tr .rg{position:absolute;top:-3px;bottom:-3px;border:1px solid var(--fg-2);border-radius:3px;min-width:2px}
+.ai-bar .n{font:600 11px/1 var(--f-mono);text-align:right;white-space:nowrap}
+.ai-bar .n small{display:block;font-weight:400;font-size:9.5px;color:var(--fg-3);margin-top:3px}
+.ai-adv{font-size:12px;overflow-wrap:anywhere}
+.ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
+.ai-why:empty{display:none}
+.ai-log{border:1px solid var(--line);border-radius:6px;background:var(--raised);min-width:0}
+.ai-log summary{cursor:pointer;padding:9px 12px;font:600 11px/1.2 var(--f-mono);letter-spacing:.04em}
+.ai-log-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 12px 8px}
+.ai-log .ai-none{padding:0 12px 10px;margin:0}
+.ai-rows{max-height:320px;overflow-y:auto;border-top:1px solid var(--line)}
+.ai-row{display:flex;flex-direction:column;gap:3px;padding:7px 12px;font-size:11px;min-width:0}
+.ai-row+.ai-row{border-top:1px solid var(--line)}
+.ai-row .hd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.ai-row .tm,.ai-row .ms{font-family:var(--f-mono);color:var(--fg-3)}
+.ai-row .tx{font-family:var(--f-mono);color:var(--works);overflow-wrap:anywhere}
+.ai-row .adv{color:var(--fg-2);overflow-wrap:anywhere}
+.cmp-ai{display:flex;flex-direction:column;gap:4px;border-top:1px dashed var(--line);padding-top:8px;margin-top:6px;font-size:11.5px;min-width:0}
+.cmp-ai-sum{margin:0;overflow-wrap:anywhere}
+.cmp-ai-pc{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;color:var(--fg-2)}
+.cmp-ai-pc li{overflow-wrap:anywhere}
+.cmp-ai-pc li.pro::before{content:'+ ';color:var(--accent);font-weight:700}
+.cmp-ai-pc li.con::before{content:'\2212  ';color:var(--works);font-weight:700}
+.cmp-ai-foot{padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12px;min-width:0}
+.cmp-ai-foot.off{padding:0}
+.cmp-ai-foot p{margin:0;overflow-wrap:anywhere}
+.cmp-ai-decide{color:var(--fg-2);font-size:11.5px}
 </style>
 </head>
 <body>
@@ -2018,7 +2060,7 @@ function renderPanel(){
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
@@ -2422,7 +2464,8 @@ function engBadges(f){
   if(!f.ok)b.push(`<span class="pill warn" title="${esc(L('Missing readings, calibration miss, sign-rule error or a full closure with no way round','读数没拿到、校准没命中、屏上文字不合规范，或全封又无路可绕'))}">${L('Check inputs','输入待核')}</span>`);
   if(f.inactive)b.push(`<span class="pill warn">${L('No works this hour','此时段不施工')}</span>`);
   if(f.blocked_vph>0)b.push(`<span class="pill risk">${fmtN(f.blocked_vph)} ${L('veh/h stuck','辆/时 无路可走')}</span>`);
-  b.push(f.reading_src==='rule'?`<span class="pill warn">${L('Sign reading · estimate','读屏 · 规则估算')}</span>`:`<span class="pill ok">${L('Sign reading','读屏')} · ${esc(f.reading_src)}</span>`);
+  const rt=aiSrcTone(f.reading_src)==='ok'?'ok':'warn'; // labels and tone: 9-ai.js
+  b.push(`<span class="pill ${rt}">${L('Sign reading','读屏')} · ${esc(aiSrcLabel(f.reading_src))}</span>`);
   b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
@@ -2555,7 +2598,7 @@ function engPanel3(){
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
-  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${f.reading_src==='rule'?'keyword rules (LLM reader pending)':esc(f.reading_src)}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${f.reading_src==='rule'?'关键词规则（大模型读屏待接）':esc(f.reading_src)}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
+  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(f.reading_src))}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(f.reading_src))}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
 }
 function engTransit3(s){
@@ -3149,6 +3192,7 @@ function cmpRender(){
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
   const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
   const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
+  aiCmp(); // AI explanation under each card + lean / decide (9-ai.js)
 }
 
 // Chosen plan → pack.js execution pack → a print / copy sheet. Every string goes in with textContent.
@@ -3178,6 +3222,212 @@ function cmpExport(){
   document.getElementById('cmpPrint').onclick=()=>window.print();
   document.getElementById('cmpCopy').onclick=()=>{const done=()=>toast(L('Pack copied','已复制执行包'));try{navigator.clipboard.writeText(txt).then(done,()=>toast(L('Copy failed — select the text and copy it','复制失败 —— 请手动选中复制')));}catch(e){toast(L('Copy failed — select the text and copy it','复制失败 —— 请手动选中复制'));}};
   sh.hidden=false;document.getElementById('cmpClose').focus();
+}
+
+/* ============================================================
+   AI panel (lead · D-0929-2307): show what the LLM actually did.
+   Step 3 · "AI road users · what each one read": for the main approach of the latest run, each of the 4 personas'
+   sign reading from T5 (readSigns: answer file → /api/read (KV cache / live LLM) → keyword rules): the signs they saw
+   in order, noticed / understood / trusts with the reader's range, the route advice, the one-sentence why, and where
+   the reading came from. Below it the AI call log: every readSigns call this session (backend.js aiLog(), oldest
+   first), downloadable as JSON built in the browser (nothing is uploaded).
+   Step 4 · the T23 compare cards get T5's AI explanation (explain.js explainOptions over optionFromRun of each card).
+   The LLM only interprets (D-0929-1435): every number here comes from the engine or from the reading itself.
+   Sign text, road names and model text are untrusted: esc() in templates, textContent for why / summary / pros / cons.
+   ============================================================ */
+
+/* pure:begin — tests/ai_glue.mjs runs this block in node */
+const AI_LOG_KEEP=200; // same bound as backend.js AI_LOG_MAX
+const AI_SRC={file:['LLM · precomputed','大模型 · 预先算好'],kv:['LLM · cached','大模型 · 缓存'],llm:['LLM · live','大模型 · 现场'],
+  rule:['Rules · fallback','规则 · 兜底'],mixed:['Mixed sources','多种来源'],error:['Not read','没读成']};
+// reading src → friendly label (plain text: esc() it in templates). llm + ms → "LLM · live · 840 ms"
+function aiSrcLabel(src,ms){
+  const k=AI_SRC[src];if(!k)return src?String(src).slice(0,32):L('Unknown','未知');
+  const t=L(k[0],k[1]);
+  return src==='llm'&&Number.isFinite(ms)?`${t} · ${Math.round(ms)} ms`:t;
+}
+function aiSrcTone(src){return src==='file'||src==='kv'||src==='llm'?'ok':src==='error'?'risk':'warn';}
+const AI_EX={llm:['AI explanation · LLM','AI 解读 · 大模型'],kv:['AI explanation · LLM cached','AI 解读 · 大模型缓存'],rule:['AI explanation · rules','AI 解读 · 规则'],api:['AI explanation · API','AI 解读 · 接口']};
+function aiExplainLabel(src){const k=AI_EX[src]||AI_EX.api;return L(k[0],k[1]);}
+function aiExplainTone(src){return src==='llm'||src==='kv'?'ok':'warn';}
+// 0–1 → whole percent, clamped; anything else → null (never lets model text into a style attribute)
+function aiPct(x){if(x===null||x===undefined||x==='')return null;const n=Number(x);return Number.isFinite(n)?Math.round(Math.min(1,Math.max(0,n))*100):null;}
+// Signs in the order they are passed → [{ kind, text }]; a VMS's frames are joined with ▸
+function aiSigns(signs){
+  return (Array.isArray(signs)?signs:[]).map(s=>({kind:String(s&&s.kind||''),
+    text:s&&Array.isArray(s.frames)?s.frames.map(f=>(Array.isArray(f)?f:[f]).join(' ')).join(' ▸ '):String(s&&s.text||'')}));
+}
+function aiKind(k){return k==='vms'?'VMS':k==='arrow'?L('Arrow','箭头板'):L('Sign','标志牌');}
+const aiSt=n=>String(n).replace(/ Street\b/,' St');
+const aiWho=t=>Object.prototype.hasOwnProperty.call(TYPE_L,t)?L(TYPE_L[t][0],TYPE_L[t][1]):String(t==null?'?':t);
+// A reading's route advice → one plain-text line: "use Russell St · save 9 min" / "no route advice"
+function aiAdvice(r){
+  if(!r)return L('no reading','没有读数');
+  const a=r.advice&&typeof r.advice==='object'?Object.entries(r.advice).filter(([,v])=>v==='use'||v==='avoid'):[];
+  const parts=a.map(([road,v])=>v==='use'?L(`use ${aiSt(road)}`,`走 ${aiSt(road)}`):L(`avoid ${aiSt(road)}`,`别走 ${aiSt(road)}`));
+  const sv=r.saving_min==null?NaN:Number(r.saving_min),dl=r.delay_min==null?NaN:Number(r.delay_min);
+  if(parts.length&&Number.isFinite(sv)&&sv>0)parts.push(L(`save ${Math.round(sv)} min`,`省 ${Math.round(sv)} 分钟`));
+  if(Number.isFinite(dl)&&dl>0)parts.push(L(`${Math.round(dl)} min delay`,`堵 ${Math.round(dl)} 分钟`));
+  return parts.length?parts.join(' · '):L('no route advice','没给路线建议');
+}
+// explain.js label rule: no < >, ≤ 60 characters
+function aiLabel(x){return String(x==null?'':x).replace(/[<>]/g,'').slice(0,60)||'plan';}
+function aiBar(label,v,rg){
+  const p=aiPct(v),lo=Array.isArray(rg)?aiPct(rg[0]):null,hi=Array.isArray(rg)?aiPct(rg[1]):null,has=lo!=null&&hi!=null&&hi>=lo;
+  return`<div class="ai-bar"><span class="k">${label}</span><span class="tr">${p==null?'':`<i class="v" style="width:${p}%"></i>`}${has?`<i class="rg" style="left:${lo}%;width:${hi-lo}%"></i>`:''}</span><span class="n">${p==null?'—':p+'%'}${has?`<small>${lo}–${hi}%</small>`:''}</span></div>`;
+}
+// One persona card. p = backend readingsOf(s).personas[t]; the why goes in later with textContent (data-aiwhy)
+function aiPersonaHTML(t,p){
+  const nm=esc(aiWho(t));
+  if(!p)return`<div class="card ai-p"><div class="ai-ph"><b>${nm}</b><span class="pill">${L('No signs on this road','这段路上没有屏')}</span></div></div>`;
+  const r=p.reading,rg=r&&r.range&&typeof r.range==='object'?r.range:{};
+  const signs=aiSigns(p.signs).map(s=>`<div class="ai-sign"><span class="kd">${esc(aiKind(s.kind))}</span><span class="tx">${esc(s.text)}</span></div>`).join('');
+  return`<div class="card ai-p"><div class="ai-ph"><b>${nm}</b><span class="pill ${aiSrcTone(p.src)}">${esc(aiSrcLabel(p.src,p.ms))}</span></div>
+    <div class="ai-signs">${signs}</div>
+    ${r?`<div class="ai-bars">${aiBar(L('Noticed','看到'),r.notice,rg.notice)}${aiBar(L('Understood','看懂'),r.understand,rg.understand)}${aiBar(L('Trusts','相信'),r.trust,rg.trust)}</div>
+    <div class="ai-adv">→ ${esc(aiAdvice(r))}</div><q class="ai-why" data-aiwhy="${esc(t)}"></q>${p.fallback?`<span class="small muted">${L('Reader error → keyword rules','读屏出错 → 改用关键词规则')}</span>`:''}`
+    :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
+}
+function aiTime(t){const d=new Date(t);return Number.isNaN(d.getTime())?'—':d.toTimeString().slice(0,8);}
+// One call-log row (every string through esc())
+function aiLogRowHTML(e){
+  const who=aiWho(e.persona);
+  const txt=aiSigns(e.signs).map(s=>s.text).join(' | ');
+  const adv=e.reading?aiAdvice(e.reading):e.error?L('error: ','出错：')+e.error:L('no reading','没有读数');
+  return`<div class="ai-row"><div class="hd"><span class="tm">${esc(aiTime(e.t))}</span><b>${esc(who)}</b><span class="pill ${aiSrcTone(e.src)}">${esc(aiSrcLabel(e.src))}</span><span class="ms">${Number.isFinite(e.ms)?Math.round(e.ms)+' ms':'—'}</span></div><span class="tx">${esc(txt)}</span><span class="adv">→ ${esc(adv)}${e.fallback?' · '+esc(L('reader error → rules','读屏出错 → 规则')):''}</span></div>`;
+}
+// Download: whitelisted fields only (persona, signs, reading) — no headers, keys or anything else a log entry might carry
+const AI_READING_KEYS=['notice','understand','advice','saving_min','delay_min','trust','why','range','src','model','prompt_v','note'];
+function aiPick(o,keys){const out={};if(!o||typeof o!=='object')return out;for(const k of keys)if(o[k]!==undefined)out[k]=o[k];return out;}
+function aiLogJSON(log,meta){
+  const entries=(Array.isArray(log)?log:[]).map(e=>({...aiPick(e,['seq','t','persona','kmh','read_s','src','model','ms','fallback','error']),
+    roads:Array.isArray(e&&e.roads)?e.roads.map(String):[],
+    signs:(Array.isArray(e&&e.signs)?e.signs:[]).map(s=>aiPick(s,['kind','frames','text','read_s'])),
+    reading:e&&e.reading?aiPick(e.reading,AI_READING_KEYS):null}));
+  return JSON.stringify({app:'RippleTwin',kind:'ai-call-log',...aiPick(meta,['exported_at','lang']),count:entries.length,
+    note:'Sign-reading calls only: persona, sign text as seen, the reading and its source. Numbers on the page come from the engine.',entries},null,2);
+}
+/* pure:end */
+
+const AI={log:[],open:false,timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
+
+// Subscribe once the backend is up: snapshot + subscribe in the same tick, so no call is missed
+BE.ready.then(()=>{
+  const api=BE.api;if(!api||typeof api.aiLog!=='function'||typeof api.onAiLog!=='function')return;
+  AI.log=api.aiLog();
+  api.onAiLog(e=>{AI.log.push(e);if(AI.log.length>AI_LOG_KEEP)AI.log.splice(0,AI.log.length-AI_LOG_KEEP);aiRenderSoon();});
+  aiRender();
+});
+function aiRenderSoon(){clearTimeout(AI.timer);AI.timer=setTimeout(aiRender,120);} // a run asks ~20 readings at once: one repaint
+
+// Step 3: renderPanel() → aiMount() after the network panel is built; the section goes under "Who is hit · and why"
+function aiMount(){
+  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net'||!BE.api)return;
+  const old=document.getElementById('aiBox');if(old)old.remove();
+  const box=document.createElement('div');box.id='aiBox';box.className='stack ai-box';
+  const who=P.querySelector('.eng-types'),sec=who&&who.closest('.stack');
+  if(sec&&sec.parentNode)sec.parentNode.insertBefore(box,sec.nextSibling);
+  else{const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);}
+  aiRender();
+}
+function aiReadings(){
+  const s=EP.sum;if(!s||EP.badText||!BE.api||typeof BE.api.readingsOf!=='function')return null;
+  try{return BE.api.readingsOf(s);}catch(e){console.warn('readingsOf failed',e);return null;}
+}
+function aiHTML(rd){
+  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
+    <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
+    :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
+  return head+body+aiLogHTML();
+}
+function aiLogHTML(){
+  const n=AI.log.length;
+  return`<details class="ai-log" id="aiLogBox"${AI.open?' open':''}><summary>${L(`AI call log (${n})`,`AI 调用日志（${n}）`)}</summary>
+    <div class="ai-log-bar"><span class="small muted">${L('Every sign-reading call this session, oldest first. Kept in this tab only.','这次打开页面以来的每次读屏调用，按时间排。只留在这个页面里。')}</span><button type="button" class="btn ghost" id="aiDl" ${n?'':'disabled'}>${L('Download JSON','下载 JSON')}</button></div>
+    ${n?`<div class="ai-rows">${AI.log.map(aiLogRowHTML).join('')}</div>`:`<p class="small muted ai-none">${L('No calls yet.','还没有调用。')}</p>`}</details>`;
+}
+function aiRender(){
+  const el=document.getElementById('aiBox');if(!el)return;
+  const rd=aiReadings(),h=aiHTML(rd);
+  const whys=rd?TYPES4.map(t=>{const p=rd.personas&&rd.personas[t];return p&&p.reading&&p.reading.why||'';}).join('\u0001'):'';
+  const sig=h+'\u0000'+whys;
+  if(el.dataset.sig===sig)return; // signature guard: same state → keep the DOM (open log, scroll position, button under the pointer)
+  const rows=el.querySelector('.ai-rows'),keepScroll=rows?rows.scrollTop:0;
+  el.innerHTML=h;el.dataset.sig=sig;
+  el.querySelectorAll('[data-aiwhy]').forEach(q=>{const p=rd&&rd.personas&&rd.personas[q.dataset.aiwhy];q.textContent=p&&p.reading&&p.reading.why||'';});
+  const d=el.querySelector('#aiLogBox');if(d)d.addEventListener('toggle',()=>{AI.open=d.open;});
+  const nr=el.querySelector('.ai-rows');if(nr)nr.scrollTop=keepScroll;
+  const b=el.querySelector('#aiDl');if(b)b.onclick=aiDownload;
+}
+// JSON built here and handed to the browser as a file: no upload, no network
+function aiDownload(){
+  try{
+    const txt=aiLogJSON(AI.log,{exported_at:new Date().toISOString(),lang:LANG.cur});
+    const url=URL.createObjectURL(new Blob([txt],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download=`rippletwin-ai-log-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }catch(e){console.warn('AI log download failed',e);toast(L('Download failed','下载失败'));}
+}
+
+// Step 4: cmpRender() → aiCmp(). One explanation for the plans on the cards; numbers in it can only come from the engine
+function aiCmp(){
+  const el=document.getElementById('cmp4');if(!el)return;
+  const rows=CP.rows||[],ex=CP.mod&&CP.mod.ex;
+  if(CP.busy||rows.length<2)return;
+  let req=null;
+  if(ex&&typeof ex.explainOptions==='function'&&typeof ex.optionFromRun==='function'){
+    try{
+      const options=rows.filter(r=>r.s).map(r=>ex.optionFromRun(r.id,aiLabel(cmpLabel(r)),r.s,{hire_aud:r.hire,days:r.days}));
+      req=options.length?{lang:LANG.cur==='zh'?'zh':'en',options}:null;
+    }catch(e){console.warn('AI explanation request not built',e);req=null;}
+  }
+  const key=req?JSON.stringify(req):'none';
+  if(key!==AI.ex.key){
+    const x=AI.ex,seq=++x.seq;x.key=key;x.res=null;x.err=!req;x.busy=!!req;
+    if(req)ex.explainOptions(req).then(r=>{if(seq!==x.seq)return;x.res=r;x.busy=false;aiCmpPaint();},
+      e=>{if(seq!==x.seq)return;console.warn('AI explanation failed',e);x.err=true;x.busy=false;aiCmpPaint();});
+  }
+  aiCmpPaint();
+}
+function aiCmpPaint(){
+  const el=document.getElementById('cmp4');if(!el)return;
+  const cards=[...el.querySelectorAll('.cmp-card')],rows=CP.rows||[],x=AI.ex,res=x.res;
+  const byId=new Map(((res&&res.options)||[]).map(o=>[o.id,o]));
+  const node=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!=null)n.textContent=txt;return n;};
+  cards.forEach((c,i)=>{
+    let box=c.querySelector('.cmp-ai');
+    const o=rows[i]&&byId.get(rows[i].id);
+    const sig=x.busy?'busy':o?JSON.stringify([o.summary,o.pros,o.cons]):'';
+    if(!sig){if(box)box.remove();return;}
+    if(!box){box=node('div','cmp-ai');c.appendChild(box);}
+    if(box.dataset.sig===sig)return;
+    box.dataset.sig=sig;box.textContent='';
+    if(x.busy){box.appendChild(node('p','small muted',L('AI is reading this plan’s numbers…','AI 正在读这套方案的数字…')));return;}
+    if(o.summary)box.appendChild(node('p','cmp-ai-sum',o.summary));
+    const ul=node('ul','cmp-ai-pc');
+    for(const t of o.pros||[])ul.appendChild(node('li','pro',t));
+    for(const t of o.cons||[])ul.appendChild(node('li','con',t));
+    if(ul.children.length)box.appendChild(ul);
+  });
+  const wrap=el.querySelector('.cmp-cards');let foot=el.querySelector('#cmpAiFoot');
+  const fsig=!wrap?'':x.busy?'busy':res?JSON.stringify([res.lean,res.decide,res.src]):x.err?'err':'';
+  if(!fsig){if(foot)foot.remove();return;}
+  if(!foot){foot=node('div','card cmp-ai-foot');foot.id='cmpAiFoot';wrap.parentNode.insertBefore(foot,wrap.nextSibling);}
+  if(foot.dataset.sig===fsig)return;
+  foot.dataset.sig=fsig;foot.textContent='';
+  if(x.err){foot.className='cmp-ai-foot off';foot.appendChild(node('p','small muted',L('AI explanation unavailable — the engine numbers above are unaffected.','AI 解读暂时没有 —— 上面引擎的数字不受影响。')));return;}
+  foot.className='card cmp-ai-foot';
+  const hd=node('div','between');hd.appendChild(node('span','eyebrow',L('AI explanation','AI 解读')));
+  hd.appendChild(node('span','pill '+(x.busy?'':aiExplainTone(res.src)),x.busy?L('Working…','生成中…'):aiExplainLabel(res.src)));foot.appendChild(hd);
+  if(x.busy){foot.appendChild(node('p','small muted',L('Reading the engine numbers for each plan…','正在读每套方案的引擎数字…')));return;}
+  if(res.lean&&res.lean.option){
+    const r=rows.find(y=>y.id===res.lean.option),p=node('p','cmp-ai-lean');
+    p.appendChild(node('b',null,L(`Leans towards ${res.lean.option}`,`倾向 ${res.lean.option}`)+(r?' · '+cmpLabel(r):'')));
+    if(res.lean.why)p.appendChild(document.createTextNode(' — '+res.lean.why));
+    foot.appendChild(p);
+  }else foot.appendChild(node('p','small muted',L('No clear lean between these plans.','这几套方案之间没有明显倾向。')));
+  if(res.decide)foot.appendChild(node('p','cmp-ai-decide',res.decide));
 }
 
 </script>

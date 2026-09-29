@@ -297,7 +297,7 @@ function renderPanel(){
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
