@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RippleTwin 系统架构 v2</title>
+<!-- 源文件：改下面 script 里的文字和坐标，浏览器打开就是图；导出 PDF = 打印成 A4 横向，边距选「无」。
+     导出的 6-architecture-v2.pdf / .png 和本文件放一起。依据：D-0929-1310 · 1435 · 1540 · 1536 · 1445，contract v3.1 -->
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  svg { display: block; width: 100%; height: auto; }
+  @media print { svg { width: 297mm; height: 210mm; } }
+  text { font-family: "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "WenQuanYi Zen Hei", sans-serif; }
+  text.mono { font-family: "SF Mono", Menlo, Consolas, "WenQuanYi Zen Hei Mono", monospace; }
+</style>
+</head>
+<body>
+<svg id="d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1131"></svg>
+<script>
+const C = {
+  orange: { stroke: '#E0852B', fill: '#FFF5EA', ink: '#A55810' },
+  green:  { stroke: '#2E9A5A', fill: '#EDF8F1', ink: '#1E6E3F' },
+  blue:   { stroke: '#2F6BD0', fill: '#EEF4FD', ink: '#1F4F9E' },
+  purple: { stroke: '#7A4CC8', fill: '#F4EEFC', ink: '#5A33A0' },
+  red:    { stroke: '#D14343', fill: '#FDEFEF', ink: '#A12C2C' },
+  grey:   { stroke: '#8B919A', fill: '#F6F7F9', ink: '#454B54' },
+};
+const INK = '#1F2328', MUTED = '#5F6670';
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('d');
+
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function text(x, y, s, o = {}) {
+  const t = el('text', { x, y, 'font-size': o.size || 13, fill: o.color || INK,
+    'font-weight': o.weight || 400, 'text-anchor': o.anchor || 'start' });
+  if (o.mono) t.setAttribute('class', 'mono');
+  t.textContent = s;
+  return t;
+}
+const width = (s, size, weight = 400) => { const t = text(0, -99, s, { size, weight }); const w = t.getComputedTextLength(); t.remove(); return w; };
+
+// 右上角的小标签，压在边框上；多个从右往左排
+function tags(xr, y, list) {
+  for (const [s, kind] of list.slice().reverse()) {
+    const w = width(s, 11, 700) + 14;
+    el('rect', { x: xr - w, y: y - 10, width: w, height: 20, rx: 5, fill: C[kind].stroke });
+    text(xr - w / 2, y + 4, s, { size: 11, weight: 700, color: '#fff', anchor: 'middle' });
+    xr -= w + 5;
+  }
+}
+function box(b) {
+  const c = C[b.kind];
+  el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.rx ?? 10, fill: b.fill || c.fill,
+    stroke: b.stroke || c.stroke, 'stroke-width': b.sw || 2, ...(b.dashed ? { 'stroke-dasharray': '7 5' } : {}) });
+  const px = b.x + (b.px || 14);
+  let y = b.y + (b.ty || 26);
+  if (b.title) { text(px, y, b.title, { size: b.ts || 16, weight: 700, color: b.titleColor || INK }); y += b.gap || 22; }
+  for (const s of b.sub || []) { text(px, y, s, { size: b.ss || 13, color: MUTED }); y += b.lh || 18.5; }
+  for (const s of b.mono || []) { text(px, y + 1, s, { size: 12, color: c.ink, mono: true }); y += 17; }
+  if (b.tags) tags(b.x + b.w - 10, b.y, b.tags);
+}
+// 关卡：红框，第一行「关卡」加粗
+function gate(g) {
+  el('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 8, fill: C.red.fill, stroke: C.red.stroke, 'stroke-width': 1.8 });
+  const t = text(g.x + 12, g.y + 18, '', { size: 12.5 });
+  const a = el('tspan', { 'font-weight': 700, fill: C.red.ink }, t); a.textContent = g.head + '  ';
+  const b = el('tspan', { fill: INK }, t); b.textContent = g.l1;
+  text(g.x + 12, g.y + 35, g.l2, { size: 12, color: MUTED });
+}
+
+const defs = el('defs', {});
+for (const k of Object.keys(C)) {
+  const m = el('marker', { id: 'm-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9,
+    markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' }, defs);
+  el('path', { d: 'M0,0 L10,5 L0,10 z', fill: C[k].stroke }, m);
+}
+function arrow(pts, o = {}) {
+  const k = o.kind || 'grey';
+  el('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: C[k].stroke,
+    'stroke-width': o.sw || 1.8, 'stroke-linejoin': 'round', 'marker-end': o.noHead ? '' : `url(#m-${k})`,
+    ...(o.dashed ? { 'stroke-dasharray': '6 4' } : {}) });
+}
+
+// ───────── 标题 ─────────
+text(40, 62, 'RippleTwin 系统架构 v2', { size: 34, weight: 700 });
+text(40, 96, 'RPM Hire 第 5 题：在真路网上画一个施工方案 → 4 类路人各自怎么走 → 哪里堵、堵多久、和别的施工撞不撞 · 大模型出主意，引擎算数字', { size: 16, color: MUTED });
+text(1560, 56, '2026-09-29 16:10', { size: 15, weight: 700, color: MUTED, anchor: 'end' });
+text(1560, 78, '对应 contract v3.1 · main 49f24b8', { size: 13, color: MUTED, anchor: 'end' });
+text(40, 128, '输入材料', { size: 13, weight: 700, color: C.orange.ink });
+
+// ───────── 左列：输入材料 ─────────
+const L = { x: 40, w: 262 };
+box({ ...L, y: 140, h: 104, kind: 'orange', title: '公开路网 + 车流',
+  sub: ['OSM 路网 · SCATS 8 周实测车流', 'SCATS 站点对到路口'], mono: ['network · flows.json → 后端'], tags: [['T3 louis', 'orange']] });
+box({ ...L, y: 254, h: 104, kind: 'purple', title: '文献与统计 → 参数',
+  sub: ['ABS · VISTA · Erke 2007 · ATAP', '每个数带出处、区间、置信度'], mono: ['params.json → 后端'], tags: [['T12 Unzzip · 新', 'purple']] });
+box({ ...L, y: 368, h: 112, kind: 'orange', title: '行人 · 电车公交 · 建筑',
+  sub: ['CoM 行人计数器 · PTV GTFS', 'CoM 建筑轮廓（地图画真楼）'], mono: ['walk · peds · transit', 'buildings.json → 网页'], tags: [['T7 T11 louis', 'orange']] });
+box({ ...L, y: 490, h: 104, kind: 'orange', title: 'RPM Hire 设备库存',
+  sub: ['产品页：护栏 · 标志牌 · VMS', '（每行 10 字符）· 箭头板'], mono: ['equipment.json → 网页'], tags: [['T7 louis', 'orange']] });
+box({ ...L, y: 690, h: 120, kind: 'orange', title: '用户',
+  sub: ['RPM 施工规划员 / 评委：', '打开一个网址，在地图上', '画施工、写屏上的字，', '看结果、照建议改'] });
+
+arrow([[302, 192], [368, 192]], { kind: 'orange' });
+arrow([[302, 306], [368, 306]], { kind: 'purple' });
+arrow([[302, 424], [336, 424], [336, 676], [368, 676]], { kind: 'orange' });
+arrow([[302, 542], [336, 542]], { kind: 'orange', noHead: true });
+arrow([[302, 750], [388, 750]], { kind: 'orange' });
+
+// ───────── 中间：浏览器里的后端（状态都在这） ─────────
+const H = { x: 370, y: 140, w: 650, h: 438 };
+box({ ...H, kind: 'green', sw: 3, rx: 14 });
+text(390, 172, '浏览器里的后端 · backend.js', { size: 21, weight: 700, color: C.green.ink });
+text(390, 197, '网页只接这一个：connect() → run / compare / advise / check', { size: 13.5, color: INK });
+text(390, 216, '一次装好约 1 秒；哪样没加载上都不抛（路网除外），status() 写清每样用的是什么', { size: 13, color: MUTED });
+tags(H.x + H.w - 12, H.y, [['T9 lead · D-0929-1540', 'green']]);
+
+const col = [390, 599, 808], cw = 192;
+text(390, 242, '装进来的三样', { size: 12.5, weight: 700, color: C.green.ink });
+const sub1 = { y: 250, h: 124, w: cw, kind: 'green', fill: '#fff', sw: 1.5, ts: 15, ty: 24, px: 12, gap: 21, ss: 12.5, lh: 18 };
+box({ ...sub1, x: col[0], title: '路网 · 车流',
+  sub: ['CBD 路段 · 车道 · 通行能力', '每小时每段多少车'], mono: ['/roads/public/cbd/'], tags: [['T3', 'orange']] });
+box({ ...sub1, x: col[1], title: '参数',
+  sub: ['4 类人占比 · 校准 · 信屏', '逐项校验，缺的回退假设值', '页面标「假设值」+ 区间'], tags: [['T12 · 新', 'purple']] });
+box({ ...sub1, x: col[2], title: '读屏 readSigns',
+  sub: ['只问「字 + 人」：看到没 ·', '看懂没 · 叫走哪条 · 信不信', '答案文件 → 接口 → 规则'], tags: [['T5 jinmingq', 'grey'], ['AI', 'purple']] });
+
+text(390, 396, '引擎 createEngine：prepare → evaluate(方案)，同样输入同样结果，可以反复跑几百遍', { size: 12.5, weight: 700, color: C.green.ink });
+const sub2 = { ...sub1, y: 414, h: 152 };
+box({ ...sub2, x: col[0], title: '选择模型',
+  sub: ['读数 + 每类人参数 →', '各条路走多少人', '赶时间 · 熟路 · 信屏 ·', '怕堵 · 能不能走货车路', '两点校准 3% / 20%'], tags: [['T9', 'green']] });
+box({ ...sub2, x: col[1], title: '分流 · 排队',
+  sub: ['BPR 延误 + D/D/1 排队', '全网总行程时间', '排队变长 → 回头重算比例', '（不再问大模型）'], tags: [['T9', 'green']] });
+box({ ...sub2, x: col[2], title: '冲突 · 顾问',
+  sub: ['A、B 分别算，再一起算', '多出来的 = 冲突成本', '顾问 ≤ 3 个改法：改字 ·', '挪设备 · 错开日期', '每个都重算、标 better'], tags: [['T9', 'green'], ['AI', 'purple']] });
+arrow([[col[0] + cw, 489], [col[1] - 2, 489]], { kind: 'green', sw: 1.5 });
+arrow([[col[1] + cw, 489], [col[2] - 2, 489]], { kind: 'green', sw: 1.5 });
+
+// ───────── 右列：云端 ─────────
+const R = { x: 1110, y: 140, w: 450, h: 450 };
+el('rect', { ...{ x: R.x, y: R.y, width: R.w, height: R.h }, rx: 14, fill: '#FAFAFB', stroke: C.grey.stroke, 'stroke-width': 1.5, 'stroke-dasharray': '7 5' });
+text(1128, 168, '云端 · Cloudflare', { size: 16, weight: 700, color: C.grey.ink });
+text(1128, 188, '只有这里碰 key；免费版每次只给 10 毫秒，所以不在这里算', { size: 12.5, color: MUTED });
+const Rb = { x: 1128, w: 414 };
+box({ ...Rb, y: 206, h: 84, kind: 'purple', dashed: true, title: '大模型（还没定用哪家）',
+  sub: ['候选：DeepSeek 卡（jinmingq 实测能用，', '10 条演示文案约 ¥0.2，要关思考模式）'], tags: [['llm-apis · 新', 'purple']] });
+arrow([[1160, 364], [1160, 292]], { kind: 'purple', dashed: true });
+gate({ x: 1182, y: 304, w: 360, h: 46, head: '关卡', l1: 'key 只放 Cloudflare（wrangler secret put）', l2: '默认 MOCK=1 不花钱；每句话每类人问 3 次给区间' });
+box({ ...Rb, y: 364, h: 100, kind: 'grey', title: '读屏接口 · apps/api Worker',
+  sub: ['POST /api/read：先查 KV 缓存，再问大模型', '现在一律用关键词规则回答（大模型没定）', '不合规范回 400 + 短码（SignError）'], tags: [['T5 jinmingq', 'grey']] });
+box({ ...Rb, y: 476, h: 104, kind: 'purple', dashed: true, title: '同源外壳 · apps/site（还没上线）',
+  sub: ['一个 Worker = 整个 demo 网址，挂 /<模块>/public/', '/api/* 转给 T5；build 只拷 git 已跟踪的文件', '部署人 unicornnnnnny · 目标 M1 21:00'], tags: [['T10 · 新', 'purple']] });
+
+arrow([[1000, 322], [1066, 322], [1066, 414], [1126, 414]], { kind: 'grey' });
+text(1066, 298, 'POST', { size: 11, color: MUTED, anchor: 'middle', mono: true });
+text(1066, 311, '/api/read', { size: 11, color: MUTED, anchor: 'middle', mono: true });
+arrow([[1335, 580], [1335, 650]], { kind: 'purple', dashed: true });
+text(1323, 612, '打开网址', { size: 12.5, color: MUTED, anchor: 'end' });
+text(1323, 630, '页面、后端 JS、数据同源加载', { size: 12.5, color: MUTED, anchor: 'end' });
+
+// ───────── 后端 ↔ 网页之间的两道关卡 ─────────
+arrow([[560, 652], [560, 580]], { kind: 'blue' });
+gate({ x: 400, y: 594, w: 330, h: 44, head: '方案 ↑ 关卡', l1: 'checkSigns', l2: '≤ 2 帧 × 4 行 × 每行 10 字符，不合规不交给 run' });
+arrow([[880, 580], [880, 650]], { kind: 'green' });
+gate({ x: 742, y: 594, w: 350, h: 44, head: 'summary ↓ 关卡', l1: 'flags（数字从哪来）', l2: 'ok=false 标黄 · rule 标「估算」· default 标「假设值」' });
+
+// ───────── 下方：网页主流程（蓝） ─────────
+const W = { x: 370, y: 652, w: 1190, h: 208 };
+el('rect', { x: W.x, y: W.y, width: W.w, height: W.h, rx: 14, fill: '#F8FBFF', stroke: C.blue.stroke, 'stroke-width': 1.5 });
+text(390, 679, '网页 RippleTwin · apps/web 主流程（6 步，D-0929-1310）', { size: 15, weight: 700, color: C.blue.ink });
+tags(W.x + W.w - 12, W.y, [['T2 / T13 unicornnnnnny · 接线中', 'purple']]);
+const steps = [
+  ['① 打开网页', ['同一个网址', '约 1 秒装好后端', '（connect）']],
+  ['② 画施工', ['选路段 · 摆护栏 /', '标志牌 / VMS / 箭头板', '写屏上的字']],
+  ['③ 问各类路人', ['通勤 · 本地 · 游客 ·', '送货各读一遍屏', '（readSigns）'], [['AI', 'purple']]],
+  ['④ 算影响', ['各条路分流 · 排队米数', '每类人多几分钟', '（run → summary）']],
+  ['⑤ 查叠加冲突', ['附近同时段的施工', 'A、B 一起算，', '多出来的 = 冲突成本']],
+  ['⑥ 给建议对比', ['前后对比（compare）', '≤ 3 个改法（advise）', '改字 · 挪设备 · 错开日期'], [['AI', 'purple']]],
+];
+steps.forEach(([title, sub, tg], i) => {
+  const x = 390 + i * 195;
+  box({ x, y: 694, w: 175, h: 100, kind: 'blue', title, sub, tags: tg, ts: 15, ty: 25, px: 12, gap: 22, ss: 12.5, lh: 18 });
+  if (i < steps.length - 1) arrow([[x + 175, 744], [x + 193, 744]], { kind: 'blue' });
+});
+arrow([[1452, 794], [1452, 818], [672, 818], [672, 797]], { kind: 'blue', dashed: true });
+text(1062, 844, '照建议改方案，再跑一遍（每改一次调一次 run，不每帧调）', { size: 12.5, color: C.blue.ink, anchor: 'middle' });
+
+// ───────── 最下一排 ─────────
+box({ x: 40, y: 880, w: 500, h: 158, kind: 'grey', title: '原则（已定，别再推翻）', lh: 20,
+  sub: ['· 大模型只读懂屏上的字；比例、分钟、排队全由引擎算（D-0929-1435）',
+        '· 全在打开网页的浏览器里算，同样输入同样结果（D-0929-1310）',
+        '· 低置信参数在页面标「假设值」+ 区间（D-0929-1536）',
+        '· 天气是第二层压力测试，引擎不管天气（D-0929-1445）',
+        '· 冲突 / 急刹 / TTC 来自路口仿真，页面标「模拟结果」'] });
+box({ x: 560, y: 880, w: 500, h: 158, kind: 'red', title: '提交门禁（人和 AI 一样守）', lh: 20,
+  sub: ['· pre-commit：扫 key · 数据 JSON ≤ 2MB · 其余 ≤ 1MB',
+        '· check.sh [1]–[9]：秘密 · 越界 · README + test.sh 全绿',
+        '· pre-push 拦直推 main · CI 再跑一遍 · Stop hook 跑 --quick',
+        '· 只写自己模块 + 公共区；改契约走 contract: PR',
+        '· 只有部署人 deploy；push、开 PR、合并每次先问'] });
+box({ x: 1080, y: 880, w: 480, h: 158, kind: 'grey', title: '路口仿真 · apps/sim + 天气压力测试', lh: 20, tags: [['T1 lead', 'grey']],
+  sub: ['· Swanston / La Trobe 路口放大：车 · 自行车 · 电车 · 行人',
+        '· 冲突、急刹、TTC、公交、应急通道、安全分',
+        '  → 页面标「模拟结果」（引擎不算这些）',
+        '· 6 种极端天气：网页预设，第二层加分项（D-0929-1445）'] });
+arrow([[1320, 880], [1320, 862]], { kind: 'grey' });
+
+// ───────── 图例 + 待定 ─────────
+let lx = 40;
+const legend = [
+  ['orange', '输入材料'], ['green', '浏览器里的后端（数据 + 引擎都装在这）'], ['blue', '主流程'],
+  ['purple', 'v1 之后新加'], ['red', '关卡 / 门禁'], ['grey', '其他模块 / 服务'],
+];
+for (const [k, s] of legend) {
+  el('rect', { x: lx, y: 1062, width: 22, height: 14, rx: 4, fill: C[k].fill, stroke: C[k].stroke, 'stroke-width': 2 });
+  text(lx + 30, 1074, s, { size: 13, color: INK });
+  lx += 30 + width(s, 13) + 26;
+}
+el('rect', { x: lx, y: 1062, width: 22, height: 14, rx: 4, fill: '#fff', stroke: C.grey.stroke, 'stroke-width': 2, 'stroke-dasharray': '4 3' });
+text(lx + 30, 1074, '虚线 = 还没接通 / 待定', { size: 13 });
+lx += 30 + width('虚线 = 还没接通 / 待定', 13) + 26;
+tags(lx + width('AI', 11, 700) + 14, 1069, [['AI', 'purple']]);
+text(lx + width('AI', 11, 700) + 22, 1074, '= 这一步问大模型', { size: 13 });
+
+text(40, 1106, '待定', { size: 13, weight: 700, color: C.red.ink });
+text(78, 1106, '用哪家大模型 · 线上网址（M1 目标 21:00）· 初筛 3 页幻灯片谁做（09-30 12:30 截止）', { size: 13, color: INK });
+text(1560, 1106, 'FEIT Hackathon Festival 2026 · 第 5 题 · 源文件 docs/arch/6-architecture-v2.html', { size: 12, color: MUTED, anchor: 'end' });
+</script>
+</body>
+</html>
