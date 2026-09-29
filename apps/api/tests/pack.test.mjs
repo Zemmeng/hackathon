@@ -130,6 +130,9 @@ if (!have) {
     ok(zh.checks.includes("没有「施工结束」牌") && zh.notify[0].who === "市政交通管理", "检查和通知用 packText 同一套措辞");
     const over = packDoc(buildPack({ ...LON, equipment: [{ id: "B", type: "barrier", at_m: 0, item: "barrier_steel", qty: stock("barrier_steel") + 1 }] }, { inventory, links }), "zh");
     ok(/超库存（库存 \d+）/.test(over.quote.lines[0].over || ""), "超库存的行带提示");
+    const endSign = buildPack({ ...LON, equipment: [{ id: "S-9", type: "sign", at_m: -43, text: "END ROADWORK" }] }, { inventory, links });
+    eq([packDoc(endSign, "zh").signs[0].at, packDoc(endSign, "en").signs[0].at], ["施工起点下游 43 米 · 标志牌", "43 m after the start of the works · sign"], "负数 at_m 写成「下游」，不写「上游 -43 米」");
+    ok(/S-9 · 施工起点下游 43 米 · 标志牌：END ROADWORK/.test(packText(endSign, "zh")), "纯文字版同样");
   });
 
   await sec("浏览器端 loadInventory（假 fetch）", async () => {

@@ -86,6 +86,8 @@ await sec("不合规范 → WorksiteError 短码", () => {
   rejects({ equipment: [{ id: "A", type: "sign", at_m: 1, text: "X" }, { id: "A", type: "sign", at_m: 2, text: "Y" }] }, "bad_equipment", "设备 id 重复");
   rejects({ equipment: [{ id: "C", type: "cone", at_m: 1 }] }, "bad_equipment", "设备类型不认识");
   rejects({ equipment: [{ id: "C", type: "barrier", at_m: 5000 }] }, "bad_equipment", "at_m 太远");
+  rejects({ equipment: [{ id: "C", type: "sign", at_m: -5000, text: "END ROADWORK" }] }, "bad_equipment", "下游也不能太远");
+  eq(normalizeWorksite({ ...BASE, equipment: [{ id: "E", type: "sign", at_m: -43, text: "END ROADWORK" }] }).equipment[0].at_m, -43, "负数 = 施工起点下游（契约 §施工方案；T22 把 END ROADWORK 摆在施工段末端）");
   rejects({ equipment: [{ id: "V", type: "vms", at_m: 1, frames: [["A", "B", "C", "D", "E"]] }] }, "too_many_lines", "VMS 5 行（沿用 signs.js 的短码）");
   rejects({ equipment: [{ id: "V", type: "vms", at_m: 1, frames: [["ROADWORKSAHEAD"]] }] }, "line_too_long", "VMS 一行超 10 字符");
   rejects({ equipment: [{ id: "V", type: "vms", at_m: 1, frames: [["<B>"]] }] }, "bad_chars", "反向：屏上有 < >");
