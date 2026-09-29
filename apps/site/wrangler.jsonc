@@ -22,13 +22,12 @@
     "binding": "ASSETS",
     // /api/* 先进 Worker（转给 T5）；但 /api/public/* 是 apps/api/public/ 的静态文件（reader.js 等），照常走静态资源
     "run_worker_first": ["/api/*", "!/api/public/*"]
-  }
+  },
 
-  // ---- 接 T5 的 api Worker（D-0929-1436）：它先部署上线后再打开 ----
-  // 1. hackathon.conf 改成 DEPLOY_MODULES=api site（api 必须排在前面：绑定的目标 Worker 得先存在）
-  // 2. 把下面三行取消注释，service 填 apps/api/wrangler.jsonc 里的 "name"（T5 分支上现在是 "api"）
-  // 3. bash scripts/deploy.sh all；之后 /api/health 返回的是 T5 的版本号，不再带 "api": false
-  // ,"services": [
-  //   { "binding": "API", "service": "<T5 的 Worker 名>" }
-  // ]
+  // ---- 接 T5 的 api Worker（D-0929-1436，T19 打开）----
+  // service = apps/api/wrangler.jsonc 的 "name"（改名两边一起改，tests/config.test.mjs 查）。
+  // hackathon.conf 的 DEPLOY_MODULES=api site：api 必须排在前面，绑定的目标 Worker 得先存在，否则部署报 Could not resolve service binding
+  "services": [
+    { "binding": "API", "service": "hackathon-api" }
+  ]
 }

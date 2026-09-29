@@ -28,8 +28,14 @@ try {
   ok(w.assets?.directory === 'out' && w.assets?.binding === 'ASSETS', 'assets：目录 out（build.mjs 产物）、绑定名 ASSETS（worker.js 用）');
   const rwf = w.assets?.run_worker_first || [];
   ok(rwf.includes('/api/*') && rwf.includes('!/api/public/*'), `run_worker_first = ${JSON.stringify(rwf)}：/api/* 先进 Worker，/api/public/* 留给静态文件`);
-  ok(!('services' in w), 'services 绑定还注释着（T5 的 api Worker 上线后再打开，见 README）');
-  ok(raw.includes('"binding": "API"'), '注释里留着 API 服务绑定的样板（worker.js 读 env.API）');
+  // T19：services 绑定打开了。service 必须等于 apps/api/wrangler.jsonc 的 name，否则部署报 Could not resolve service binding
+  const api = parseJsonc(readFileSync(new URL('../../api/wrangler.jsonc', import.meta.url), 'utf8'));
+  const svc = Array.isArray(w.services) ? w.services : [];
+  ok(svc.length === 1 && svc[0].binding === 'API', `services 只有一个绑定，名字 API（worker.js 读 env.API）：${JSON.stringify(svc)}`);
+  ok(svc[0]?.service === api.name && api.name === 'hackathon-api', `API 绑的是 T5 的 Worker：service = ${svc[0]?.service}，apps/api/wrangler.jsonc name = ${api.name}`);
+  const conf = readFileSync(new URL('../../../hackathon.conf', import.meta.url), 'utf8');
+  const mods = (conf.match(/^DEPLOY_MODULES=(.*)$/m)?.[1] || '').trim().split(/\s+/);
+  ok(mods.includes('api') && mods.includes('site') && mods.indexOf('api') < mods.indexOf('site'), `hackathon.conf DEPLOY_MODULES = ${mods.join(' ')}：api 排在 site 前面（绑定的目标 Worker 要先存在）`);
   ok(!('vars' in w), '反向：wrangler.jsonc 里没有 vars（site 不需要变量；密钥只在 T5 Worker 的 wrangler secret）');
 
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));

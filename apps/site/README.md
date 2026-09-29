@@ -52,7 +52,7 @@ bash scripts/deploy.sh all
 | `<网址>/?list` | 模块目录（每个模块的链接和文件数） |
 | `<网址>/sim/public/` | 路口仿真 |
 | `<网址>/roads/public/cbd/network.json` | 路网 JSON |
-| `<网址>/api/health` | `{"ok":true,"v":"site-0.1","mock":true,"api":false}`（`api:false` = T5 还没接） |
+| `<网址>/api/health` | `{"ok":true,"v":"0.2.0","mock":true,"llm":{…}}`（T5 的 api Worker 回的；看到 `"api":false` = 服务绑定没生效） |
 
 **7. 把网址发给 lead。** 网址不是秘密，群里发就行。lead 把它写进 `hackathon.conf` 的 `DEMO_URL` 和 README 顶部（这两处只有 lead 改）。
 
@@ -82,14 +82,14 @@ git pull && bash scripts/check.sh --e2e
 | 部署成功但 `--e2e` 红 | `cd apps/site && npx wrangler tail` 开着，浏览器再点一次，看报错 |
 | 线上坏了、演示快到了 | `deploy.sh` 失败时会打印回滚命令：切到上一个 `demo-*` tag 重新部署 |
 
-## 接上 T5 的 api Worker（T5 的 PR 合进 main 以后）
+## 接上 T5 的 api Worker（T19 已打开）
 
-1. **lead** 改 `hackathon.conf`：`DEPLOY_MODULES=api site`（`api` 必须排在前面：绑定的目标 Worker 要先存在）
-2. **lead** 把 `apps/site/wrangler.jsonc` 末尾 `services` 那三行取消注释，`service` 填 `apps/api/wrangler.jsonc` 里的 `name`（T5 分支上现在是 `"api"`）；同时把 `tests/config.test.mjs` 里「services 还注释着」那条改成检查这个名字
-3. **高h** `bash scripts/deploy.sh all`：先部署 api，再部署 site
-4. 验证：`<网址>/api/health` 变成 T5 的 `{"ok":true,"v":"…","mock":true}`（不再有 `"api":false`）
-5. 大模型的 key 放在 **api Worker** 上，不放 site：`cd apps/api && npx wrangler secret put <变量名>`（变量名看 `apps/api/README.md`）。site 不需要任何 key
-6. 可选：api Worker 自己也有一个 `api.<账号子域>.workers.dev` 网址。想只留同源入口，T5 把 `apps/api/wrangler.jsonc` 的 `workers_dev` 改成 `false`，服务绑定不受影响
+1. ✅ `hackathon.conf`：`DEPLOY_MODULES=api site`（`api` 必须排在前面：绑定的目标 Worker 要先存在）
+2. ✅ `apps/site/wrangler.jsonc` 的 `services` 已打开：`{ "binding": "API", "service": "hackathon-api" }`，`hackathon-api` = `apps/api/wrangler.jsonc` 的 `name`（两边改名要一起改，`tests/config.test.mjs` 查）
+3. **部署人** `bash scripts/deploy.sh all`：先部署 api，再部署 site
+4. 验证：`<网址>/api/health` 变成 T5 的 `{"ok":true,"v":"0.2.0","mock":true,"llm":{"mode":"rules",…}}`（不再有 `"api":false`），`POST /api/read` 不再 503
+5. 大模型的 key 放在 **api Worker** 上，不放 site：`cd apps/api && npx wrangler secret put LLM_API_KEY`，再把 MOCK 改成 `"0"` 重新部署（两步详见 `apps/api/README.md`「怎么接大模型」）。site 不需要任何 key
+6. ✅ api Worker 不开自己的 `hackathon-api.<账号子域>.workers.dev` 网址（`apps/api/wrangler.jsonc` 的 `workers_dev: false`），公开入口只有这里的 `/api/*`；服务绑定不受影响。部署 api 时 wrangler 会打印 `No targets deployed for hackathon-api`，是正常的
 
 `apps/api/public/`（`reader.js`、答案文件）照常挂在 `/api/public/…`，是静态文件，不转发给 T5。引擎从 `/api/public/js/reader.js` 引 `readSigns()`，`reader.js` 再同源调 `/api/read`。
 
@@ -104,7 +104,7 @@ git pull && bash scripts/check.sh --e2e
 
 ## 怎么测
 
-- `bash apps/site/test.sh`：不需要 `npm ci`、不联网，3 个文件共 55 条断言
+- `bash apps/site/test.sh`：不需要 `npm ci`、不联网，3 个文件共 69 条断言
   - `build.test.mjs`：各模块 `public/` 拷到 `/<模块>/public/`、首页有 `data-smoke`、有 web 就跳、不清空别人的目录
   - `worker.test.mjs`：假 ASSETS / API 绑定下的路由、503 / 502 错误格式、没有 CORS 头
   - `config.test.mjs`：`wrangler.jsonc`、`package.json`、锁文件的关键项
@@ -140,7 +140,7 @@ Cloudflare Workers（静态资源 + 服务绑定）。账号是 lead 的，登�
 |---|---|
 | `build.mjs` | 各模块 `public/` → `out/<模块>/public/`，生成首页 `out/index.html`；每次先清空 `out/` |
 | `src/worker.js` | `/api/*` 转发或占位，其余交给 ASSETS |
-| `wrangler.jsonc` | Worker 名 `hackathon-site`（部署人可以改）、`assets.directory = out`、`run_worker_first`、注释着的 `services` |
+| `wrangler.jsonc` | Worker 名 `hackathon-site`（部署人可以改）、`assets.directory = out`、`run_worker_first`、`services`（API → `hackathon-api`） |
 | `package.json` / `package-lock.json` | 只有 wrangler（锁 4.143.0）；`build` / `dev` / `dry-run` / `deploy` / `test` |
 | `test.sh` + `tests/*.test.mjs` | 见「怎么测」 |
 | `out/` | 构建产物，已 gitignore，不手改 |
@@ -155,5 +155,5 @@ Cloudflare Workers（静态资源 + 服务绑定）。账号是 lead 的，登�
 ## 已知问题
 
 - 尚未验证：只给 Workers 角色的成员，能不能部署带静态资源的 Worker（第一次部署时就知道了）
-- 尚未验证：绑上 T5 后的真实转发。目前只用假绑定测过，`dry-run` 认得这份 `services` 配置
+- 尚未验证：绑上 T5 后的真实转发（T19 打开了绑定，要等第一次 `deploy.sh all`）。目前只用假绑定测过
 - `hackathon-site` 这个名字在 lead 的账号里有没有被占用，第一次部署时才知道

@@ -1,12 +1,16 @@
-// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc，去掉了用不到的 Durable Object）
-// 部署归 DEPLOYER（hackathon.conf），线上密钥用 npx wrangler secret put <NAME>，不写进任何文件。详见 docs/deploy-cloudflare.md
+// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc；Durable Object 只有一个 LlmBudget，管大模型每日调用上限）
+// 部署归 DEPLOYER（hackathon.conf），bash scripts/deploy.sh all 先部署这个、再部署 site（site 用服务绑定 API 把 /api/* 转过来）
+// 🔒 key 不写在这里：npx wrangler secret put LLM_API_KEY（在本目录跑）。怎么打开大模型见 README「怎么接大模型」。详见 docs/deploy-cloudflare.md
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "api",
+  // Worker 名 = apps/site/wrangler.jsonc 里 services[].service；改名两边一起改（config.test.mjs 查）。
+  // 叫 hackathon-api 不叫 api：lead 的 Cloudflare 账号里还有别的项目，免得撞名
+  "name": "hackathon-api",
   "main": "src/worker.js",
   "compatibility_date": "2026-08-01",
 
-  "workers_dev": true,
+  // 不开 hackathon-api.<子域>.workers.dev：只让网页经 site 的服务绑定进来（绑定不需要这个网址），少一个公开入口
+  "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true },
 
@@ -16,9 +20,30 @@
     "binding": "ASSETS"
   },
 
-  // 默认不花钱：只有明确 MOCK=0 才会（在大模型接上以后）真调用
-  "vars": { "MOCK": "1" }
+  "vars": {
+    // 默认不花钱：只有 "0" 且放了 LLM_API_KEY 才真调用大模型；其余情况一律关键词规则（/api/health 的 llm.mode 会写 rules）
+    "MOCK": "1",
+    // OpenAI 兼容的 POST {LLM_BASE_URL}/chat/completions。换服务商只改这两行 + 换 key：
+    //   DeepSeek（默认）   https://api.deepseek.com                              deepseek-flash
+    //   百炼（国际站）      https://dashscope-intl.aliyuncs.com/compatible-mode/v1  qwen-plus（或 qwen-flash）
+    //   百炼（国内站）      https://dashscope.aliyuncs.com/compatible-mode/v1       qwen-plus
+    //   OpenAI             https://api.openai.com/v1                              gpt-4o-mini
+    "LLM_BASE_URL": "https://api.deepseek.com",
+    "LLM_MODEL": "deepseek-flash",
+    // 每个 Worker 实例每分钟最多调几次（尽力而为，不是账单上限）；演示方案一页约 20 条请求 × 3 次 = 60
+    "LLM_MAX_CALLS_PER_MIN": "60",
+    // 全局每天最多调几次（BUDGET 计数，所有实例一本账，UTC 0 点清零）：600 次 ≈ ¥1.2（DeepSeek），超了当天只用规则
+    "LLM_MAX_CALLS_PER_DAY": "600"
+  },
 
-  // 大模型定了以后再加读数缓存（免费版每天 1000 次写）：
-  // ,"kv_namespaces": [{ "binding": "READS", "id": "<npx wrangler kv namespace create READS 打印的 id>" }]
+  // 大模型每日调用计数（src/budget.js）。免费版只能用 SQLite 后端 → new_sqlite_classes；类改名只能加新 tag + renamed_classes
+  "durable_objects": {
+    "bindings": [{ "name": "BUDGET", "class_name": "LlmBudget" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LlmBudget"] }]
+
+  // 推荐：跨访客、跨实例的读数缓存（免费版每天 1000 次写，每日上限 600 次调用最多写 200 条）。
+  // 没有它只剩每个实例的内存缓存：网址是 *.workers.dev，Workers 自带的 Cache API 在那里不生效（/api/health 的 llm.cache 会写 memory）
+  // 1. 在本目录跑 npx wrangler kv namespace create READINGS  2. 把打印的 id 填进下面，取消注释  3. 重新部署
+  // ,"kv_namespaces": [{ "binding": "READINGS", "id": "<上面打印的 id>" }]
 }
