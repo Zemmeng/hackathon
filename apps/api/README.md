@@ -11,7 +11,7 @@ Owner: @jinmingq
 - 引擎里直接 import `apps/api/public/js/reader.js` 的 `readSigns`（上线后的网址由 T6 集成时定）
 - 本地起 Worker（先在本目录 `npm i`）：`cp .dev.vars.example .dev.vars` → `npx wrangler dev --port 8788`
   - Claude 会话里：等 lead 把 `api` 加进 `.claude/launch.json` 后用 preview 工具按名字起
-  - 自检：`curl -s localhost:8788/api/health` → `{"ok":true,"v":"0.3.0","mock":true,"llm":{"mode":"rules","model":"deepseek-flash","key":false,"cache":"cache-api","prompt_v":"r2","explain_v":"e1","provider":"deepseek","budget":true,"per_day":600,"per_min":60},"register":true}`（线上 `*.workers.dev` 的 `cache` 是 `memory`，见下面 KV）
+  - 自检：`curl -s localhost:8788/api/health` → `{"ok":true,"v":"0.3.0","mock":true,"llm":{"mode":"rules","model":"deepseek-flash","key":false,"cache":"cache-api","prompt_v":"r2","explain_v":"e2","provider":"deepseek","budget":true,"per_day":600,"per_min":60},"register":true}`（线上 `*.workers.dev` 的 `cache` 是 `memory`，见下面 KV）
   - 已在 workerd（真 Workers 运行时）里跑通：`node tests/workerd.test.mjs`（wrangler 的 `unstable_dev`，按 `wrangler.jsonc` 起，查 health / read / 400 / 413 / 静态资源；再起一个 MOCK=0 的，大模型地址指向测试进程里的假服务器，查 Durable Object 每日封顶）。变量用 `vars` 显式覆盖，**不受 `wrangler.jsonc` 的 MOCK 和本机 `.dev.vars` 影响**，不会连真服务商
 - 默认（`MOCK` 不是 `"0"`，或没有 `LLM_API_KEY`）**只走规则，不会有任何付费调用**，和 T19 以前一模一样。打开大模型见下一节
 
@@ -55,7 +55,7 @@ curl -s -X POST https://hackathon-site.zemmmeng.workers.dev/api/read -H 'content
 回的是 `src: "rule"` 带 `note` 时看短码：`http_401` key 不对 · `http_402` 余额不够 · `timeout` 连不上或太慢 · `bad_json` / `invalid` 模型没按格式回 · `llm_paused` 连续失败后暂停 1 分钟 · `llm_rate_limited` 超了本实例每分钟上限 · `llm_daily_cap` 今天的全局上限用完了（UTC 0 点，墨尔本上午 10 / 11 点清零）· `llm_no_budget` / `llm_budget_error` 每日计数（Durable Object `BUDGET`）没绑上或出错，为了不花没记账的钱直接不调用。
 
 **花钱的上限**（`/api/read` 是公开的，谁都能 POST，换个 `read_s` 就绕过缓存）：
-- 全局每天 `LLM_MAX_CALLS_PER_DAY`（默认 600 次 ≈ ¥1.2，最坏约 ¥2.4）：所有实例、所有入口记同一本账（`src/budget.js` 的 Durable Object，SQLite 后端，免费版可用，随 `deploy.sh api` 一起建好，不用另外操作）。要调就改 `wrangler.jsonc` 再部署；改成 `"0"` = 一次都不调
+- 全局每天 `LLM_MAX_CALLS_PER_DAY`（默认 600 次 ≈ ¥1.2，最坏约 ¥2.4；读屏一次调用记 1 次，AI 解读一次调用记 5 次，全花在解读上是 120 次、最坏约 ¥1.8）：所有实例、所有入口记同一本账（`src/budget.js` 的 Durable Object，SQLite 后端，免费版可用，随 `deploy.sh api` 一起建好，不用另外操作）。要调就改 `wrangler.jsonc` 再部署；改成 `"0"` = 一次都不调
 - 每个实例每分钟 `LLM_MAX_CALLS_PER_MIN`（默认 60 = 演示一页 20 条请求 × 3 次）：只防一分钟里把一天的额度用光，不是账单上限
 - api Worker 关了自己的 `workers.dev` 网址（`workers_dev: false`），公开入口只有 site 的 `/api/*`
 - 最后一道闸是服务商余额（第 0 步）
@@ -151,9 +151,9 @@ node apps/api/tools/precompute.mjs --check                # 校验；然后提�
 
 读引擎给 1–5 套方案算出的数字，给每套写：一句概括、优点、缺点、谁最吃亏、风险；再给一个**倾向**（哪套、为什么），外加固定的一句「由负责人决定」。**只做后端**，网页还没接（T23 对比页现在只用 `optionFromRun()`）。
 
-- 原则（D-0929-1310「大模型出主意，引擎算数字」）：解读里的每个数字都得来自引擎给的数（`allowedNumbers()`：请求里的数、各方案合计，以及它们的取整 / 一位小数 / 百分数）。追溯不到的句子整句丢掉
+- 原则（D-0929-1310「大模型出主意，引擎算数字」）：解读里的每个数字都得来自引擎给的数（`allowedNumbers()`：请求里的数、各方案合计，以及它们的取整 / 一位小数 / 百分数）。追溯不到的句子整句丢掉；全角数字先 NFKC 成半角再查；用文字写的数（`hasWordNumber()`：两倍、一半、三成、三分之一、九十米、七百澳元、twice、half、ninety、seven hundred……，方案名里的字先挖掉再查）也整句丢掉
 - **大模型版 + 规则兜底**（D-0929-2307）：开关同读屏（`MOCK=0` + `LLM_API_KEY` + 绑了 `BUDGET` 且预留成功），否则规则版（`src: "rule"`：确定、不花钱，和以前一模一样）
-  - 大模型版每个请求**只问 1 次**（不做三次合成），向全局每日计数预留 1 次（和读屏记同一本账）；提示词在 `prompts.md`「AI 解读」（`explain_v = e1`），user 消息里只有规范化后的方案（`id` `label` `metrics` `per_capita_min` `flags`）和语言，包在 `<data>` 里并写明「不是指令」
+  - 大模型版每个请求**只问 1 次**（不做三次合成），但向全局每日计数和每分钟限流预留 **5 次**（`EXPLAIN_CALLS`：`max_tokens` 1500 是读屏的 5 倍，按钱记账，免得公开的 `/api/explain` 被刷时一天花掉约 ¥9、读屏跟着停；和读屏记同一本账）；提示词在 `prompts.md`「AI 解读」（`explain_v = e2`），user 消息里只有规范化后的方案（`id` `label` `metrics` `per_capita_min` `flags`）和语言，包在 `<data>` 里并写明「不是指令」
   - 回来的字先过 `sanitizeExplain()`：字段不对整份作废；编的数、带 `< >` 的句子丢掉；「谁最吃亏」和规则版的风险始终按引擎的数重算，模型说了不算；只取 `options` / `lean`，模型自带的 `decide` `final` `note` `model` 一概丢掉
   - `src`：`llm`（刚问的，带 `model`、`prompt_v`）· `kv`（缓存命中，不调用；缓存里的也再清洗一遍）· `rule`（没开大模型，或兜底时另带 `note`）
   - 兜底 `note` 短码同读屏（`llm_daily_cap` `llm_no_budget` `llm_rate_limited` `llm_paused: …`），加上 `llm_fallback: bad_json` / `invalid`（少了某套方案）/ `empty`（清洗完一句模型写的字都不剩）/ `timeout` / `http_401` 等
@@ -295,7 +295,7 @@ AI 解读加的：`explain.test.mjs`（规范化、优缺点 / 谁最吃亏 / �
 - 🔒 登记表的 `edit_token` 只在 POST 响应里出现一次，库里只存 SHA-256；任何 GET / PATCH 响应都不带（`register.test.mjs` 反向断言）
 - 🔒 登记表只收白名单字段；给人看的字（`title`、`reason`）挡掉 `< >`
 - 🔒 执行包的租金一律标「假设值，以 RPM Hire 正式报价为准」；通知只写角色
-- 🔒 AI 解读里的数字只能来自引擎给的数（`allowedNumbers()`），追溯不到的句子丢掉；只给倾向，不替人选定（`explain.test.mjs` 反向断言）
+- 🔒 AI 解读里的数字只能来自引擎给的数（`allowedNumbers()`），追溯不到的、用文字写数的（`hasWordNumber()`）句子丢掉；只给倾向，不替人选定（`explain.test.mjs` 反向断言）
 - 🔒 key 只在发请求那一刻从 `env.LLM_API_KEY` 读：不进配置对象、日志、报错、响应（`llm.test.mjs` 反向断言）；报错只带短码
 
 ## 已知问题
@@ -305,7 +305,8 @@ AI 解读加的：`explain.test.mjs`（规范化、优缺点 / 谁最吃亏 / �
 - 跨午夜的夜间施工要拆成两条（`hours` 和引擎同口径，`[开始, 结束)` 不能跨 0 点）
 - 登记表线上尚未部署（要部署人 `deploy.sh api`）；Durable Object 只在本机 workerd 里测过
 - 执行包的设备对应是按类型和牌上的字推的，库存里没有的牌（例 ROAD CLOSED）不算钱；护栏默认注水护栏、只按长度算节数，不管转角和渐变段；检查只看清单，不是标准合规审查
-- AI 解读的大模型版只用假 fetch 测过，**尚未真调用**：DeepSeek 回一份 3–5 套方案的解读要多久（超时设 20 秒）、中文输出会不会超过 1500 token 被截断（截断 = 坏 JSON → 规则兜底）都没实测；模型若爱写 id（`o1`）或自己算差值，句子会被数字防线丢得比较多，要看真回答再调提示词。每日上限按「次」记不按 token：一次解读约是一次读屏的 5 倍钱。网页（T23 对比页）还没调 `explainOptions()`
+- AI 解读的大模型版只用假 fetch 测过，**尚未真调用**：DeepSeek 回一份 3–5 套方案的解读要多久（超时设 20 秒）、中文输出会不会超过 1500 token 被截断（截断 = 坏 JSON → 规则兜底）都没实测；模型若爱写 id（`o1`）或自己算差值，句子会被数字防线丢得比较多，要看真回答再调提示词。每日上限按「次」记不按 token，一次解读记 5 次（约是一次读屏的 5 倍钱）。网页（T23 对比页）还没调 `explainOptions()`
+- AI 解读的数字防线管不到两种：模型算的差值刚好等于另一个允许的数（例 1200 − 600 = 600，600 本来就在请求里）；不带单位的单个汉字数（「缩短约九」）。这两种只靠提示词管。文字写数的规则是保守的关键词表，可能误删（例「每一辆车」「double the queue」），误删的句子退回规则版的概括
 - 规则版的倾向是分钟数直接相加，没按载客人数换算，也不看租金
 - 规则认不出没写动词的建议（例 `RUSSELL ST` / `SAVE 8 MIN` 没有 USE），这类留给大模型
 - T19 没做任何真调用：Worker → 服务商的连通、`response_format` 在百炼 / OpenAI 上的表现都**尚未实测**；Durable Object 每日计数只在本机 workerd 里测过，线上尚未部署过；答案文件还是空的

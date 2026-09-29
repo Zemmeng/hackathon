@@ -1,5 +1,5 @@
 // AI 解读（T5 · 提案 #48 第 ⑥ 步）：读引擎给每套方案算出的数字，写优缺点、谁最吃亏、风险、倾向哪套和理由。浏览器和 Worker 共用
-// 原则（D-0929-1310「大模型出主意，引擎算数字」）：解读里的每个数字都得来自引擎给的数（allowedNumbers），编出来的句子整句丢掉；
+// 原则（D-0929-1310「大模型出主意，引擎算数字」）：解读里的每个数字都得来自引擎给的数（allowedNumbers），编出来的、用文字写的数（hasWordNumber）整句丢掉；
 //   只说「倾向」，不替人拍板：选哪套由负责人决定（decide 那句固定写在响应里）
 // 规则版（src: "rule"，确定、不花钱）+ 大模型版（D-0929-2307，Worker 的 src/llm.js serverExplain()：src "llm" / 缓存 "kv"），
 //   同一个请求 / 响应格式；大模型回来的字、缓存里的解读一律先过 sanitizeExplain()，拿不到就规则版 + note
@@ -116,14 +116,35 @@ export function allowedNumbers(req) {
     for (const v of Object.values(o.metrics)) add(v);
     for (const v of Object.values(o.per_capita_min)) add(v);
     add(totalOf(o));
-    for (const t of o.label.match(/\d+(?:\.\d+)?/g) || []) out.add(t);
+    for (const t of [...(o.label.match(/\d+(?:\.\d+)?/g) || []), ...numbersIn(o.label)]) out.add(t);
   }
   return out;
 }
 
-// 一段字里出现的数（去掉千分位逗号）
-export const numbersIn = (text) => (String(text).match(/\d[\d,]*(?:\.\d+)?/g) || []).map((t) => t.replace(/,/g, ""));
+// 一段字里出现的数（去掉千分位逗号）。先 NFKC：全角数字 ３００ 当 300 查；千分位只认「逗号 + 正好 3 位」，
+//   免得 NFKC 把中文的全角逗号变成 , 后把「10493，918」拼成一个数
+const NUM_RE = /\d{1,3}(?:,\d{3})+(?:\.\d+)?(?!\d)|\d+(?:\.\d+)?/g;
+export const numbersIn = (text) => (String(text).normalize("NFKC").match(NUM_RE) || []).map((t) => t.replace(/,/g, ""));
 const traceable = (text, allowed) => numbersIn(text).every((n) => allowed.has(n) || allowed.has(String(Number(n))));
+
+// 用文字写的数（阿拉伯数字之外的）一律当追溯不到：两倍、一半、三成、三分之一、九十米、七百澳元、twice、half、ninety、seven hundred……
+// 保守的关键词规则：宁可错删（例「每一辆车」「double the queue」），不放过；方案名（label）里的字先挖掉再查。
+// 漏网：不带单位的单个汉字数（「缩短约九」）、差值刚好等于另一个允许的数（1200−600=600），这两种只靠提示词管（README 已知限制）
+const ZH_DIGIT = "零〇一二两三四五六七八九十";
+const WORD_NUM = [
+  new RegExp(`[${ZH_DIGIT}][十百千万亿]|十[一二三四五六七八九]`), // 九十、三百、一千、十万、十一（不含「千万」「万一」）
+  /[一二两三四五六七八九十几数半][倍成]|分之|一半|减半|翻倍|翻番/, // 倍数、成数、分数
+  new RegExp(`[${ZH_DIGIT}百千万]+(?:个百分点|米|秒|分钟|小时|澳元|元|辆|人|天|公里)`), // 三天、九十米、一辆
+  /\b(?:twice|thrice|half|halves|halved|halving|halve|doubles?(?![-\s]check)|doubled|doubling|triples?|tripled|tripling|quadruple[sd]?|(?:two|three|four|five|six|seven|eight|nine|ten|many|several)-?fold|hundreds?|thousands?|millions?|dozens?)\b/i,
+  /\b(?:eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/i,
+  /\b(?:one|two|three|four|five|six|seven|eight|nine|ten)[\s-]+(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|metres?|meters?|kilometres?|kilometers?|km|m|dollars?|aud|vehicles?|cars?|people|persons?|passengers?|pedestrians?|trams?|buses|percent|per\s?cent|times)\b/i,
+  /\btimes\s+(?:as|more|less|longer|shorter|higher|lower|larger|smaller|bigger|greater|worse|better)\b/i,
+];
+export function hasWordNumber(text, labels = []) {
+  let t = String(text).normalize("NFKC");
+  for (const l of labels) if (l) t = t.split(l).join(" ");
+  return WORD_NUM.some((re) => re.test(t));
+}
 
 // ---- 规则版解读：确定、可追溯；src: "rule" ----
 
@@ -192,23 +213,24 @@ export function ruleExplain(input) {
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// ---- 外来的解读（大模型、缓存、接口响应）当不可信数据：字段不对整份作废（回 null，调用方用规则版）；数字追溯不到的句子丢掉 ----
+// ---- 外来的解读（大模型、缓存、接口响应）当不可信数据：字段不对整份作废（回 null，调用方用规则版）；数字追溯不到、或用文字写数的句子丢掉 ----
 // 另外只放行三个说明字段（短、只许字母数字和少数标点）：model、prompt_v（大模型版）、note（兜底原因短码，例 llm_fallback: timeout）
 const META = ["model", "prompt_v", "note"];
 const META_RE = /^[A-Za-z0-9 ._:/,()-]{1,120}$/;
 
-const cleanItem = (x, allowed) => {
+// chk = { allowed: allowedNumbers(req), labels: 各方案名（NFKC，长的在前） }
+const cleanItem = (x, chk) => {
   if (typeof x !== "string") return null;
   const t = x.replace(/\s+/g, " ").trim().slice(0, EXPLAIN_LIMITS.item);
-  if (!t || /[<>]/.test(t) || !traceable(t, allowed)) return null;
+  if (!t || /[<>]/.test(t) || !traceable(t, chk.allowed) || hasWordNumber(t, chk.labels)) return null;
   return t;
 };
-const cleanList = (xs, allowed) => (Array.isArray(xs) ? xs.map((x) => cleanItem(x, allowed)).filter(Boolean).slice(0, EXPLAIN_LIMITS.items) : []);
+const cleanList = (xs, chk) => (Array.isArray(xs) ? xs.map((x) => cleanItem(x, chk)).filter(Boolean).slice(0, EXPLAIN_LIMITS.items) : []);
 
 export function sanitizeExplain(raw, input, src) {
   const req = normalizeExplainRequest(input);
   if (!isObj(raw) || !Array.isArray(raw.options)) return null;
-  const allowed = allowedNumbers(req);
+  const chk = { allowed: allowedNumbers(req), labels: req.options.map((o) => o.label.normalize("NFKC")).sort((a, b) => b.length - a.length) };
   const byId = new Map(raw.options.filter(isObj).map((o) => [o.id, o]));
   if (!req.options.every((o) => byId.has(o.id))) return null;
   const rule = ruleExplain(req);
@@ -216,16 +238,16 @@ export function sanitizeExplain(raw, input, src) {
     const r = byId.get(o.id);
     return {
       id: o.id,
-      summary: cleanItem(r.summary, allowed) || rule.options[i].summary,
-      pros: cleanList(r.pros, allowed),
-      cons: cleanList(r.cons, allowed),
+      summary: cleanItem(r.summary, chk) || rule.options[i].summary,
+      pros: cleanList(r.pros, chk),
+      cons: cleanList(r.cons, chk),
       hardest_hit: rule.options[i].hardest_hit, // 谁最吃亏按引擎的数算，不信外来的
-      risks: [...new Set([...rule.options[i].risks, ...cleanList(r.risks, allowed)])].slice(0, EXPLAIN_LIMITS.items),
+      risks: [...new Set([...rule.options[i].risks, ...cleanList(r.risks, chk)])].slice(0, EXPLAIN_LIMITS.items),
     };
   });
   let lean = null;
   if (isObj(raw.lean) && req.options.some((o) => o.id === raw.lean.option)) {
-    const why = cleanItem(raw.lean.why, allowed);
+    const why = cleanItem(raw.lean.why, chk);
     if (why) lean = { option: raw.lean.option, why };
   }
   const out = { src, lang: req.lang, options, lean, decide: rule.decide };

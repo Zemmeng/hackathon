@@ -15,7 +15,8 @@ export const DEFAULTS = {
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-flash",
   maxCallsPerMin: 60, // 每个 Worker 实例每分钟最多几次调用（尽力而为，见 guard()）；演示方案一页约 20 条请求 × 3 次 = 60
-  maxCallsPerDay: 600, // 全局每天最多几次调用（BUDGET 计数，真封顶）：DeepSeek 约 ¥0.002 / 次 → 每天约 ¥1.2，最坏约 ¥2.4
+  maxCallsPerDay: 600, // 全局每天最多几「次」（BUDGET 计数，真封顶）：读屏一次调用记 1 次，约 ¥0.002 → 每天约 ¥1.2，最坏约 ¥2.4；
+  //   解读一次调用记 EXPLAIN_CALLS = 5 次（约 ¥0.01–0.015），全花在解读上也只有 120 次、最坏约 ¥1.8，花费上限不变
   timeoutMs: 6000, // 每次调用的超时；浏览器端 reader.js 等 8 秒，要比它短
 };
 export const SAMPLES = 3; // 每类人每句话问几次（prompts.md）
@@ -24,7 +25,9 @@ const MEM_MAX = 500; // 实例内存缓存最多几条
 const CACHE_TTL_S = 30 * 24 * 3600; // KV / Cache API 存 30 天：同一句话同一类人的读数不会变（prompt_v、模型都进键）
 const BREAKER_FAILS = 3; // 连续几份读数整份失败（有效的不到 2 次）……
 const BREAKER_MS = 60_000; // ……就这么久不再问大模型，直接规则：key 错了或服务商挂了时，别让每个请求都白等 6 秒
-export const EXPLAIN_CALLS = 1; // 一次解读问几次（不做三次合成）= 向每日计数预留几次
+// 一次解读只问 1 次（不做三次合成），但向每日计数和每分钟限流按 5 次记：max_tokens 1500 是读屏 300 的 5 倍，一次解读约是一次读屏的 5 倍钱。
+// 按 1 次记的话，/api/explain 公开、改任何一个数就不命中缓存，匿名脚本一天能花掉约 ¥9，读屏也跟着停（同一本账）
+export const EXPLAIN_CALLS = 5;
 const EXPLAIN_MAX_TOKENS = 1500; // 3–5 套方案的优缺点、风险、倾向；中文约 600–900 token
 export const EXPLAIN_TIMEOUT_MS = 20_000; // 解读输出长，6 秒不够；LLM_TIMEOUT_MS 更大就用它。浏览器端 explainOptions() 等 25 秒
 
@@ -503,7 +506,7 @@ export async function serverExplain(input, env, opts = {}) {
     const hit = await st.get(key);
     const r = hit && explainFromCache(hit, req);
     if (r) {
-      memSet(memKey, hit);
+      memSet(memKey, r); // 内存里只放清洗过的：KV 里被改过的原样数据不进内存
       return r;
     }
   } catch {

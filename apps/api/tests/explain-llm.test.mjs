@@ -8,7 +8,7 @@ import { serverExplain, buildExplainMessages, resetLlmState, EXPLAIN_CALLS } fro
 import { PROMPT } from "../src/prompt.js";
 import { LlmBudget } from "../src/budget.js";
 import { parsePrompts, PROMPTS_MD } from "../tools/gen-prompt.mjs";
-import { normalizeExplainRequest, ruleExplain, allowedNumbers, numbersIn, explainOptions } from "../public/js/explain.js";
+import { normalizeExplainRequest, ruleExplain, allowedNumbers, numbersIn, explainOptions, sanitizeExplain, hasWordNumber } from "../public/js/explain.js";
 
 // 假 key：拼出来的，免得仓库里出现一整段像 key 的字符串（secret-scan）
 const FAKE = ["fake", "k3y", "for", "explain", "9c1d"].join("-");
@@ -118,8 +118,8 @@ await sec("有 key + BUDGET：正好 1 次外部调用，src llm，编的数整�
   const r = await withFetch(f, () => post(REQ, env));
   const x = r.body.explain;
   const rule = ruleExplain(REQ);
-  eq([r.status, f.calls.length, EXPLAIN_CALLS, env.BUDGET.data.get("calls").n], [200, 1, 1, 1], "1 次调用、每日计数记 1 次");
-  eq([x.src, x.model, x.prompt_v, x.prompt_v], ["llm", "deepseek-flash", PROMPT.explain.v, "e1"], "src llm，带模型和解读提示词版本");
+  eq([r.status, f.calls.length, EXPLAIN_CALLS, env.BUDGET.data.get("calls").n], [200, 1, 5, 5], "反向（计费）：1 次调用，但每日计数按钱记 5 次（max_tokens 1500 / 300）");
+  eq([x.src, x.model, x.prompt_v, x.prompt_v], ["llm", "deepseek-flash", PROMPT.explain.v, "e2"], "src llm，带模型和解读提示词版本");
   eq(x.options[0].cons, ["Visitors lose 5.1 min each"], "反向：编的数（1,450 m、8:30）整句丢掉，有出处的留下");
   eq(x.options[1].cons, ["35% of drivers detour"], "detour_share 写成百分数算有出处");
   eq(x.options.map((o) => o.hardest_hit), rule.options.map((o) => o.hardest_hit), "反向：谁最吃亏 = 规则按引擎的数算的（模型说通勤 99 分钟不算）");
@@ -187,27 +187,27 @@ await sec("连续失败 3 次 → 暂停，不再调用（熔断和读屏共用�
 
 await sec("反向（计费）：每日上限用完 / 没绑 BUDGET / 每分钟上限 → 不调用，规则版 + note", async () => {
   resetLlmState();
-  const env = on({ LLM_MAX_CALLS_PER_DAY: "2" });
+  const env = on({ LLM_MAX_CALLS_PER_DAY: "14" });
   const f = fakeLLM(chat(answer()));
   const out = [];
   await withFetch(f, async () => {
     for (let i = 0; i < 4; i++) out.push((await post(fresh(), env)).body.explain);
   });
-  eq([f.calls.length, out.map((x) => x.src), out[3].note], [2, ["llm", "llm", "rule", "rule"], "llm_daily_cap"], "上限 2 次：只调 2 次，之后 llm_daily_cap");
+  eq([f.calls.length, out.map((x) => x.src), out[3].note], [2, ["llm", "llm", "rule", "rule"], "llm_daily_cap"], "上限 14 次：每次解读记 5 次，只调 2 次（剩 4 不够第 3 次），之后 llm_daily_cap");
   resetLlmState();
   const g = fakeLLM(chat(answer()));
   const nb = await withFetch(g, () => post(fresh(), { MOCK: "0", LLM_API_KEY: FAKE }));
   eq([g.calls.length, nb.body.explain.note], [0, "llm_no_budget"], "没绑 BUDGET：不花没记账的钱");
   resetLlmState();
   const h = fakeLLM(chat(answer()));
-  const envMin = on({ LLM_MAX_CALLS_PER_MIN: "1" });
+  const envMin = on({ LLM_MAX_CALLS_PER_MIN: "9" });
   const rl = await withFetch(h, async () => [await post(fresh(), envMin), await post(fresh(), envMin)]);
-  eq([h.calls.length, rl[1].body.explain.note], [1, "llm_rate_limited"], "每分钟 1 次：第 2 次 llm_rate_limited");
+  eq([h.calls.length, rl[1].body.explain.note], [1, "llm_rate_limited"], "每分钟 9 次：一次解读记 5 次，第 2 次 llm_rate_limited");
 });
 
-await sec("读屏和解读记同一本账：一份读数 3 次 + 一次解读 1 次", async () => {
+await sec("读屏和解读记同一本账：一份读数 3 次 + 一次解读 5 次", async () => {
   resetLlmState();
-  const env = on({ LLM_MAX_CALLS_PER_DAY: "4" });
+  const env = on({ LLM_MAX_CALLS_PER_DAY: "8" });
   const reading = { notice: 0.8, understand: 0.9, advice: { "Russell St": "use" }, saving_min: null, delay_min: null, trust: 0.7, why: "Sign says use Russell" };
   const f = fakeLLM((init) => chat(JSON.parse(init.body).messages[0].content === PROMPT.explain.system ? answer() : reading));
   const rd = { persona: "commuter", kmh: 40, signs: [{ kind: "vms", frames: [["USE", "RUSSELL ST"]], read_s: 9 }], roads: ["La Trobe St", "Russell St"] };
@@ -216,7 +216,8 @@ await sec("读屏和解读记同一本账：一份读数 3 次 + 一次解读 1 
     await post(fresh(), env),
     await post(fresh(), env),
   ]);
-  eq([res[0].body.reading.src, res[1].body.explain.src, res[2].body.explain.note, f.calls.length], ["llm", "llm", "llm_daily_cap", 4], "3 + 1 = 4 次用完，第二次解读回规则");
+  eq([res[0].body.reading.src, res[1].body.explain.src, res[2].body.explain.note, f.calls.length], ["llm", "llm", "llm_daily_cap", 4], "3 + 5 = 8 次用完（外部调用 3 + 1 = 4），第二次解读回规则");
+  eq(env.BUDGET.data.get("calls").n, 8, "每日计数 8");
 });
 
 await sec("缓存：KV 命中不调用；缓存里被改过的解读照样清洗", async () => {
@@ -234,11 +235,15 @@ await sec("缓存：KV 命中不调用；缓存里被改过的解读照样清洗
   const k = kv.puts[0].k;
   const bad = JSON.parse(kv.m.get(k));
   bad.options[0].hardest_hit = { group: "delivery", min: 42, text: "Delivery drivers lose 42 min" };
-  bad.options[0].pros = ["Saves 77 min"];
+  bad.options[0].pros = ["Saves 77 min", "Halves the queue"];
+  bad.decide = "Pick o2 now.";
   kv.m.set(k, JSON.stringify(bad));
   resetLlmState();
   const t = (await withFetch(f, () => post(REQ, env))).body.explain;
-  eq([t.options[0].hardest_hit, t.options[0].pros, f.calls.length], [ruleExplain(REQ).options[0].hardest_hit, [], 1], "反向：缓存被改也改不了谁最吃亏、塞不进编的数");
+  eq([t.options[0].hardest_hit, t.options[0].pros, f.calls.length], [ruleExplain(REQ).options[0].hardest_hit, [], 1], "反向：缓存被改也改不了谁最吃亏、塞不进编的数和文字写的数");
+  eq(t.decide, ruleExplain(REQ).decide, "反向：缓存里的 decide 被改成替人拍板，回来的仍是固定那句");
+  const t2 = (await withFetch(f, () => post(REQ, env))).body.explain; // 不 reset：这次走实例内存（热路径）
+  eq([t2, f.calls.length], [t, 1], "反向：KV 命中后进内存的也是清洗过的，热路径回来的和上一次一样");
 });
 
 await sec("中文、提示词注入、浏览器端", async () => {
@@ -256,7 +261,32 @@ await sec("中文、提示词注入、浏览器端", async () => {
   resetLlmState();
   const g = fakeLLM(chat(answer()));
   const y = await withFetch(g, () => explainOptions(REQ, { fetch: viaApi }));
-  eq([y.src, y.prompt_v, y.options[0].cons], ["llm", "e1", ["Visitors lose 5.1 min each"]], "浏览器端经接口拿到 llm 版，src / prompt_v 保留，编的数仍丢掉");
+  eq([y.src, y.prompt_v, y.options[0].cons], ["llm", "e2", ["Visitors lose 5.1 min each"]], "浏览器端经接口拿到 llm 版，src / prompt_v 保留，编的数仍丢掉");
+  const forged = await explainOptions(REQ, { fetch: async () => ({ ok: true, json: async () => ({ ok: true, explain: answer() }) }) });
+  const rule = ruleExplain(REQ);
+  eq([forged.src, forged.decide, forged.options.map((o) => o.hardest_hit)], ["api", rule.decide, rule.options.map((o) => o.hardest_hit)], "反向：接口回的 decide / hardest_hit 被改，浏览器端照样用固定那句和引擎算的");
+});
+
+await sec("反向（数字防线）：中文数字、全角数字、英文数词和倍数词写的数整句丢掉；正常句子留下", async () => {
+  const mk = (id, label, d, q, h) => ({ id, label, metrics: { delay_veh_min: d, queue_m: q, hire_aud: h } });
+  const req = { lang: "zh", options: [mk("a", "Plan A", 1200, 180, 900), mk("b", "Plan B", 800, 90, 1500)] };
+  const kept = (t) => sanitizeExplain({ options: [{ id: "a", summary: "x", pros: [t], cons: [], risks: [] }, { id: "b", pros: [], cons: [], risks: [] }] }, req, "llm").options[0].pros.length > 0;
+  const bad = [
+    "排队３００米，比方案B多一倍", "租金便宜六百澳元", "排队可能到三百米", "延误少四百车·分钟，省了三分之一", "延误是 Plan B 的两倍",
+    "比 Plan A 少了一半的延误", "排队缩短约九十米", "每天可省下七百澳元租金", "租金贵 ７００ 澳元", "租金贵 700 澳元", "七成司机会绕行", "工期多三天",
+    "delay is twice as long as Plan B", "Delay is twice that of Plan B", "Saves seven hundred dollars of hire", "Halves the delay",
+    "Queue is three times longer", "Ninety metres shorter", "Cuts delay threefold", "Costs 700 AUD more",
+  ];
+  eq(bad.filter(kept), [], "编的数（含文字写的）一句都不剩");
+  const good = [
+    "Longer travel times for commuters", "Scaffold and barriers stay up overnight", "两套方案都要绕行", "十字路口排队 180 米", "万一绕行路线也堵，排队会变长",
+    "延误为1200，排队为180", "延误为１２００车·分钟", "Plan A: network delay 1,200 vehicle-min", "At times the queue spills back", "Double-check the VMS text",
+  ];
+  eq(good.filter((t) => !kept(t)), [], "有出处的、不含数的正常句子留下（全角逗号不把两个数拼成一个）");
+  const req2 = { lang: "zh", options: [mk("a", "全封两天", 1200, 180, 900), mk("b", "Plan B", 800, 90, 1500)] };
+  eq(sanitizeExplain({ options: [{ id: "a", summary: "「全封两天」的租金最低", pros: [], cons: [], risks: [] }, { id: "b" }] }, req2, "llm").options[0].summary, "「全封两天」的租金最低", "方案名里的汉字数不算编的");
+  eq([hasWordNumber("三百米"), hasWordNumber("twice"), hasWordNumber("全封两天", ["全封两天"])], [true, true, false], "hasWordNumber 本身");
+  ok(PROMPT.explain.system.includes("only in Arabic digits"), "提示词写明数量只用阿拉伯数字");
 });
 
 await sec("health 带解读提示词版本；prompts.md 的解读一节格式坏了就拒绝生成", async () => {

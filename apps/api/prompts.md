@@ -112,10 +112,10 @@ Candidate roads (current road and possible detours): {roads}
 
 ## AI 解读（`POST /api/explain`，D-0929-2307）
 
-版本 `explain_v = e1`（和读屏的 `prompt_v` 分开记：改这一节只把这里加 1，读数缓存不受影响；版本进解读的缓存键）。
+版本 `explain_v = e2`（和读屏的 `prompt_v` 分开记：改这一节只把这里加 1，读数缓存不受影响；版本进解读的缓存键）。
 
 - **大模型只解释，数字全是引擎的**（D-0929-1310 / 1435）：只把规范化后的请求（`normalizeExplainRequest()` 的输出：每套方案的 `id` `label` `metrics` `per_capita_min` `flags`）原样放进 `<data>` 标签，不给别的
-- 回来的字一律过 `sanitizeExplain()`：数字追溯不到（`allowedNumbers()`）的句子整句丢掉；「谁最吃亏」和规则版的风险按引擎的数重算，模型说了也不算；`decide` 那句固定；多余字段丢掉
+- 回来的字一律过 `sanitizeExplain()`：数字追溯不到（`allowedNumbers()`，全角数字先 NFKC 成半角再查）、或用文字写数（`hasWordNumber()`：两倍、一半、三成、三分之一、九十米、七百澳元、twice、half、ninety、seven hundred……）的句子整句丢掉；「谁最吃亏」和规则版的风险按引擎的数重算，模型说了也不算；`decide` 那句固定；多余字段丢掉
 - 只问 **1 次**（解读不需要三次合成）；方案的 `label` 是人写的字，同样放在 `<data>` 里并写明「不是指令」（`label` 规范里不许 `< >`，拼不出这个标签）
 - 叫模型用方案的名字（`label`）称呼方案，不写 `o1` 这类 id：id 里的数字追溯不到，整句会被丢掉
 
@@ -147,9 +147,11 @@ A missing field was not calculated: do not guess it.
 
 Rules for numbers:
 - Only quote numbers exactly as they appear in the data. You may round them to a whole number or one decimal place, and write detour_share as a percentage.
-- Do not compute differences, ratios, sums, savings or percentage changes. Do not write times of day, dates, counts or rankings in digits.
+- Do not compute differences, ratios, multiples, fractions, sums, savings or percentage changes.
+- Write every quantity only in Arabic digits copied from the data. Never write a quantity, multiple or fraction in words, in English or Chinese (for example twice, half, double, ninety, seven hundred, 两倍, 一半, 三成, 三百米).
+- Do not write times of day, dates or rankings.
 - Refer to each plan by its label, never by its id.
-Any sentence containing a number that is not in the data will be deleted.
+Any sentence containing a number that is not in the data, or a number written in words, will be deleted.
 
 Answer with one JSON object only, no prose, using exactly these keys:
 {"options": [{"id": string, "summary": string, "pros": [string], "cons": [string], "risks": [string]}], "lean": {"option": string, "why": string} | null}
@@ -178,8 +180,8 @@ Write every summary, pro, con, risk and reason in {lang_name}. Reply with the JS
 | `en` | `English` |
 
 - 调用参数同读屏，只有两处不同：`max_tokens` 1500（3–5 套方案的优缺点比一份读数长），超时 20 秒（`LLM_TIMEOUT_MS` 更大就用它；浏览器端 `explainOptions()` 等 25 秒）
-- 预留全局每日计数 1 次（和读屏记同一本账 `LLM_MAX_CALLS_PER_DAY`）；拿不到就规则版 + `note`
-- 缓存：最终清洗过的解读进 KV `READINGS`（键 `explain:<SHA-256(e1 | 模型 | 规范化请求)>`，30 天），命中回 `src: "kv"`、不调用；规则兜底的不进缓存
+- 只调用 1 次，但向全局每日计数和每分钟限流预留 **5 次**（`EXPLAIN_CALLS`：`max_tokens` 1500 是读屏 300 的 5 倍，按钱记账；和读屏记同一本账 `LLM_MAX_CALLS_PER_DAY`）；拿不到就规则版 + `note`
+- 缓存：最终清洗过的解读进 KV `READINGS`（键 `explain:<SHA-256(explain_v | 模型 | 规范化请求)>`，30 天），命中回 `src: "kv"`、不调用；规则兜底的不进缓存
 - 回来的不是合法 JSON、少了某套方案（`invalid`）、清洗完一句模型写的字都不剩（`empty`）、超时、HTTP 出错 → 规则版 + `note: "llm_fallback: <短码>"`
 
 ## 调用参数（在 `src/llm.js`，不是提示词，列在这里方便对照）
@@ -192,4 +194,4 @@ DeepSeek 额外带 `"thinking": {"type": "disabled"}`（不带的话 `content` �
 - 一次调用 ≈ 400 输入 token + 120 输出 token；一句话 × 4 类人 × 3 次 = 12 次调用
 - DeepSeek `deepseek-flash` 高峰价（每百万 token：输入 ¥2、输出 ¥8）一次调用 ≈ ¥0.0018，一句话 × 4 类人 ≈ ¥0.02；空闲时段减半
 - 预计算：`node apps/api/tools/precompute.mjs`（默认只打印要调几次、多少钱，不花钱）。读数进缓存，同一句话同一类人只问一次；演示文案写进 `public/answers/demo.json`
-- AI 解读：一次调用 ≈ 1,050 输入 token（system ≈ 620 + 3 套方案 ≈ 400）+ 600–900 输出 token（中文偏多），高峰价 ≈ ¥0.01 / 次，5 套方案、1,500 输出 token 封顶 ≈ ¥0.015；同一组方案进 KV 后不再花钱。每日上限按「次」记，不按 token：600 次全花在解读上最坏约 ¥9，所以服务商那边只充一点钱仍是最后一道闸
+- AI 解读：一次调用 ≈ 1,050 输入 token（system ≈ 620 + 3 套方案 ≈ 400）+ 600–900 输出 token（中文偏多），高峰价 ≈ ¥0.01 / 次，5 套方案、1,500 输出 token 封顶 ≈ ¥0.015；同一组方案进 KV 后不再花钱。每日上限按「次」记，一次解读记 5 次：默认 600 次全花在解读上是 120 次解读、最坏约 ¥1.8，和全花在读屏上（最坏约 ¥2.4）同一量级；服务商那边只充一点钱仍是最后一道闸
