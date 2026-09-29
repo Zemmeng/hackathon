@@ -32,6 +32,7 @@ const DEMOS = {
       equipment: [
         { id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] },
         { id: 'S-1', type: 'sign', at_m: 100, text: 'RIGHT LANE CLOSED' },
+        { id: 'A-1', type: 'arrow', at_m: 60 },
         { id: 'B-1', type: 'barrier', at_m: 0 },
       ],
     }],
@@ -44,6 +45,7 @@ const DEMOS = {
       equipment: [
         { id: 'VMS-1', type: 'vms', at_m: 260, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] },
         { id: 'S-1', type: 'sign', at_m: 100, text: 'RIGHT LANE CLOSED' },
+        { id: 'A-1', type: 'arrow', at_m: 60 },
         { id: 'B-1', type: 'barrier', at_m: 0 },
       ],
     }],

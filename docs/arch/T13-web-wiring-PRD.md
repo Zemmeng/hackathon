@@ -57,13 +57,14 @@ const c = await beCompare(BE.api.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD
     equipment: [
       { id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] },
       { id: 'S-1', type: 'sign', at_m: 100, text: 'RIGHT LANE CLOSED' },
-      { id: 'B-1', type: 'barrier', at_m: 0 },
+      { id: 'A-1', type: 'arrow', at_m: 60 },                  // 箭头板（T5 #29 起读得懂）
+      { id: 'B-1', type: 'barrier', at_m: 0 },                 // 护栏只画，不进读数
     ],
   }],
 }
 ```
 
-屏上文字：≤ 2 帧 × ≤ 4 行 × 每行 ≤ 10 个字符、大写。输入框里改字时调 `beCheck(plan)`：`ok: false` 的不要交给 `run`；`warnings` 只提醒（`msg` 是中文，`code` 可以映射英文）。箭头板 `type: 'arrow'` 要等 T5 的 #29 合进 main 才读得懂，之前先别放。
+屏上文字：≤ 2 帧 × ≤ 4 行 × 每行 ≤ 10 个字符、大写。输入框里改字时调 `beCheck(plan)`：`ok: false` 的不要交给 `run`；`warnings` 只提醒（`msg` 是中文，`code` 可以映射英文）。设备类型：`vms`（写 `frames`）、`sign`（写 `text`）、`arrow`（箭头板，`text` 可省）、`barrier`（护栏，只画不读）。
 
 ## 4. 本地怎么跑
 

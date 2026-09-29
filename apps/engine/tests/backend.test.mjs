@@ -31,7 +31,7 @@ await t('connect：同源路径 + 仓库里 T5 的读屏和规范检查', async 
   const st = be.status();
   ok(st.reader === 't5' && st.check === 't5' && st.params === (has(PATHS.params) ? 'params' : 'default'), `读屏 = T5、规范检查 = T5、参数 = ${st.params}`);
   const s = await be.run(be.demo('lonsdale'));
-  ok(s.flags.failed === 0 && s.flags.missing === 0 && s.flags.sign_errors.length === 0, `演示方案：T5 读数全拿到（failed ${s.flags.failed}、missing ${s.flags.missing}），屏上文字合规范`);
+  ok(s.flags.failed === 0 && s.flags.missing === 0 && s.flags.sign_errors.length === 0 && be.demo('lonsdale').worksites[0].equipment.some(e => e.type === 'arrow'), `演示方案（含箭头板，T5 #29 起读得懂）：T5 读数全拿到（failed ${s.flags.failed}、missing ${s.flags.missing}），屏上文字合规范`);
   const c = await be.compare(be.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD']] }), be.demo('lonsdale'));
   ok(c.delta.queue_m < 0 && c.delta.affected_min < 0 && c.after.routes.find(r => r.name === 'Russell Street').share > c.before.routes.find(r => r.name === 'Russell Street').share,
     `第一幕：加一帧 USE / RUSSELL ST，排队 ${c.before.queue_m} → ${c.after.queue_m} 米，每车 ${c.before.mean_delay_s} → ${c.after.mean_delay_s} 秒`);
