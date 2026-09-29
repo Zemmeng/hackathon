@@ -1790,7 +1790,7 @@ function engAfterConnect(){
   try{
     if(BE.api){
       engPreset(EP.preset,true);
-      import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
+      import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';if(EP.sum&&!EP.badText){engAlts(planFrom(EP),EP.sum);if(S.booted&&S.step===3&&EP.tab3==='net')engFly(.6);}}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -1806,6 +1806,8 @@ function engPreset(name,quiet){
 function engSetLink(id){
   const net=engNet(),l=net&&net.links.get(id),pts=linkPts(l);if(!pts)return false;
   EP.link=id;EP.pts=pts;EP.street=l.name||'';EP.dir=dirOf(pts);EP.lanesMax=Math.max(1,l.lanes||1);EP.lanes=EP.all?EP.lanesMax:1;
+  // everything computed for the previous street is void (else its queue / detours get drawn on this one)
+  EP.sum=null;EP.runErr=null;EP.alts=[];EP.altsKey='';EP.adv=null;EP.advKey='';EP.cmp=null;EP.cmpKey='';EP.pick=-1;
   return true;
 }
 // Advisor / compare hand back whole plans: copy the worksite's equipment and dates back into the form
@@ -1840,18 +1842,20 @@ async function engRun(){
   if(S.step===4)engStep4();
 }
 async function engStep4(){
-  if(!engOn()||EP.badText){engRender4();return;}
+  if(!engOn()||EP.badText){EP.adv=null;EP.advKey='';EP.advBusy=false;EP.cmp=null;EP.cmpKey='';EP.cmpBusy=false;EP.pick=-1;engRender4();return;}
   const plan=planFrom(EP),key=JSON.stringify(plan);
   if(EP.advKey!==key){
     EP.advKey=key;EP.adv=null;EP.cmp=null;EP.cmpKey='';EP.pick=-1;EP.advBusy=true;engRender4();
     let a=null;try{a=await BE.api.advise(plan);}catch(e){console.warn('advisor failed',e);}
     if(EP.advKey!==key)return;
+    if(!a)EP.advKey=''; // let the next visit retry
     EP.adv=a;EP.advBusy=false;EP.pick=a&&a.flags.ok?a.options.findIndex(o=>o.better&&o.plan&&!o.skipped&&o.kind!=='shift'):-1; // untrusted savings: don't pre-pick
   }
   await engCompare();
 }
 async function engCompare(){
   const plan=planFrom(EP),o=EP.adv&&EP.adv.options[EP.pick],key=JSON.stringify(plan)+'|'+EP.pick;
+  if(EP.badText||EP.advKey!==JSON.stringify(plan)){EP.cmp=null;EP.cmpKey='';EP.cmpBusy=false;engRender4();return;} // PRD §3: never score invalid or stale text
   if(!o||!o.plan||o.kind==='shift'){EP.cmp=null;EP.cmpKey=key;EP.cmpBusy=false;engRender4();return;} // a date shift only shows over the whole works period
   if(EP.cmpKey===key&&EP.cmp){engRender4();return;}
   EP.cmpKey=key;EP.cmp=null;EP.cmpBusy=true;engRender4();
@@ -1896,8 +1900,8 @@ function engOutHTML(){
   if(!EP.link)return`<div class="card eng-note warn"><b>${L('Click a street on the map to place the work zone','在地图上点一条街来放施工区')}</b></div>`;
   if(EP.runErr&&!EP.sum)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   const s=EP.sum;if(!s)return`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`;
-  const stale=EP.busy||EP.badText;
-  return`<div class="eng-out${stale?' stale':''}">${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+  const stale=EP.busy||EP.badText||!!EP.runErr;
+  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
 function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
@@ -2028,7 +2032,7 @@ function engRender4(){
 }
 // Extra lines for the copied playbook (engine numbers, when there are any)
 function engPlaybook(){
-  const s=EP.sum;if(!BE.api||!s)return['',''];
+  const s=engSumFor('now');if(!BE.api||!s)return['',''];
   const o=EP.adv&&EP.adv.options[EP.pick],c=EP.cmp;
   const en=`\n\nNetwork impact (engine, real CBD flows, ${engHour(s.when.hour)})\n${s.street} ${dirL(EP.dir)}: queue ${fmtN(s.queue_m)} m · +${fmtN(s.mean_delay_s)} s per affected vehicle · ${pctS(s.detour_share)} detour`+(o&&c?`\nAdvisor: ${o.why||o.kind} → queue ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} m, +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} s per vehicle`:'')+(s.flags.reading_src==='rule'?'\n(Sign reading estimated with keyword rules.)':'');
   const zh=`\n\n路网影响（引擎，真实 CBD 车流，${engHour(s.when.hour)}）\n${s.street} ${dirL(EP.dir)}：排队 ${fmtN(s.queue_m)} 米 · 受影响的车每辆多 ${fmtN(s.mean_delay_s)} 秒 · 绕行 ${pctS(s.detour_share)}`+(o&&c?`\n顾问：${o.why||o.kind} → 排队 ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} 米，每车 +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} 秒`:'')+(s.flags.reading_src==='rule'?'\n（读屏为关键词规则估算。）':'');
@@ -2063,7 +2067,8 @@ function engOffset(P,off){
 }
 function engLine(P,off){const Q=engOffset(P,off);ctx.beginPath();Q.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));}
 function engUp(m){const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[a[0]-(b[0]-a[0])/l*m,a[1]-(b[1]-a[1])/l*m];}
-function engSumFor(which){return which==='before'?(EP.cmp&&EP.cmp.before)||EP.sum:which==='after'?(EP.cmp&&EP.cmp.after)||EP.sum:EP.sum;}
+// Numbers that belong to what is on screen: none while the sign text is invalid or the last run failed
+function engSumFor(which){if(EP.badText||EP.runErr)return null;return which==='before'?(EP.cmp&&EP.cmp.before)||EP.sum:which==='after'?(EP.cmp&&EP.cmp.after)||EP.sum:EP.sum;}
 // Ripple (every link that got slower), the queue, the closed link and the signs. Drawn under the road users.
 function engDraw(which){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works)return;
@@ -2091,7 +2096,7 @@ function engDraw(which){
 // Tags drawn above the weather layers
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
-  const s=EP.sum,off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
+  const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
   drawTag(ctx,mx,my,engDx(mx,36),54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
   if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
   if(S.step===1){
@@ -2111,14 +2116,21 @@ function engVisible(){
 const engDx=(px,d)=>px>V.w*.55?-d:d;
 // Step 1: a click (not a drag) on a street moves the work zone there
 function engBindMap(){
-  let down=null;
-  cv.addEventListener('pointerdown',e=>{down=[e.offsetX,e.offsetY,e.pointerId];});
+  let down=null,pending=0;const ptrs=new Set();
+  const cancel=()=>{clearTimeout(pending);pending=0;};
+  cv.addEventListener('pointerdown',e=>{ptrs.add(e.pointerId);cancel();down=ptrs.size===1?[e.offsetX,e.offsetY,e.pointerId]:null;});
+  const lift=e=>ptrs.delete(e.pointerId);
+  cv.addEventListener('pointercancel',e=>{lift(e);down=null;});
+  cv.addEventListener('dblclick',cancel);
   cv.addEventListener('pointerup',e=>{
-    const d=down;down=null;if(!d||d[2]!==e.pointerId||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
+    lift(e);const d=down;down=null;if(!d||d[2]!==e.pointerId||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
     if(S.step!==1||!BE.api)return;
-    const id=pickLink(engCands(),V.wx(e.offsetX),V.wy(e.offsetY),Math.max(9,14/V.s));
-    if(!id||id===EP.link)return;
-    if(engSetLink(id)){EP.preset='custom';renderPanel();engChanged(0);toast(L(`Work zone moved to ${shortSt(EP.street)||'this road'} ${dirL(EP.dir)}`,`施工区挪到 ${shortSt(EP.street)||'这条路'} ${dirL(EP.dir)}`));}
+    const x=V.wx(e.offsetX),y=V.wy(e.offsetY),tol=Math.max(9,14/V.s);
+    pending=setTimeout(()=>{ // wait out a double-click (that one zooms)
+      pending=0;const id=pickLink(engCands(),x,y,tol);
+      if(!id||id===EP.link||S.step!==1)return;
+      if(engSetLink(id)){EP.preset='custom';renderPanel();engChanged(0);toast(L(`Work zone moved to ${shortSt(EP.street)||'this road'} ${dirL(EP.dir)}`,`施工区挪到 ${shortSt(EP.street)||'这条路'} ${dirL(EP.dir)}`));}
+    },280);
   });
 }
 
