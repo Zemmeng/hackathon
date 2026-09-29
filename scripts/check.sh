@@ -267,6 +267,11 @@ elif sub == 'conf':
 # ---------------------------------------------------------------- [6] 卫生
 elif sub == 'hygiene':
     MB = 1024 * 1024
+    # apps/<模块>/public/ 下的 .json 数据文件上限 2MB、不报 500KB 提醒（PRD「每个文件 < 2 MB」，D-0929-1430）；其余 1MB
+    DATA_RE = re.compile(r'apps/[^/]+/public/.+\.json$')
+
+    def is_data(p):
+        return DATA_RE.match(p) is not None
     tracked = {}
     for rec in git('ls-files', '-s', '-z').split(b'\0'):
         if b'\t' not in rec:
@@ -283,14 +288,18 @@ elif sub == 'hygiene':
         if tracked[p] == '160000' or os.path.islink(fp) or not os.path.isfile(fp):
             continue
         sz = os.path.getsize(fp)
-        if sz > MB:
+        if is_data(p):
+            if sz > 2 * MB:
+                emit('E', '%s %.1fMB > 2MB（数据文件上限；抽稀、省字段或拆文件）' % (p, sz / MB))
+        elif sz > MB:
             emit('E', '%s %.1fMB > 1MB（压缩或放网盘；git rm --cached %s）' % (p, sz / MB, p))
         elif sz > 500 * 1024:
             emit('W', '%s %dKB > 500KB（能压就压）' % (p, sz // 1024))
     for p in sorted(untracked):
         fp = fpath(p)
-        if os.path.isfile(fp) and not os.path.islink(fp) and os.path.getsize(fp) > MB:
-            emit('W', '%s（未跟踪）%.1fMB > 1MB：别 git add，放 out/ 或网盘' % (p, os.path.getsize(fp) / MB))
+        lim = 2 * MB if is_data(p) else MB
+        if os.path.isfile(fp) and not os.path.islink(fp) and os.path.getsize(fp) > lim:
+            emit('W', '%s（未跟踪）%.1fMB > %dMB：别 git add，放 out/ 或网盘' % (p, os.path.getsize(fp) / MB, lim // MB))
     shells = [p for p in list(tracked) + untracked if p.endswith('.sh') or p.startswith('.githooks/')]
     for p in sorted(set(shells)):
         fp = fpath(p)
@@ -576,7 +585,7 @@ run_e2e() {
 # --selftest：门禁本身也要被验证
 # =====================================================================
 run_selftest() {
-  local T="$WORK/selftest" i=0 total=8 out rc
+  local T="$WORK/selftest" i=0 total=10 out rc
   mkdir -p "$T"
   say "🧪 check.sh --selftest（临时目录 $T，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
@@ -646,6 +655,15 @@ run_selftest() {
   ( mkrepo "$T/rules" && gq checkout -q -b lead/rules &&
     printf '# AGENTS.md\n\n1. 规则一\n2. 规则二\n' >AGENTS.md ) >/dev/null 2>&1
   run_case "RULES 标记缺失：AGENTS.md 删了 BEGIN/END → [7] ❌" "[7] RULES 块一致 ❌ AGENTS.md 缺" "$T/rules"
+
+  # 大小上限：apps/<模块>/public/ 下的 .json 数据文件 2MB，其余 1MB（D-0929-1430）
+  ( mkrepo "$T/data" && gq checkout -q -b alice/demo/T6-data && mkdir -p apps/demo/public &&
+    head -c 1572864 /dev/zero | tr '\0' '1' >apps/demo/public/big.json && gq add apps/demo/public/big.json ) >/dev/null 2>&1
+  run_case "数据文件：apps/demo/public/big.json 1.5MB → 应全绿（上限 2MB）" green "$T/data"
+
+  ( mkrepo "$T/big" && gq checkout -q -b alice/demo/T7-big &&
+    head -c 1572864 /dev/zero | tr '\0' '1' >apps/demo/big.txt && gq add apps/demo/big.txt ) >/dev/null 2>&1
+  run_case "大文件：apps/demo/big.txt 1.5MB → [6] ❌（非数据文件上限 1MB）" "[6] 仓库卫生 ❌" "$T/big"
 
   [ "$i" -eq "$total" ] || item S0 "场景数" err "跑了 $i 个场景，应为 $total"
   ROOT=""   # 自测不覆盖真仓库的 logs/last-check.txt
