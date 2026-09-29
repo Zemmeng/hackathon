@@ -7,12 +7,33 @@ import {
   llmConfig, llmStatus, askOnce, combine, llmReading, serverReading, resetLlmState, requestBody, buildMessages, LlmError, cacheKey,
 } from "../src/llm.js";
 import { PROMPT } from "../src/prompt.js";
+import { LlmBudget } from "../src/budget.js";
 import { normalizeRequest } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
 
 // 假 key：拼出来的，免得仓库里出现一整段像 key 的字符串（secret-scan）
 const FAKE = ["fake", "k3y", "for", "tests", "7f3a9c"].join("-");
-const ON = { MOCK: "0", LLM_API_KEY: FAKE }; // 打开大模型（默认 DeepSeek 地址 + deepseek-flash）
+
+// 假的 Durable Object 命名空间：里面跑的是真的 LlmBudget 类（src/budget.js），存储换成 Map；clock 可以拨
+function budgetNs(clock = () => Date.now()) {
+  const data = new Map();
+  const obj = new LlmBudget({ storage: { get: async (k) => structuredClone(data.get(k)), put: async (k, v) => void data.set(k, structuredClone(v)) } }, {}, () => clock());
+  const ns = {
+    data,
+    calls: 0,
+    idFromName: (name) => ({ name }),
+    get: (id) => ({
+      fetch: async (u, init) => {
+        ns.calls++;
+        ns.ids = [...new Set([...(ns.ids || []), id.name])];
+        return obj.fetch(new Request(u, init));
+      },
+    }),
+  };
+  return ns;
+}
+// 打开大模型（默认 DeepSeek 地址 + deepseek-flash），带全局每日计数（线上 wrangler.jsonc 绑的 BUDGET）
+const ON = { MOCK: "0", LLM_API_KEY: FAKE, BUDGET: budgetNs() };
 
 const REQ = {
   persona: "commuter",
@@ -93,7 +114,12 @@ await sec("MOCK=0 但没有 key：规则；health 说 key:false", async () => {
 
 await sec("GET /api/health 的 llm 字段", async () => {
   const off = (await call("/api/health", {}, { MOCK: "1" })).body;
-  eq(off.llm, { mode: "rules", model: "deepseek-flash", key: false, cache: "none", prompt_v: PROMPT.v, provider: "deepseek" }, "默认：rules · deepseek-flash · 没 key");
+  eq(
+    off.llm,
+    { mode: "rules", model: "deepseek-flash", key: false, cache: "memory", prompt_v: PROMPT.v, provider: "deepseek", budget: false, per_day: 600, per_min: 60 },
+    "默认：rules · deepseek-flash · 没 key · 只有内存缓存 · 没绑 BUDGET · 每天 600 / 每分钟 60",
+  );
+  eq((await call("/api/health", {}, ON)).body.llm.budget, true, "绑了 BUDGET → budget true");
   const on = await call("/api/health", {}, { ...ON, LLM_MODEL: "deepseek-flash" });
   eq([on.body.mock, on.body.llm.mode, on.body.llm.key], [false, "llm", true], "MOCK=0 + key → mode llm, key true");
   ok(!on.text.includes(FAKE), "反向：health 里没有 key 的值");
@@ -289,6 +315,102 @@ await sec("llmReading（预计算工具用的同一条路）直接调", async ()
   eq([out.valid, out.calls, out.errors, out.reading.src], [3, 3, [], "llm"], "3 次都有效");
   const off = await serverReading(NREQ, { MOCK: "1", LLM_API_KEY: FAKE }, { fetch: f });
   eq([off.src, f.calls.length], ["rule", 3], "serverReading 自己也查 MOCK：MOCK=1 不调用");
+});
+
+await sec("反向（计费）：全局每日封顶 —— 多实例、换 read_s 绕缓存也超不过 LLM_MAX_CALLS_PER_DAY", async () => {
+  const f = fakeLLM([chat(answer())]);
+  const BUDGET = budgetNs();
+  const env = { ...ON, BUDGET, LLM_MAX_CALLS_PER_DAY: "30", LLM_MAX_CALLS_PER_MIN: "100000" };
+  resetLlmState();
+  const srcs = [];
+  // 复现审查的打法：同一句屏上的字，只改 read_s，每条都是新缓存键；每 5 条清一次实例状态 = 换了一个 Worker 实例
+  for (let i = 0; i < 40; i++) {
+    if (i % 5 === 0) resetLlmState();
+    const r = await withFetch(f, () => post({ ...REQ, signs: [{ kind: "vms", frames: [["ROAD", "CLOSED"]], read_s: i }] }, env));
+    srcs.push(r.body.reading.note || r.body.reading.src);
+  }
+  eq(f.calls.length, 30, "外部调用正好 30 次（= 每日上限），之后一次都没有");
+  eq(srcs.filter((x) => x === "llm").length, 10, "10 份大模型读数（每份 3 次）");
+  ok(srcs.slice(10).every((x) => x === "llm_daily_cap"), `超了以后全是规则 + llm_daily_cap（${[...new Set(srcs.slice(10))].join(", ")}）`);
+  eq(BUDGET.ids, ["global"], "所有实例记同一本账（idFromName(\"global\")）");
+
+  const before = BUDGET.calls;
+  await withFetch(f, () => post(fresh(), env));
+  eq(BUDGET.calls, before, "本实例知道今天用完了：不再每次去问 DO");
+});
+
+await sec("每日计数到 UTC 第二天清零；0 = 一次都不许", async () => {
+  let t = Date.parse("2026-09-30T23:59:00Z");
+  const BUDGET = budgetNs(() => t);
+  const f = fakeLLM([chat(answer())]);
+  const env = { ...ON, BUDGET, LLM_MAX_CALLS_PER_DAY: "3" };
+  resetLlmState();
+  const a = await withFetch(f, () => post(fresh(), env));
+  resetLlmState();
+  const b = await withFetch(f, () => post(fresh(), env));
+  t += 120_000; // 过了 UTC 0 点
+  resetLlmState();
+  const c = await withFetch(f, () => post(fresh(), env));
+  eq([a.body.reading.src, b.body.reading.note, c.body.reading.src, f.calls.length], ["llm", "llm_daily_cap", "llm", 6], "当天第 2 份被拦，第二天又能问");
+  eq([...BUDGET.data.keys()].length, 1, "DO 里只存一条（不会一天一条越存越多）");
+
+  resetLlmState();
+  const g = fakeLLM([chat(answer())]);
+  const z = await withFetch(g, () => post(fresh(), { ...ON, BUDGET: budgetNs(), LLM_MAX_CALLS_PER_DAY: "0" }));
+  eq([z.body.reading.note, g.calls.length], ["llm_daily_cap", 0], "LLM_MAX_CALLS_PER_DAY=0 → 不调用");
+});
+
+await sec("反向（计费）：没绑 BUDGET 或 DO 出错 → 不调用（不花没记账的钱）", async () => {
+  const f = fakeLLM([chat(answer())]);
+  resetLlmState();
+  const env = { MOCK: "0", LLM_API_KEY: FAKE };
+  const a = await withFetch(f, () => post(fresh(), env));
+  const h = await call("/api/health", {}, env);
+  eq([a.body.reading.src, a.body.reading.note, h.body.llm.mode, h.body.llm.budget], ["rule", "llm_no_budget", "llm", false], "没绑 BUDGET：规则 + llm_no_budget；health 说 budget false");
+  const boom = { idFromName: () => ({}), get: () => ({ fetch: async () => { throw new Error("do down"); } }) };
+  const b = await withFetch(f, () => post(fresh(), { ...env, BUDGET: boom }));
+  const bad = { idFromName: () => ({}), get: () => ({ fetch: async () => new Response("nope", { status: 500 }) }) };
+  const c = await withFetch(f, () => post(fresh(), { ...env, BUDGET: bad }));
+  eq([b.body.reading.note, c.body.reading.note], ["llm_budget_error", "llm_budget_error"], "DO 抛错 / 回 500 → llm_budget_error");
+  eq(f.calls.length, 0, "外部 fetch 0 次");
+});
+
+await sec("LlmBudget（Durable Object 本体）", async () => {
+  const data = new Map();
+  const d = new LlmBudget({ storage: { get: async (k) => data.get(k), put: async (k, v) => void data.set(k, v) } }, {}, () => Date.parse("2026-10-01T05:00:00Z"));
+  const take = async (q) => (await d.fetch(new Request(`https://budget.internal/take?${q}`, { method: "POST" }))).json();
+  eq(await take("n=3&max=5"), { ok: true, used: 3, max: 5, day: "2026-10-01" }, "预留 3 / 5");
+  eq(await take("n=3&max=5"), { ok: false, used: 3, max: 5, day: "2026-10-01" }, "再要 3 次超了：拒，且不记账");
+  eq((await take("n=2&max=5")).ok, true, "要 2 次还够");
+  const bad = await d.fetch(new Request("https://budget.internal/take?n=-1&max=5", { method: "POST" }));
+  eq(bad.status, 400, "n 不合法 → 400（调用方当出错，不调用）");
+});
+
+await sec("缓存种类：*.workers.dev 上 Cache API 不生效 → health 报 memory，也不去写它", async () => {
+  const ops = [];
+  const realCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      match: async (u) => void ops.push(["match", u]),
+      put: async (u) => void ops.push(["put", u]),
+    },
+  };
+  try {
+    const onDev = async (path, init, env) => {
+      const r = await worker.fetch(new Request(`https://hackathon-site.example.workers.dev${path}`, init), env);
+      return r.json();
+    };
+    eq((await onDev("/api/health", {}, ON)).llm.cache, "memory", "workers.dev：cache memory");
+    eq((await call("/api/health", {}, ON)).body.llm.cache, "cache-api", "自己的域名：cache-api");
+    const kv = { get: async () => null, put: async () => {} };
+    eq((await onDev("/api/health", {}, { ...ON, READINGS: kv })).llm.cache, "kv", "绑了 KV 在哪都是 kv");
+    resetLlmState();
+    const f = fakeLLM([chat(answer())]);
+    const r = await withFetch(f, () => onDev("/api/read", { method: "POST", body: JSON.stringify(fresh()) }, ON));
+    eq([r.reading.src, ops.length], ["llm", 0], "workers.dev 上读数照常，Cache API 一次都没碰");
+  } finally {
+    globalThis.caches = realCaches;
+  }
 });
 
 done();
