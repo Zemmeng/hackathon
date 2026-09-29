@@ -1,7 +1,7 @@
 # 模块之间的接口契约
 
 > 并行开发唯一需要协调的东西。改它 = 改所有调用方：PR 标题以 `contract:` 开头，lead 合并，合并后通知依赖方。优先向后兼容（加字段不删字段）。
-> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.7）。
+> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.8）。
 
 ## 谁调谁
 
@@ -164,6 +164,24 @@ const s = await be.run(方案);          // 能直接显示的数字：queue_m m
 const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
 ```
 
+**叠加冲突 `be.clash` / `be.stagger`**（T21，v3.8，只加方法；D-0929-2011 ②）：
+
+```js
+const k = await be.clash(a, b, { hours?, when? });   // a、b = §施工方案的一条施工，或整份方案（取 worksites[0]）
+// k = { a, b, ab, cost,                    // 显示用，永远 ≥ 0：D(A) / D(B) / D(A+B) / 冲突成本 D(A+B) − D(A) − D(B)，单位 车·分钟，按采样小时加总
+//       raw: { a, b, ab, cost },           // 引擎原始数（可能 < 0）
+//       whens, hours, truncated, overlap: { from, to, days },
+//       flags: { reliable, negative, reading_src, failed } }
+const g = await be.stagger(a, b, { maxDays = 7, hours?, back = false });
+// g = { base: clash(a, b), best: { days, cost, ab, overlap_days, reliable }, tries: [{ days, cost, overlap_days, reliable }],
+//       worksite: 挪好的 b, period: { from, to, whens, truncated, ab_before, ab_after, reliable } }
+```
+
+- 时间窗 = 两处施工**重叠的那几天** × 重叠时段里的早晚高峰（8、17 点；都不在就取时段中间那个小时，和 `advise()` 同一口径）；`opts.hours` 换采样小时，`opts.when` 只算那一个时刻。不重叠 → 全 0、`whens = 0`，不跑引擎。两处施工都要写 `time`（或给 `when`），否则抛错
+- 数由 `engine.conflict()` 算（下文「其他」），接线层不另写算法；同样输入同样结果
+- 🔒 `raw` 里任何一个 < 0（基线车流本来就超过通行能力的路段，如 Flinders St，#58）→ `flags.reliable = false`、`flags.negative = true`、`cost` 显示 0；页面写「≈ 0 · 这段路的基线车流超出通行能力，结果不可信」，不显示负数
+- `stagger` 只挪 `b`：`+1 … +maxDays` 天（`back: true` 时 `+1, −1, +2, −2 …`），碰到第一个「不再重叠」或「冲突成本 0 且可信」就停；`best` 取冲突成本最小的（一样时取先试的）。`period` 是挪前、挪后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，同一把尺子比
+
 **电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
 
 ```js
@@ -313,6 +331,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.8 | 2026-09-29 | T21（D-0929-2011 ②）§evaluate 加 `be.clash(a, b)` / `be.stagger(a, b)`：叠加冲突成本 D(A+B) − D(A) − D(B) 和一键错开，显示字段永远 ≥ 0、`flags.reliable`；只加方法 | lead |
 | v3.7 | 2026-09-29 | T22（D-0929-2011 ③）§施工方案 加「按库存出方案 `options[]`」：`be.options()` 出 `o1 / o2 / o3` 三套方案，每套带引擎结果、租金（`hire.assumed = true`）、库存检查（不超库存）；只加字段。依赖 v3.6（#57）的 `equipment[].item / qty` | lead |
 | v3.6 | 2026-09-29 | T24（D-0929-2011 ⑤，向后兼容，只加字段）：§施工方案加登记表字段（`title / kind / status / decision`，服务端 `id / seed / created / updated`，#53）和可选的 `equipment[].item / qty`（#55，引擎不看）；§HTTP API 加 `/api/worksites` 四个接口（#53）、`POST /api/explain`（#54），`/api/health` 加 `register`；`options[]` 等 T22 | lead |
 | v3.5 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`（含每日上限 `budget` / `per_day` / `per_min`，`cache` ∈ `kv / cache-api / memory`）；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |

@@ -1818,7 +1818,7 @@ function render(dt){
     const sx=S.swipe*V.w;
     ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
-  }else if(S.step===3){engDraw('now');drawWorks('before');}
+  }else if(S.step===3){engDraw('now');drawWorks('before');clashDraw();}
   else{engDraw('now');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
@@ -1911,7 +1911,7 @@ function renderPanel(){
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event,n=SEEDS[S.wx];
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
@@ -2771,6 +2771,88 @@ function emphasizeRoads(c,V,Wd,basemap,light){
   for(const p of pcs){if(p.H){for(const y of[p.y0,p.y1]){c.moveTo(X(p.x0),Y(y));c.lineTo(X(p.x1),Y(y));}}else{for(const x of[p.x0,p.x1]){c.moveTo(X(x),Y(p.y0));c.lineTo(X(x),Y(p.y1));}}}
   c.stroke();
   c.restore();
+}
+
+/* ============================================================
+   T21 · Nearby works · clash check (D-0929-2011 ②).
+   Step 3, network tab: other works in the register (T5 /api/worksites, seed fallback) that overlap this plan
+   in time → be.clash() = D(A+B) − D(A) − D(B) on the real CBD network, and a one-click be.stagger().
+   Every number comes from the engine; nothing here calls an LLM. Text from the register goes through esc().
+   Hooks (one call each): 5-app.js renderPanel() step 3 → clashMount(); draw loop step 3 → clashDraw().
+   ============================================================ */
+const CL={m:null,listP:null,src:null,key:'',seq:0,busy:false,err:null,other:null,more:[],st:null,stBusy:false,stErr:null};
+const CL_MAX=3; // score at most this many overlapping works; the costliest reliable one is shown
+const clDay=s=>Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5;
+function clashCur(){return planFrom(EP).worksites[0];}
+function clashLoad(){
+  if(!CL.listP)CL.listP=import('/api/public/js/worksites.js')
+    .then(async m=>{CL.m=m;const r=await m.listWorksites();CL.src=r.src;return r.worksites||[];});
+  return CL.listP;
+}
+// Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
+function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
+async function clashRun(){
+  const seq=++CL.seq;Object.assign(CL,{busy:true,err:null,other:null,more:[],st:null,stBusy:false,stErr:null});clashRender();
+  try{
+    const list=await clashLoad();if(seq!==CL.seq)return;
+    const cur=clashCur(),same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
+    const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
+    for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(seq!==CL.seq)return;scored.push({o,ws,r});}
+    scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
+    CL.other=scored[0]||null;CL.more=scored.slice(1);
+  }catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
+  CL.busy=false;clashRender();
+}
+async function clashStagger(){
+  const x=CL.other,seq=CL.seq;if(!x||CL.stBusy)return;
+  CL.stBusy=true;CL.stErr=null;clashRender();
+  try{const st=await BE.api.stagger(clashCur(),x.ws,{maxDays:clashDays(x.ws)});if(seq!==CL.seq)return;CL.st=st;}
+  catch(e){if(seq!==CL.seq)return;CL.stErr=e;console.warn('stagger failed',e);}
+  CL.stBusy=false;clashRender();
+}
+function clashHTML(){
+  const one=t=>`<p class="small muted">${L('Nearby works','附近施工')} · ${t}</p>`;
+  if(!engOn())return one(L('clash check needs the live engine.','叠加检查要等引擎连上。'));
+  if(EP.badText)return one(L('fix the sign text in step 1 first.','先回第 1 步把屏上文字改合规范。'));
+  if(CL.busy)return one(L('checking the works register for overlaps…','正在查登记表里同期的施工…'));
+  if(CL.err)return one(L('clash check unavailable right now.','叠加检查暂时用不了。'));
+  if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
+  const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
+  const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
+  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
+  const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
+  if(!r.flags.reliable)return`${head}<div class="card eng-note warn"><b>${L('≈ 0 · baseline flow on this street exceeds capacity; result not reliable','≈ 0 · 这段路的基线车流超出通行能力，结果不可信')}</b></div>${more}`;
+  const m=(lab,v,col)=>`<div class="metric"><span class="eyebrow">${lab}</span><div class="v"${col?` style="color:${col}"`:''}>${v}<small>${U}</small></div></div>`;
+  const metrics=`<div class="metrics">${m(L('This plan alone','本方案单独'),fmtN(r.a))}${m(L('Other works alone','那处施工单独'),fmtN(r.b))}${m(L('Both at once','两处同时'),fmtN(r.ab))}${m(L('Clash cost','叠加冲突'),(r.cost>0?'+':'')+fmtN(r.cost),r.cost>0?'var(--risk)':'var(--accent)')}</div>`;
+  const why=`<p class="small muted">${L(`Clash cost = D(A+B) − D(A) − D(B): network delay that exists only because both run at once. Summed over ${r.whens} sampled hours (${hrs} on each overlapping day), all CBD links.`,`叠加冲突 = D(A+B) − D(A) − D(B)：只因两处同时施工才多出来的全网延误。按 ${r.whens} 个采样小时加总（每个重叠日的 ${hrs}），全部 CBD 路段。`)}</p>
+  <div class="eng-legend"><span><i style="background:var(--a-bike)"></i>${L('Dashed · the other works','虚线 · 那处施工')}</span></div>`;
+  let act='';
+  const st=CL.st,b=st&&st.best;
+  if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates. Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`)}</span></div>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  return`${head}${metrics}${why}${act}${more}`;
+}
+function clashRender(){
+  const el=document.getElementById('clashBox');if(!el)return;
+  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
+  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+}
+// Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
+function clashMount(){
+  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
+  const box=document.createElement('div');box.id='clashBox';box.className='stack';
+  const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
+  clashRender();
+}
+// Map: the other works' links, dashed, only while the section is on screen
+function clashDraw(){
+  const x=CL.other;if(!x||S.step!==3||EP.tab3!=='net'||!engOn()||!S.layers.works||!document.getElementById('clashBox'))return;
+  const k=clamp(V.s/2.4,.7,1.6);
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalAlpha=.95;ctx.strokeStyle=TK.aBike||TK.accent;ctx.lineWidth=5*k;ctx.setLineDash([7,6]);
+  for(const id of x.ws.links){const P=engGeo(id);if(P){engLine(P,3.5);ctx.stroke();}}
+  ctx.restore();
 }
 
 </script>
