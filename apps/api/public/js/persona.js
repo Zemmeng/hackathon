@@ -127,7 +127,7 @@ export async function askAdvisor(summary, opts = {}) {
       if (!res || !res.ok) return rule('http_' + (res ? res.status : 0));
       const j = await res.json();
       if (!j || j.ok !== true || !Array.isArray(j.suggestions) || !j.suggestions.every(checkSuggestion)) return rule('bad_response');
-      return { src: j.src, suggestions: j.suggestions.slice(0, 3) };
+      return { src: j.src, suggestions: j.suggestions.slice(0, 3), ...(j.fallback ? { fallback: j.fallback } : {}) };
     } catch { return rule('network'); }
   })(), opts.timeoutMs ?? TIMEOUT_MS, () => rule('timeout'));
 }
