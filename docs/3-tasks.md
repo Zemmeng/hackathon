@@ -6,11 +6,11 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 ## 现在停在哪（只有 lead 改，写时间）
 
-- 里程碑：M0 完成，M1 未到（09-29 15:00）· 倒计时 45h · main：绿 · 冻结：否
-- 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址）
-- 已合：#9 路网、#15 数据文件 2MB、#16 契约 v2 + T5 派人、#17 `docs/llm-apis/`（T8）、#18 T2 方向（D-0929-1445）
-- 等作者自己合（CI 绿，已提醒）：#14 T7 行人 / 公交 / 设备（louis）、#19 T2 网页（高he）、#22 T5 读屏规则版（jinmingq）
-- #20 lead 的 engine + api 骨架（draft，冲突中）：按 D-0929-1500 只留 engine、对齐 D-0929-1435、任务号改 T9；#12 PRD-2 可合可关；#5 等作者拆
+- 里程碑：M0 完成，M1 未到（09-29 15:05）· 倒计时 45h · main：绿（`check.sh` 全量 `0 ❌`，6 个模块 379 passed）· 冻结：否
+- 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址；`apps/web` 已带静态部署配置，等部署人 `deploy.sh web`）
+- 已合：#9 路网、#12 PRD-2、#14 T7 行人 / 公交 / 设备、#15 数据文件 2MB、#16 契约 v2、#17 `docs/llm-apis/`、#18 T2 方向、#19 T2 网页、#22 T5 读屏规则版
+- #20 lead 的 engine 骨架（draft，冲突中）：按 D-0929-1500 删 `apps/api`、只留 engine、对齐 D-0929-1435、任务号改 T9；#5 等作者拆
+- 新派：T10 给 louis，T2 要的真实底图（`apps/roads/PRD-3.md`，D-0929-1505）
 
 ## 风险与 P0（lead 写，`/demo` 的结果也写这）
 
@@ -18,7 +18,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | R1 | T4 路网计算没人认领（@Unzzip 名下为空）；T5 已派给 @jinmingq（14:30，D-0929-1436） | 高 | lead | T4 17:00 集成点定 |
 | R2 | 初筛 3 页幻灯片 09-30 12:30 截止，还没人负责 | 高 | lead | 17:00 集成点定 |
-| R3 | `apps/web` 已由 T2 分支自建（登记表、CODEOWNERS、launch.json 已补）；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | starters 待删 |
+| R3 | `apps/web` 已合进 main（#19）；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | starters 待删 |
 | R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | ✅ 已解决：数据 JSON 上限 2MB、不再报 500KB（D-0929-1430） |
 | R5 | T2 网页做成「极端天气压力测试」为主线，全是模拟数字，没接 T3 真路网，和 D-0929-1310 的 6 步不一致 | 高 | @unicornnnnnny | D-0929-1445：主路径接回计划，天气留作加分层；17:00 前对齐 |
 | R6 | #20（lead 另一个会话）和 #22（T5）都新建 `apps/api`，10 个同名文件；#20 还按被推翻的 D-0929-1333 写、借用了 louis 的 T7 | 高 | @Zemmeng | D-0929-1500：api 归 #22，#20 只留 engine 并对齐；已在 #20 留言 |
@@ -42,6 +42,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T5 | 给 @jinmingq：**大模型读懂屏上的字**（第 ③ 步，D-0929-1435 / 1436）——新建模块 `apps/api`：浏览器端 `readSigns()`、关键词规则兜底、Cloudflare Worker `/api/read` + KV 缓存、`prompts.md`。**要求全在 `docs/arch/T5-PRD.md`**，接口见 `docs/contract.md` §路人读数；分支 `jinmingq/api/T5-reader`；17:00 前 `readSigns()` 用规则返回读数 + `test.sh` 绿 + draft PR（不调大模型、不花钱） | 2h + 3h | — |
 | T7 | 给 @louisxie316-dotcom：**T3 第二期**——行人、公交、设备库存（`apps/roads/PRD-2.md`，PR #12）。**先做 A `equipment.json`**（T2 设备面板要用），B 公交、C 行人排在后面；分支 `louisxie316-dotcom/roads/T7-equipment`，#9 合完再开 | 1h + 4h | T3（PR #9） |
 | T8 | 任何人：**传一张大模型 API 卡**——手里有哪家的 key / 免费额度，照 `docs/llm-apis/README.md` 写一张卡（只写变量名）；分支 `<handle>/llm-apis/T8-<服务商>`，像 T0 一样人人可做、不用认领 | 15m | — |
+| T10 | 给 @louisxie316-dotcom：**T2 要的真实底图** `basemap.json`——街道（真宽度、人行道、电车 / 自行车道，挂 `network.json` link）+ 建筑轮廓和高度，用 T2 页面的局部米坐标；换掉 T2 里合成的街景。**要求全在 `apps/roads/PRD-3.md`**；分支 `louisxie316-dotcom/roads/T10-basemap`；17:00 交页面视窗的最小版 | 2h | T3、T7（已合） |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
