@@ -177,4 +177,4 @@ gh pr create --fill                                     # 只动了自己模块�
 
 ## 披露与 License
 
-本仓库的工具脚本、hook 和流程文档是赛前准备的协作工具，不含业务代码；赛前写的 `starters/` 通用骨架已按 D-0929-1311 删掉，业务代码全部在比赛期间写。用到的第三方 API 和 AI 工具在 `docs/4-demo.md` 的提交清单里列明。[MIT](LICENSE)。
+本仓库的工具脚本、hook 和流程文档是赛前准备的协作工具，不含业务代码；赛前写的 `starters/` 通用骨架已按 D-0929-1311 删掉，业务代码全部在比赛期间写。唯一例外：`apps/api/test.sh` 和 `apps/api/tests/mini.mjs` 是零依赖的测试运行器（不含业务逻辑），开赛后从赛前的 starter 拷过来，未改写。用到的第三方 API 和 AI 工具在 `docs/4-demo.md` 的提交清单里列明。[MIT](LICENSE)。

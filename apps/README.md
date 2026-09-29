@@ -16,7 +16,7 @@ kickoff 前这个目录只有这份 README。模块全部开赛后手工建（�
 | roads | @louisxie316-dotcom | 没用 starter（数据管线 + 静态 JSON） | — | — |
 | web | @unicornnnnnny | 没用 starter（单文件静态页；`src/` 由 `build.py` 拼成 `public/index.html`） | 4175 | — |
 | engine | @Zemmeng（lead 的引擎会话，T9） | 没用 starter（纯 JS 路网引擎，浏览器和 node 都能跑） | —（`node apps/engine/tools/demo.mjs`） | `/engine/public/js/index.js` |
-| api | @jinmingq | 没用 starter（照 web-worker 手工建，去掉 DO） | 8788 | — |
+| api | @jinmingq | 部分：`test.sh`、`tests/mini.mjs`（测试运行器）拷自赛前的 web-worker starter（#22）；业务代码手写 | 8788 | — |
 | params | @Unzzip | 没用 starter（静态 JSON + 出处表） | — | — |
 | site | @unicornnnnnny（部署）· @Zemmeng（代码） | 没用 starter（手写 Worker：各模块 `public/` 挂到 `/<模块>/public/`，`/api/*` 转给 T5） | 8790 | `DEMO_URL`（部署后 lead 填） |
 
