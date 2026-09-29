@@ -1,7 +1,7 @@
 # site —— 同源网站外壳：一个网址挂全部模块，/api/* 留给 T5
 Owner: @unicornnnnnny（部署人，D-0929-1322）· 代码：@Zemmeng
 
-一个 Cloudflare Worker = 整个 demo 网址。部署时 `build.mjs` 把 `apps/<模块>/public/` 原样拷到 `/<模块>/public/`（契约 `docs/contract.md`：「lead 部署时把每个模块的 `public/` 原样挂到 `/<模块>/public/`」）。这样网页面板、引擎 JS、路网数据和路口仿真都在同一个网址下，互相 `fetch` / `import` 不用跨域。`/api/*` 转给 T5 的 api Worker（服务绑定，D-0929-1436），T5 上线前先回占位。
+一个 Cloudflare Worker = 整个 demo 网址。部署时 `build.mjs` 把 `apps/<模块>/public/` 里 **git 已跟踪的文件**原样拷到 `/<模块>/public/`（契约 `docs/contract.md`：「lead 部署时把每个模块的 `public/` 原样挂到 `/<模块>/public/`」）。这样网页面板、引擎 JS、路网数据和路口仿真都在同一个网址下，互相 `fetch` / `import` 不用跨域。`/api/*` 转给 T5 的 api Worker（服务绑定，D-0929-1436），T5 上线前先回占位。
 
 ## 部署（高h 照做）
 
@@ -99,7 +99,7 @@ git pull && bash scripts/check.sh --e2e
 
 - Claude 会话里：preview 工具启动 `site`（`.claude/launch.json`，端口 8790）
 - 手动：`cd apps/site && npm ci && npm run dev`，浏览器开 http://localhost:8790
-- `npm run dev` 先 build 一次。改了别的模块的 `public/` → 重启 dev
+- `npm run dev` 先 build 一次。改了别的模块的 `public/` → 重启 dev；**新加的文件要先 `git add` 才会被拷**（build 会打印「N 个没 git add 的文件没拷」）
 - 只改某个模块自己的页面时，用那个模块自己的 launch.json 条目更快；site 用来查「挂到一个网址下以后，路径还对不对」
 
 ## 怎么测
@@ -115,7 +115,7 @@ git pull && bash scripts/check.sh --e2e
 | 路径 | 返回 |
 |---|---|
 | `/` | 首页，含 `data-smoke`。有 `apps/web/public/index.html` 就用 JS 跳 `/web/public/`（`/?list` 不跳，看模块目录） |
-| `/<模块>/public/…` | `apps/<模块>/public/` 原样，点开头的文件不拷。新模块只要有 `public/` 就自动挂上，不用改 site |
+| `/<模块>/public/…` | `apps/<模块>/public/` 里 `git ls-files` 列出的文件原样挂上；被 gitignore 的（keys.json、*.pem、raw/、node_modules/）、没 git add 的、点开头的、符号链接都不拷；模块目录或 `public/` 是符号链接 → 整个模块跳过。git 不可用或不在仓库里 → build 报错不构建。新模块只要有 `public/` 就自动挂上，不用改 site |
 | `/api/health` | 没绑 API：`{"ok":true,"v":"site-0.1","mock":true,"api":false}`；绑了：T5 的响应 |
 | `/api/*`（`/api/public/*` 除外） | 绑了 API：原样转发（方法、查询串、请求体不变）；没绑：503 `{"ok":false,"error":"api_not_deployed","msg":"…"}`；API 抛错：502 `api_unreachable`，不带内部报错 |
 | `/api/public/*` | `apps/api/public/` 的静态文件 |
