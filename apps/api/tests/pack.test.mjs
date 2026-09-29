@@ -3,7 +3,7 @@
 // 用法：node tests/pack.test.mjs；不需要 npm i（没有 apps/roads 的库存 / 路网就跳过真数据那几节）
 import { existsSync, readFileSync } from "node:fs";
 import { ok, eq, sec, done, throws } from "./mini.mjs";
-import { itemFor, quote, stockCheck, buildPack, packText, linkInfoFrom, daysOf, loadInventory } from "../public/js/pack.js";
+import { itemFor, quote, stockCheck, buildPack, packText, packDoc, linkInfoFrom, daysOf, loadInventory } from "../public/js/pack.js";
 import { SEEDS, normalizeWorksite, WorksiteError } from "../public/js/worksites.js";
 
 const roads = new URL("../../roads/public/cbd/", import.meta.url);
@@ -113,6 +113,23 @@ if (!have) {
     ok(/Frame 1: ROADWORK \/ AHEAD/.test(en) && /Frame 2: USE \/ RUSSELL ST/.test(en), "VMS 排程列出每一屏");
     ok(/Total: A\$[\d,]+ \(assumed rates\)/.test(en), "合计标 assumed rates");
     ok(!/edit_token|[0-9a-f]{32}/.test(en), "反向：文字版里没有 token 一类的东西");
+  });
+
+  await sec("packDoc：按区块给网页排版（措辞和 packText 同一张表）", () => {
+    const p = buildPack({ ...LON, status: "decided", decision: { option: "C", by: "council", reason: "less delay", at: "2026-09-30T02:00:00.000Z" } }, { inventory, links, now: "2026-09-30T03:00:00.000Z" });
+    const zh = packDoc(p, "zh"), en = packDoc(p, "en");
+    eq([zh.lang, en.lang, packDoc(p, "fr").lang], ["zh", "en", "en"], "只认 zh / en，别的按英文");
+    eq([zh.title, zh.status.key, zh.status.text, en.status.text], ["Lonsdale St westbound lane closure", "decided", "已选定", "decided"], "标题、状态");
+    eq([zh.decision, zh.reason], ["选 C（市政，2026-09-30）", "less delay"], "决定一行不带理由，理由单独给（网页用引用样式）");
+    ok(/假设值，以 RPM Hire 正式报价为准/.test(zh.quote.note) && /assumptions; RPM Hire's formal quote applies/.test(en.quote.note), "反向：报价区块一律带假设值说明");
+    eq(zh.quote.total_aud, p.quote.total_aud, "合计给数字，和 quote() 一样");
+    eq(zh.quote.lines.map((l) => l.qty), p.quote.lines.map((l) => l.qty), "件数给数字");
+    eq(zh.vms[0].frames.map((f) => f.label), ["第 1 屏", "第 2 屏"], "VMS 按屏分好");
+    eq(en.vms[0].frames[1].lines, ["USE", "RUSSELL ST"], "每屏的行原样给");
+    eq(zh.labels.cols, { item: "设备", qty: "数量", rate: "日租价", days: "天数", cost: "金额" }, "表头已翻译");
+    ok(zh.checks.includes("没有「施工结束」牌") && zh.notify[0].who === "市政交通管理", "检查和通知用 packText 同一套措辞");
+    const over = packDoc(buildPack({ ...LON, equipment: [{ id: "B", type: "barrier", at_m: 0, item: "barrier_steel", qty: stock("barrier_steel") + 1 }] }, { inventory, links }), "zh");
+    ok(/超库存（库存 \d+）/.test(over.quote.lines[0].over || ""), "超库存的行带提示");
   });
 
   await sec("浏览器端 loadInventory（假 fetch）", async () => {
