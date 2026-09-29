@@ -21,12 +21,13 @@ const result = engine.evaluate(plan);
 
 ## 怎么测
 
-`bash apps/engine/test.sh`（2026-09-29 15:50 实跑：115 passed, 0 failed）。
+`bash apps/engine/test.sh`（2026-09-29 15:45 实跑：135 passed, 0 failed）。
 
 | 文件 | 测什么 |
 |---|---|
 | `tests/engine.test.mjs` | 路网、最短路、BPR、施工时段、绕行路线、读数请求、选择模型、两点校准（正好 3% / 20%）、evaluate（确定性、缺读数、全封卡住、同路段两施工不重复算、readSigns 全挂不崩）、冲突成本、顾问 |
 | `tests/params.test.mjs` | 参数入口：合格的数照用、缺的逐项回退、不合格整组回退并报错、`sign_trust` 换算、读不到不抛错、校准目标跟着变；反向断言：塞不进第 5 类人、`__proto__` 不污染、默认值不被改 |
+| `tests/backend.test.mjs` | 接线层：兜底（T5、参数加载不上照样出数；路网取不到要抛）、用仓库里 T5 真的读屏和规范检查、summary 口径（每车延误只算受影响的车）、屏上文字不合规范报错；反向断言：读屏抛错必须在 `flags` 里报出来 |
 | `tests/e2e.test.mjs` | MOCK 读数跑演示三幕（8 点、17 点）、屏的位置（摆在拐口之后不算）、顾问改法重算；T3 真路网：加载、单次 < 100 毫秒、第一幕方向成立 |
 
 ## 对外接口（→ docs/contract.md §施工方案、§evaluate、§路人读数）
@@ -34,6 +35,7 @@ const result = engine.evaluate(plan);
 | 导出 | 用法 |
 |---|---|
 | `createEngine({ network, flows, readSigns, params? })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib, params }`；`engine.params` 报每项参数用的是 params.json 还是假设值 |
+| `backend.js` 的 `connect()`（**网页只用这个**，D-0929-1540） | 一次装好路网 + 车流 + 参数 + T5 读屏 + 引擎 → `{ run(方案), compare(前, 后), advise(方案), check(方案), demo(名), status() }`；`run` 回能直接显示的 summary（`queue_m mean_delay_s routes by_type hot flags` …，原始结果在 `.raw`）。T5、参数加载不上有兜底，`status()` / `flags` 里报。用法和字段见 `docs/arch/T13-web-wiring-PRD.md` |
 | `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
@@ -68,7 +70,8 @@ const result = engine.evaluate(plan);
 
 | 文件 | 一句话 |
 |---|---|
-| `public/js/index.js` | 对外的全部导出 |
+| `public/js/index.js` | 引擎核心的全部导出 |
+| `public/js/backend.js` | 后端接线层：给网页的一站式入口（按 URL 动态加载 T5 的 reader.js / check.js，其余从 index.js 来） |
 | `public/js/pipeline.js` | `createEngine`：prepare / evaluate / window / conflict，排队反馈的逐次平均 |
 | `public/js/choice.js` | 第 ④ 步选择模型：每类人参数（赶时间 · 熟路 · 信屏 · 怕堵 · 只能走货车路）+ 被说动的比例 → 各路线比例 |
 | `public/js/calibrate.js` | 两点校准：在参考场景上解出绕行惯性 A、推荐力度 B |
@@ -83,7 +86,7 @@ const result = engine.evaluate(plan);
 
 ## 本模块固定模式
 
-- 🔒 引擎不 import api 模块：`readSigns` / `askAdvisor` 由调用方注入
+- 🔒 引擎核心不 import api 模块：`readSigns` / `askAdvisor` 由调用方注入；只有接线层 `backend.js` 按 URL 动态加载 T5 的文件
 - 🔒 大模型只给读数和改法，所有数字引擎算；排队变长引擎自己重算，不再问大模型
 - `evaluate` 同步、确定：要的读数先 `prepare`；缺的按「没人被说动」算并报 `missing`
 - 读数请求只含「字 + 人」（不含位置、耗时、排队），同一句话每类人只问一次；屏的位置由引擎用 `turn_m` 判断

@@ -106,7 +106,15 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 
 ## evaluate（engine → web）
 
-D-0929-1435 定稿（T9 骨架，T4 认领后接着做）。前端只 import `/engine/public/js/index.js`：
+D-0929-1435 定稿（T9 骨架）。**网页只 import 接线层 `/engine/public/js/backend.js`**（D-0929-1540，lead 接好了路网 + 车流 + 参数 + T5 读屏）：
+
+```js
+const be = await (await import('/engine/public/js/backend.js')).connect();
+const s = await be.run(方案);          // 能直接显示的数字：queue_m mean_delay_s routes by_type hot flags …；引擎原始结果（下表）在 s.raw
+const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
+```
+
+字段表见 `docs/arch/T13-web-wiring-PRD.md` 第 5 节。下面是引擎核心的用法（接线层内部就是这么调的）：
 
 ```js
 import { createEngine } from '/engine/public/js/index.js';
@@ -192,7 +200,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
-| v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read` | lead |
+| v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
 | v1 | 2026-09-29 | 加「路网数据文件」一节（roads → engine、web）；HTTP / WS 节还是模板预置，T5 定了再改 | lead |
