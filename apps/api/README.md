@@ -31,7 +31,7 @@ Owner: @jinmingq
 
 **屏上文字的规范**（超了直接拒）：`kind` ∈ `vms / sign / arrow`。VMS 最多 2 帧、每帧 4 行、每行 10 个字符、合计 8 个词；静态牌（`sign`）一句 ≤ 40 字符、≤ 8 个词；箭头板（`arrow`）同静态牌，但可以没有字（`text` 不传当空串）；只许大写字母、数字、空格和 `. , ' & : ! ? ( ) + / -`（小写会自动转大写）。一次最多 8 块标志、8 条路；路名和引擎 `cleanName()` 同一套字符。`read_s` 超过 120 秒按 120 算（引擎在 5 km/h 排队时会算出 100 多秒），负数或不是数才拒。
 
-**给引擎（#20）的约定**：引擎把 `readSigns()` 抛错当成「没人被说动」静默吞掉，所以引擎会发的请求形状都在 `tests/engine.test.mjs` 里测着（照 #20 09-29 15:20 的 `reading.js` 抄）；引擎改了请求形状要同步改这份测试。
+**给引擎（#20，已在 main）的约定**：引擎把 `readSigns()` 抛错当成「没人被说动」静默吞掉。两层守着：`tests/engine.test.mjs` 照引擎的请求形状造请求（5 种车速 × 4 类人、校准锚点、箭头板）；`tests/engine-real.test.mjs` 直接 import main 上的 `apps/engine` + T3 真路网跑 `prepare` / `evaluate`，要求 readSigns 抛错 0 次、`failed = 0`。引擎改了导出或请求形状，这两份会红：先对齐再合。
 
 ## 关键词规则（兜底，也是 MOCK 的答案；`public/js/rules.js`）
 
