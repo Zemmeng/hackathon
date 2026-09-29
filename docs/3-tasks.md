@@ -100,8 +100,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）。已合 #22 #26 #29；DeepSeek 卡 #37；大模型接口由 lead 在 T19 留好，演示先用规则（D-0929-1718 / 1830） | ✅ | #22 #26 #29 #37 | 09-29 14:40 |
 | T5 | 施工登记表（提案 #48 第 ⑤ 步，只做后端）：`/api/worksites` GET / POST、`/api/worksites/<id>` GET / PATCH，Durable Object `WorksiteRegister`，改要凭 `edit_token`；预置 3 条演示施工（含一条和 Lonsdale 叠加的）；浏览器端 `public/js/worksites.js` 等网页来接（D-0929-2011：页面接入不排在冻结前） | ✅ | #53 | 09-29 20:20 |
 | T5 | AI 解读（提案 #48 第 ⑥ 步，只做后端）：`POST /api/explain` 规则版 + 数字追溯（解读里的数只能来自引擎）+ 浏览器端 `explainOptions()` / `optionFromRun()`；大模型版后续（D-0929-2011：页面接入不排在冻结前） | ✅ | #54 | 09-29 20:55 |
-| T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它 | ✅ | #55 | 09-29 21:10 |
-| T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js` | 🔨 | `jinmingq/web/T23-compare`（cross-module） | 09-29 21:55 |
+| T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它；`packDoc()` 给网页排版、负数 `at_m` = 施工起点下游 | ✅ | #55 #66 | 09-29 21:10 |
+| T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js`；导出排成一页 A4（中 / 英）；09-29 22:50 线上验过 | ✅ | #61 | 09-29 21:55 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 
 卡住了：
