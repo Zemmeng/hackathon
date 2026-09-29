@@ -14,7 +14,7 @@
 | `apps/api/public/js/reader.js` | 导出 `readSigns(请求) → Promise<读数>`：先查随网页发布的答案文件 → 调 `POST /api/read` → 都不行就用规则 |
 | `apps/api/public/js/rules.js` | 关键词规则（兜底，也是 `MOCK=1` 时的答案）；浏览器和 Worker 共用同一份 |
 | `apps/api/src/worker.js` | Cloudflare Worker：`GET /api/health`、`POST /api/read`（查 KV → 调大模型 → 存 KV） |
-| `apps/api/prompts.md` | 提示词只放这里（CLAUDE.md §9） |
+| `apps/api/prompts.md` | 提示词只放这里 |
 | `apps/api/public/answers/demo.json` | 演示要用的文案提前问好的读数 |
 | `apps/api/README.md` | 照 `apps/README.md` 的模板写，含 `Owner: @jinmingq`（`check [4]` 查）；调通的大模型接口写进「外部 API」一节 |
 | `apps/api/test.sh` + `apps/api/tests/` | `test.sh` 要有可执行位；最后一行打印 `N passed, M failed`，退出码非 0 算失败（`check [4][5]` 查） |
@@ -81,4 +81,4 @@
 
 ## 要 lead 改的共享文件（写进 PR 的「要改的共享文件」一节）
 
-`.github/CODEOWNERS` 加 `/apps/api/`；`.claude/launch.json` 加 api 的本地端口；`apps/README.md` 登记表加一行；`.env.example` 加变量名（`MOCK`、`LLM_MODEL`、大模型 key 的变量名）。
+`.github/CODEOWNERS` 加 `/apps/api/`；`apps/README.md` 登记表的端口那列填 api 的本地端口；`.env.example` 加变量名（`MOCK`、`LLM_MODEL`、大模型 key 的变量名）。

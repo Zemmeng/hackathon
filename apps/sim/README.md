@@ -5,7 +5,6 @@ Owner: @Zemmeng（引擎、数据、测试）· 界面：@unicornnnnnny（`publi
 
 ## 怎么跑
 
-- Claude 会话里：preview 工具启动 `sim`（`.claude/launch.json`，端口 4174）
 - 手动：`python3 -m http.server 4174 -d apps/sim/public`，浏览器开 http://localhost:4174
 - ⚠️ 直接双击 `index.html`（file://）打不开：`ui.js` 要 `fetch` 数据文件
 - 发成单文件网页（手机直接开、发给别人）：`python3 apps/sim/tools/build_single.py`，产物在 `out/sim-single.html`（out/ 不进仓库）

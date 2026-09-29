@@ -10,7 +10,6 @@ Owner: @jinmingq
 
 - 引擎里直接 import `apps/api/public/js/reader.js` 的 `readSigns`（上线后的网址由 T6 集成时定）
 - 本地起 Worker（先在本目录 `npm i`）：`cp .dev.vars.example .dev.vars` → `npx wrangler dev --port 8788`
-  - Claude 会话里：等 lead 把 `api` 加进 `.claude/launch.json` 后用 preview 工具按名字起
   - 自检：`curl -s localhost:8788/api/health` → `{"ok":true,"v":"0.3.0","mock":true,"llm":{"mode":"rules","model":"deepseek-flash","key":false,"cache":"cache-api","prompt_v":"r2","explain_v":"e2","provider":"deepseek","budget":true,"per_day":600,"per_min":60},"register":true}`（线上 `*.workers.dev` 的 `cache` 是 `memory`，见下面 KV）
   - 已在 workerd（真 Workers 运行时）里跑通：`node tests/workerd.test.mjs`（wrangler 的 `unstable_dev`，按 `wrangler.jsonc` 起，查 health / read / 400 / 413 / 静态资源；再起一个 MOCK=0 的，大模型地址指向测试进程里的假服务器，查 Durable Object 每日封顶）。变量用 `vars` 显式覆盖，**不受 `wrangler.jsonc` 的 MOCK 和本机 `.dev.vars` 影响**，不会连真服务商
 - 默认（`MOCK` 不是 `"0"`，或没有 `LLM_API_KEY`）**只走规则，不会有任何付费调用**，和 T19 以前一模一样。打开大模型见下一节
@@ -280,7 +279,7 @@ AI 解读加的：`explain.test.mjs`（规范化、优缺点 / 谁最吃亏 / �
 | `src/llm.js` | 大模型那一层：配置、拼消息、调用（超时 6 秒）、3 次合成、内存 / KV / Cache API 缓存、限流、熔断 |
 | `src/budget.js` | 全局每日调用计数：Durable Object `LlmBudget` + `takeBudget()`；拿不到额度就不调用 |
 | `src/prompt.js` | ⚠️ 自动生成：`prompts.md` 的拷贝（Worker 不能 import .md），别手改 |
-| `prompts.md` | 提示词只放这里（CLAUDE.md §9）；改完跑 `node apps/api/tools/gen-prompt.mjs` |
+| `prompts.md` | 提示词只放这里；改完跑 `node apps/api/tools/gen-prompt.mjs` |
 | `tools/gen-prompt.mjs` | `prompts.md` → `src/prompt.js`；`--check` 只查一致 |
 | `tools/precompute.mjs` | 预计算演示读数 → `demo.json`；默认 dry-run，`--run` 才花钱，`--check` 校验 |
 | `tools/jsonc.mjs` | 读 `wrangler.jsonc`（去注释） |

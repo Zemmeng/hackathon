@@ -96,7 +96,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 ### 2.7 测试
 - `tests/test_t20.py` 的 B3 反向断言加上 `seed 4218`、`随机种子`、`行为变体`、`behaviour variations`
 - 新增 `tests/test_t26.py`，每条上面的约束至少一条断言，其中反向断言：`body.html` 的 `.scene-name` 不能写死 La Trobe；`#zoomHome` 的点击不能只飞 `HOME`；文案里不能有「照标志 / 屏走」；「绕行的车」那一行不能传 `better=true`
-- 按 CLAUDE.md §4 第 5 条：`bash apps/web/test.sh` 全绿、`bash scripts/check.sh --quick` 无 ❌，贴汇总行；1440×900 和 375 px 截图自己看过
+- 验收：`bash apps/web/test.sh` 全绿、`bash scripts/check.sh --quick` 无 ❌，贴汇总行；1440×900 和 375 px 截图自己看过
 
 ## 3. T27 · 地图放下整个 CBD（阶段 1 约 5h，T26 合完再做）
 
