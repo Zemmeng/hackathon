@@ -4,7 +4,8 @@
 # 用途：不管用不用 AI，每个人本地 commit 都会过这一关。
 #       [1] bash scripts/secret-scan.sh --staged（脚本不存在 → ⚠️ 放行，不卡人）
 #       [2] 暂存区里有 .env / .dev.vars / settings.local.json / keys.json（及同类）→ 拦
-#       [3] 暂存区里单个文件 > 1MB → 拦（压缩，或放网盘把链接写进 README）
+#       [3] 暂存区里单个文件 > 1MB → 拦（压缩，或放网盘把链接写进 README）；
+#           apps/<模块>/public/ 下的 .json 数据文件放宽到 2MB（和 PRD「每个文件 < 2 MB」一致，D-0929-1430）
 # 什么时候触发：git commit 时自动触发。前提是启用过 hooks：
 #       git config core.hooksPath .githooks   （bash scripts/setup.sh 会帮你做）
 # 怎么绕过：紧急时 git commit --no-verify。CI 会用 scripts/check.sh 再查一遍，PR 里写明原因。
@@ -15,7 +16,9 @@ set -uo pipefail
 root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 cd "$root" || exit 0
 
-MAX_BYTES=1048576   # 1MB
+MAX_BYTES=1048576        # 1MB
+MAX_DATA_BYTES=2097152   # 2MB：apps/<模块>/public/ 下的 .json
+DATA_RE='^apps/[^/]+/public/.+\.json$'
 fail=0
 scan_failed=0
 bad_secret_files=""
@@ -46,9 +49,11 @@ while IFS= read -r -d '' f; do
 " ;;
   esac
   size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
-  if [ "${size:-0}" -gt "$MAX_BYTES" ] 2>/dev/null; then
+  limit=$MAX_BYTES; limit_name=1MB
+  if [[ $f =~ $DATA_RE ]]; then limit=$MAX_DATA_BYTES; limit_name=2MB; fi
+  if [ "${size:-0}" -gt "$limit" ] 2>/dev/null; then
     kb=$((size / 1024))
-    bad_big_files="$bad_big_files    $f（${kb}KB）
+    bad_big_files="$bad_big_files    $f（${kb}KB > ${limit_name}）
 "
   fi
 done < <(git diff --cached --name-only --diff-filter=ACMR -z)
@@ -62,7 +67,7 @@ else
 fi
 
 if [ -n "$bad_big_files" ]; then
-  echo "[3] 大文件 ❌ 单个文件超过 1MB："
+  echo "[3] 大文件 ❌ 单个文件超过上限（apps/<模块>/public/ 下的 .json 2MB，其余 1MB）："
   printf '%s' "$bad_big_files"
   fail=1
 else

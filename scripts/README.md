@@ -44,7 +44,7 @@
 | [3] | 分支与越界（分支名 `<handle>/<模块>/T<n>-<slug>` 推出模块；模块 `pitch` 另可写 `docs/4-demo.md`、`docs/pitch-assets/`） | main 上有改动；分支名不合约定且有改动；改了模块范围外的文件；decisions / pitfalls 有删除行；改了别人的交接单或新建的交接单前缀不是自己；`docs/llm-apis/` 里改 / 删了别人的卡、新建的卡不以自己的 handle 开头、卡的文件名不是 ASCII 或后缀不是 `.md` / `.json`、动了 `README.md` `TEMPLATE.md` 或建了子目录 | 还没有提交 / 没有 base；`lead/*` 分支但你不是 LEAD / BACKUP_LEAD；`ALLOW_CROSS=1` 放行 |
 | [4] | 模块结构 | `apps/*` 缺 README、缺 `Owner:` 行、缺可执行的 `test.sh` | Owner 没填 |
 | [5] | 模块测试（单个限时 `CHECK_TEST_TIMEOUT`，默认 120 秒） | 退出码非 0；最后一行不是 `N passed, M failed`；超时 | 一个 `test.sh` 都没有；test.sh 留了后台进程（已清理） |
-| [6] | 仓库卫生 | 跟踪文件 >1MB；`.claude/agents/*.md` 的 frontmatter 不是恰好一行 `model: opus`，或文件里出现 `fable` | 跟踪文件 >500KB；`*.sh` / hooks 缺可执行位或是 CRLF |
+| [6] | 仓库卫生 | 跟踪文件 >1MB（`apps/<模块>/public/` 下的 `.json` 数据文件 >2MB，不报 500KB 提醒）；`.claude/agents/*.md` 的 frontmatter 不是恰好一行 `model: opus`，或文件里出现 `fable` | 跟踪文件 >500KB；`*.sh` / hooks 缺可执行位或是 CRLF |
 | [7] | RULES 块一致（README / CONTRIBUTING / AGENTS / KICKOFF） | 缺 BEGIN / END 标记、有多个 BEGIN、块内容不逐字相同 | 某个文件不存在 |
 | [8] | 交接单格式 | — | 文件名不对；缺四节；根目录有超过 12 小时没处理的单 |
 | [9] | hackathon.conf | 解析不了；TZ 无效；时间格式不对 | DEADLINE 未设置；DEMO_URL 有值但 README 里没有 |
