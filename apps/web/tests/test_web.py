@@ -65,14 +65,42 @@ interp = [m.group(0) for m in re.finditer(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", html
 raw_why = [x for x in interp if re.search(r"\.why\b", x)]
 check("why 不拼进 HTML（只用 textContent）", not raw_why, str(raw_why[:3]))
 check("why 用 textContent 写（第 3 步读数、第 4 步顾问）", ENG.count(".textContent=w||''") + ENG.count(".textContent=o&&o.why||''") >= 2)
-lines = [ln for ln in html_part.splitlines() if "drawTag(" not in ln and "toast(" not in ln]
-unsafe = []
-for ln in lines:
-    for m in re.finditer(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", ln):
-        x = m.group(1)
-        if re.search(r"\b(street|name|msg|message|reading_src|src|equipment)\b", x) and "esc(" not in x and not x.startswith("L("):
-            unsafe.append(x[:60])
-check("路名 / 报错 / 来源进 HTML 模板都过 esc()", not unsafe, str(unsafe[:4]))
+def interpolations(text):
+    """每个 ${…} 单独拿出来（含嵌在 L(`…${x}…`) 里的内层），按花括号配对"""
+    out, i = [], text.find("${")
+    while i != -1:
+        depth, j = 0, i + 1
+        while j < len(text):
+            if text[j] == "{":
+                depth += 1
+            elif text[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        out.append(text[i + 2:j])
+        i = text.find("${", i + 2)
+    return out
+
+
+def unsafe_in(text):
+    """引擎 / 读屏 / 顾问给的字段直接进了插值、又没过 esc()（外层 L(…) 的整段不算，里面每个 ${} 另算）"""
+    bad = []
+    for x in interpolations(text):
+        if "${" in x:  # 外层：里面的插值会单独检查
+            continue
+        code = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", "''", x)  # 字符串字面量里的文案不算
+        if re.search(r"\b(street|name|msg|message|reading_src|src|equipment)\b", code) and "esc(" not in code:
+            bad.append(x[:60])
+    return bad
+
+
+lines = "\n".join(ln for ln in html_part.splitlines() if "drawTag(" not in ln and "toast(" not in ln)
+unsafe = unsafe_in(lines)
+check("路名 / 报错 / 来源进 HTML 模板都过 esc()（含 L() 里嵌的）", not unsafe, str(unsafe[:4]))
+# 自检：去掉一处 esc() 必须被抓到（防止断言本身永远不会失败）
+probe = "`${L(`One lane on ${shortSt(s.street)} backs up`,`x`)}` `${esc(a.src)}`"
+check("自检：嵌在 L() 里的未转义路名会被抓到", unsafe_in(probe) == ["shortSt(s.street)"], str(unsafe_in(probe)))
 app_js = (SRC / "js" / "5-app.js").read_text(encoding="utf-8")
 check("第 1 步标题里的路名过 esc()", "esc(shortSt(EP.street))" in app_js and "${shortSt(EP.street)" not in app_js)
 
