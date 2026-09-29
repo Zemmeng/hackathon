@@ -1,0 +1,16 @@
+{
+  "note": "演示要用的屏上文案（施工：封 La Trobe Street 一段）。每句 × 4 类人 = 要提前问好的请求；大模型定了以后用它生成 public/answers/demo.json。路名用 apps/roads/public/cbd/network.json 里的写法。read_s 是假设：VMS 按 40 km/h、约 100 m 可读 ≈ 9 秒，静态牌 ≈ 3 秒；真值由引擎按设备和车速算",
+  "kmh": 40,
+  "roads": ["La Trobe Street", "Russell Street", "Lonsdale Street", "Elizabeth Street", "A'Beckett Street"],
+  "personas": ["commuter", "local", "tourist", "delivery"],
+  "messages": [
+    { "id": "plain", "why": "基线：只提醒有施工，不给路", "signs": [{ "kind": "vms", "frames": [["ROADWORK", "AHEAD"]], "read_s": 9 }] },
+    { "id": "use-russell", "why": "#20 演示第一幕的文案", "signs": [{ "kind": "vms", "frames": [["USE", "RUSSELL ST", "SAVE 4 MIN"]], "read_s": 9 }] },
+    { "id": "closed-use", "why": "先说封哪条，再说走哪条", "signs": [{ "kind": "vms", "frames": [["LA TROBE", "CLOSED", "USE", "RUSSELL ST"]], "read_s": 9 }] },
+    { "id": "two-frames", "why": "两帧轮播：开得快的只看到一帧", "signs": [{ "kind": "vms", "frames": [["LA TROBE", "CLOSED"], ["DETOUR VIA", "LONSDALE"]], "read_s": 9 }] },
+    { "id": "delay-only", "why": "只说堵多久，不给路", "signs": [{ "kind": "vms", "frames": [["DELAYS", "15 MIN"]], "read_s": 9 }] },
+    { "id": "avoid-allow", "why": "叫你别走 + 预留时间", "signs": [{ "kind": "vms", "frames": [["AVOID", "LA TROBE", "ALLOW", "10 MIN"]], "read_s": 9 }] },
+    { "id": "abbrev", "why": "反例：非标准缩写，游客看不懂", "signs": [{ "kind": "vms", "frames": [["RD WKS AHD", "USE ALT", "RTE"]], "read_s": 9 }] },
+    { "id": "vms-plus-sign", "why": "VMS 加一块静态牌", "signs": [{ "kind": "vms", "frames": [["USE", "ELIZABETH", "ST"]], "read_s": 9 }, { "kind": "sign", "text": "RIGHT LANE CLOSED", "read_s": 3 }] }
+  ]
+}
