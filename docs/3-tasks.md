@@ -29,7 +29,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | 时间 | 谁 | 服务 | 花了多少 | 干了什么 |
 |---|---|---|---|---|
-| | | | | |
+| 09-29 23:18 | @Zemmeng | DeepSeek `deepseek-flash` | 约 ¥0.54（估算：92 条请求 × 3 = 276 次调用，含 2 条试水） | 预先算演示读数 `apps/api/tools/precompute.mjs --run` → `apps/api/public/answers/demo.json`（D-0929-2307） |
 
 ## 未认领（lead 维护；任务号全局唯一，每个 ≤ 2 小时）
 
