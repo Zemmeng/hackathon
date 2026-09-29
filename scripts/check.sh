@@ -585,7 +585,7 @@ run_e2e() {
 # --selftest：门禁本身也要被验证
 # =====================================================================
 run_selftest() {
-  local T="$WORK/selftest" i=0 total=10 out rc
+  local T="$WORK/selftest" i=0 total=19 out rc q v
   mkdir -p "$T"
   say "🧪 check.sh --selftest（临时目录 $T，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
@@ -655,6 +655,54 @@ run_selftest() {
   ( mkrepo "$T/rules" && gq checkout -q -b lead/rules &&
     printf '# AGENTS.md\n\n1. 规则一\n2. 规则二\n' >AGENTS.md ) >/dev/null 2>&1
   run_case "RULES 标记缺失：AGENTS.md 删了 BEGIN/END → [7] ❌" "[7] RULES 块一致 ❌ AGENTS.md 缺" "$T/rules"
+
+  # docs/llm-apis/：每人只建 / 改自己的卡（文件名以「分支 handle-」开头），卡里不许有 key 的值
+  ( mkrepo "$T/card" && gq checkout -q -b alice/demo/T6-card && mkdir -p docs/llm-apis &&
+    printf '# alice 的卡\n\n变量名 `DEMO_API_KEY`，key 在 @alice 手里\n' >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：新建自己的 docs/llm-apis/alice-demo.md → 应全绿" green "$T/card"
+
+  ( mkrepo "$T/card-other" && mkdir -p docs/llm-apis && printf '# bob 的卡\n' >docs/llm-apis/bob-demo.md &&
+    gq add -A && gq commit -qm bob-card && gq checkout -q -b alice/demo/T7-card && echo "x" >>docs/llm-apis/bob-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：改了别人的 docs/llm-apis/bob-demo.md → [3] ❌" "[3] 分支与越界 ❌ 改了别人的 API 卡" "$T/card-other"
+
+  ( mkrepo "$T/card-name" && gq checkout -q -b alice/demo/T8-card && mkdir -p docs/llm-apis &&
+    printf '# 卡\n' >docs/llm-apis/demo.md ) >/dev/null 2>&1
+  run_case "API 卡：新建的卡没以自己的 handle 开头 → [3] ❌" "[3] 分支与越界 ❌ 新建的 API 卡" "$T/card-name"
+
+  # 五种写法各一行：Bearer 直接写值、hf_、gsk_、xai-、r8_；值在运行时拼，本文件里不出现完整的串
+  q=$(printf 'Q%.0s' $(seq 1 44)); FAKE_KEY="selftest$q"
+  ( mkrepo "$T/card-key" && gq checkout -q -b alice/demo/T9-card && mkdir -p docs/llm-apis &&
+    printf 'curl -H "Authorization: Bearer %s" https://api.example.com\nhf: %s\ngroq: %s\nxai: %s\nreplicate: %s\n' \
+      "$FAKE_KEY" "hf_$q" "gsk_$q" "xai-$q" "r8_$q" >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡里贴了 key（Bearer / hf_ / gsk_ / xai- / r8_）→ [1] ❌ 命中 5 处且不回显值" "[1] 秘密扫描 ❌ 命中 5 处" "$T/card-key"
+  FAKE_KEY=""
+
+  # 反向：只写变量名 / 占位的 Bearer 不误报；handle 大小写不同、文件名带点也算自己的卡
+  ( mkrepo "$T/card-case" && gq checkout -q -b Alice/demo/T13-card && mkdir -p docs/llm-apis &&
+    printf 'curl -H "Authorization: Bearer CLOUDFLARE_API_TOKEN"\ncurl -H "Authorization: Bearer YOUR-OPENROUTER-API-KEY"\ncurl -H "Authorization: Bearer $DEEPSEEK_API_KEY"\napi_key: CLOUDFLARE_API_TOKEN\n' \
+      >docs/llm-apis/alice-qwen2.5.md ) >/dev/null 2>&1
+  run_case "API 卡：分支 Alice/ 建 alice-qwen2.5.md，只写变量名的 Bearer → 应全绿" green "$T/card-case"
+
+  ( mkrepo "$T/card-rm" && mkdir -p docs/llm-apis && printf '# bob 的卡\n' >docs/llm-apis/bob-demo.md &&
+    gq add -A && gq commit -qm bob-card && gq checkout -q -b alice/demo/T14-card &&
+    gq rm -q docs/llm-apis/bob-demo.md && gq commit -qm rm ) >/dev/null 2>&1
+  run_case "API 卡：删了别人的 docs/llm-apis/bob-demo.md → [3] ❌" "[3] 分支与越界 ❌ 删了别人的 API 卡" "$T/card-rm"
+
+  ( mkrepo "$T/card-sub" && gq checkout -q -b alice/demo/T15-card && mkdir -p docs/llm-apis/sub &&
+    printf '# 卡\n' >docs/llm-apis/sub/alice-x.md ) >/dev/null 2>&1
+  run_case "API 卡：建子目录 docs/llm-apis/sub/ → [3] ❌" "[3] 分支与越界 ❌ 1 个文件超出模块 demo" "$T/card-sub"
+
+  ( mkrepo "$T/card-cn" && gq checkout -q -b alice/demo/T16-card && mkdir -p docs/llm-apis &&
+    printf '# 卡\n' >"docs/llm-apis/alice-通义.md" ) >/dev/null 2>&1
+  run_case "API 卡：中文文件名 alice-通义.md → [3] ❌" "[3] 分支与越界 ❌ API 卡" "$T/card-cn"
+
+  # 没有固定前缀的 key 写在标签后面（全角冒号、…_SECRET_KEY=），以及 pplx- 和 JWT：各一行
+  v=$(printf 'Ab3%.0s' $(seq 1 11)); FAKE_KEY="$v"
+  ( mkrepo "$T/card-key2" && gq checkout -q -b alice/demo/T17-card && mkdir -p docs/llm-apis &&
+    printf -- '- API Key：%s\nQIANFAN_SECRET_KEY=%s\npplx: %s\njwt: %s\n' "$v" "$v" "pplx-$q" "eyJ$v.eyJ$v.$v" \
+      >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：API Key：… / …_SECRET_KEY= / pplx- / JWT → [1] ❌ 命中 4 处且不回显值" "[1] 秘密扫描 ❌ 命中 4 处" "$T/card-key2"
+  FAKE_KEY=""
 
   # 大小上限：apps/<模块>/public/ 下的 .json 数据文件 2MB，其余 1MB（D-0929-1430）
   ( mkrepo "$T/data" && gq checkout -q -b alice/demo/T6-data && mkdir -p apps/demo/public &&
@@ -836,6 +884,23 @@ check_3() {
         fi ;;
       docs/4-demo.md|docs/pitch-assets/*)
         [ "$mod" = pitch ] || { out_n=$((out_n + 1)); out_list="$out_list$f"$'\n'; } ;;
+      docs/llm-apis/README.md|docs/llm-apis/TEMPLATE.md|docs/llm-apis/*/*) out_n=$((out_n + 1)); out_list="$out_list$f"$'\n' ;;
+      docs/llm-apis/*)
+        # API 卡只动自己的：文件名以「本分支 handle-」开头（不区分大小写）；别人的卡不改不删
+        case "$(lower "$(basename "$f")")" in
+          "$(lower "$handle")"-?*)
+            # 自己的卡：文件名全 ASCII（D-05），后缀 .md 或 .json（-response.json）
+            if [ -e "$f" ] && ! printf '%s' "$(lower "$(basename "$f")")" | LC_ALL=C grep -Eq '^[a-z0-9._-]+\.(md|json)$'; then
+              add_e "API 卡 ${f} 的文件名只能用小写字母、数字、. _ -，后缀 .md 或 .json（例：docs/llm-apis/${handle}-deepseek.md）"
+            fi ;;
+          *)
+            if g cat-file -e "$ref:$f" 2>/dev/null; then
+              if [ -e "$f" ]; then add_e "改了别人的 API 卡 ${f}（只能改文件名以 ${handle}- 开头的卡）"
+              else add_e "删了别人的 API 卡 ${f}（只能删自己的）"; fi
+            else
+              add_e "新建的 API 卡 ${f} 要以本分支的 handle 开头：docs/llm-apis/${handle}-<服务商>.md"
+            fi ;;
+        esac ;;
       *) out_n=$((out_n + 1)); out_list="$out_list$f"$'\n' ;;
     esac
   done <"$CHANGED_FILE"
@@ -843,7 +908,7 @@ check_3() {
     if [ "${ALLOW_CROSS:-}" = 1 ]; then
       add_w "ALLOW_CROSS=1 放行 $out_n 个越界文件（模块 $mod 的范围外）"
     else
-      add_e "$out_n 个文件超出模块 $mod 的可写范围（apps/$mod/ + 3-tasks / decisions / pitfalls 只追加 / 自己的新交接单$([ "$mod" = pitch ] && echo ' / 4-demo / pitch-assets')）：挪回自己模块，或写进交接单第 2 节交给 lead；lead 同意跨模块后用 ALLOW_CROSS=1 git push，PR 打 cross-module 标签"
+      add_e "$out_n 个文件超出模块 $mod 的可写范围（apps/$mod/ + 3-tasks / decisions / pitfalls 只追加 / 自己的新交接单 / 自己的 API 卡 docs/llm-apis/${handle}-*$([ "$mod" = pitch ] && echo ' / 4-demo / pitch-assets')）：挪回自己模块，或写进交接单第 2 节交给 lead；lead 同意跨模块后用 ALLOW_CROSS=1 git push，PR 打 cross-module 标签"
     fi
     while IFS= read -r f; do [ -n "$f" ] && add_d "越界：$f"; done <<<"$out_list"
   fi
