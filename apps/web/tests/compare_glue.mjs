@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -113,6 +113,19 @@ if (typeof be.options !== 'function') {
     const g = kits[2], ws = g.plan.worksites[0];
     const p = pack.buildPack({ ...ws, title: ws.name, status: 'decided', decision: { option: g.id, by: 'contractor', reason: 'guided detour', at: '2026-09-30T00:00:00.000Z' } }, { inventory, links: new Map(ws.links.map(id => [id, net.links.get(id)])), impacts: ex.optionFromRun(g.id, 'plan', g.s).metrics });
     const txt = pack.packText(p, 'en');
+    // 排版版执行包（网页的「导出」）：真 packDoc → cmpDocHTML（packDoc 在 api 的另一个 PR 里；还没合进来时跳过这一段）
+    if (typeof pack.packDoc !== 'function') console.log('⏭ 跳过排版版一段：apps/api 的 pack.js 还没有 packDoc');
+    else {
+    const H = { L: (en) => en, esc: (x) => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), fmt: (n) => Math.round(Number(n) || 0).toLocaleString('en-AU') };
+    const rowsX = kits.map((k, i) => ({ id: k.id, label: ['Minimum', 'Standard', 'Guided'][i], ...cmpNumbers(k.s), hire: k.hire }));
+    const html = cmpDocHTML(pack.packDoc(p, 'en'), { rows: rowsX, pick: 2, hour: '08:00', date: '30 Sep 2026' }, H);
+    ok(html.includes(`A$${H.fmt(g.hire)}`) && (html.match(/class="pd-led"/g) || []).length === 2 && html.includes('USE<br>RUSSELL'), `排版版：合计 A$${H.fmt(g.hire)}、VMS 两屏画成电子屏样式`);
+    ok(/<tr class="pick"><td>C · Guided <em>chosen<\/em>/.test(html) && (html.match(/<tr/g) || []).length >= 3 + p.quote.lines.length, '比较过的 3 套方案一张表，选中的那行高亮；设备逐行');
+    ok(/assumptions; RPM Hire&#39;s formal quote applies/.test(html) && /not field measurements/.test(html), '反向断言：排版版也写明假设值和仿真');
+    const evil = pack.packDoc(pack.buildPack({ ...ws, name: '<img src=x onerror=alert(1)>', title: '<script>alert(1)</script>', status: 'decided', decision: { option: 'C', by: 'council', reason: '</blockquote><script>alert(2)</script>' } }, { inventory, links: new Map(ws.links.map(id => [id, net.links.get(id)])) }), 'en');
+    const evilHtml = cmpDocHTML(evil, { rows: [{ id: 'A', label: '<b>x</b>', car: 1, transit: null, peds: null, hire: null }], pick: 0, hour: '08:00', date: '<i>' }, H);
+    ok(!/<script|<img|<b>x|<i>/.test(evilHtml) && evilHtml.includes('&lt;script&gt;alert(2)'), '反向断言：施工名、理由、方案名、日期里的 < > 全被转义，不会变成可执行的网页代码');
+    }
     ok(/chose C \(contractor, 2026-09-30\): guided detour/.test(txt) && new RegExp(`Total: A\\$${g.hire.toLocaleString('en-US')}`).test(txt), `选 C（引导档）导出：决定和合计 A$${g.hire} 都在执行包里`);
   }
 }

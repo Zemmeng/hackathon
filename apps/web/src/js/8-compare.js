@@ -55,6 +55,33 @@ function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
   return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
 }
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, hour, date }
+// (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
+// Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
+function cmpDocHTML(d,x,h){
+  const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v);
+  const facts=[[lb.when,esc(d.when),''],[lb.decision,esc(d.decision||'—'),''],
+    [lb.total,d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud),esc(L('assumed day rates','日租价为假设值'))]];
+  const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${r.transit==null?'—':fmt(r.transit)}</td><td class="n">${r.peds==null?'—':fmt(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
+  const eq=d.quote.lines.map(l=>`<tr><td>${esc(l.name||l.item)}${l.over?`<div class="pd-over">${esc(l.over)}</div>`:''}</td><td class="n">${l.qty==null?'?':fmt(l.qty)}</td><td class="n">${l.rate==null?'—':'A$'+fmt(l.rate)+esc(d.quote.per_day)}</td><td class="n">${fmt(l.days)}</td><td class="n">${aud(l.cost)}</td></tr>`).join('');
+  const vms=d.vms.map(v=>`<div class="pd-vms"><div class="pd-vms-meta"><b>${esc(v.id)}</b><span>${esc(v.at)}</span><span>${esc(v.when)}</span></div><div class="pd-frames">${v.frames.map(f=>`<figure><figcaption>${esc(f.label)}</figcaption><div class="pd-led">${f.lines.map(esc).join('<br>')}</div></figure>`).join('')}</div></div>`).join('');
+  const signs=d.signs.map(g=>`<li><b>${esc(g.id)}</b> · ${esc(g.at)}${g.text?` · <span class="pd-mono">${esc(g.text)}</span>`:''}</li>`).join('');
+  const checks=d.checks.length?d.checks.map(k=>`<li>${esc(k)}</li>`).join(''):`<li class="pd-ok">${esc(lb.none)}</li>`;
+  const notify=d.notify.map(n=>`<tr><td><b>${esc(n.who)}</b></td><td>${esc(n.why)}</td></tr>`).join('');
+  return`<article class="pack-doc" lang="${d.lang==='zh'?'zh-CN':'en'}">
+<header class="pd-head"><span>RippleTwin · ${esc(d.head)}</span><span>${esc(x.date||'')}</span></header>
+<div class="pd-title"><h1>${esc(d.title)}</h1>${d.status?`<span class="pd-pill">${esc(d.status.text)}</span>`:''}</div>
+<p class="pd-sub">${esc(d.id||'')} · ${esc(d.where)}</p>
+<div class="pd-facts">${facts.map(([k,v,n])=>`<div><span>${esc(k)}</span><b>${v}</b>${n?`<small>${n}</small>`:''}</div>`).join('')}</div>
+${d.reason?`<blockquote class="pd-reason"><span>${esc(lb.reason)}</span>${esc(d.reason)}</blockquote>`:''}
+${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(L('Car delay · veh·min','车延误 · 车·分钟'))}</th><th class="n">${esc(L('Tram & bus · rider·min','电车公交 · 人·分钟'))}</th><th class="n">${esc(L('On foot · ped·min','行人 · 人·分钟'))}</th><th class="n">${esc(L('Hire','租金'))}</th></tr></thead><tbody>${opts}</tbody></table><p class="pd-note">${esc(L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
+<section><h2>${esc(lb.quote)}</h2><table class="pd-t"><thead><tr><th>${esc(c.item)}</th><th class="n">${esc(c.qty)}</th><th class="n">${esc(c.rate)}</th><th class="n">${esc(c.days)}</th><th class="n">${esc(c.cost)}</th></tr></thead><tbody>${eq}</tbody><tfoot><tr><td colspan="4">${esc(lb.total)}</td><td class="n">${d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud)}</td></tr></tfoot></table><p class="pd-note">${esc(d.quote.note)}</p></section>
+<section><h2>${esc(lb.vms)}</h2>${vms||`<p class="pd-note">${esc(lb.none)}</p>`}</section>
+${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></section>`:''}
+<section class="pd-two"><div><h2>${esc(lb.checks)}</h2><ul class="pd-list pd-checks">${checks}</ul></div><div><h2>${esc(lb.notify)}</h2><table class="pd-t pd-notify"><tbody>${notify}</tbody></table></div></section>
+<footer class="pd-foot"><span>${esc(d.foot)}</span><span>RippleTwin</span></footer>
+</article>`;
+}
 /* pure:end */
 
 const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
@@ -74,7 +101,7 @@ function cmpWhat(r){ // textContent only
   if(r.kind==='move')return(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游');
   const v=cmpVms(r.plan)||L('No VMS','没有 VMS');if(r.kind!=='kit')return v;
   const k=cmpKit(r.plan);
-  return v+' · '+[[k.vms,'VMS','VMS'],[k.barrier,'barriers','护栏'],[k.sign,'signs','标志牌'],[k.arrow,'arrow boards','箭头板']].filter(x=>x[0]>0).map(x=>x[0]+' '+L(x[1],x[2])).join(' · ');
+  return v+' · '+[[k.vms,'VMS','VMS','VMS'],[k.barrier,'barrier','barriers','护栏'],[k.sign,'sign','signs','标志牌'],[k.arrow,'arrow board','arrow boards','箭头板']].filter(x=>x[0]>0).map(x=>x[0]+' '+L(x[0]===1?x[1]:x[2],x[3])).join(' · ');
 }
 
 async function cmpUpdate(){
@@ -142,16 +169,22 @@ function cmpRender(){
 // Chosen plan → pack.js execution pack → a print / copy sheet. Every string goes in with textContent.
 function cmpExport(){
   const r=CP.rows[CP.pick];if(!r||!r.s||!CP.mod||!CP.inv)return;
-  const ws=r.plan.worksites[0],lang=LANG.cur==='zh'?'zh':'en';let txt='';
+  const ws=r.plan.worksites[0],lang=LANG.cur==='zh'?'zh':'en';let txt='',doc='';
   try{
     const impacts=CP.mod.ex.optionFromRun(r.id,'plan',r.s).metrics;
     const p=CP.mod.pack.buildPack({...ws,title:ws.name,status:'decided',decision:{option:r.id,by:CP.by,reason:CP.reason.trim(),at:new Date().toISOString()}},{inventory:CP.inv,links:cmpLinks(ws),impacts});
     txt=CP.mod.pack.packText(p,lang);
+    if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
+      const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
+      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
+    }
   }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
   let sh=document.getElementById('cmpSheet');
   if(!sh){sh=document.createElement('div');sh.id='cmpSheet';sh.className='cmp-sheet';sh.setAttribute('role','dialog');sh.setAttribute('aria-modal','true');document.body.appendChild(sh);}
-  sh.innerHTML=`<div class="cmp-doc"><div class="between no-print"><b>${L('Execution pack','执行包')}</b><span class="cmp-acts"><button type="button" class="btn ghost" id="cmpCopy">${L('Copy','复制')}</button><button type="button" class="btn" id="cmpPrint">${L('Print / save PDF','打印 / 存 PDF')}</button><button type="button" class="btn ghost" id="cmpClose">${L('Close','关闭')}</button></span></div><pre id="cmpText"></pre></div>`;
-  document.getElementById('cmpText').textContent=txt;
+  sh.innerHTML=`<div class="cmp-doc"><div class="between no-print cmp-bar"><b>${L('Execution pack','执行包')}</b><span class="cmp-acts"><button type="button" class="btn ghost" id="cmpCopy">${L('Copy text','复制文字')}</button><button type="button" class="btn" id="cmpPrint">${L('Print / save PDF','打印 / 存 PDF')}</button><button type="button" class="btn ghost" id="cmpClose">${L('Close','关闭')}</button></span></div><div id="cmpPaper"></div></div>`;
+  const paper=document.getElementById('cmpPaper');
+  if(doc)paper.innerHTML=doc; // cmpDocHTML esc()s every string it is given
+  else{const pre=document.createElement('pre');pre.id='cmpText';pre.textContent=txt;paper.appendChild(pre);}
   const close=()=>{sh.hidden=true;document.removeEventListener('keydown',esc1);};
   const esc1=e=>{if(e.key==='Escape')close();};
   document.addEventListener('keydown',esc1);
