@@ -1,7 +1,7 @@
 # 模块之间的接口契约
 
 > 并行开发唯一需要协调的东西。改它 = 改所有调用方：PR 标题以 `contract:` 开头，lead 合并，合并后通知依赖方。优先向后兼容（加字段不删字段）。
-> 版本号：**v2**（每改一次加 1，写进「变更记录」）。
+> 版本号：**v3**（每改一次加 1，写进「变更记录」）。
 
 ## 谁调谁
 
@@ -10,7 +10,7 @@
 | web | api | HTTP + WebSocket | §HTTP、§WS |
 | engine、web | roads | 静态 JSON 文件（随网页一起发布，线上不调接口） | §路网数据文件 |
 | engine | api | 浏览器里的 `readSigns()`（背后是 `POST /api/read`） | §路人读数 |
-| web | engine | 浏览器里的 `evaluate(方案)`（草案，T4 定稿） | §evaluate |
+| web | engine | 浏览器里的 `createEngine(...).evaluate(方案)`（T9 骨架） | §施工方案、§evaluate |
 
 ## 路网数据文件（roads → engine、web）
 
@@ -80,9 +80,66 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 - 引擎拿读数 + 每类人的参数算各条路的比例（选择模型和两点校准归 T4）；**大模型不回比例**
 - 加字段随时可以；改名、删字段、改取值范围要开 `contract:` PR
 
-## evaluate（engine → web，草案）
+## 施工方案（web → engine）
 
-T4 在 `apps/engine/public/js/` 导出 `evaluate(方案, { seed }) → 结果`：纯函数，同样输入同样结果，目标单次 100 毫秒以内（设备边际价值、时间窗这类功能要反复调它）。结果至少有每类人的总延误（人·分钟）和人均延误、各路段的流量 / 延误 / 排队。字段 T4 开工后定稿写进这里。
+一条施工 = 一个对象，web 画出来交给引擎（以后存 `/api/worksites` 也用这个格式）。引擎侧见 `apps/engine/public/js/worksite.js` 开头。
+
+```json
+{
+  "id": "A",
+  "links": ["<network.json 的路段 id，按行车方向>"],
+  "closes": { "lanes": 1 },
+  "time": { "from": "2026-10-05", "to": "2026-10-09", "hours": [7, 19] },
+  "equipment": [
+    { "id": "vms1", "type": "vms", "at_m": 300, "frames": [["USE", "RUSSELL ST", "SAVE 4 MIN"]], "char_mm": 320 },
+    { "id": "s1", "type": "sign", "at_m": 100, "text": "RIGHT LANE CLOSED", "dir": "W" }
+  ]
+}
+```
+
+- `links` 同方向连着的算一段；双向施工两个方向都列。`closes.lanes` ≥ 车道数 = 全封；没全封时剩下车道的通行能力再 × 0.9
+- `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
+- 屏上文字（`frames`）：≤ 2 帧 × ≤ 4 行 × ≤ 10 字符、合计 ≤ 8 个词、大写（校验归 T5 / T2）
+- 「什么时候」= `when: { date: "YYYY-MM-DD", hour: 0–23, day?: "wd" | "we" }`；`hour` 是 `flows.json` 的下标
+
+## evaluate（engine → web）
+
+D-0929-1435 定稿（T9 骨架，T4 认领后接着做）。前端只 import `/engine/public/js/index.js`：
+
+```js
+import { createEngine } from '/engine/public/js/index.js';
+import { readSigns } from '/api/public/js/reader.js';        // T5 的；没好之前用 index.js 导出的 mockReadSigns
+const engine = createEngine({ network, flows, readSigns });  // network / flows = /roads/public/cbd/ 的两个 JSON
+await engine.prepare(方案);                                   // 先把要的读数问好（异步，同一句话每类人只问一次，一直缓存）
+const 结果 = engine.evaluate(方案, { seed });                 // 同步、纯计算，同样输入同样结果；真路网上约 7 毫秒
+```
+
+- `方案 = { when, worksites: [施工方案] }`；只有在 `when` 生效的施工才算
+- 引擎向 `readSigns` 要的请求见 §路人读数：每段路每类人一份「全部标志」，另外每条绕行路线一份「拐口之前看得到的标志」（屏摆在拐口之后不算点名那条路）
+- 还没问到的读数按「没人被说动」算，`结果.missing` 报缺几条；`prepare` 之后应为 0
+- 比例由引擎的选择模型算：每类人参数（赶时间 · 熟路 · 信屏 · 怕堵 · 只能走货车路）在 `choice.js`；两个全局参数（绕行惯性 A、推荐力度 B）由两点校准定（ROADWORK / AHEAD → 3%，USE / RUSSELL ST → 20%，都［待核］），见 `结果.calib`
+- 排队变长 → 引擎按「看得到的排队」自己重算选择（逐次平均 6 轮），不再问大模型
+
+**结果**（数字全由引擎算；单位：`*_min` = 这一小时比「没有施工」多出来的车·分钟；每车按 1 人算，公交电车乘客还没建模）：
+
+| 字段 | 含义 |
+|---|---|
+| `delay_min` | 全网总延误（veh·min） |
+| `by_type[类型]` | `{ delay_min, vehicles, per_capita_min }`：每类人（commuter / local / tourist / delivery）的总延误和人均延误 |
+| `others_min` | 没受影响、但被绕行车流拖慢的背景车流的延误 |
+| `approaches[]` | 每段受影响的方向：`street dir to volume queue_m delay_min share routes[] by_type signs` |
+| `approaches[].routes[]` | `{ id, name, usual_min, now_min, share, flow, truck, turn_m, extra_min }`；`id: "stay"` 是原路，`turn_m` = 在施工起点上游多少米拐出去 |
+| `approaches[].by_type[类型]` | `{ share, detour, extra_min, informed, told[], reading }`：`informed` = 被标志说动的比例，`reading` = T5 给的读数（界面显示 `why`，用 `textContent`） |
+| `links[]` | 每个路段 `{ id, v, cap, delay_s, queue_m }`（流量 veh/h、比平时多的秒数、一小时末排队米数） |
+| `hot[]` | 多出时间最多的 ≤ 5 个路段 |
+| `blocked_vph` | 全封又无路可绕、卡住的车流（不算进 `delay_min`，界面单独标） |
+| `calib` | `{ A, B, method: two_point | default, ok, lo_detour, hi_detour, src, model }` |
+| `missing` | 还没问到的读数条数 |
+
+其他：`engine.window(worksites, whens)` 一段时间的总延误；`engine.conflict(a, b, { whens?, hours? })` → `{ a, b, ab, cost, overlap, whens, truncated }`，`cost = D(A+B) − D(A) − D(B)`（时段不重叠时正好是 0；默认采样每个施工时段里的 8 点、17 点，没有就取时段中间那个小时，最多 31 天）；`advise(engine, 方案, { askAdvisor })` 第 ⑦ 步，每个改法都重算、标 `better`（MOCK 顾问 `mockAdvise`）。
+
+- 🔒 只支持同源：网页、`/engine/public/`、`/roads/public/`、`/api/*` 挂在同一个域名下
+- 路段可选字段 `truck: false` = 禁货车（T3 现在没有这个字段，没有时禁货车不生效）
 
 ## HTTP API
 
@@ -131,6 +188,7 @@ T4 在 `apps/engine/public/js/` 导出 `evaluate(方案, { seed }) → 结果`�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架） | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
 | v1 | 2026-09-29 | 加「路网数据文件」一节（roads → engine、web）；HTTP / WS 节还是模板预置，T5 定了再改 | lead |
 | v0 | 2026-09-26 | 模板预置：health / create / ws 骨架 | lead |

@@ -11,9 +11,10 @@ export function loadNetwork(network) {
   const links = new Map();
   const out = new Map(), inn = new Map();
   for (const l of network.links) {
-    for (const k of ['id', 'from', 'to', 'name', 'len_m', 'lanes', 'speed_kmh', 'cap_vph', 't0_s']) {
+    for (const k of ['id', 'from', 'to', 'len_m', 'lanes', 'speed_kmh', 'cap_vph', 't0_s']) {
       if (l[k] == null) throw new Error(`路段 ${l.id ?? '?'} 缺字段 ${k}`);
     }
+    if (!('name' in l)) throw new Error(`路段 ${l.id} 缺字段 name（没路名就写 null）`);
     if (!nodes.has(l.from) || !nodes.has(l.to)) throw new Error(`路段 ${l.id} 的端点不在 nodes 里`);
     links.set(l.id, l);
     if (!out.has(l.from)) out.set(l.from, []);

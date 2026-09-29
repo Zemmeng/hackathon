@@ -1,127 +1,90 @@
-// calibrate.js —— 第 ④ 步：两点校准。大模型（和规则）给的比例是「表态」，会高估：伦敦实测真绕的只有问卷说的 1/5（Chatterjee 2002）。
-// 做法（D-0929-1333、docs/arch/5-llm-api-detail.pdf 第 2 页）：在同一个参考场景（La Trobe St 西行）上问两块「标准屏」，
-//   只写 ROADWORK / AHEAD      → 全体车辆约 3% 绕行 ［待核］
-//   写推荐路线 USE / RUSSELL ST → 约 20% ［待核，Erke 2007 二手转述］
-// 其他文案按两点连成的直线换算，全体上限 35%（工程假设）。大模型定「相对位置」，实地数据定「刻度」。
-// 换算的是全体（按车流占比加权）的绕行比例；各类人之间的相对高低沿用表态，等比例缩放。
-// 锚点必须和要校准的回答来自同一个模型；对不上（或两块标准屏的表态几乎一样）就退回「表态 × 1/5」。
+// calibrate.js —— 两点校准（D-0929-1435：保留，改成校引擎参数）。
+// 大模型（和规则）读懂屏上的字，但「多少人真绕」是引擎的选择模型算的；选择模型里有两个没法拍脑袋定的全局参数：
+//   A = 绕行的习惯惰性（越大越不愿意离开原路）   B = 屏上点名一条路的推荐力度
+// 在同一个参考场景（La Trobe St 西行）上用两块「标准屏」定刻度：
+//   只写 ROADWORK / AHEAD      → 全体车辆约 3% 绕行 ［待核］   —— 只和 A 有关（屏没点名路），先解 A
+//   写推荐路线 USE / RUSSELL ST → 约 20% ［待核，Erke 2007 二手转述］ —— A 定了再解 B
+// 其他文案、排队、每类人的差别都由选择模型按参数算，不再单独换算。两块标准屏的读数要从同一个 readSigns 来。
+
+import { TYPES, MIX, PERSONAS, DEFAULT_AB, chooseShares, informed } from './choice.js';
 
 export const ANCHORS = {
   lo: { frames: [['ROADWORK', 'AHEAD']], real: 0.03 },
   hi: { frames: [['USE', 'RUSSELL ST']], real: 0.2 },
-  cap: 0.35,
-  ratio: 0.2, // 退回方案：表态 × 1/5
-  minSpread: 0.02,
 };
 
-export const REF_CARD = {
-  trip: { on: 'La Trobe St', dir: 'W', to: 'Spencer St', kmh: 40 },
-  signs: [
-    { m: 400, kind: 'vms', read_s: 9, frames: [['ROADWORK', 'AHEAD']] },
-    { m: 150, kind: 'sign', text: 'RIGHT LANE CLOSED' },
-  ],
+// 参考场景（docs/arch/5-llm-api-detail.pdf 第 3 页）：屏在 400 米、200 mm 字高 40 km/h 能读 9 秒；两条绕行都在施工起点拐
+export const REF = {
+  street: 'La Trobe Street',
+  kmh: 40,
   routes: [
-    { id: 'stay', name: 'La Trobe St', usual_min: 6 },
-    { id: 'r1', name: 'Russell St', usual_min: 8 },
-    { id: 'r2', name: 'Elizabeth St', usual_min: 9, truck: false },
+    { id: 'stay', name: 'La Trobe Street', usual_min: 6 },
+    { id: 'r1', name: 'Russell Street', usual_min: 8, diverge_m: 0 },
+    { id: 'r2', name: 'Elizabeth Street', usual_min: 9, truck: false, diverge_m: 0 },
   ],
-  queue_m: 0,
 };
 
-export function anchorCard(which) {
-  const c = JSON.parse(JSON.stringify(REF_CARD));
-  c.signs[0].frames = ANCHORS[which].frames;
-  return c;
-}
-
-const clamp = (x, a, b) => (x < a ? a : x > b ? b : x);
-const detourOf = share => 1 - (share?.stay ?? 0);
-
-// 回答的全体（按车流占比加权）绕行比例
-export function mixDetour(ans) {
-  return Object.entries(ans.mix).reduce((s, [t, w]) => s + w * detourOf(ans.by_type[t]?.share), 0);
-}
-
-export function makeAnchors(loAns, hiAns) {
-  const lo = mixDetour(loAns), hi = mixDetour(hiAns);
-  const model = loAns.model === hiAns.model ? loAns.model : 'mixed';
-  const ok = hi - lo >= ANCHORS.minSpread && model !== 'mixed' && loAns.src !== 'mixed' && hiAns.src !== 'mixed';
+export function anchorRequest(which, persona) {
   return {
-    method: ok ? 'two_point' : 'ratio',
-    lo: { raw: lo, real: ANCHORS.lo.real },
-    hi: { raw: hi, real: ANCHORS.hi.real },
-    cap: ANCHORS.cap,
-    model,
-    src: loAns.src === hiAns.src ? loAns.src : 'mixed',
+    persona,
+    kmh: REF.kmh,
+    signs: [
+      { kind: 'vms', frames: ANCHORS[which].frames, read_s: 9 },
+      { kind: 'sign', text: 'RIGHT LANE CLOSED', read_s: 9 },
+    ],
+    roads: REF.routes.map(r => r.name),
   };
 }
 
-// 校准一份 askPersonas 的回答。card = 问的那张场景卡（要知道有没有原路、哪条禁货车、平时多久）
-export function calibrate(ans, anchors, card) {
-  const types = Object.keys(ans.mix);
-  const hasStay = card.routes.some(r => r.id === 'stay');
-  let method = anchors.method;
-  if (anchors.model !== ans.model) method = 'ratio';
-  if (!hasStay) method = 'forced'; // 全封：没有「不绕」这个选项，不校准
-  const f = x => (method === 'two_point'
-    ? anchors.lo.real + ((x - anchors.lo.raw) * (anchors.hi.real - anchors.lo.real)) / (anchors.hi.raw - anchors.lo.raw)
-    : method === 'ratio' ? x * ANCHORS.ratio : x);
-  // 只换算全体比例；各类人按「表态」的相对高低等比例缩放 —— 分别换算的话，低的那类会被截到 0，锚点就对不准
-  const raw = {}, d = {};
-  for (const t of types) raw[t] = detourOf(ans.by_type[t].share);
-  const X = types.reduce((s, t) => s + ans.mix[t] * raw[t], 0);
-  const D = hasStay ? clamp(f(X), 0, anchors.cap) : 1;
-  for (const t of types) d[t] = !hasStay ? 1 : X > 0 ? (raw[t] * D) / X : D;
-  // 有一类被截到 1 时，把截掉的量按比例分给还没到 1 的类型，全体仍然等于 D
-  for (let i = 0; hasStay && i < types.length; i++) {
-    const over = types.reduce((s, t) => s + ans.mix[t] * Math.max(0, d[t] - 1), 0);
-    if (over <= 1e-12) break;
-    for (const t of types) d[t] = Math.min(1, d[t]);
-    const room = types.filter(t => d[t] < 1), w = room.reduce((s, t) => s + ans.mix[t] * d[t], 0);
-    if (!room.length || !(w > 0)) break;
-    for (const t of room) d[t] *= 1 + over / w;
+// 读数 → 选择模型要的「屏上说了什么」（参考场景里两条绕行都在屏之后拐，全都看得到）
+export function signOf(reading, street, routes) {
+  const use = new Set(), avoid = new Set();
+  const adv = reading?.advice || {};
+  for (const r of routes) {
+    if (r.id === 'stay') { if (adv[street] === 'avoid') avoid.add('stay'); continue; }
+    if (adv[r.name] === 'use') use.add(r.id);
+    if (adv[r.name] === 'avoid') avoid.add(r.id);
   }
-  for (const t of types) d[t] = Math.min(1, d[t]);
-  const alts = card.routes.filter(r => r.id !== 'stay');
-  const by_type = {};
-  for (const t of types) {
-    const ok = alts.filter(r => !(t === 'delivery' && r.truck === false));
-    if (!ok.length && hasStay) d[t] = 0; // 送货司机没有能走的绕行路线：留在原路
-    const pool = ok.length ? ok : alts;
-    let w = pool.map(r => ans.by_type[t].share[r.id] || 0);
-    if (!(w.reduce((a, b) => a + b, 0) > 0)) w = pool.map(r => 1 / Math.max(0.5, r.usual_min));
-    const ws = w.reduce((a, b) => a + b, 0);
-    const share = Object.fromEntries(card.routes.map(r => [r.id, 0]));
-    if (hasStay) share.stay = 1 - d[t];
-    pool.forEach((r, i) => { share[r.id] += (d[t] * w[i]) / ws; });
-    by_type[t] = { share, detour: d[t], raw_detour: raw[t] };
-  }
-  const share = Object.fromEntries(card.routes.map(r => [r.id, types.reduce((s, t) => s + ans.mix[t] * by_type[t].share[r.id], 0)]));
-  return {
-    method,
-    share,
-    by_type,
-    raw_detour: types.reduce((s, t) => s + ans.mix[t] * raw[t], 0),
-    detour: types.reduce((s, t) => s + ans.mix[t] * d[t], 0),
-    anchors,
-  };
+  return { use, avoid, saving_min: reading?.saving_min || 0, delay_min: reading?.delay_min || 0 };
 }
 
-// 锚点缓存：同一个 ask 函数、同一个来源只问一次（两块标准屏 × 4 类人）
-const cache = new WeakMap();
-export async function anchorsFor(ask, ans) {
-  const force = ans?.src === 'rule' ? 'rule' : null;
-  let m = cache.get(ask);
-  if (!m) cache.set(ask, (m = new Map()));
-  const k = force || 'default';
-  if (!m.has(k)) {
-    const o = force ? { force } : undefined;
-    const p = Promise.all([ask(anchorCard('lo'), o), ask(anchorCard('hi'), o)]).then(([lo, hi]) => makeAnchors(lo, hi));
-    p.catch(() => m.delete(k)); // 失败了下次重问，不把失败缓存住
-    m.set(k, p);
+export function refDetour(readings, A, B, { personas = PERSONAS, mix = MIX } = {}) {
+  let d = 0;
+  for (const t of TYPES) {
+    const R = readings[t];
+    const p = personas[t];
+    const sh = chooseShares(p, REF.routes, signOf(R, REF.street, REF.routes), { A, B, I: informed(p, R), queue_m: 0 });
+    d += (mix[t] || 0) * (1 - (sh.stay ?? 0));
   }
-  const a = await m.get(k);
-  // 不是纯大模型来源的锚点（有一类退回了规则、两块屏来源不一）不留缓存，下次重问；和回答的模型对不上也重问一次
-  if (!force && (a.src === 'rule' || a.src === 'mixed' || a.model === 'mixed' || (ans?.model && a.model !== ans.model)) && m.get(k)) m.delete(k);
-  return a;
+  return d;
+}
+
+function bisect(f, lo, hi, target, increasing, iters = 60) {
+  let a = lo, b = hi;
+  for (let i = 0; i < iters; i++) {
+    const m = (a + b) / 2;
+    if ((f(m) < target) === increasing) a = m; else b = m;
+  }
+  return (a + b) / 2;
+}
+
+// lo / hi：每类人对两块标准屏的读数 { persona: reading }。缺任何一类就不校准（method: 'default'）
+export function calibrate(lo, hi, opts = {}) {
+  const have = x => x && TYPES.every(t => x[t]);
+  if (!have(lo) || !have(hi)) return { ...DEFAULT_AB, method: 'default', ok: false };
+  const A = bisect(a => refDetour(lo, a, 0, opts), -10, 20, ANCHORS.lo.real, false);
+  const dMax = refDetour(hi, A, 40, opts);
+  const B = dMax < ANCHORS.hi.real ? 40 : bisect(b => refDetour(hi, A, b, opts), 0, 40, ANCHORS.hi.real, true);
+  const srcs = new Set(TYPES.flatMap(t => [lo[t].src, hi[t].src]));
+  const models = new Set(TYPES.flatMap(t => [lo[t].model, hi[t].model]));
+  return {
+    A: +A.toFixed(4),
+    B: +B.toFixed(4),
+    method: 'two_point',
+    ok: dMax >= ANCHORS.hi.real, // false = 读数里「点名路线」的力度不够，推荐力度顶到上限也到不了 20%
+    lo_detour: +refDetour(lo, A, B, opts).toFixed(4),
+    hi_detour: +refDetour(hi, A, B, opts).toFixed(4),
+    src: srcs.size === 1 ? [...srcs][0] : 'mixed',
+    model: models.size === 1 ? [...models][0] : 'mixed',
+  };
 }
