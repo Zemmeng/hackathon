@@ -18,3 +18,6 @@
 | D-09 | 默认 `MOCK=1`；付费脚本默认 dry-run，`--run` 才花钱，`--check` 自检 | 原话「不要凭空估价，不要一上来就批量提交」；上次直接批量调付费 API，大半额度交了学费 | lead · 2026-09-26 |
 | D-10 | 只有 `DEPLOYER` 部署；比赛期间 `workers_dev: true` 拿 demo 链接，赛后关掉 | 一个人部署最不容易乱；需要备用再按 deploy-cloudflare.md 方式 B 加人 | lead · 2026-09-26 |
 | D-11 | AI 可以在自己分支上 commit 不用问；push、PR、merge、tag、deploy 前必须问，一次同意不能推广到下次 | 原话「push 前再单独问一次」 | lead · 2026-09-26 |
+| D-0929-1215 | 选题 = 第 5 题（RPM Hire：Digital Tool for Temporary Infrastructure）；方向 = 把不同道路使用者做成 agent 仿真，自动找出施工方案引出的冲突；演示路口 = Swanston St / La Trobe St | 原话「第五个」「就以city里」；这个路口车、自行车、电车、行人四类都有公开的真实流量数据（SCATS 站点 2921 + City of Melbourne 行人计数器） | lead · 2026-09-29 |
+| D-0929-1222 | 比赛期间任何时间都可以做，不限日程表上的 Hacking Time；截止仍是周四 10/1 12:00 最终提交、周三 9/30 12:30 初筛 | 原话「老师说了什么时候都可以做」；Briefing 第 4 条「only build during the allocated time」有歧义，已问清 | lead · 2026-09-29 |
+| D-0929-1226 | sim 模块的界面文件（`apps/sim/public/` 下的 index.html、style.css、js/ui.js）由 @unicornnnnnny（高he）负责改；引擎 js/sim.js、数据和测试仍归 @Zemmeng。两边只通过 README「对外接口」那张表对接 | 原话「我同学负责前端 底层的这个仿真ok了你就push上去」「unicornnn」 | lead · 2026-09-29 |
