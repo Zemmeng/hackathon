@@ -206,9 +206,10 @@ function drawLabels(c,V,W,pal){
     const txt=L(st.name.toUpperCase(),st.zh);const tw=c.measureText(txt).width+12;
     const H=st.axis==='h',step=Math.max(520,tw*2.2)/V.s;
     const lo=H?V.wx(0):V.wy(V.h),hi=H?V.wx(V.w):V.wy(0);
-    const spans=freeSpans(st,tw/2/V.s+2);
+    const spans=freeSpans(st,tw/2/V.s+2),real=W.real&&STREET_SPAN[st.id]; /* real city: no street name where only real buildings stand */
     for(let u=Math.floor(lo/step)*step+step*.5;u<hi;u+=step){
       if(!spans.some(([a,b])=>u>a&&u<b))continue;
+      if(real&&!(u>real[0]&&u<real[1]))continue;
       const off=st.tram?0:0;const px=H?V.X(u):V.X(st.c+off),py=H?V.Y(st.c+off):V.Y(u);
       c.save();c.translate(px,py);if(!H)c.rotate(-Math.PI/2);
       c.strokeStyle=pal.halo;c.lineWidth=3.2;c.strokeText(txt,0,0);c.fillStyle=pal.label;c.fillText(txt,0,0);c.restore();

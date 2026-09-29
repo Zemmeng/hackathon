@@ -176,13 +176,28 @@ function clipSide(P,ax,c,sg){
   for(let i=0;i<ch.length;i++){if(used[i])continue;const ring=[];let k=i;while(k>=0&&!used[k]){used[k]=true;ring.push(...ch[k].pts);k=next[k];}if(ring.length>=3)out.push(ring);}
   return out;
 }
+/* Where a page street really exists (network.json, T3): Little La Trobe only between Elizabeth and Swanston, A'Beckett only west
+   of Swanston. The page grid draws both across the whole width, but east of Swanston (RMIT) and west of Elizabeth real buildings
+   stand there, so footprints are only cut along the real stretch. [a, b] = page x range (these two are h streets). */
+const STREET_SPAN={llatrobe:[-185,-15],abeckett:[-Infinity,-15]};
+/* cut this far outside the street edge: 2 m cell centres sit exactly on some edges (x = ±15, y = −95 …), and a roof that
+   ends on the edge would repaint that footpath cell as roof in buildGrids */
+const CLIP_EPS=.05;
+/* pieces thinner than this on average (area / longest bbox side) are clipping slivers, not buildings (assumed threshold) */
+const MIN_PIECE_W=1.5;
 /* cut away every part that lies on a page street (carriageway + footpath), so roads, tram stops and footpaths stay clear */
 function clipStreets(P){
   let parts=[P];
-  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,lo=ax?r.y0:r.x0,hi=ax?r.y1:r.x1,out=[];
-    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));}
+  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,al=1-ax,lo=(ax?r.y0:r.x0)-CLIP_EPS,hi=(ax?r.y1:r.x1)+CLIP_EPS,sp=STREET_SPAN[s.id],out=[];
+    const cutStrip=q=>{out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));};
+    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}
+      if(!sp){cutStrip(q);continue;}
+      /* a street that exists only on [a, b]: split the piece at a and b, cut the strip out of the middle part only */
+      let pcs=[q];
+      for(const c of sp){if(!isFinite(c))continue;const nx=[];for(const p of pcs){const pb=bboxOf(p),pl=al?pb.y0:pb.x0,ph=al?pb.y1:pb.x1;if(pl<c&&ph>c)nx.push(...clipSide(p,al,c,-1),...clipSide(p,al,c,1));else nx.push(p);}pcs=nx;}
+      for(const p of pcs){const pb=bboxOf(p),m=al?(pb.y0+pb.y1)/2:(pb.x0+pb.x1)/2;if(m>sp[0]&&m<sp[1])cutStrip(p);else out.push(p);}}
     parts=out;}
-  return parts.filter(q=>Math.abs(polyArea(q))>=4);
+  return parts.filter(q=>{const a=Math.abs(polyArea(q)),b=bboxOf(q);return a>=4&&a/Math.max(b.x1-b.x0,b.y1-b.y0)>=MIN_PIECE_W;});
 }
 /* a point well inside the polygon (for labels and probes): the centroid when it is inside, else the deepest of a 7 × 7 sample */
 function innerPt(P,b){

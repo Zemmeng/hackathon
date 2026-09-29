@@ -15,9 +15,15 @@ const world = readFileSync(WEB + 'src/js/1-world.js', 'utf8');
 const pure = readFileSync(WEB + 'src/js/6-engine.js', 'utf8').match(/\/\* pure:begin[^\n]*\n([\s\S]*?)\/\* pure:end \*\//)[1];
 const ctx = { L: a => a, console };
 vm.createContext(ctx);
-vm.runInContext(world + '\n' + pure + '\n;globalThis.T={WORLD,STREETS,CLS,NX,NY,CELL,streetRect,buildWorld,buildWorldReal,buildGrids,clipSide,clipStreets,inPoly,polyArea,geoToWorld,REAL_MIN,SYN_LANDMARKS,LANDMARK_HOST};', ctx);
+vm.runInContext(world + '\n' + pure + '\n;globalThis.T={WORLD,STREETS,CLS,NX,NY,CELL,streetRect,buildWorld,buildWorldReal,buildGrids,clipSide,clipStreets,inPoly,polyArea,bboxOf,geoToWorld,REAL_MIN,SYN_LANDMARKS,LANDMARK_HOST,STREET_SPAN,CLIP_EPS,MIN_PIECE_W};', ctx);
 const T = ctx.T;
 const data = JSON.parse(readFileSync(APPS + 'roads/public/cbd/buildings.json', 'utf8'));
+const net = JSON.parse(readFileSync(APPS + 'roads/public/cbd/network.json', 'utf8'));
+// 点 (x, y) 落在一条页面街道上（路面 + 人行道，含边界线），且那一段在真路网里真的有（Little La Trobe / A'Beckett 只有一段，见 STREET_SPAN）
+const onRealStreet = (s, x, y) => {
+  const r = T.streetRect(s), sp = T.STREET_SPAN[s.id], u = s.axis === 'h' ? x : y;
+  return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1 && (!sp || (u >= sp[0] && u <= sp[1]));
+};
 
 // 1 裁切：U 形楼被街切开得到两块，不留沿切线的零宽连桥；压在街上的部分切掉，整块在街里的丢掉
 const U = [[0, 0], [30, 0], [30, 20], [20, 20], [20, 5], [10, 5], [10, 20], [0, 20]];
@@ -26,9 +32,32 @@ const areas = r => r.map(q => Math.abs(T.polyArea(q))).sort((a, b) => a - b);
 ok(top.length === 2 && areas(top).every(a => Math.abs(a - 80) < 1e-6) && top.every(q => { const xs = q.map(p => p[0]); return Math.max(...xs) - Math.min(...xs) <= 10 + 1e-9; }),
   `U 形楼切掉下半：两条腿各一块、各 80 m²（得到 ${top.length} 块 ${areas(top).join(' / ')}）`);
 ok(bot.length === 1 && Math.abs(areas(bot)[0] - 290) < 1e-6, `U 形楼切掉上半：一块 290 m²（得到 ${bot.length} 块 ${areas(bot).join(' / ')}）`);
-const trimmed = T.clipStreets([[-40, -40], [-12, -40], [-12, -20], [-40, -20]]);
-ok(trimmed.length === 1 && Math.abs(Math.abs(T.polyArea(trimmed[0])) - 500) < 1e-6 && Math.max(...trimmed[0].map(p => p[0])) === -15,
-  '压进 Swanston 人行道 3 m 的楼：切到街边 x = −15，剩 500 m²');
+const trimmed = T.clipStreets([[-40, -40], [-12, -40], [-12, -20], [-40, -20]]), edge = -15 - T.CLIP_EPS;
+ok(trimmed.length === 1 && Math.abs(Math.abs(T.polyArea(trimmed[0])) - (edge + 40) * 20) < 1e-6 && Math.abs(Math.max(...trimmed[0].map(p => p[0])) - edge) < 1e-9 && T.CLIP_EPS > 0 && T.CLIP_EPS < 0.5,
+  `压进 Swanston 人行道 3 m 的楼：切到街边外 ${T.CLIP_EPS} m（x = ${edge}），格心正好在街边 x = −15 的那格留给人行道`);
+// 只在真路网有的那段切：Little La Trobe 只在 Elizabeth–Swanston 之间、A'Beckett 只在 Swanston 以西（network.json）
+const box = (x0, x1, y0, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+const llE = T.clipStreets(box(30, 60, 80, 120)), llW = T.clipStreets(box(-100, -70, 80, 120));
+const abE = T.clipStreets(box(30, 60, 180, 220)), abW = T.clipStreets(box(-100, -70, 180, 220));
+const whole = r => r.length === 1 && Math.abs(Math.abs(T.polyArea(r[0])) - 1200) < 1e-6;
+ok(whole(llE) && whole(abE), "Swanston 以东（RMIT）横跨页面上 Little La Trobe / A'Beckett 的楼不切（真路网那里没有这两条街）");
+ok(llW.length === 2 && abW.length === 2 && llW.concat(abW).every(q => q.every(p => !T.STREETS.some(s => onRealStreet(s, p[0], p[1])))),
+  `反向：Elizabeth–Swanston 之间同样的楼照样被 Little La Trobe / A'Beckett 切成两块（${llW.length} / ${abW.length} 块）`);
+const sliver = T.clipStreets(box(-100, -60, -105.7, -80));
+ok(sliver.length === 1 && Math.min(...sliver[0].map(p => p[1])) > -95,
+  `切剩 0.65 m 宽的细条（< ${T.MIN_PIECE_W} m，假设值）丢掉，只留 Little Lonsdale 北边那块（${sliver.length} 块）`);
+// STREET_SPAN 跟 network.json 对得上：这两条街的路段在页面范围里的 x 两头都落在「真实那段两端 ± 路口半宽」内
+for (const [id, name] of [['llatrobe', 'Little La Trobe Street'], ['abeckett', "A'Beckett Street"]]) {
+  const sp = T.STREET_SPAN[id], xs = [];
+  if (!sp) { ok(false, `STREET_SPAN 里没有 ${id}（${name} 在真路网里只有一段）`); continue; }
+  for (const l of net.links) {
+    if (l.name !== name) continue;
+    const gx = l.geometry.map(g => T.geoToWorld(g[0], g[1])[0]), a0 = Math.min(...gx), a1 = Math.max(...gx);
+    if (a1 > T.WORLD.x0 && a0 < T.WORLD.x1) xs.push(Math.max(a0, T.WORLD.x0), Math.min(a1, T.WORLD.x1)); // 路段按页面范围截断
+  }
+  const lo = Math.min(...xs), hi = Math.max(...xs), a = isFinite(sp[0]) ? sp[0] : T.WORLD.x0;
+  ok(xs.length > 1 && Math.abs(lo - a) <= 16 && Math.abs(hi - sp[1]) <= 16, `${name} 在真路网里 x = ${lo.toFixed(0)}…${hi.toFixed(0)}，对得上 STREET_SPAN ${sp.join('…')}`);
+}
 ok(T.clipStreets([[-5, -60], [5, -60], [5, -40], [-5, -40]]).length === 0, '反向：整块落在 Swanston 路面上的楼被丢掉');
 
 // 2 真数据换算到页面
@@ -49,8 +78,23 @@ const onBox = [];
 for (let x = -15; x <= 15; x += 1) for (let y = -15; y <= 15; y += 1) for (const b of W.buildings) if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1 && T.inPoly(b.pts, x, y)) onBox.push(b.name || b.id);
 ok(onBox.length === 0, `La Trobe × Swanston 路口 30 × 30 m 里没有楼（压上的 ${[...new Set(onBox)].slice(0, 3).join('、') || 0}）`);
 const onStreet = [];
-for (const s of T.STREETS) { const r = T.streetRect(s); for (const b of W.buildings) for (const p of b.pts) if (p[0] > r.x0 + 0.01 && p[0] < r.x1 - 0.01 && p[1] > r.y0 + 0.01 && p[1] < r.y1 - 0.01) onStreet.push(`${b.name || b.id}@${s.id}`); }
-ok(onStreet.length === 0, `没有楼的顶点落进 8 条街的路面 / 人行道（${onStreet.slice(0, 3).join('、') || 0}）`);
+for (const s of T.STREETS) for (const b of W.buildings) for (const p of b.pts) if (onRealStreet(s, p[0], p[1])) onStreet.push(`${b.name || b.id}@${s.id}`);
+ok(onStreet.length === 0, `没有楼的顶点落进 8 条街的路面 / 人行道，街边线上也没有（含边界：${onStreet.slice(0, 3).join('、') || 0}）`);
+const thin = W.buildings.filter(b => b.area / Math.max(b.x1 - b.x0, b.y1 - b.y0) < T.MIN_PIECE_W);
+ok(thin.length === 0, `没有切剩的细条（平均宽 < ${T.MIN_PIECE_W} m：${thin.slice(0, 3).map(b => b.name || b.id).join('、') || 0}）`);
+// 页面上画了、真路网里没有的那几段街（Swanston 以东的 Little La Trobe / A'Beckett、Elizabeth 以西的 Little La Trobe）：真楼照原样画
+const fict = [];
+for (const s of T.STREETS) {
+  if (!T.STREET_SPAN[s.id]) continue;
+  const r = T.streetRect(s);
+  for (let x = T.WORLD.x0 + 0.5; x < T.WORLD.x1; x += 1) for (let y = r.y0 + 0.5; y < r.y1; y += 1) if (!T.STREETS.some(o => onRealStreet(o, x, y))) fict.push([x, y]);
+}
+const srcP = data.buildings.map(b => { const P = b.footprint.map(p => T.geoToWorld(p[0], p[1])); return { P, bb: T.bboxOf(P) }; });
+const wP = W.buildings.map(b => ({ P: b.pts, bb: b }));
+const covered = (list, x, y) => list.some(q => x >= q.bb.x0 && x <= q.bb.x1 && y >= q.bb.y0 && y <= q.bb.y1 && T.inPoly(q.P, x, y));
+let srcIn = 0, wIn = 0;
+for (const [x, y] of fict) if (covered(srcP, x, y)) { srcIn++; if (covered(wP, x, y)) wIn++; }
+ok(srcIn > 2000 && wIn >= srcIn * 0.98, `反向：真路网里没有的那几段街上，真楼 ${srcIn} m² 画出来 ${wIn} m²（≥ 98%，RMIT 8 号楼、Storey Hall 不再被切开）`);
 
 // 4 地表分类 / 阴影 / 风影栅格
 const t1 = Date.now();
@@ -61,14 +105,21 @@ for (let j = 0; j < T.NY; j++) for (let i = 0; i < T.NX; i++) {
   const k = j * T.NX + i, c = G.cls[k], x = T.WORLD.x0 + (i + 0.5) * T.CELL, y = T.WORLD.y1 - (j + 0.5) * T.CELL;
   const isRoof = c === T.CLS.ROOF || c === T.CLS.HERITAGE;
   if (isRoof) roof++;
-  if (isRoof && T.STREETS.some(s => { const r = T.streetRect(s); return x > r.x0 && x < r.x1 && y > r.y0 && y < r.y1; })) roofOnStreet++;
+  if (isRoof && T.STREETS.some(s => onRealStreet(s, x, y))) roofOnStreet++; // 含边界：格心正好压在街边线上的格也算街
   if (isRoof && Math.abs(x) < 15 && Math.abs(y) < 15) boxRoof++;
   if (c === T.CLS.FOOT) { foot++; if (G.shade[k]) footShade++; }
   if (G.wake[k]) wake++;
 }
 const n = T.NX * T.NY;
 ok(roof / n > 0.25 && roof / n < 0.75, `屋顶格占 ${(roof / n * 100).toFixed(1)}%（25–75%），栅格用时 ${tGrid} ms`);
-ok(roofOnStreet === 0 && boxRoof === 0, `反向：街上 / 路口没有屋顶格（街上 ${roofOnStreet}、路口 ${boxRoof}）`);
+ok(roofOnStreet === 0 && boxRoof === 0, `反向：街上 / 路口没有屋顶格，格心压在街边线上的也没有（街上 ${roofOnStreet}、路口 ${boxRoof}）`);
+// 最窄的人行道：Little Lonsdale 北侧只有 y = −95 这一排格，Elizabeth–Swanston、Swanston–Russell 两段都得还是人行道（州立图书馆草坪那段本来就画成草坪，除外）
+let llFoot = 0, llAll = 0;
+{
+  const j = Math.round((T.WORLD.y1 + 95) / T.CELL - 0.5);
+  for (let i = 0; i < T.NX; i++) { const x = T.WORLD.x0 + (i + 0.5) * T.CELL; if (((x > -185 && x < -15) || (x > 15 && x < 185)) && !W.parks.some(q => x >= q.x0 && x <= q.x1)) { llAll++; if (G.cls[j * T.NX + i] === T.CLS.FOOT) llFoot++; } }
+}
+ok(llAll > 100 && llFoot === llAll, `Little Lonsdale 北侧人行道（y = −95 那排）没有被屋顶盖掉（${llFoot} / ${llAll} 格是人行道）`);
 ok(footShade > 0 && footShade < foot, `人行道有一部分在楼影里（${footShade} / ${foot} 格）`);
 ok(wake > 1000, `楼后有风影区（${wake} 格）`);
 ok(tBuild + tGrid < 4000, `换算 + 栅格 ${tBuild + tGrid} ms < 4 s（页面加载时跑一次）`);
