@@ -1,0 +1,372 @@
+{
+ "version": 1,
+ "sources": [
+  "RPM Hire 官网产品页（类型、规格），2026-09-29 查",
+  "TfNSW 标志登记（T1-1、T2-16）",
+  "数量和日租价为假设，官网没有公开价格"
+ ],
+ "categories": [
+  "barrier",
+  "sign",
+  "vms",
+  "arrow_board",
+  "ped_signal"
+ ],
+ "effects": [
+  "close",
+  "route_vehicles",
+  "route_peds",
+  "warn",
+  "message",
+  "control_crossing"
+ ],
+ "items": [
+  {
+   "id": "barrier_water",
+   "category": "barrier",
+   "name": "Water-filled barrier (ArmorZone)",
+   "effect": "close",
+   "can_close": [
+    "lane",
+    "footpath",
+    "bike_lane"
+   ],
+   "applies_to": [
+    "vehicle",
+    "ped",
+    "bike"
+   ],
+   "unit_len_m": 2.0,
+   "width_m": 0.45,
+   "weight_kg": {
+    "empty": 56,
+    "filled": 496
+   },
+   "rating": "MASH TL1/TL2",
+   "max_speed_kmh": 70,
+   "note": "官网：适合 50 km/h 以下道路，最高 70；表面光滑，对行人和骑车人更友好",
+   "qty": 200,
+   "day_rate_aud": 4,
+   "url": "https://www.rpmhire.com.au/products/water-filled-barriers/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "barrier_klemmfix",
+   "category": "barrier",
+   "name": "Klemmfix plastic guidance barrier",
+   "effect": "close",
+   "can_close": [
+    "lane",
+    "bike_lane"
+   ],
+   "applies_to": [
+    "vehicle",
+    "bike"
+   ],
+   "unit_len_m": 1.0,
+   "height_m": 0.99,
+   "weight_kg": {
+    "panel": 2.1,
+    "base": 16
+   },
+   "rating": null,
+   "note": "导向用塑料隔板，被撞后回弹；不是防撞护栏",
+   "qty": 300,
+   "day_rate_aud": 2,
+   "url": "https://www.rpmhire.com.au/products/klemmfix/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "barrier_steel",
+   "category": "barrier",
+   "name": "Steel barrier (BG800)",
+   "effect": "close",
+   "can_close": [
+    "lane"
+   ],
+   "applies_to": [
+    "vehicle"
+   ],
+   "unit_len_m": 6.0,
+   "height_m": 0.8,
+   "weight_kg_per_m": 90,
+   "rating": "NCHRP350 TL-3/TL-4, MASH TL-3",
+   "max_speed_kmh": 100,
+   "note": "另有 12 m 一节；最小变形 13 cm",
+   "qty": 40,
+   "day_rate_aud": 20,
+   "url": "https://www.rpmhire.com.au/products/steel-barriers/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_roadwork_ahead",
+   "category": "sign",
+   "name": "Roadwork ahead",
+   "code": "T1-1",
+   "effect": "warn",
+   "applies_to": [
+    "vehicle",
+    "bike"
+   ],
+   "qty": 30,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_lane_closed_left",
+   "category": "sign",
+   "name": "Left lane closed",
+   "code": null,
+   "effect": "warn",
+   "applies_to": [
+    "vehicle"
+   ],
+   "side": "left",
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_lane_closed_right",
+   "category": "sign",
+   "name": "Right lane closed",
+   "code": null,
+   "effect": "warn",
+   "applies_to": [
+    "vehicle"
+   ],
+   "side": "right",
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_detour_left",
+   "category": "sign",
+   "name": "Detour (left)",
+   "code": null,
+   "effect": "route_vehicles",
+   "applies_to": [
+    "vehicle"
+   ],
+   "dir": "left",
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_detour_right",
+   "category": "sign",
+   "name": "Detour (right)",
+   "code": null,
+   "effect": "route_vehicles",
+   "applies_to": [
+    "vehicle"
+   ],
+   "dir": "right",
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_detour_straight",
+   "category": "sign",
+   "name": "Detour (straight ahead)",
+   "code": null,
+   "effect": "route_vehicles",
+   "applies_to": [
+    "vehicle"
+   ],
+   "dir": "straight",
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_footpath_closed",
+   "category": "sign",
+   "name": "Footpath closed, use other side",
+   "code": null,
+   "effect": "route_peds",
+   "applies_to": [
+    "ped"
+   ],
+   "qty": 30,
+   "day_rate_aud": 5,
+   "url": null,
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_bike_lane_closed",
+   "category": "sign",
+   "name": "Bike lane closed / Bicycles merge",
+   "code": null,
+   "effect": "warn",
+   "applies_to": [
+    "bike"
+   ],
+   "qty": 20,
+   "day_rate_aud": 5,
+   "url": null,
+   "note": "自行车并入车道；effect 表里没有「骑车人改道」，先用 warn + applies_to 区分",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "sign_end_roadwork",
+   "category": "sign",
+   "name": "End roadwork",
+   "code": "T2-16",
+   "effect": "warn",
+   "applies_to": [
+    "vehicle",
+    "bike"
+   ],
+   "qty": 30,
+   "day_rate_aud": 5,
+   "url": null,
+   "note": "模型里不起作用，只为清单完整；effect 占位用 warn",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "vms_a",
+   "category": "vms",
+   "name": "Variable Message Sign (A class, trailer)",
+   "effect": "message",
+   "applies_to": [
+    "vehicle",
+    "bike"
+   ],
+   "lines": 4,
+   "chars_per_line": 12,
+   "display_m": [
+    1.04,
+    1.62
+   ],
+   "power": "solar + battery",
+   "note": "官网写「每行 12–13 个字符，每屏最多 4 行」；取 12 保守",
+   "qty": 4,
+   "day_rate_aud": 150,
+   "url": "https://www.rpmhire.com.au/products/variable-message-signs/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "vms_c",
+   "category": "vms",
+   "name": "Variable Message Sign (C class, trailer)",
+   "effect": "message",
+   "applies_to": [
+    "vehicle",
+    "bike"
+   ],
+   "lines": 4,
+   "chars_per_line": 12,
+   "display_m": [
+    1.85,
+    2.73
+   ],
+   "power": "solar + battery",
+   "note": "比 A class 字大、看得远，同样 4 行 × 12 字",
+   "qty": 2,
+   "day_rate_aud": 200,
+   "url": "https://www.rpmhire.com.au/products/variable-message-signs/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "arrow_board",
+   "category": "arrow_board",
+   "name": "Portable arrow board (trailer)",
+   "effect": "route_vehicles",
+   "applies_to": [
+    "vehicle"
+   ],
+   "modes": [
+    "left",
+    "right",
+    "double"
+   ],
+   "panel_m": [
+    2.4,
+    1.2
+   ],
+   "lamps": 15,
+   "power": "solar + battery",
+   "note": "官网：VicRoads / RMS 认可",
+   "qty": 4,
+   "day_rate_aud": 100,
+   "url": "https://www.rpmhire.com.au/products/arrow-boards/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  },
+  {
+   "id": "ped_signal_portable",
+   "category": "ped_signal",
+   "name": "Pedestrian portable traffic lights",
+   "effect": "control_crossing",
+   "applies_to": [
+    "ped",
+    "vehicle"
+   ],
+   "lantern_mm": 200,
+   "standard": "AS 4191:2015",
+   "power": "solar + battery",
+   "note": "一套含主机和从机，无线联动；通讯中断时闪黄",
+   "qty": 3,
+   "day_rate_aud": 250,
+   "url": "https://www.rpmhire.com.au/products/pedestrian-portable-traffic-lights/",
+   "assumed": [
+    "qty",
+    "day_rate_aud"
+   ]
+  }
+ ]
+}
