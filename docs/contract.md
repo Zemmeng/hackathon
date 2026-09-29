@@ -122,19 +122,22 @@ s.transit = {
   src: 'gtfs' | null, day: 'wd' | 'we', hour,
   routes: [{ id, short, mode: 'tram' | 'bus', dir, headsign,
              trips_h, pax_per_trip, pax_h,          // 这个小时的车次（GTFS）、每趟人数（假设值）、乘客/小时
-             delay_s, pax_min,                      // 每趟多的秒数、乘客·分钟；停掉的（blocked）都是 null
-             diverted, blocked,                     // 公交全封要绕 / 电车全封停（公交绕不过去也算 blocked）
+             delay_s, pax_min,                      // 每趟多的秒数（≥ 0）、乘客·分钟；停掉的（blocked）和路网外换路的（edge）都是 null
+             diverted, blocked, edge,               // 公交全封要绕 / 电车全封停（公交在路网里绕不过去也算 blocked）/
+                                                    // edge：全封在线路进出路网 400 米内、路网里绕不过去 → 在路网外换路，分钟数算不出，不算停运
              stops_closed: [{ id, name }],          // 在全封路段上的站
              links: [路段 id],                      // 这条线路变慢了或全封的路段
              detour_links: [路段 id], stops_skipped: [{ id, name }] }],  // 公交绕的路、绕开的站（没绕 = []）
-  trips_h, pax_h, pax_min, blocked_routes, blocked_pax_h,   // 合计；pax_min 不含停掉的
+  trips_h, pax_h, pax_min, blocked_routes, blocked_pax_h,   // 合计；pax_min 不含停掉的和 edge 的（≥ 0）
+  edge_routes,                                              // edge 的线路数（不算进 blocked_routes / blocked_pax_h）
   assumed: { pax_per_trip: { tram, bus }, period: 'peak' | 'offpeak', range: { tram: [低, 高], bus: [低, 高] }, note },
 }
 c.delta.transit_pax_min   // 后 − 前（负数 = 变好）；任何一边没有公交数据 = null
 ```
 
-- 只列「这个方向经过的路段变慢了（> 0.1 秒）或被全封」、这个小时有车次的线路；排序：停掉的在前（按 `pax_h`），其余按 `pax_min` 从大到小
-- 公交：跟车流走固定线路，每趟多的秒数 = 线路上每个路段（这个方案的通行时间 − 同一小时没施工时的通行时间）之和，都用引擎的 `linkTime`（不是 `links[].delay_s`，那是比自由流多的）。有路段全封 → 在封闭段前后 400 米内就近绕（最短路，先只走主干道，不走小巷），多的秒数 = 绕完的全程 − 平时全程
+- 只列「这个方向经过的路段被全封」或「整趟比没施工时慢 > 0.1 秒」、这个小时有车次的线路（有的路段因为车流绕走反而变快，整趟加起来不慢的不列）；排序：停掉的在前（按 `pax_h`），其余按 `pax_min` 从大到小，`edge` 的放最后（按 `pax_h`）
+- 公交：跟车流走固定线路，每趟多的秒数 = 线路上每个路段（这个方案的通行时间 − 同一小时没施工时的通行时间）之和，都用引擎的 `linkTime`（不是 `links[].delay_s`，那是比自由流多的）。有路段全封 → 在封闭段前后 400 米内就近绕（最短路，先只走主干道，不走小巷；从哪拐出去、在哪回来按全程时间挑最快的），多的秒数 = 绕完的全程 − 平时全程，**最少记 0**（绕行跳过了线路上本来绕的一圈也不算「变快」：按时刻表跑，早到要等；跳过的站在 `stops_skipped`）
+- 公交 `edge`：`transit.json` 的线路只截到 CBD 路网里；全封离线路进 / 出路网不到 400 米、路网里又绕不过去 → 公交在路网外就换路了：`diverted: true, edge: true`，`delay_s` / `pax_min` 为 `null`，不算停运。界面别显示成「+0 秒」，写「在地图外绕行」
 - 电车：假设 CBD 电车走自己的车道，封部分车道不耽误电车（不列）；全封电车经过的路段 → `blocked`，只报停掉的车次和乘客，不编分钟数
 - 每趟载客人数是**假设值**（D-0929-1536：界面标「假设值」+ 区间）：工作日 7–9、16–18 点高峰电车 60 / 公交 25，其余电车 30 / 公交 12；`assumed` 里给当时用的数和区间
 

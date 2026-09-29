@@ -37,7 +37,7 @@ const result = engine.evaluate(plan);
 |---|---|
 | `createEngine({ network, flows, readSigns, params? })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib, params }`；`engine.params` 报每项参数用的是 params.json 还是假设值 |
 | `backend.js` 的 `connect()`（**网页只用这个**，D-0929-1540） | 一次装好路网 + 车流 + 公交电车 + 参数 + T5 读屏 + 引擎 → `{ run(方案), compare(前, 后), advise(方案), check(方案), demo(名), status() }`；`run` 回能直接显示的 summary（`queue_m mean_delay_s routes by_type hot flags transit` …，原始结果在 `.raw`）。T5、参数、transit.json 加载不上有兜底，`status()` / `flags` 里报。用法和字段见 `docs/arch/T13-web-wiring-PRD.md`，`summary.transit` 见 `docs/contract.md` §evaluate |
-| `transitImpact(net, flows, transit, 方案, 结果)` | 电车公交受影响多少（T16）→ `summary.transit`：每条受影响线路的车次、每趟多几秒、乘客·分钟、绕行 / 停运；`PAX_PER_TRIP` 每趟人数（假设值） |
+| `transitImpact(net, flows, transit, 方案, 结果)` | 电车公交受影响多少（T16）→ `summary.transit`：每条受影响线路的车次、每趟多几秒、乘客·分钟、绕行 / 停运；`PAX_PER_TRIP` 每趟人数（假设值）；`routePaths(net, transit)` 每条线路补过缺口的路段序列（测试核对绕行全程用） |
 | `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
@@ -74,15 +74,16 @@ const result = engine.evaluate(plan);
 
 | 什么 | 怎么算 | 出处 |
 |---|---|---|
-| 列哪些线路 | 这个方向经过的路段比没施工时慢了 > 0.1 秒、或被全封；这个小时有车次 | 引擎 |
+| 列哪些线路 | 这个方向经过的路段被全封，或整趟比没施工时慢 > 0.1 秒（别的路段车少了反而快，加起来不慢的不列）；这个小时有车次 | 引擎 |
 | 车次 | `trips[wd/we][小时]`，工作日 / 周末用引擎的 `dayType` | GTFS（T3） |
 | 公交每趟多几秒 | 线路上每个路段（方案下的 `linkTime` − 同一小时没施工的 `linkTime`）之和；不能直接加 `links[].delay_s`（那是比自由流多的） | 引擎 |
-| 公交遇到全封 | 封闭段前后 400 米内就近绕（最短路，按方案下的通行时间；先只走 trunk / primary / secondary / tertiary，绕不过去再放开到小街，小巷始终不走）；多的秒数 = 绕完全程 − 平时全程；绕不过去 = `blocked` | 工程假设 |
+| 公交遇到全封 | 封闭段前后 400 米内就近绕（最短路，按方案下的通行时间；先只走 trunk / primary / secondary / tertiary，绕不过去再放开到小街，小巷始终不走）；从哪拐出、在哪回来按「走到拐出点 + 绕行 + 回来后的线路」全程挑最快的；多的秒数 = 绕完全程 − 平时全程，最少记 0（跳过线路上的一圈不算变快，按时刻表跑早到要等）；绕不过去 = `blocked` | 工程假设 |
+| 公交全封在路网边上 | transit.json 的线路只截到 CBD 路网里：全封离线路进 / 出路网 < 400 米、路网里绕不过去 → 公交在路网外就换路了，`edge: true`、分钟数 `null`，不算停运（另计 `edge_routes`）。8 点把公交用到的 233 个路段逐一全封，原来判「停运」的 56 次全是这种 | 工程假设 |
 | 电车 | CBD 电车走自己的车道：封部分车道不耽误（不列）；全封 = `blocked`，只报停掉的车次和乘客，分钟数 `null` | 工程假设 |
 | 每趟载客人数 | 工作日 7–9、16–18 点：电车 60、公交 25；其余：电车 30、公交 12（区间见 `PAX_RANGE`） | **假设值**，没有 PTV 分线路载客数据［待核］ |
 | 线路路段缺口 | transit.json 按 10 米采样匹配，路口里很短的路段常缺：相邻两段接不上时 60 米内的最短路补上（电车只走有轨道的路段） | 工程假设 |
 
-2026-09-29 17:50 实测（`tests/transit.test.mjs`，T12 参数 + 规则读屏）：Lonsdale 演示 8 点封 1 条道，15 条公交每趟多约 356 秒（留在 Lonsdale 的车多约 360 秒），77 趟 / 1925 人每小时，约 1.1 万乘客·分钟；同一段全封，公交经 Russell St → Collins St → Elizabeth St 绕，每趟多约 91 秒；La Trobe 演示全封，30 路电车每小时停 6 趟 / 360 人。单次 < 10 毫秒。
+2026-09-29 17:50 实测（`tests/transit.test.mjs`，T12 参数 + 规则读屏）：Lonsdale 演示 8 点封 1 条道，15 条公交每趟多约 356 秒（留在 Lonsdale 的车多约 360 秒），77 趟 / 1925 人每小时，约 1.1 万乘客·分钟；同一段全封，公交从 Exhibition St 拐出、经 Victoria St → Elizabeth St 绕回，每趟多约 76 秒（2026-09-29 修正：原来绕行算法把跳过的那段线路又算了一遍、还偏向晚拐，报约 91 秒）；La Trobe 演示全封，30 路电车每小时停 6 趟 / 360 人。单次 < 10 毫秒。
 
 ## 结构
 

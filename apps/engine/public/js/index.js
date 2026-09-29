@@ -12,4 +12,4 @@ export { loadNetwork, shortestPath, dijkstra, treePath, linkTime, bearing } from
 export { isActive, overlaps, capFactors, shiftWorksite, windowWhens, sampleHours, dayType } from './worksite.js';
 export { approaches, affected, NO_DETOUR } from './routes.js';
 export { readSeconds, cleanName } from './cards.js';
-export { transitImpact, paxPerTrip, isTransit, PAX_PER_TRIP, PAX_RANGE } from './transit.js';
+export { transitImpact, paxPerTrip, isTransit, routePaths, PAX_PER_TRIP, PAX_RANGE } from './transit.js';
