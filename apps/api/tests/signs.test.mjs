@@ -50,6 +50,19 @@ await sec("规范化：大写、合并空格、去空行、read_s 取整、多�
   eq(normalizeRequest(n), n, "规范化两次结果不变");
 });
 
+await sec("引擎兼容：箭头板、很长的读屏秒数、路名字符（#20 引擎会这样发）", async () => {
+  const n = normalizeRequest(base([{ kind: "arrow", read_s: 4 }, { kind: "arrow", text: "merge  right", read_s: 4 }]));
+  eq(n.signs, [{ kind: "arrow", text: "", read_s: 4 }, { kind: "arrow", text: "MERGE RIGHT", read_s: 4 }], "箭头板可以没有字；有字照样大写");
+  eq(code(() => normalizeRequest(base([{ kind: "arrow", text: "A".repeat(41), read_s: 2 }]))), "line_too_long", "箭头板的字也按 40 字符");
+  eq(code(() => normalizeRequest(base([{ kind: "sign", read_s: 2 }]))), "bad_sign", "静态牌没有 text 仍然拒");
+  eq(normalizeRequest(base([vms([["USE"]], 137.4)])).signs[0].read_s, 120, "read_s 137 秒按 120 算，不拒");
+  eq(code(() => normalizeRequest(base([vms([["USE"]], Infinity)]))), "bad_read_s", "read_s 无穷大仍然拒");
+  eq(normalizeRequest(base([], { roads: ["Unnamed road", "Elizabeth St (North)", "Queen St/Market St"] })).roads.length, 3, "路名可以有 ( ) /，和引擎 cleanName 一致");
+  const k = async (r) => sha256Hex(canonical(normalizeRequest(r)));
+  eq(await k(base([{ kind: "arrow", read_s: 4 }])), await k(base([{ kind: "arrow", text: "", read_s: 4 }])), "箭头板不写 text 和写空串同一个键");
+  eq(await k(base([vms([["USE"]], 150)])), await k(base([vms([["USE"]], 120)])), "超过 120 秒的都按 120 进键");
+});
+
 await sec("缓存键：同一句话不同写法同一个键，不同的话不同键", async () => {
   const k = async (r) => sha256Hex(canonical(normalizeRequest(r)));
   const a = await k(base([vms([["USE", "RUSSELL ST"]], 6.2)]));
