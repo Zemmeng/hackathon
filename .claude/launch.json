@@ -14,6 +14,13 @@
       "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-4173} -d starters/web-worker/public"],
       "port": 4173,
       "autoPort": true
+    },
+    {
+      "name": "sim",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-4174} -d apps/sim/public"],
+      "port": 4174,
+      "autoPort": true
     }
   ]
 }
