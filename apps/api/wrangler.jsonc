@@ -1,0 +1,24 @@
+// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc，去掉了用不到的 Durable Object）
+// 部署归 DEPLOYER（hackathon.conf），线上密钥用 npx wrangler secret put <NAME>，不写进任何文件。详见 docs/deploy-cloudflare.md
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "api",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-01",
+
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+
+  // public/ 下的静态文件（reader.js、rules.js、answers/）；worker.js 里没接住的路径都交给它
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS"
+  },
+
+  // 默认不花钱：只有明确 MOCK=0 才会（在大模型接上以后）真调用
+  "vars": { "MOCK": "1" }
+
+  // 大模型定了以后再加读数缓存（免费版每天 1000 次写）：
+  // ,"kv_namespaces": [{ "binding": "READS", "id": "<npx wrangler kv namespace create READS 打印的 id>" }]
+}
