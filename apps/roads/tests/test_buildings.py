@@ -50,6 +50,8 @@ else:
     ok(not bad, '0 < height_m < 350，height_src、use 都在枚举内%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
     tall = {b['name']: b['height_m'] for b in bs if b.get('name') in ('Eureka Tower', 'Rialto Towers')}
     ok(all(h >= 200 for h in tall.values()), '常识：Eureka Tower、Rialto Towers 高度 ≥ 200 m（%s；OSM 外轮廓只标裙楼 20 m）' % tall)
+    other = sum(1 for b in bs if b['use'] == 'other') / max(1, len(bs))
+    ok(other <= 0.5, 'use 是 other 的占 %.0f%%（要求 ≤ 50%%；只用 OSM 时是 76%%，市政普查补上后约 36%%）' % (other * 100))
     share = sum(1 for b in bs if b['height_src'] != 'default') / max(1, len(bs))
     ok(share >= 0.7, '高度来源不是 default 的占 %.0f%%（要求 ≥ 70%%）' % (share * 100))
     if net is not None:

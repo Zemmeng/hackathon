@@ -6,6 +6,7 @@
       第一次（或 --refresh）从 OSM 拉 building=* 存到 raw/osm_buildings.gpkg，之后只用本地文件重算
 前置：public/<area>/network.json（tools/build_network.py）；
       可选 raw/com_footprints_2018.geojson（市政 2018 建筑轮廓，补 OSM 缺的高度；下载命令见 README）
+      可选 raw/com_buildings_clue.csv（市政 CLUE 普查 2024，OSM 判成 other 的楼用它补用途和楼层数；下载命令见 README）
 高度优先级：市政 2018 轮廓实测 → OSM height → OSM building:levels × 3.2 → 默认 12 m（height_src 记来源）
       （和 issue #21 写的顺序不同：OSM 外轮廓的 height 常只是裙楼，见 build() 里的注释和 README）
 退出码：0 成功；1 所有 Overpass 服务器都失败，或缺 network.json
@@ -114,6 +115,44 @@ def use_of(r):
     return 'other'
 
 
+# 市政 CLUE 普查 predominant_space_use → use。按关键词匹配（不写死完整取值），先匹配先赢；没匹配上的原值会在运行时打印出来核对
+CLUE_USE = [('parking', ('car park', 'parking')),
+            ('hotel', ('hotel', 'hostel', 'serviced apartment', 'motel', 'commercial accommodation')),
+            ('education', ('education', 'school', 'university')),
+            # Student Accommodation 是学生公寓，归住宅（别让 student 把它拉进 education）
+            ('residential', ('residential', 'apartment', 'house', 'townhouse', 'dwelling', 'accommodation')),
+            ('retail', ('retail', 'shop', 'hospitality', 'restaurant', 'food')),
+            ('office', ('office', 'commercial', 'business')),
+            ('public', ('community', 'hospital', 'health', 'entertainment', 'recreation', 'cultural', 'public', 'government',
+                        'transport', 'worship', 'institutional', 'assembly', 'hall', 'performance', 'conference'))]
+
+
+def clue_use(v):
+    t = str(v or '').lower()
+    for use, keys in CLUE_USE:
+        if any(k in t for k in keys):
+            return use
+    return None
+
+
+def load_clue(raw, xy):
+    """raw/com_buildings_clue.csv（最新一年普查、bbox 内）→ [(Point, use 或 None, 原值, 地上层数)]；没有文件返回 []。"""
+    import csv
+    from shapely.geometry import Point
+    p = os.path.join(raw, 'com_buildings_clue.csv')
+    if not os.path.exists(p):
+        return []
+    out = []
+    for r in csv.DictReader(open(p, encoding='utf-8-sig'), delimiter=';'):
+        try:
+            la, lo = float(r['latitude']), float(r['longitude'])
+        except (KeyError, ValueError):
+            continue
+        fl = num(r.get('number_of_floors_above_ground'))
+        out.append((Point(*xy(la, lo)), clue_use(r.get('predominant_space_use')), r.get('predominant_space_use') or '', fl))
+    return out
+
+
 def build(bbox, raw, area):
     import json, datetime, math
     from zoneinfo import ZoneInfo
@@ -144,6 +183,9 @@ def build(bbox, raw, area):
                 p = g.representative_point()
                 com.append((Point(*xy(p.y, p.x)), float(top) - float(base)))
     com_tree = STRtree([c[0] for c in com]) if com else None
+    clue = load_clue(raw, xy)
+    clue_tree = STRtree([c[0] for c in clue]) if clue else None
+    unmapped, use_src = {}, {'osm': 0, 'clue': 0, 'none': 0}
 
     segs, seg_link = [], []
     for l in net['links']:
@@ -190,15 +232,35 @@ def build(bbox, raw, area):
                 near[seg_link[i]] = d
         frontage = [{'link': lid, 'dist_m': round(d, 1)} for lid, d in sorted(near.items(), key=lambda kv: kv[1])[:FRONTAGE_MAX]]
         name = r.get('name')
+        # 用途：OSM 能判断的优先；OSM 只有 building=yes 之类判成 other 的，用市政普查落在楼内的记录（多条取最多的用途）
+        use = use_of(r)
+        if use != 'other':
+            use_src['osm'] += 1
+        elif clue_tree is not None:
+            recs = [clue[i] for i in clue_tree.query(pxy, predicate='contains')]
+            mapped = [c[1] for c in recs if c[1]]
+            for c in recs:
+                if not c[1] and c[2]:
+                    unmapped[c[2]] = unmapped.get(c[2], 0) + 1
+            if mapped:
+                use = max(set(mapped), key=mapped.count); use_src['clue'] += 1
+            else:
+                use_src['none'] += 1
+            if not levels:
+                fls = [c[3] for c in recs if c[3]]
+                levels = max(fls) if fls else None
+        else:
+            use_src['none'] += 1
         out.append({'id': '%s%s' % ('w' if r['element'] == 'way' else 'r', int(r['id'])),
-                    'name': name if isinstance(name, str) and name else None, 'use': use_of(r),
+                    'name': name if isinstance(name, str) and name else None, 'use': use,
                     'height_m': round(h, 1), 'levels': int(levels) if levels else None, 'height_src': src,
                     'footprint': [list(p) for p in ring], 'frontage': frontage})
         src_cnt[src] = src_cnt.get(src, 0) + 1
     out.sort(key=lambda x: x['id'])
     doc = {'version': 1, 'area': area, 'bbox': list(bbox),
            'generated': datetime.datetime.now(ZoneInfo('Australia/Melbourne')).isoformat(timespec='seconds'),
-           'sources': ['© OpenStreetMap contributors (ODbL)', 'City of Melbourne 2018 Building Footprints (CC BY)'],
+           'sources': ['© OpenStreetMap contributors (ODbL)', 'City of Melbourne 2018 Building Footprints (CC BY)',
+                       'City of Melbourne CLUE Building information, census 2024 (CC BY)'],
            'assumptions': {'m_per_level': M_PER_LEVEL, 'default_height_m': DEFAULT_HEIGHT, 'frontage_m': FRONTAGE_M,
                            'frontage_max': FRONTAGE_MAX, 'simplify_deg': SIMPLIFY_DEG,
                            'com_height': '市政 2018 轮廓：落在楼内的各部分 footprint_max_elevation 最大值 − structure_min_elevation'},
@@ -209,8 +271,11 @@ def build(bbox, raw, area):
     uses = {}
     for x in out:
         uses[x['use']] = uses.get(x['use'], 0) + 1
-    print('✅ buildings.json：%d 栋；高度来源 %s；用途 %s；有临街路段 %d；%d KB'
-          % (len(out), src_cnt, uses, sum(1 for x in out if x['frontage']), os.path.getsize(p) // 1024))
+    print('✅ buildings.json：%d 栋；高度来源 %s；用途 %s（来自 OSM %d、普查 %d、没有 %d）；有临街路段 %d；%d KB'
+          % (len(out), src_cnt, uses, use_src['osm'], use_src['clue'], use_src['none'],
+             sum(1 for x in out if x['frontage']), os.path.getsize(p) // 1024))
+    if unmapped:
+        print('·  普查里没映射上的用途原值（核对 CLUE_USE）：%s' % sorted(unmapped.items(), key=lambda kv: -kv[1])[:15])
 
 
 def main():

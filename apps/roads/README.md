@@ -49,6 +49,8 @@ apps/roads/.venv/bin/python apps/roads/tools/build_walk.py       # → public/cb
 
 `equipment.json`：16 种设备（护栏 3、静态标志 9、VMS 2、箭头板 1、行人临时信号灯 1）。规格抄自 RPM Hire 官网产品页（每项 `url`，2026-09-29 查）；**`qty`、`day_rate_aud` 全是假设**（官网没有公开价格），列在每项的 `assumed` 里。标志编号只填查实的 T1-1、T2-16，其余 `null`。RPM 官网没有静态标志牌的产品页。
 
+VMS 每行 **10** 个字符（`chars_per_line`），和 T5 的 `readSigns()` / `/api/read` 一致（超了回 400）。RPM 官网同一页前后不一致：FAQ 写「12-13 characters per line up to 4 lines」，文案指南写「Up to 10 characters per line (including any spaces)」「Ideally, 3 lines of text and 8 characters per line」、每屏停 2 秒（闪烁 3 秒）——取 10，推荐值放在 `lines_recommended` / `chars_recommended` / `seconds_per_screen`。第一版误取了 FAQ 的 12，@jinmingq 在 #14 指出（09-29）。
+
 `flows.json` 里每条路段的 `method`：
 
 | method | 怎么算 | 准不准 |
@@ -79,12 +81,14 @@ apps/roads/.venv/bin/python apps/roads/tools/build_walk.py       # → public/cb
 ```bash
 B=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets
 curl -sS -G "$B/2018-building-footprints/exports/geojson" --data-urlencode "where=in_bbox(geo_point_2d, -37.8235, 144.9480, -37.8060, 144.9760)" -o apps/roads/raw/com_footprints_2018.geojson
+curl -sS -G "$B/buildings-with-name-age-size-accessibility-and-bicycle-facilities/exports/csv" --data-urlencode "where=year(census_year)=2024 and latitude>=-37.8235 and latitude<=-37.8060 and longitude>=144.9480 and longitude<=144.9760" --data-urlencode "select=census_year,building_name,predominant_space_use,number_of_floors_above_ground,latitude,longitude" -o apps/roads/raw/com_buildings_clue.csv
 apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次拉 OSM（逐行打印在试哪台服务器），之后只用 raw/ 重算；--refresh 重新拉
 ```
 
-结果（09-29）：2508 栋，910 KB；用途 other 1898、office 167、residential 147、retail 114、education 66、public 56、hotel 38、parking 22；2065 栋有 30 m 内的临街路段（每栋最多记 4 条）。
+结果（09-29）：2508 栋，910 KB；用途 office 395、residential 488、public 301、retail 200、education 98、hotel 90、parking 35、other 901（36%；只用 OSM 时 1898、76%）；用途来源 OSM 610、普查 997、没有 901；2065 栋有 30 m 内的临街路段（每栋最多记 4 条）。
 
-- 来源：OSM `building=*`（轮廓、名字、用途，ODbL）+ City of Melbourne「2018 Building Footprints」（高度，CC BY，5923 块）
+- 来源：OSM `building=*`（轮廓、名字、用途，ODbL）+ City of Melbourne「2018 Building Footprints」（高度，CC BY，5923 块）+ City of Melbourne「Building information」CLUE 普查 2024 年（用途、地上层数，CC BY）
+- 用途：OSM 标签能判断的优先（`amenity` / `shop` / 具体的 `building` 值）；OSM 只有 `building=yes` 这类判成 other 的，用代表点落在楼内的普查记录的 `predominant_space_use`（多条取最多的），按 `CLUE_USE` 关键词映射。`Student Accommodation` 归住宅、`Commercial Accommodation` 归酒店；空置、在建、仓储、设备间、批发、制造留在 other。OSM 没有楼层数的也用普查的 `number_of_floors_above_ground` 补
 - **高度优先级和 issue #21 写的不同：市政实测 → OSM `height` → OSM 楼层 × 3.2 → 默认 12 m。** 原因：CBD 高楼在 OSM 里外轮廓的 `height` 常只是裙楼、塔楼另画成 `building:part`——Eureka Tower OSM 20 m、市政 298 m（实际约 297 m）；Rialto Towers OSM 20 m、市政 249 m（实际约 251 m）。297 栋两边都有高度的楼，相对差中位数 14%，差 2.5 倍以上的 24 栋基本都是这种裙楼 / 塔楼情况
 - 市政高度 = 代表点落在这栋 OSM 楼里的各部分 `footprint_max_elevation` 最大值 − `structure_min_elevation`（楼顶海拔 − 地面海拔）；市政数据是 2018 年的，之后新建的楼走 OSM 或默认值
 - 高度来源：市政 2108、OSM height 30、OSM 楼层 32、默认 338（非默认 87%）

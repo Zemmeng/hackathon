@@ -158,6 +158,9 @@ if eq is not None:
     bad = [x['id'] for x in items if not (isinstance(x.get('qty'), (int, float)) and x['qty'] >= 0)
            or not set(x.get('assumed', [])) <= set(x)]
     ok(not bad, '每项 qty ≥ 0，assumed 里列的字段都存在%s' % ('（坏的：%s）' % bad if bad else ''))
+    # VMS 每行字数必须和 T5 的 readSigns() / /api/read 一致（每行 10 字，超了回 400）；官网同页 FAQ 写 12–13，以文案指南的 10 为准
+    vms = {x['id']: x.get('chars_per_line') for x in items if x.get('category') == 'vms'}
+    ok(vms and all(v == 10 for v in vms.values()), 'VMS 每行 10 个字符，和 T5 读屏接口一致（%s）' % vms)
     have = {x.get('category') for x in items}
     ok({'barrier', 'sign', 'vms', 'arrow_board', 'ped_signal'} <= have and sum(x.get('category') == 'sign' for x in items) >= 5,
        '最少清单：护栏、≥ 5 种静态标志、VMS、箭头板、行人临时信号灯都有')
