@@ -186,5 +186,17 @@ pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 check("package.json 的 deploy 是 wrangler deploy", pkg.get("scripts", {}).get("deploy") == "wrangler deploy")
 check("反向断言：部署配置里没有 token / account_id", not re.search(r"api[_-]?token|account_id|CLOUDFLARE_", wr_txt, re.I))
 
+# T21 叠加检查（8-clash.js，D-0929-2011 ②）：登记表从同源 /api/ 取，数全由 be.clash / be.stagger 算；不可信时不显示负数
+CLASH = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
+check("T21 登记表走 /api/public/js/worksites.js，数由 BE.api.clash / stagger 算",
+      "import('/api/public/js/worksites.js')" in CLASH and "BE.api.clash(" in CLASH and "BE.api.stagger(" in CLASH)
+check("T21 flags.reliable = false 时写「≈ 0 · 结果不可信」（中英）",
+      "!r.flags.reliable" in CLASH and "result not reliable" in CLASH and "结果不可信" in CLASH)
+check("T21 两种 ≈ 0 分开写：negative_delay 说基线超通行能力，substitutes 说同一走廊；错开前看 best.reliable",
+      "r.flags.negative_delay?" in CLASH and "r.flags.substitutes?" in CLASH and "same corridor" in CLASH and "同一走廊" in CLASH and "b&&!b.reliable" in CLASH)
+check("T21 第 3 步挂上叠加检查（clashMount）、地图画那处施工（clashDraw）", "clashMount();" in app_js and "clashDraw();" in app_js)
+raw_title = [x for x in interpolations(CLASH) if "${" not in x and re.search(r"\.(title|name)\b", x) and "esc(" not in x]
+check("T21 反向断言：登记表的标题 / 路名进 HTML 都过 esc()", not raw_title and "esc(o.title)" in CLASH, str(raw_title[:3]))
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

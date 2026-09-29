@@ -209,6 +209,7 @@ function render(dt){
   else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
+  clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
   if(S.layers.weather)WX.drawNotes(ctx,V,TK);
   if(S.step===1&&S.layers.works&&micro)planNotes();
   if(S.step<=2&&micro)fogRings(S.sim);
@@ -296,7 +297,7 @@ function renderPanel(){
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
