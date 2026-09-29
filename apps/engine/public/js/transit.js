@@ -2,20 +2,28 @@
 // 数据：T3 的 transit.json（PTV GTFS 时刻表：CBD 里 47 条电车 / 公交线路，每个方向匹配到的路段 links[]、站 stops[]、
 // 每小时车次 trips.wd|we[24]；站的 road_link = 站在哪个路段上）。
 // 模型（每一条都是假设，docs/contract.md §evaluate「summary.transit」、apps/engine/README.md 同步写着）：
-//   1 只列「这个方向经过的路段变慢了或被全封」的线路；这个小时没有车次的不列。车次 = trips[wd|we][小时]，工作日 / 周末用引擎的 dayType。
+//   1 只列「这个方向经过的路段被全封」或「整趟比没施工时慢 > SLOWER_S 秒」的线路；这个小时没有车次的不列。
+//     车次 = trips[wd|we][小时]，工作日 / 周末用引擎的 dayType。
 //   2 公交跟车流一起走、线路固定：每趟多的秒数 = 线路上每个路段（这个方案下的通行时间 − 同一小时没有施工时的通行时间）加起来。
 //     两个时间都用引擎的 linkTime（BPR + 确定性排队）：方案下取 result.links 的 v、cap，没施工时取 flows.json 这个小时的流量和原通行能力
 //     （同样取整，没变的路段正好差 0）。result.links[].delay_s 是比「自由流」多的秒数，不是比「没施工」多的，不能直接加。
+//     有的路段因为车流绕走反而变快：不绕行的公交整趟加起来 ≤ SLOWER_S 秒就不列（施工不会让公交「变快」，见 7）。
 //   3 公交线路上有路段全封 → 必须绕：在封闭段前 DIVERT_M 米内的线路节点拐出去，走最短路（按这个方案下的通行时间，
-//     不走全封的路段，不掉头走回线路上游），在封闭段后 DIVERT_M 米内回到线路上；挑全程最快的拐法。先只走主干道（BUS_ROADS），
-//     绕不过去再放开到小街，小巷（NO_DETOUR）始终不走；附近绕不过去就在整条线路上找，还不行 = blocked。
+//     不走全封的路段，不掉头走回线路上游），在封闭段后 DIVERT_M 米内回到线路上；挑全程最快的拐法（比的是「走到拐出点 + 绕行 + 回来后走到
+//     同一个点」的全程，拐得早、晚一视同仁）。先只走主干道（BUS_ROADS），绕不过去再放开到小街，小巷（NO_DETOUR）始终不走；
+//     附近绕不过去就在整条线路上找，还不行 = blocked。
 //     每趟多的秒数 = 绕完的全程 − 没施工时的全程；diverted = true，detour_links = 绕的那段路，stops_skipped = 绕开的那段线路上的站。
+//   3b 地图边上：transit.json 的线路只截到 CBD 这张路网里。全封离线路进 / 出路网（或起终点站）不到 DIVERT_M 米、路网里又绕不过去
+//     → 公交在路网外就换路了，绕多久这里算不出：edge = true、diverted = true、delay_s / pax_min = null，不算停运（不进 blocked_*），
+//     另计 edge_routes。不然路网截断会被当成「停运」排到最前面。
 //   4 电车在 CBD 走自己的轨道车道 / 路中间：封部分车道、旁边车流变慢都不耽误电车（不列）；
 //     全封电车经过的路段 = blocked（电车不能绕），报这个小时停掉的车次 trips_h 和乘客 pax_h，分钟数给 null（不编）。
 //   5 每趟车载多少人是假设值（PAX_PER_TRIP，没有 PTV 分线路分时段的载客数据）：工作日 7–9、16–18 点算高峰，其余算平峰；
 //     pax_h = 车次 × 每趟人数，pax_min = pax_h × 每趟多的秒数 ÷ 60（乘客·分钟，这一小时）。
 //   6 transit.json 的 links[] 是按 10 米采样匹配的，路口里很短的路段常被跳过：相邻两段接不上时，GAP_FILL_M 米内的最短路补上
 //     （电车只走 tram = true 的路段补）；补不上（线路走到路网外、或者匹配到对向）就照原样，这一段不计时间。
+//   7 绕行抄了近路（线路本来绕一圈去接站，绕行把这一圈跳过了）算出来会比平时快：每趟多的秒数最少记 0。
+//     公交按时刻表跑，早到了要在站上等；乘客的损失是被跳过的站（stops_skipped），不是「省了时间」。
 
 import { linkTime, dijkstra, treePath } from './net.js';
 import { dayType, isActive, capFactors } from './worksite.js';
@@ -33,7 +41,7 @@ export const BUS_ROADS = new Set(['motorway', 'motorway_link', 'trunk', 'trunk_l
 
 const round1 = x => Math.round(x * 10) / 10;
 const TRAM = 'tram';
-const NOTE = '每趟载客人数是假设值（没有 PTV 分线路载客数据）；电车在 CBD 走自己的车道，封部分车道不耽误电车，全封才停；公交跟车流走固定线路，全封就近绕行';
+const NOTE = '每趟载客人数是假设值（没有 PTV 分线路载客数据）；电车在 CBD 走自己的车道，封部分车道不耽误电车，全封才停；公交跟车流走固定线路，全封就近绕行，绕行最少记 0 秒；封在路网边上、在路网外换路的公交分钟数算不出（edge）';
 
 // 线路方向 → 路段序列（补上路口缺口）。按 transit 对象 × 路网缓存：同一份数据只算一次
 const idxCache = new WeakMap();
@@ -69,6 +77,12 @@ function indexTransit(net, transit) {
 
 export function isTransit(x) {
   return Boolean(x && Array.isArray(x.routes));
+}
+
+// 每条线路每个方向在这张路网上的路段序列（补过缺口，busTrip 用的就是它）→ [{ id, dir, path }]；测试核对绕行的全程时间用
+export function routePaths(net, transit) {
+  if (!isTransit(transit)) return [];
+  return indexTransit(net, transit).dirs.map(({ route, dir, path }) => ({ id: route.id, dir: dir.dir, path }));
 }
 
 // 这个小时每趟车载多少人（假设值）
@@ -114,7 +128,8 @@ export function transitImpact(net, flows, transit, plan, result) {
   };
   const trees = new Map(); // 绕行的最短路树：同一个起点 + 同样不许进的节点只算一次（很多公交走同一段 Lonsdale St）
 
-  // 公交这一趟在这个方案下的全程时间（全封就绕）→ { t, detour: 绕的路段, skipped: 被绕开的线路路段 }；绕不过去 → null
+  // 公交这一趟在这个方案下的全程时间（全封就绕）→ { t, detour: 绕的路段, skipped: 被绕开的线路路段 }；
+  // 路网里绕不过去、全封又在线路进 / 出路网 DIVERT_M 米内 → { edge: true }（在路网外就换路了，模型 3b）；绕不过去 → null
   function busTrip(path) {
     const n = path.length;
     const L = path.map(id => net.links.get(id));
@@ -122,6 +137,9 @@ export function transitImpact(net, flows, transit, plan, result) {
     const pre = [0];
     for (let i = 0; i < n; i++) pre.push(pre[i] + pt[i]);
     const sum = (a, b) => pre[b] - pre[a]; // path[a..b-1] 的时间
+    const plen = [0];
+    for (let i = 0; i < n; i++) plen.push(plen[i] + L[i].len_m);
+    const len = (a, b) => plen[b] - plen[a]; // path[a..b-1] 的长度（米）
     const node = k => (k < n ? L[k].from : L[n - 1].to);
     let t = 0, q = 0, lo = 0;
     const detour = [], skipped = [];
@@ -151,7 +169,7 @@ export function transitImpact(net, flows, transit, plan, result) {
           for (const k of ks) {
             const d = tree.dist.get(node(k));
             if (d == null) continue;
-            const c = sum(m, q) + d + sum(k, hi);
+            const c = sum(lo, m) + d + sum(k, hi); // 从 lo 到 hi 的全程：线路走到 node(m) + 绕行 + 从 node(k) 走回 hi
             if (!best || c < best.c - 1e-9) best = { c, m, k, hi, tree, s };
           }
         }
@@ -159,8 +177,8 @@ export function transitImpact(net, flows, transit, plan, result) {
       };
       // 先在封闭段附近找主干道 → 附近的小街 → 整条线路上的主干道 → 整条线路上的小街
       const b = pick(true, 'strict') || pick(true, 'relaxed') || pick(false, 'strict') || pick(false, 'relaxed');
-      if (!b) return null;
-      t += b.c - sum(b.m, q); // path[m..q-1] 已经算进 t 了，换成绕行
+      if (!b) return (lo === 0 && len(0, q) <= DIVERT_M) || len(j + 1, n) <= DIVERT_M ? { edge: true } : null;
+      t += b.c - sum(lo, q); // t 里已经有 path[lo..q-1]（含公交其实没走的 path[m..q-1]），换成 lo → hi 的实际走法
       detour.push(...treePath(b.tree, b.s, node(b.k)));
       skipped.push(...path.slice(b.m, b.k));
       q = b.hi;
@@ -183,13 +201,16 @@ export function transitImpact(net, flows, transit, plan, result) {
     const links = [...new Set(path.filter(id => closed.has(id) || slower.has(id)))];
     const stops = [...new Set(dir.stops || [])].map(id => idx.stops.get(id)).filter(Boolean);
     const stopsOn = set => stops.filter(s => set.has(s.road_link)).map(s => ({ id: s.id, name: s.name }));
-    let delay = null, diverted = false, blocked = false, detour_links = [], stops_skipped = [];
+    let delay = null, diverted = false, blocked = false, edge = false, detour_links = [], stops_skipped = [];
     if (tram) blocked = isClosed; // 走到这里的电车一定碰到了全封
     else {
       const trip = busTrip(path);
       if (!trip) blocked = true;
+      else if (trip.edge) { diverted = true; edge = true; } // 模型 3b：在路网外换路，分钟数算不出（null），不算停运
       else {
-        delay = trip.t - path.reduce((s, id) => s + baseT(id), 0);
+        const raw = trip.t - path.reduce((s, id) => s + baseT(id), 0);
+        if (!isClosed && round1(raw) <= SLOWER_S) continue; // 模型 2：不绕行、整趟加起来（按报出去的 0.1 秒）不比平时慢（别的路段车少了反而快）→ 不列
+        delay = Math.max(0, raw); // 模型 7：绕行抄了近路也最少记 0（按时刻表跑，早到要等；跳过的站在 stops_skipped）
         diverted = isClosed;
         detour_links = trip.detour;
         const on = new Set(trip.detour);
@@ -201,10 +222,12 @@ export function transitImpact(net, flows, transit, plan, result) {
       trips_h: trips, pax_per_trip: ppt, pax_h,
       delay_s: delay == null ? null : round1(delay),
       pax_min: delay == null ? null : round1((pax_h * delay) / 60),
-      diverted, blocked, stops_closed: stopsOn(closed), links, detour_links, stops_skipped,
+      diverted, blocked, edge, stops_closed: stopsOn(closed), links, detour_links, stops_skipped,
     });
   }
-  routes.sort((a, b) => (b.blocked - a.blocked) || (a.blocked ? b.pax_h - a.pax_h : b.pax_min - a.pax_min)
+  // 停掉的在前（按 pax_h），其余按 pax_min 从大到小，路网外换路（edge，分钟数 null）的放最后（按 pax_h）
+  routes.sort((a, b) => (b.blocked - a.blocked) || (a.edge - b.edge)
+    || (a.blocked || a.edge ? b.pax_h - a.pax_h : b.pax_min - a.pax_min)
     || (a.id < b.id ? -1 : a.id > b.id ? 1 : a.dir - b.dir));
   const tot = k => routes.reduce((s, r) => s + (r[k] ?? 0), 0);
   const blockedR = routes.filter(r => r.blocked);
@@ -212,6 +235,7 @@ export function transitImpact(net, flows, transit, plan, result) {
     src: 'gtfs', day, hour, routes,
     trips_h: tot('trips_h'), pax_h: tot('pax_h'), pax_min: Math.round(tot('pax_min')),
     blocked_routes: blockedR.length, blocked_pax_h: blockedR.reduce((s, r) => s + r.pax_h, 0),
+    edge_routes: routes.filter(r => r.edge).length,
     assumed,
   };
 }

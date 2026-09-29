@@ -3,8 +3,8 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { ok, t, done } from './_t.mjs';
 import { connect, PATHS } from '../public/js/backend.js';
-import { transitImpact, PAX_PER_TRIP, paxPerTrip, loadNetwork, shortestPath, NO_DETOUR } from '../public/js/index.js';
-import { BUS_ROADS, TRANSIT_PEAK_HOURS } from '../public/js/transit.js';
+import { transitImpact, PAX_PER_TRIP, paxPerTrip, loadNetwork, shortestPath, NO_DETOUR, routePaths, linkTime, dayType } from '../public/js/index.js';
+import { BUS_ROADS, TRANSIT_PEAK_HOURS, DIVERT_M, SLOWER_S } from '../public/js/transit.js';
 const clone = x => JSON.parse(JSON.stringify(x));
 
 const APPS = new URL('../../', import.meta.url); // apps/
@@ -55,7 +55,7 @@ await t('反向：不施工的时段（22 点）一切都是 0', async () => {
   const plan = be.demo('lonsdale', { hour: 22 }); delete plan.worksites[0].time; plan.worksites[0].closes.lanes = 0;
   const r = be.engine.evaluate(plan);
   const tr2 = transitImpact(be.engine.net, be.engine.flows, TRANSIT, plan, r);
-  ok(r.active.length === 1 && tr2.routes.every(x => x.delay_s === 0) && tr2.pax_min === 0, `施工在做但一条道都没封：${tr2.routes.length} 条线路列出，延误全是 0`);
+  ok(r.active.length === 1 && tr2.routes.length === 0 && tr2.pax_min === 0, `施工在做但一条道都没封：${tr2.routes.length} 条线路列出（整趟不比平时慢的不列）、0 乘客·分钟`);
 });
 
 await t('反向：延误比的是「没施工」，不是自由流', async () => {
@@ -151,6 +151,141 @@ await t('纯函数：换了路网不崩、同样输入同样结果', async () =>
   const tiny = loadNetwork({ nodes: [{ id: 'a', lat: 0, lon: 0 }, { id: 'b', lat: 0, lon: 0.001 }], links: [{ id: 'ab', from: 'a', to: 'b', name: null, len_m: 100, lanes: 1, speed_kmh: 40, cap_vph: 900, t0_s: 9 }] });
   const x = transitImpact(tiny, { days: {} }, TRANSIT, { when: { date: '2026-10-06', hour: 8 }, worksites: [] }, { links: [] });
   ok(x.src === 'gtfs' && x.routes.length === 0 && transitImpact(tiny, null, null, plan, r).src === null, '线路路段不在路网上 → 不列；transit 为空 → { src: null }');
+});
+
+// ---- 评审修复（T16 fix）：绕行全程算两遍、路网边上当停运、绕行后「变快」 ----
+// 小路网：一条直线 + 两条岔路。所有路段 10 米/秒、没有车流 → 通行时间 = 长度 ÷ 10
+const toyNet = (links, extraNodes = []) => {
+  const ids = new Set(links.flatMap(l => [l[1], l[2]]).concat(extraNodes));
+  return loadNetwork({
+    nodes: [...ids].map((id, i) => ({ id, lat: 0, lon: i * 0.001 })),
+    links: links.map(([id, from, to, len]) => ({ id, from, to, name: id, len_m: len, lanes: 1, speed_kmh: 36, cap_vph: 900, t0_s: len / 10, highway: 'secondary' })),
+  });
+};
+const toyTransit = (links, stops = []) => ({
+  routes: [{ id: 'bus_x', short: 'X', mode: 'bus', dirs: [{ dir: 0, headsign: 'E', links, stops: stops.map(s => s.id), trips: { wd: Array(24).fill(4), we: Array(24).fill(2) } }] }],
+  stops,
+});
+const toyPlan = (closedLinks, lanes = 1) => ({ when: { date: '2026-10-06', hour: 8 }, worksites: closedLinks.length ? [{ id: 'W', links: closedLinks, closes: { lanes } }] : [] });
+const NOFLOW = { days: { wd: {}, we: {} } };
+
+await t('反向：绕行的全程不重复计算，拐得早的不吃亏（小路网）', async () => {
+  // 线路 A→B→C→D→E，每段 100 米（10 秒），全封 C→D。早拐：B→X→D 30 秒；晚拐：C→Y→D 34 秒
+  // 早拐全程 10 + 30 + 10 = 50 秒（多 10 秒）；晚拐 10 + 10 + 34 + 10 = 64 秒（多 24 秒）
+  const net = toyNet([['AB', 'A', 'B', 100], ['BC', 'B', 'C', 100], ['CD', 'C', 'D', 100], ['DE', 'D', 'E', 100], ['BX', 'B', 'X', 150], ['XD', 'X', 'D', 150], ['CY', 'C', 'Y', 170], ['YD', 'Y', 'D', 170]]);
+  const tr = toyTransit(['AB', 'BC', 'CD', 'DE'], [{ id: 's1', name: 'Stop on BC', road_link: 'BC' }]);
+  const r = transitImpact(net, NOFLOW, tr, toyPlan(['CD']), { links: [] }).routes[0];
+  ok(r && r.diverted && !r.blocked && !r.edge && r.delay_s === 10 && r.detour_links.join() === 'BX,XD',
+    `早拐更快就早拐：每趟多 ${r?.delay_s} 秒（对的是 10），绕 ${r?.detour_links.join(' → ')}（旧算法挑晚拐、报 24 秒）`);
+  ok(r.stops_skipped.length === 1 && r.stops_skipped[0].id === 's1' && r.pax_min === Math.round(((r.pax_h * 10) / 60) * 10) / 10, '早拐跳过 B→C 上的站，列进 stops_skipped；pax_min = pax_h × 10 ÷ 60');
+});
+
+await t('反向：绕行抄了近路也不会「变快」，delay_s ≥ 0（小路网）', async () => {
+  // 同一条线路，早拐的岔路只要 10 秒（比线路上 B→C→D 的 20 秒还快）：算出来 −10 秒，记 0
+  const net = toyNet([['AB', 'A', 'B', 100], ['BC', 'B', 'C', 100], ['CD', 'C', 'D', 100], ['DE', 'D', 'E', 100], ['BX', 'B', 'X', 50], ['XD', 'X', 'D', 50]]);
+  const x = transitImpact(net, NOFLOW, toyTransit(['AB', 'BC', 'CD', 'DE']), toyPlan(['CD']), { links: [] });
+  ok(x.routes.length === 1 && x.routes[0].diverted && x.routes[0].delay_s === 0 && x.routes[0].pax_min === 0 && x.pax_min === 0,
+    `绕行比平时快 10 秒：delay_s = ${x.routes[0]?.delay_s}、pax_min = ${x.pax_min}（最少记 0，仍标 diverted）`);
+  // 不绕行：A→B 慢了一点，D→E 车少了快得更多，整趟比平时快 → 不列（不是列一条负数）
+  const flows = { days: { wd: { DE: Array(24).fill(1200) }, we: {} } };
+  const res = { links: [{ id: 'AB', v: 700, cap: 900 }, { id: 'DE', v: 0, cap: 900 }] };
+  const slowAB = linkTime(10, 700, 900) - 10, fastDE = linkTime(10, 1200, 900) - 10;
+  const y = transitImpact(net, flows, toyTransit(['AB', 'BC', 'CD', 'DE']), toyPlan([]), res);
+  ok(slowAB > SLOWER_S && fastDE > slowAB && y.routes.length === 0 && y.pax_min === 0,
+    `A→B 慢 ${slowAB.toFixed(1)} 秒、D→E 快 ${fastDE.toFixed(1)} 秒：整趟不比平时慢 → 不列（${y.routes.length} 条）`);
+});
+
+await t('路网边上全封：算「路网外换路」（edge），不算停运；中间绕不过去才是停运（小路网）', async () => {
+  // 一条 6 段、每段 500 米的直路，没有岔路：封第一段 / 最后一段 → 公交在路网外就换路了；封中间 → 真的过不去
+  const line = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'];
+  const ls = line.slice(1).map((b, i) => [line[i] + b, line[i], b, 500]);
+  const net = toyNet(ls), tr = toyTransit(ls.map(l => l[0]));
+  const at = id => transitImpact(net, NOFLOW, tr, toyPlan([id]), { links: [] });
+  for (const id of ['P0P1', 'P5P6']) {
+    const x = at(id), r = x.routes[0];
+    ok(r && r.edge && r.diverted && !r.blocked && r.delay_s === null && r.pax_min === null && x.blocked_routes === 0 && x.blocked_pax_h === 0 && x.edge_routes === 1 && x.pax_min === 0,
+      `封 ${id}（线路${id === 'P0P1' ? '进' : '出'}路网那段）：edge，分钟数 null，不计入停运`);
+  }
+  const mid = at('P2P3'), m = mid.routes[0];
+  ok(m && m.blocked && !m.edge && m.delay_s === null && mid.blocked_routes === 1 && mid.edge_routes === 0,
+    `反向：封中间那段（离两头都 > ${DIVERT_M} 米）、没路可绕 → 还是 blocked`);
+});
+
+// 真数据：8 点把公交用到的每个路段逐一全封
+const net = be.engine.net, flows = be.engine.flows;
+const RP = new Map(routePaths(net, TRANSIT).map(x => [x.id + '/' + x.dir, x.path]));
+const busLinks = [...new Set(TRANSIT.routes.filter(r => r.mode === 'bus').flatMap(r => r.dirs.flatMap(d => d.links)))].filter(id => net.links.has(id));
+const fullAt = (id, hour = 8, lanes = 9) => {
+  const p = be.demo('lonsdale', { hour }); p.worksites[0].links = [id]; p.worksites[0].closes.lanes = lanes; p.worksites[0].equipment = [];
+  const r = be.engine.evaluate(p);
+  return { r, tr: transitImpact(net, flows, TRANSIT, p, r) };
+};
+const day = dayType({ date: '2026-10-06' });
+const baseT = (id, hour) => { const l = net.links.get(id); return linkTime(l.t0_s, Math.round(flows.days[day][id]?.[hour] ?? 0), Math.round(l.cap_vph)); };
+// 公交走「线路到 node(m) + 绕行 + node(k) 以后的线路」的全程（方案下的通行时间）；有一种拐法对得上 delay_s + 平时全程就算对
+function tripMatches(row, closedId, r, hour) {
+  const path = RP.get(row.id + '/' + row.dir), X = new Map(r.links.map(x => [x.id, x]));
+  const planT = id => { const x = X.get(id), l = net.links.get(id); return x ? linkTime(l.t0_s, x.v, x.cap) : baseT(id, hour); };
+  const n = path.length, L = path.map(id => net.links.get(id)), node = k => (k < n ? L[k].from : L[n - 1].to);
+  const q = path.indexOf(closedId), D = row.detour_links.map(id => net.links.get(id));
+  if (q < 0 || path.lastIndexOf(closedId) !== q || !D.length) return null; // 只核对只封一处的
+  const s = D[0].from, e = D[D.length - 1].to, dT = D.reduce((a, l) => a + planT(l.id), 0);
+  const base = path.reduce((a, id) => a + baseT(id, hour), 0), want = row.delay_s + base;
+  let best = Infinity;
+  for (let m = 0; m <= q; m++) if (node(m) === s) for (let k = q + 1; k <= n; k++) if (node(k) === e) {
+    const tot = path.slice(0, m).reduce((a, id) => a + planT(id), 0) + dT + path.slice(k).reduce((a, id) => a + planT(id), 0);
+    best = Math.min(best, Math.abs(tot - want));
+  }
+  return best;
+}
+
+await t('反向：绕行的每趟秒数 = 实际走的那条路的全程 − 平时全程（真数据，逐段全封）', async () => {
+  // Victoria St 全封：402 路旧算法报 1270 秒全程（多 1198 秒），它自己选的路其实只要 574 秒
+  const vic = fullAt('l277089910_1691676471'), b402 = vic.tr.routes.find(r => r.id === 'bus_402' && r.dir === 0);
+  const m402 = tripMatches(b402, 'l277089910_1691676471', vic.r, 8);
+  ok(b402.diverted && b402.delay_s > 0 && b402.delay_s < 600 && m402 <= 0.06, `Victoria St 全封：402 路每趟多 ${b402.delay_s} 秒（旧算法 1197.7），和它绕的那条路对得上（差 ${m402?.toFixed(2)} 秒）`);
+  let checked = 0;
+  const bad = [];
+  for (const id of busLinks) {
+    const { r, tr } = fullAt(id);
+    for (const row of tr.routes) {
+      if (!row.diverted || row.edge || !(row.delay_s > 0)) continue;
+      const d = tripMatches(row, id, r, 8);
+      if (d == null) continue;
+      checked++;
+      if (!(d <= 0.06)) bad.push(`${id} ${row.id}/${row.dir} 差 ${d.toFixed(1)} 秒`);
+    }
+  }
+  ok(checked > 200 && bad.length === 0, `${busLinks.length} 个路段逐一全封，核对 ${checked} 条绕行的公交：全程都对得上${bad.length ? '；不对：' + bad.slice(0, 3).join('；') : ''}`);
+});
+
+await t('反向：施工不会让公交变快；路网边上不算停运（真数据，8 点逐段全封）', async () => {
+  // A'Beckett St 是 1 条道的小街，网页默认封 1 条 = 全封：220 路绕行旧算法报 −2.1 秒，总 pax_min = −6
+  const ab = fullAt('l2189145409_33085559', 8, 1).tr, b220 = ab.routes.find(r => r.id === 'bus_220' && r.dir === 1);
+  ok(b220 && b220.diverted && b220.delay_s >= 0 && b220.pax_min >= 0 && ab.pax_min >= 0, `A'Beckett St 封 1 条道（全封）：220 路绕行每趟 ${b220?.delay_s} 秒，合计 ${ab.pax_min} 乘客·分钟（不是负数）`);
+  // Spencer St 这段是 216 路进路网后的第一段（41.7 米），起点只连着一条小路：旧算法判 216 路停运
+  const sp = fullAt('l3215192040_332549400').tr, b216 = sp.routes.find(r => r.id === 'bus_216' && r.dir === 1);
+  ok(b216 && b216.edge && b216.diverted && !b216.blocked && b216.delay_s === null && sp.blocked_routes === 0 && sp.blocked_pax_h === 0 && sp.edge_routes >= 1 && sp.routes[sp.routes.length - 1].edge,
+    `Spencer St 全封：216 路在路网外换路（edge），不算停运（blocked_routes ${sp.blocked_routes}），排最后`);
+  let negRows = 0, negTot = 0, flat = 0, farEdge = 0, busBlocked = 0, edges = 0;
+  const len = ids => ids.reduce((a, x) => a + net.links.get(x).len_m, 0);
+  for (const id of busLinks) {
+    const { tr } = fullAt(id);
+    if (tr.pax_min < 0) negTot++;
+    for (const row of tr.routes) {
+      if (row.delay_s != null && row.delay_s < 0) negRows++;
+      if (row.mode === 'bus' && !row.diverted && !(row.delay_s > SLOWER_S)) flat++;
+      if (row.mode === 'bus' && row.blocked) busBlocked++;
+      if (row.edge) {
+        edges++;
+        const path = RP.get(row.id + '/' + row.dir), i = path.indexOf(id);
+        if (!(len(path.slice(0, i)) <= DIVERT_M || len(path.slice(i + 1)) <= DIVERT_M)) farEdge++;
+      }
+    }
+  }
+  ok(negRows === 0 && negTot === 0, `${busLinks.length} 个路段逐一全封：没有 delay_s < 0 的线路（${negRows}）、没有合计 pax_min < 0 的方案（${negTot}）`);
+  ok(flat === 0, `不绕行的公交列出来的每趟都多 > ${SLOWER_S} 秒（整趟不慢的不列）`);
+  ok(edges > 0 && farEdge === 0 && busBlocked === 0, `${edges} 次 edge 都在线路进 / 出路网 ${DIVERT_M} 米内；公交判停运 ${busBlocked} 次（路网截断不再算停运）`);
 });
 
 done();

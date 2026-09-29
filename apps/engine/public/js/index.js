@@ -13,4 +13,4 @@ export { isActive, overlaps, capFactors, shiftWorksite, windowWhens, sampleHours
 export { pedImpact, pedsUnavailable, plannedFootpath, WALK_MPS, CLOSABLE_KINDS, OPPOSITE_M, SENSOR_NEAR_M } from './peds.js';
 export { approaches, affected, NO_DETOUR } from './routes.js';
 export { readSeconds, cleanName } from './cards.js';
-export { transitImpact, paxPerTrip, isTransit, PAX_PER_TRIP, PAX_RANGE } from './transit.js';
+export { transitImpact, paxPerTrip, isTransit, routePaths, PAX_PER_TRIP, PAX_RANGE } from './transit.js';
