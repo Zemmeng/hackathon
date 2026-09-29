@@ -51,7 +51,7 @@ if command -v node >/dev/null 2>&1; then
   NV=$(node -v 2>/dev/null | sed 's/^v//')
   if [ "$HAS_PY" = 1 ] && ver_ge "$NV" 20; then ok "node $NV"
   elif [ "$HAS_PY" = 1 ]; then warn "node $NV < 20"; install_hint "brew install node@20（或 nvm install 20）" "curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt install -y nodejs（或 nvm install 20）"
-  else ok "node $NV（没法比版本，需要 ≥20）"; fi
+  else ok "node ${NV}（没法比版本，需要 ≥20）"; fi
 else
   warn "没有 node（≥20）"; install_hint "brew install node@20（或 nvm install 20）" "nvm install 20（或 nodesource 的 setup_20.x）"
 fi
@@ -97,7 +97,7 @@ ME=$(git config hack.me 2>/dev/null || true)
 if [ "$GH_OK" = 1 ]; then
   LOGIN=$(gh api user --jq .login 2>/dev/null || true)
   if [ -n "$LOGIN" ]; then
-    git config hack.me "$LOGIN" && ME="$LOGIN" && ok "git config hack.me $LOGIN（从 gh api user 读的）"
+    git config hack.me "$LOGIN" && ME="$LOGIN" && ok "git config hack.me ${LOGIN}（从 gh api user 读的）"
   else
     warn "gh api user 没拿到 handle（网络？）"
   fi
@@ -106,7 +106,7 @@ if [ -z "$ME" ]; then
   warn "不知道你的 GitHub handle"
   fix "git config hack.me <你的 GitHub handle>   （不带 @；hooks 和 check 靠它认人）"
 elif [ "$GH_OK" != 1 ]; then
-  ok "hack.me = $ME（沿用已有设置；gh 登录后重跑会自动校正）"
+  ok "hack.me = ${ME}（沿用已有设置；gh 登录后重跑会自动校正）"
 fi
 EMAIL=$(git config user.email 2>/dev/null || true)
 case "$EMAIL" in
@@ -127,9 +127,9 @@ if [ ! -f docs/3-tasks.md ]; then
 elif [ -z "$ME" ]; then
   warn "先设 hack.me，才能找你在 3-tasks 里的节"
 elif grep -qiE "^## @${ME}[[:space:]]*$" docs/3-tasks.md; then
-  ok "docs/3-tasks.md 里有你的节「## @$ME」"
+  ok "docs/3-tasks.md 里有你的节「## @${ME}」"
 else
-  warn "docs/3-tasks.md 里还没有「## @$ME」节 —— 去找 lead 加（每人一节，只改自己那节）"
+  warn "docs/3-tasks.md 里还没有「## @${ME}」节 —— 去找 lead 加（每人一节，只改自己那节）"
 fi
 if [ -f scripts/check.sh ]; then bash scripts/check.sh --time | sed 's/^/      /'
 else warn "没有 scripts/check.sh，算不了倒计时"; fi
@@ -140,7 +140,7 @@ if [ -f scripts/check.sh ]; then
   CHK=$(bash scripts/check.sh --quick 2>&1); CHK_RC=$?
   SUM=$(printf '%s\n' "$CHK" | sed -n '/^======== 汇总/,$p')
   if [ -n "$SUM" ]; then printf '%s\n' "$SUM" | sed 's/^/      /'
-  else warn "check.sh 没有输出汇总行（退出码 $CHK_RC），看 logs/last-check.txt"; fi
+  else warn "check.sh 没有输出汇总行（退出码 ${CHK_RC}），看 logs/last-check.txt"; fi
   [ "$CHK_RC" -eq 0 ] || fix "有 ❌：完整输出在 logs/last-check.txt；是别人留下的就告诉 lead"
 else
   warn "没有 scripts/check.sh"

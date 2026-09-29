@@ -53,7 +53,7 @@ while IFS= read -r -d '' f; do
   if [[ $f =~ $DATA_RE ]]; then limit=$MAX_DATA_BYTES; limit_name=2MB; fi
   if [ "${size:-0}" -gt "$limit" ] 2>/dev/null; then
     kb=$((size / 1024))
-    bad_big_files="$bad_big_files    $f（${kb}KB > ${limit_name}）
+    bad_big_files="$bad_big_files    ${f}（${kb}KB > ${limit_name}）
 "
   fi
 done < <(git diff --cached --name-only --diff-filter=ACMR -z)
