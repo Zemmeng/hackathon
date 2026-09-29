@@ -609,7 +609,23 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   body>*:not(#cmpSheet){display:none!important}
   .cmp-sheet{position:static;display:block;background:none;padding:0}
   .cmp-doc{background:none;box-shadow:none;border-radius:0;padding:0;max-height:none;width:auto;overflow:visible;color:#000}
-  .pack-doc{padding:0;border-radius:0;font-size:11.5px}
+  /* one A4 page: tighter type and spacing than on screen */
+  .pack-doc{padding:0;border-radius:0;font-size:10.5px;line-height:1.4}
+  .pack-doc h1{font-size:18px}
+  .pack-doc h2{margin:12px 0 5px;padding-bottom:4px;font-size:9.5px}
+  .pd-head{margin-bottom:10px;padding-bottom:7px}
+  .pd-sub{margin:4px 0 8px}
+  .pd-facts>div{padding:6px 9px}
+  .pd-facts b{font-size:12px}
+  .pd-reason{margin-top:8px;padding:6px 11px}
+  .pd-t{font-size:10.5px}
+  .pd-t th{padding:4px 6px}
+  .pd-t td{padding:4px 6px}
+  .pd-note{margin-top:4px}
+  .pd-vms{margin-bottom:4px}
+  .pd-led{font-size:11px;padding:6px 12px;min-width:110px}
+  .pd-list{gap:2px}
+  .pd-foot{margin-top:12px;padding-top:6px}
   .pack-doc section,.pd-vms,.pd-t tr{break-inside:avoid}
   .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print{display:none!important}
@@ -2907,12 +2923,13 @@ function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
   return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
 }
-// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, hour, date }
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date }
 // (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
 // Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
 function cmpDocHTML(d,x,h){
   const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v);
-  const facts=[[lb.when,esc(d.when),''],[lb.decision,esc(d.decision||'—'),''],
+  const ch=(x.rows||[])[x.pick],wp=String(d.when||'').split(' · ');
+  const facts=[[lb.when,esc(wp[0]),esc(wp.slice(1).join(' · '))],[lb.decision,ch?esc(ch.id)+' · '+esc(ch.label):esc(d.decision||'—'),ch?esc(x.by||''):''],
     [lb.total,d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud),esc(L('assumed day rates','日租价为假设值'))]];
   const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${r.transit==null?'—':fmt(r.transit)}</td><td class="n">${r.peds==null?'—':fmt(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
   const eq=d.quote.lines.map(l=>`<tr><td>${esc(l.name||l.item)}${l.over?`<div class="pd-over">${esc(l.over)}</div>`:''}</td><td class="n">${l.qty==null?'?':fmt(l.qty)}</td><td class="n">${l.rate==null?'—':'A$'+fmt(l.rate)+esc(d.quote.per_day)}</td><td class="n">${fmt(l.days)}</td><td class="n">${aud(l.cost)}</td></tr>`).join('');
@@ -3028,7 +3045,7 @@ function cmpExport(){
     txt=CP.mod.pack.packText(p,lang);
     if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
       const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
-      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
+      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
     }
   }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
   let sh=document.getElementById('cmpSheet');

@@ -55,12 +55,13 @@ function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
   return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
 }
-// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, hour, date }
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date }
 // (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
 // Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
 function cmpDocHTML(d,x,h){
   const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v);
-  const facts=[[lb.when,esc(d.when),''],[lb.decision,esc(d.decision||'—'),''],
+  const ch=(x.rows||[])[x.pick],wp=String(d.when||'').split(' · ');
+  const facts=[[lb.when,esc(wp[0]),esc(wp.slice(1).join(' · '))],[lb.decision,ch?esc(ch.id)+' · '+esc(ch.label):esc(d.decision||'—'),ch?esc(x.by||''):''],
     [lb.total,d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud),esc(L('assumed day rates','日租价为假设值'))]];
   const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${r.transit==null?'—':fmt(r.transit)}</td><td class="n">${r.peds==null?'—':fmt(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
   const eq=d.quote.lines.map(l=>`<tr><td>${esc(l.name||l.item)}${l.over?`<div class="pd-over">${esc(l.over)}</div>`:''}</td><td class="n">${l.qty==null?'?':fmt(l.qty)}</td><td class="n">${l.rate==null?'—':'A$'+fmt(l.rate)+esc(d.quote.per_day)}</td><td class="n">${fmt(l.days)}</td><td class="n">${aud(l.cost)}</td></tr>`).join('');
@@ -176,7 +177,7 @@ function cmpExport(){
     txt=CP.mod.pack.packText(p,lang);
     if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
       const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
-      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
+      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
     }
   }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
   let sh=document.getElementById('cmpSheet');

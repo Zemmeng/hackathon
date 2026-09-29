@@ -599,7 +599,23 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   body>*:not(#cmpSheet){display:none!important}
   .cmp-sheet{position:static;display:block;background:none;padding:0}
   .cmp-doc{background:none;box-shadow:none;border-radius:0;padding:0;max-height:none;width:auto;overflow:visible;color:#000}
-  .pack-doc{padding:0;border-radius:0;font-size:11.5px}
+  /* one A4 page: tighter type and spacing than on screen */
+  .pack-doc{padding:0;border-radius:0;font-size:10.5px;line-height:1.4}
+  .pack-doc h1{font-size:18px}
+  .pack-doc h2{margin:12px 0 5px;padding-bottom:4px;font-size:9.5px}
+  .pd-head{margin-bottom:10px;padding-bottom:7px}
+  .pd-sub{margin:4px 0 8px}
+  .pd-facts>div{padding:6px 9px}
+  .pd-facts b{font-size:12px}
+  .pd-reason{margin-top:8px;padding:6px 11px}
+  .pd-t{font-size:10.5px}
+  .pd-t th{padding:4px 6px}
+  .pd-t td{padding:4px 6px}
+  .pd-note{margin-top:4px}
+  .pd-vms{margin-bottom:4px}
+  .pd-led{font-size:11px;padding:6px 12px;min-width:110px}
+  .pd-list{gap:2px}
+  .pd-foot{margin-top:12px;padding-top:6px}
   .pack-doc section,.pd-vms,.pd-t tr{break-inside:avoid}
   .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print{display:none!important}

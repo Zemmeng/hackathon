@@ -118,7 +118,8 @@ if (typeof be.options !== 'function') {
     else {
     const H = { L: (en) => en, esc: (x) => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])), fmt: (n) => Math.round(Number(n) || 0).toLocaleString('en-AU') };
     const rowsX = kits.map((k, i) => ({ id: k.id, label: ['Minimum', 'Standard', 'Guided'][i], ...cmpNumbers(k.s), hire: k.hire }));
-    const html = cmpDocHTML(pack.packDoc(p, 'en'), { rows: rowsX, pick: 2, hour: '08:00', date: '30 Sep 2026' }, H);
+    const html = cmpDocHTML(pack.packDoc(p, 'en'), { rows: rowsX, pick: 2, by: 'Contractor', hour: '08:00', date: '30 Sep 2026' }, H);
+    ok(html.includes('<b>C · Guided</b><small>Contractor</small>') && /<b>2026-10-\d\d to 2026-10-\d\d \(\d+ days\)<\/b><small>daily 07:00–19:00<\/small>/.test(html), '决定格写「C · Guided」+ 谁选的；时间格日期和每天时段分两行');
     ok(html.includes(`A$${H.fmt(g.hire)}`) && (html.match(/class="pd-led"/g) || []).length === 2 && html.includes('USE<br>RUSSELL'), `排版版：合计 A$${H.fmt(g.hire)}、VMS 两屏画成电子屏样式`);
     ok(/<tr class="pick"><td>C · Guided <em>chosen<\/em>/.test(html) && (html.match(/<tr/g) || []).length >= 3 + p.quote.lines.length, '比较过的 3 套方案一张表，选中的那行高亮；设备逐行');
     ok(/assumptions; RPM Hire&#39;s formal quote applies/.test(html) && /not field measurements/.test(html), '反向断言：排版版也写明假设值和仿真');
