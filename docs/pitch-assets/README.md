@@ -1,6 +1,6 @@
 # pitch 素材
 
-只放 **< 500KB** 的图和 PDF：截图、架构图、slides 导出的 PDF、提交成功页截图。
+图片只放 **< 500KB** 的（截图、架构图、提交成功页截图）；要交的 PDF（初筛、决赛 slides 导出）上限 **10MB**（D-0930-0116，pre-commit 和 `check [6]` 都按这条查）。
 命名 `NN-说明.png`（例 `01-首页.png`）。
 
 - 视频不入库：放网盘或 unlisted 链接，写进 `hackathon.conf` 的 `VIDEO_URL`
