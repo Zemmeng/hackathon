@@ -82,9 +82,9 @@ if [ "$(lower "$ME")" = "$(lower "$DEPLOYER")" ]; then
   echo "[1/6] 身份 @$ME = DEPLOYER ✅"
 elif [ -n "$BACKUP_LEAD" ] && [ "$(lower "$ME")" = "$(lower "$BACKUP_LEAD")" ]; then
   BACKUP_DEPLOY=1
-  echo "[1/6] 身份 @$ME = BACKUP_LEAD ⚠️ 备份部署（DEPLOYER 是 @$DEPLOYER；确认过对方不在再继续，deploy.log 会标「备份部署」）"
+  echo "[1/6] 身份 @$ME = BACKUP_LEAD ⚠️ 备份部署（DEPLOYER 是 @${DEPLOYER}；确认过对方不在再继续，deploy.log 会标「备份部署」）"
 else
-  refuse "只有 DEPLOYER（@$DEPLOYER）${BACKUP_LEAD:+或 BACKUP_LEAD（@$BACKUP_LEAD）}能部署，你是 @$ME" "找 @$DEPLOYER 部署；要换部署人由 lead 改 hackathon.conf"
+  refuse "只有 DEPLOYER（@${DEPLOYER}）${BACKUP_LEAD:+或 BACKUP_LEAD（@${BACKUP_LEAD}）}能部署，你是 @$ME" "找 @$DEPLOYER 部署；要换部署人由 lead 改 hackathon.conf"
 fi
 
 # ---- [2/6] 工作区干净 ----
@@ -102,7 +102,7 @@ COMMIT=$(g rev-parse --short HEAD)
 BR=$(g symbolic-ref --short -q HEAD 2>/dev/null || true)
 TAGS=$(g tag --points-at HEAD 2>/dev/null | tr '\n' ' ' | sed 's/ $//')
 if [ "$BR" != main ] && [ -z "$TAGS" ]; then
-  refuse "HEAD（$COMMIT，${BR:-detached}）既不在 main 上也不在 tag 上" "git switch main && git pull；或 git switch --detach demo-v1"
+  refuse "HEAD（${COMMIT}，${BR:-detached}）既不在 main 上也不在 tag 上" "git switch main && git pull；或 git switch --detach demo-v1"
 fi
 WHERE="${BR:+$BR }${TAGS:+tag $TAGS }@ $COMMIT"
 if g remote get-url origin >/dev/null 2>&1; then
@@ -111,7 +111,7 @@ if g remote get-url origin >/dev/null 2>&1; then
   elif [ "$BR" = main ]; then
     ORIGIN_MAIN=$(g rev-parse -q --verify refs/remotes/origin/main 2>/dev/null || true)
     [ "$ORIGIN_MAIN" = "$(g rev-parse HEAD)" ] \
-      || refuse "本地 main（$COMMIT）和 origin/main（${ORIGIN_MAIN:0:7}）不一致" "git pull（本地有没推的提交就先走 PR 合进 main）"
+      || refuse "本地 main（${COMMIT}）和 origin/main（${ORIGIN_MAIN:0:7}）不一致" "git pull（本地有没推的提交就先走 PR 合进 main）"
     echo "[3/6] $WHERE 与 origin/main 一致 ✅"
   else
     ok_tag=""
@@ -131,9 +131,9 @@ PHASE=$(bash "$SELF_DIR/check.sh" --time-raw 2>/dev/null | sed -n 's/^PHASE=//p'
 DEMO_TAG=$(printf '%s\n' $TAGS | grep '^demo-' | head -n 1)
 case "$PHASE" in
   *代码冻结*|已截止)
-    if [ -n "$DEMO_TAG" ]; then echo "[4/6] 阶段 $PHASE，HEAD 在 $DEMO_TAG 上 ✅"
+    if [ -n "$DEMO_TAG" ]; then echo "[4/6] 阶段 ${PHASE}，HEAD 在 $DEMO_TAG 上 ✅"
     elif [ "$HOTFIX" = 1 ]; then echo "[4/6] 阶段 $PHASE ⚠️ --hotfix：不在 demo-* tag 上也部署（事后打 tag、在 decisions 记一条）"
-    else refuse "阶段 $PHASE：代码冻结后只能从 demo-* tag 部署" "git tag -a demo-v2 -m '可演示版本' && git push origin demo-v2 && git switch --detach demo-v2；P0 紧急修复加 --hotfix"
+    else refuse "阶段 ${PHASE}：代码冻结后只能从 demo-* tag 部署" "git tag -a demo-v2 -m '可演示版本' && git push origin demo-v2 && git switch --detach demo-v2；P0 紧急修复加 --hotfix"
     fi ;;
   *) echo "[4/6] 阶段 ${PHASE:-未知} ✅" ;;
 esac
@@ -166,7 +166,7 @@ now_str() {
 mkdir -p logs
 log_line() {
   local who="@$ME"
-  [ "$BACKUP_DEPLOY" = 1 ] && who="@$ME（备份部署）"
+  [ "$BACKUP_DEPLOY" = 1 ] && who="@${ME}（备份部署）"
   printf '%s | %s | %s | %s\n' "$(now_str)" "$1" "$COMMIT${TAGS:+ ($TAGS)}" "$who" >>logs/deploy.log
 }
 has_deploy_script() {
@@ -196,12 +196,12 @@ for m in $MODULES; do
     (cd "apps/$m" && bash deploy.sh); rc=$?
   else
     echo "[$i/$N] $m ❌ 没有部署方式：package.json 里加 \"deploy\" 脚本，或写 apps/$m/deploy.sh"
-    log_line "$m（失败：没有部署方式）"
+    log_line "${m}（失败：没有部署方式）"
     print_rollback; exit 1
   fi
   if [ "$rc" -ne 0 ]; then
-    echo "[$i/$N] $m ❌ 部署失败（退出码 $rc）"
-    log_line "$m（失败）"
+    echo "[$i/$N] $m ❌ 部署失败（退出码 ${rc}）"
+    log_line "${m}（失败）"
     print_rollback; exit 1
   fi
   log_line "$m"
@@ -223,7 +223,7 @@ fi
 echo ""
 echo "✅ 部署完成：$MODULES"
 echo "   URL：${DEMO_URL:-（DEMO_URL 未设置）}"
-echo "   commit：$COMMIT${TAGS:+（tag $TAGS）} · 时间：$(now_str) · 部署人：@$ME$([ "$BACKUP_DEPLOY" = 1 ] && echo '（备份部署）')"
+echo "   commit：$COMMIT${TAGS:+（tag ${TAGS}）} · 时间：$(now_str) · 部署人：@$ME$([ "$BACKUP_DEPLOY" = 1 ] && echo '（备份部署）')"
 echo "   已追加到 logs/deploy.log"
 echo "   提醒 lead：更新 docs/3-tasks.md 顶部「线上版本」（tag 或 commit + 部署时间）"
 exit 0
