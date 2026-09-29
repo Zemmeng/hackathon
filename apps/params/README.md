@@ -31,21 +31,24 @@ bash apps/params/test.sh
 | `apps/engine` | 按 persona 选参数算各条路比例 | `apps/params/public/params.json` |
 | `apps/web` | 界面上展示「这个数哪来的」 | 同上（只读） |
 
+**引擎字段名（#20 `applyParams`，以此为准）：** `mix.*` · `anchors.generic_warning_divert` / `named_route_divert` · `persona.<type>.{hurry, familiar, trust|sign_trust, queue_averse, truck_only}`。`value: null` → 该项退回引擎假设值，不算错。
+
 字段含义见 `docs/arch/T12-params-PRD.md` 第 4 节；本 README 给的是**每个数一行的出处表**。
 
 ## 参数出处表
 
 | 键 | 值 | 区间 | 置信 | 出处 | 怎么来的 |
 |---|---|---|---|---|---|
-| `mix.commuter` | 0.50 | 0.40–0.60 | low | ABS Census 2016（Huda 2025 转述 CBD 通勤）+ VISTA | CBD 车行以通勤为主的工作假设 |
-| `mix.local` | 0.25 | 0.15–0.35 | low | VISTA trip purpose | 本地办事/购物 |
-| `mix.tourist` | 0.10 | 0.05–0.20 | low | City of Melbourne 访客经济（定性） | 游客车行占比偏低 |
-| `mix.delivery` | 0.15 | 0.08–0.22 | low | ABS SMVU 车队构成；O'Fallon 城配研究 | 商用车 10–20% 量级 |
+| `mix.commuter` | 0.50 | 0.40–0.60 | low | ABS Census 2016（Huda 2025 转述 CBD 通勤）+ VISTA | **与原假设相同**；出处只「不矛盾」，不是从出处换算出另一个比例 |
+| `mix.local` | 0.25 | 0.15–0.35 | low | VISTA trip purpose | 同上 |
+| `mix.tourist` | 0.10 | 0.05–0.20 | low | City of Melbourne 访客经济（定性） | 同上 |
+| `mix.delivery` | 0.15 | 0.08–0.22 | low | ABS SMVU 车队构成；O'Fallon 城配研究 | 同上；车队构成≠CBD 车流份额 |
 | `anchors.generic_warning_divert` | 0.03 | 0.01–0.06 | **low** | 工作假设（D-0929-1435 两点校准）；Bonsall 1999 / Wardman 1996 给出广域 | 纯「前方施工」实测缺失 |
 | `anchors.named_route_divert` | 0.20 | 0.10–0.30 | **high** | **Erke, Sagberg & Hagman 2007**, *Effects of route guidance VMS on driver behaviour*, TR Part F | 实地试验：约 1/5 车辆按推荐改道 |
 | `anchors.stated_to_actual` | 0.20 | 0.10–0.35 | **high** | **Chatterjee 2002**, *Driver response to VMS information in London*, TR Part A | 问卷说会改道的人里只有 1/5 真改 |
 | `persona.*.sign_trust` | null | — | **none** | Ermagun 2021 定性（信任↑遵从↑） | 无按四类人的信任率 |
-| `persona.*.route_familiarity` | 0.25–0.80 | 见 JSON | low | 定性 | P1 工作假设 |
+| `persona.*.familiar` | 0.25–0.80 | 见 JSON | low | 定性 | P1 工作假设；引擎字段名 `familiar`（#20 `applyParams`） |
+| `persona.*.hurry` / `queue_averse` / `truck_only` | null | — | **none** | — | 引擎会认这些名；找不到就 null，退回引擎假设值 |
 | `vms.legibility_index_m_per_mm` | 25 | 20–28 | medium | NSW TSI-SP-008（700×字高）；MUTCD/Access Board 35–40 ft/inch；AS 4852 | 可读距离 ≈ 25 m × 字高 mm |
 | `vms.reading_rate_wps` | 2.5 | 1.5–4.0 | low | Austroads GTM Pt 10；Dudek 2001 NJDOT | 无单一澳洲强制值 |
 | `value_of_time.private_car_occupant_aud_ph` | 14.99 | 14–16 | medium | **ATAP** Travel Time（40% AWE） | 人·小时 |
@@ -56,7 +59,7 @@ bash apps/params/test.sh
 
 ### 最没把握的数（给 lead / 评审看）
 
-1. **`mix` 四类占比** — 没有「墨尔本 CBD 车行出行目的四分」的直接公开表；0.50/0.25/0.10/0.15 是把 VISTA、ABS、CBD 岗位结构拼出来的**工作假设**，置信 `low`。
+1. **`mix` 四类占比** — 数值仍是原假设 50/25/10/15。公开材料**没有**「墨尔本 CBD 车行出行目的四分」表；现有出处只与该拆分**不矛盾**（通勤占主体、商用车 10–20% 量级），**不是**独立换算出的新比例。置信 `low`，界面宜标「假设」。
 2. **`generic_warning_divert` = 0.03** — 纯警告不带推荐路的改道率，文献只有广域（5%–80% 总改道）；0.03 来自 lead 的校准锚点，不是实测。
 3. **`sign_trust` 按 persona** — 明确 `null`。四类人信任率没有干净公开数；引擎若要用，只能先用统一 trust 或读数里的 `trust` 字段（contract §路人读数），不要假装有出处。
 
