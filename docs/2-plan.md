@@ -108,7 +108,7 @@
 | pitch | `docs/4-demo.md` | 待定 | — | — |
 
 - 线上地址前面要加域名 = `hackathon.conf` 的 `DEMO_URL`（现在还空着，M1 后 lead 填）。部署规则：每个模块的 `public/` 原样挂到 `/<模块>/public/`
-- T6 = lead 管集成、部署（DEPLOYER）、合 PR，另管 sim 路口放大
+- T6 = lead 管集成、合 PR，另管 sim 路口放大；**部署由 @unicornnnnnny 执行**（DEPLOYER，`D-0929-1322`），lead 是备份部署人
 - sim 的界面文件（`apps/sim/public/` 下 index.html、style.css、js/ui.js）归 @unicornnnnnny 改，引擎、数据、测试归 @Zemmeng（`D-0929-1226`）
 - T4 和 T5 怎么交接：T4 交出「4 类路人各自看到了什么、能走哪几条路、各要多久」，T5 交回「每类人注意到没、看懂没、每条路的概率、一句理由」。字段定稿后写进 `docs/contract.md`
 
