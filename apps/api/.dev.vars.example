@@ -1,0 +1,6 @@
+# wrangler dev 读的是本目录的 .dev.vars，不是 .env：cp .dev.vars.example .dev.vars
+# 🔒 .dev.vars 已被 .gitignore 忽略；这份示例只写变量名和假值。线上密钥用 npx wrangler secret put <NAME>
+# 1 = 不调大模型，只用关键词规则（/api/health 会返回 "mock":true）；只有写 0 才会真调用
+MOCK=1
+# 大模型定了以后填（D-0929-1435 还没定用哪家）；key 的变量名到时候加在这里，值不进仓库
+LLM_MODEL=
