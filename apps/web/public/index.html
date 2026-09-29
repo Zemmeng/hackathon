@@ -333,54 +333,75 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
    Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
    the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
    comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
-   Text sits on ≥ .72 tint; reduced transparency or no backdrop-filter → solid surfaces.
+   Apple-style clear glass (09-29 ask): the tint is light (~.4); --glass-tone dims the map behind it (dark) or lifts it
+   (light) so text still clears 4.5:1. Reduced transparency or no backdrop-filter → solid surfaces.
    ============================================================ */
 :root,:root[data-theme="dark"]{
-  --bg:#07090B;--raised:rgba(255,255,255,.06);--line:rgba(255,255,255,.10);--line-2:rgba(255,255,255,.22);
-  --fg:#F5F7F8;--fg-2:#AEB7BE;--fg-3:#7D8891;
-  --panel:rgba(13,17,21,.78);--glass:rgba(13,17,21,.76);--glass-line:rgba(255,255,255,.16);
-  --shell:rgba(13,17,21,.76);--shell-line:rgba(255,255,255,.14);--shell-solid:#0F1419;
-  --shadow:0 18px 48px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.10);
-  --hl:rgba(255,255,255,.10);--hl-edge:rgba(255,255,255,.16);
+  --bg:#07090B;--raised:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.24);
+  --fg:#F7F9FA;--fg-2:#CDD4D9;--fg-3:#B8C1C7;
+  --panel:rgba(22,27,34,.40);--glass:rgba(22,27,34,.38);--glass-line:rgba(255,255,255,.18);
+  --shell:rgba(22,27,34,.40);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
+  --glass-tone:brightness(.5) saturate(1.9);
+  --tone-deep:brightness(.5) saturate(1.9);--shell-deep:rgba(22,27,34,.40);--glass-deep:rgba(22,27,34,.38);--tone-fog:brightness(.33) saturate(1.6);--tone-fog-deep:brightness(.33) saturate(1.6);
+  --shadow:0 20px 50px rgba(0,0,0,.36);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.05),inset 0 26px 40px -34px rgba(255,255,255,.38);
+  --hl:rgba(255,255,255,.08);--hl-2:rgba(255,255,255,.05);--hl-edge:rgba(255,255,255,.18);
   --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;--sun-ink:#FFB340;
   --tt-moon:var(--sun);--tt-moon-fg:var(--on-sun);--tt-sun:transparent;--tt-sun-fg:var(--fg-3);
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
-    --bg:#E7ECEE;--raised:rgba(255,255,255,.62);--line:rgba(17,27,34,.11);--line-2:rgba(17,27,34,.22);
-    --fg:#0F1417;--fg-2:#46535C;--fg-3:#66737C;
-    --panel:rgba(255,255,255,.80);--glass:rgba(255,255,255,.78);--glass-line:rgba(255,255,255,.92);
-    --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
-    --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
-    --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+    --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+    --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+    --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
+    --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+    --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
+    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+    --shadow:0 18px 44px rgba(28,40,50,.14);
+    --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+    --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
     --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
   }
 }
 :root[data-theme="light"]{
-  --bg:#E7ECEE;--raised:rgba(255,255,255,.62);--line:rgba(17,27,34,.11);--line-2:rgba(17,27,34,.22);
-  --fg:#0F1417;--fg-2:#46535C;--fg-3:#66737C;
-  --panel:rgba(255,255,255,.80);--glass:rgba(255,255,255,.78);--glass-line:rgba(255,255,255,.92);
-  --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
-  --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
-  --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+  --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+  --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+  --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
+  --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+  --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
+  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+  --shadow:0 18px 44px rgba(28,40,50,.14);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+  --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
   --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
 }
 
-/* glass surfaces: tint + a soft top-left sheen + a lit rim */
+/* glass adapts to what is behind it (like Apple's): over dark content (imagery / NIR basemap, heat layer) light glass
+   lifts harder and turns milkier (dark text needs a near-white ground for 4.5:1); over fog's near-white map dark
+   glass dims harder. Each theme sets its own
+   --tone-deep / --tone-fog(-deep), so these rules hold for both. data-bm / data-wx are set in js/5-app.js. */
+:root[data-bm="imagery"],:root[data-bm="nir"],:root[data-wx="heat"]{--glass-tone:var(--tone-deep);--shell:var(--shell-deep);--glass:var(--glass-deep)}
+:root[data-wx="fog"]{--glass-tone:var(--tone-fog)}
+:root[data-wx="fog"][data-bm="imagery"],:root[data-wx="fog"][data-bm="nir"]{--glass-tone:var(--tone-fog-deep)}
+
+/* glass surfaces: a light tint over a toned backdrop, a sheen across the top-left, a lit rim (brighter top-left,
+   fainter bottom-right) and a soft inner glow for thickness */
 .top,.rail,.panel,.timeline,.panel-open{
-  background:linear-gradient(135deg,var(--hl),transparent 34%),var(--shell);
+  background:linear-gradient(150deg,var(--hl),transparent 36%,transparent 72%,var(--hl-2)),var(--shell);
   border:1px solid var(--shell-line);
-  -webkit-backdrop-filter:blur(26px) saturate(160%);backdrop-filter:blur(26px) saturate(160%);
-  box-shadow:var(--shadow);
+  -webkit-backdrop-filter:blur(20px) var(--glass-tone);backdrop-filter:blur(20px) var(--glass-tone);
+  box-shadow:var(--shadow),var(--rim);
 }
 .glass{
-  background:linear-gradient(135deg,var(--hl),transparent 40%),var(--glass);
+  background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),var(--glass);
   border:1px solid var(--glass-line);border-radius:16px;
-  -webkit-backdrop-filter:blur(20px) saturate(165%);backdrop-filter:blur(20px) saturate(165%);
-  box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px 0 var(--hl-edge);
+  -webkit-backdrop-filter:blur(16px) var(--glass-tone);backdrop-filter:blur(16px) var(--glass-tone);
+  box-shadow:0 12px 32px rgba(0,0,0,.2),var(--rim);
 }
+/* real refraction (js/7-glass.js sets --lg-url on the panel and the top bar) */
+.lg-on{-webkit-backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone);backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone)}
 
 /* brand + workflow */
 .brand>svg{width:32px;height:32px;padding:6px;border-radius:50%;background:var(--raised);box-shadow:inset 0 1px 0 var(--hl-edge)}
@@ -1989,7 +2010,7 @@ function renderWxSwitcher(){
   el.querySelectorAll('button').forEach(b=>{b.onclick=()=>setWeather(b.dataset.k);b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=WX_KINDS.indexOf(S.wx)+(e.key==='ArrowRight'?1:-1);setWeather(WX_KINDS[(i+6)%6]);el.querySelector(`[data-k="${S.wx}"]`).focus();e.preventDefault();}};});
 }
 function setWeather(k){
-  S.wx=k;ls.set('rt-wx',k);WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
+  S.wx=k;ls.set('rt-wx',k);document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
   renderWxSwitcher();renderLegend();updateSafety();renderPanel();renderAlert();
 }
 
@@ -2031,7 +2052,7 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
-function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
+function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
   const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
 
 /* ---------- histogram ---------- */
@@ -2103,7 +2124,7 @@ function loop(now){
 /* ---------- boot ---------- */
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
-  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;
+  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;document.documentElement.dataset.wx=S.wx;
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
@@ -2660,20 +2681,21 @@ function lgFilter(id,scales){
   lgEnsureDefs().appendChild(f);return{f,img};
 }
 function liquidGlass(el,opts){
-  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:14,saturate:1.6},opts);
+  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:12},opts);
   const id='lg-'+(++lgUid),parts=lgFilter(id,[o.scale,o.scale+o.chroma,o.scale+2*o.chroma]);let timer=0;
   const refresh=()=>{const w=el.offsetWidth,h=el.offsetHeight;if(!w||!h)return;const r=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;parts.img.setAttribute('href',lgMap(w,h,r,o.border,o.mapBlur));parts.img.setAttribute('width',w);parts.img.setAttribute('height',h);};
-  refresh();el.style.backdropFilter=`url(#${id}) blur(${o.blur}px) saturate(${o.saturate})`;el.classList.add('lg-on');
+  /* the tone (dim / lift) lives in CSS (.lg-on + --glass-tone) so a theme switch needs no re-apply */
+  refresh();el.style.setProperty('--lg-url',`url(#${id})`);el.style.setProperty('--lg-blur',o.blur+'px');el.classList.add('lg-on');
   const ro=new ResizeObserver(()=>{clearTimeout(timer);timer=setTimeout(refresh,120);});ro.observe(el);
-  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.backdropFilter='';el.classList.remove('lg-on');}};
+  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.removeProperty('--lg-url');el.style.removeProperty('--lg-blur');el.classList.remove('lg-on');}};
 }
 function applyGlass(){
   for(const g of GL.fx)g.destroy();GL.fx=[];
   const desktop=matchMedia('(min-width: 821px)').matches,lowT=matchMedia('(prefers-reduced-transparency: reduce)').matches;
   if(!LG_OK||!desktop||lowT)return;
   const P=document.getElementById('panel'),T=document.querySelector('.top');
-  if(P)GL.fx.push(liquidGlass(P,{scale:-84,chroma:5,border:.05,mapBlur:14,blur:16}));
-  if(T)GL.fx.push(liquidGlass(T,{scale:-60,chroma:4,border:.14,mapBlur:9,blur:14}));
+  if(P)GL.fx.push(liquidGlass(P,{scale:-110,chroma:6,border:.05,mapBlur:14,blur:12}));
+  if(T)GL.fx.push(liquidGlass(T,{scale:-78,chroma:5,border:.14,mapBlur:9,blur:10}));
 }
 
 /* ---------- compact analysis panel ---------- */

@@ -53,10 +53,27 @@ check("prefers-reduced-transparency 时 JS 不挂折射滤镜", "prefers-reduced
 check("@supports not (backdrop-filter)：玻璃改实底", "var(--shell-solid)" in block(CSS, "@supports not ((backdrop-filter"))
 check("prefers-reduced-motion：面板收起 / 折叠箭头不做过渡", "transition:none" in block(CSS, "@media (prefers-reduced-motion: reduce){\n  .panel"))
 
-# 2. 可读性：文字底下的玻璃不透明度 ≥ 0.72（PRD）
+# 2. 可读性：玻璃底色很浅（像 Apple 那样透），靠 --glass-tone 把背后的地图压暗（深色）/ 提亮（浅色）保住 4.5:1。
+#    实测（09-29，1440×900，3 种底图 × 6 种天气 × 深浅两套，最小字 --fg-3 叠上高光和卡片的最坏情况）：深色 ≥ 4.50，浅色 ≥ 4.57
 t14 = CSS[CSS.find("T14 liquid glass"):]
-t14_alphas = [float(a) for a in re.findall(r"--(?:panel|glass|shell):rgba\([^)]*,\s*(\.\d+)\)", t14)]
-check(f"玻璃底色不透明度都 ≥ 0.72（{len(t14_alphas)} 处）", t14_alphas and min(t14_alphas) >= .72, f"最小 {min(t14_alphas) if t14_alphas else None}")
+shells = [float(a) for a in re.findall(r"--shell:rgba\([^)]*,\s*(\.\d+)\)", t14)]
+check(f"常规玻璃底色是浅的（--shell 不透明度 ≤ 0.5，{len(shells)} 处）", len(shells) == 3 and max(shells) <= .5, f"{shells}")
+tones = re.findall(r"--glass-tone:(brightness[^;]+);", t14)
+check("深浅两套都有 --glass-tone：深色压暗（brightness < 1），浅色提亮（brightness > 1）",
+      len(tones) == 3 and float(re.search(r"brightness\(([\d.]+)", tones[0]).group(1)) < 1
+      and all(float(re.search(r"brightness\(([\d.]+)", t).group(1)) > 1 for t in tones[1:]))
+check("玻璃块的 backdrop-filter 都带 var(--glass-tone)",
+      re.search(r"\.top,\.rail,\.panel,\.timeline,\.panel-open\{[^}]*backdrop-filter:blur\(\d+px\) var\(--glass-tone\)", t14) is not None
+      and re.search(r"\.glass\{[^}]*backdrop-filter:blur\(\d+px\) var\(--glass-tone\)", t14) is not None)
+check("折射也走 CSS：.lg-on 用 var(--lg-url) + var(--glass-tone)，JS 只设 --lg-url",
+      "backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone)" in t14
+      and "setProperty('--lg-url'" in GLASS and "el.style.backdropFilter=" not in GLASS)
+check("随背景自适应：深色底图 / 高温时用 --tone-deep，浓雾时用 --tone-fog",
+      ':root[data-bm="imagery"],:root[data-bm="nir"],:root[data-wx="heat"]{--glass-tone:var(--tone-deep)' in t14
+      and ':root[data-wx="fog"]{--glass-tone:var(--tone-fog)}' in t14 and t14.count("--tone-deep:") == 3)
+check("JS 把当前底图 / 天气写到 <html data-bm / data-wx>",
+      "document.documentElement.dataset.bm=S.basemap" in APP and "document.documentElement.dataset.wx=k" in APP
+      and "document.documentElement.dataset.wx=S.wx" in APP)
 
 # 3. 折射只在 Chromium 桌面上挂，只挂 1–2 块（PRD：backdrop-filter 只给少数 HUD，折射只给 1–2 个面板）
 check("折射只在桌面宽度（≥ 821px）挂", "(min-width: 821px)" in GLASS)
@@ -93,7 +110,7 @@ check("复制失败的提示在简洁模式下仍显示", "#copyFallback p.muted
 act = CSS[CSS.find("one action colour"):CSS.find("floating layout (desktop)")]
 check("主按钮 / 播放键 / 选中的 chips、倍速、语言都用 --sun",
       all(re.search(sel + r"[^{]*\{[^}]*background:var\(--sun\)", act) for sel in (r"\.btn", r"\.play", r"\.chips \[aria-pressed")))
-check("浅色主题有更深的橙色文字色 --sun-ink", CSS.count("--sun-ink:#A35A00") == 2)
+check("浅色主题有更深的橙色文字色 --sun-ink", CSS.count("--sun-ink:#874800") == 2)
 
 # 7. 道路比建筑清楚（09-29 需求）：底图重画时压暗屋顶、描路沿
 check("底图重画时调 emphasizeRoads（每次视图变化一次，不是每帧）",

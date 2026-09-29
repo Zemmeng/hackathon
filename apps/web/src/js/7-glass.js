@@ -42,20 +42,21 @@ function lgFilter(id,scales){
   lgEnsureDefs().appendChild(f);return{f,img};
 }
 function liquidGlass(el,opts){
-  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:14,saturate:1.6},opts);
+  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:12},opts);
   const id='lg-'+(++lgUid),parts=lgFilter(id,[o.scale,o.scale+o.chroma,o.scale+2*o.chroma]);let timer=0;
   const refresh=()=>{const w=el.offsetWidth,h=el.offsetHeight;if(!w||!h)return;const r=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;parts.img.setAttribute('href',lgMap(w,h,r,o.border,o.mapBlur));parts.img.setAttribute('width',w);parts.img.setAttribute('height',h);};
-  refresh();el.style.backdropFilter=`url(#${id}) blur(${o.blur}px) saturate(${o.saturate})`;el.classList.add('lg-on');
+  /* the tone (dim / lift) lives in CSS (.lg-on + --glass-tone) so a theme switch needs no re-apply */
+  refresh();el.style.setProperty('--lg-url',`url(#${id})`);el.style.setProperty('--lg-blur',o.blur+'px');el.classList.add('lg-on');
   const ro=new ResizeObserver(()=>{clearTimeout(timer);timer=setTimeout(refresh,120);});ro.observe(el);
-  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.backdropFilter='';el.classList.remove('lg-on');}};
+  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.removeProperty('--lg-url');el.style.removeProperty('--lg-blur');el.classList.remove('lg-on');}};
 }
 function applyGlass(){
   for(const g of GL.fx)g.destroy();GL.fx=[];
   const desktop=matchMedia('(min-width: 821px)').matches,lowT=matchMedia('(prefers-reduced-transparency: reduce)').matches;
   if(!LG_OK||!desktop||lowT)return;
   const P=document.getElementById('panel'),T=document.querySelector('.top');
-  if(P)GL.fx.push(liquidGlass(P,{scale:-84,chroma:5,border:.05,mapBlur:14,blur:16}));
-  if(T)GL.fx.push(liquidGlass(T,{scale:-60,chroma:4,border:.14,mapBlur:9,blur:14}));
+  if(P)GL.fx.push(liquidGlass(P,{scale:-110,chroma:6,border:.05,mapBlur:14,blur:12}));
+  if(T)GL.fx.push(liquidGlass(T,{scale:-78,chroma:5,border:.14,mapBlur:9,blur:10}));
 }
 
 /* ---------- compact analysis panel ---------- */

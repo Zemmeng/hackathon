@@ -390,7 +390,7 @@ function renderWxSwitcher(){
   el.querySelectorAll('button').forEach(b=>{b.onclick=()=>setWeather(b.dataset.k);b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=WX_KINDS.indexOf(S.wx)+(e.key==='ArrowRight'?1:-1);setWeather(WX_KINDS[(i+6)%6]);el.querySelector(`[data-k="${S.wx}"]`).focus();e.preventDefault();}};});
 }
 function setWeather(k){
-  S.wx=k;ls.set('rt-wx',k);WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
+  S.wx=k;ls.set('rt-wx',k);document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
   renderWxSwitcher();renderLegend();updateSafety();renderPanel();renderAlert();
 }
 
@@ -432,7 +432,7 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
-function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
+function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
   const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
 
 /* ---------- histogram ---------- */
@@ -504,7 +504,7 @@ function loop(now){
 /* ---------- boot ---------- */
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
-  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;
+  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;document.documentElement.dataset.wx=S.wx;
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
