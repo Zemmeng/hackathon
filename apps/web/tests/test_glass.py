@@ -54,10 +54,11 @@ check("@supports not (backdrop-filter)：玻璃改实底", "var(--shell-solid)" 
 check("prefers-reduced-motion：面板收起 / 折叠箭头不做过渡", "transition:none" in block(CSS, "@media (prefers-reduced-motion: reduce){\n  .panel"))
 
 # 2. 可读性：玻璃底色很浅（像 Apple 那样透），靠 --glass-tone 把背后的地图压暗（深色）/ 提亮（浅色）保住 4.5:1。
-#    实测（09-29，1440×900，3 种底图 × 6 种天气 × 深浅两套，最小字 --fg-3 叠上高光和卡片的最坏情况）：深色 ≥ 4.50，浅色 ≥ 4.57
+#    实测（09-29，1440×900，3 种底图 × 6 种天气 × 深浅两套，最小字 --fg-3 叠上高光和卡片的最坏情况）：
+#    底色 0.40 时深色 ≥ 4.50、浅色 ≥ 4.57；09-29 晚再调透到 0.30（压暗 .44 / 提亮 1.24）后深色 ≥ 4.63、浅色 ≥ 4.57
 t14 = CSS[CSS.find("T14 liquid glass"):]
 shells = [float(a) for a in re.findall(r"--shell:rgba\([^)]*,\s*(\.\d+)\)", t14)]
-check(f"常规玻璃底色是浅的（--shell 不透明度 ≤ 0.5，{len(shells)} 处）", len(shells) == 3 and max(shells) <= .5, f"{shells}")
+check(f"常规玻璃底色是浅的（--shell 不透明度 ≤ 0.35，{len(shells)} 处）", len(shells) == 3 and max(shells) <= .35, f"{shells}")
 tones = re.findall(r"--glass-tone:(brightness[^;]+);", t14)
 check("深浅两套都有 --glass-tone：深色压暗（brightness < 1），浅色提亮（brightness > 1）",
       len(tones) == 3 and float(re.search(r"brightness\(([\d.]+)", tones[0]).group(1)) < 1

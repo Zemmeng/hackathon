@@ -162,16 +162,22 @@ export function createEngine({ network, flows, readSigns, params, personas, mix 
     }
 
     const typeTot = Object.fromEntries(TYPES.map(t => [t, { delay_min: 0, vehicles: 0 }]));
+    let credit = 0; // veh·s：绕行平时就比原路快的那部分「省下的时间」，从总延误里退回去（见下）
     const approaches = ctx.map((c, i) => {
       const F = ev.used?.[i] ?? c.ap.volume;
       const stayBase = c.ap.stayLinks.reduce((s, id) => s + b.links.get(id).t, 0);
       const byT = avg[i] || Object.fromEntries(TYPES.map(t => [t, { stay: 1 }]));
       const share = overall(byT);
+      // 绕行平时就比原路快（小街 20 km/h、平行大街 40 km/h；flows.json 是计数不是均衡）：平时不走它，说明原路对这些车
+      // 有引擎没建模的好处（起终点就在这条街上、停车、送货）。多花的时间从「原路 / 这条绕行平时」两者快的那个算起 →
+      // 封路不会让绕行的车反而省时间（T21：Little Bourke St 单独全封算出 −65 车·分钟）
       const routes = c.routes.map(r => {
         const now = pathNow(ev, r.links);
+        const floor = Math.min(stayBase, pathNow(b, r.links));
         return { id: r.id, name: r.name, usual_min: round1(r.usual_min), now_min: round1(now / 60), share: r3(share[r.id] || 0),
-          flow: Math.round((share[r.id] || 0) * F), truck: r.truck, turn_m: r.id === 'stay' ? null : Math.round(r.diverge_m), extra_min: (now - stayBase) / 60 };
+          flow: Math.round((share[r.id] || 0) * F), truck: r.truck, turn_m: r.id === 'stay' ? null : Math.round(r.diverge_m), extra_min: (now - floor) / 60, gain_s: stayBase - floor };
       });
+      credit += F * routes.reduce((s, r) => s + (share[r.id] || 0) * r.gain_s, 0);
       const extraOf = sh => routes.reduce((s, r) => s + (sh[r.id] || 0) * r.extra_min, 0);
       const by_type = {};
       for (const t of TYPES) {
@@ -194,7 +200,7 @@ export function createEngine({ network, flows, readSigns, params, personas, mix 
         worksite: c.ws.id, entry: c.ap.entry, street: c.ap.street, dir: c.ap.dir, to: c.ap.to, volume: Math.round(F), blocked: c.ap.blocked,
         queue_m: Math.round(maxQueue(ev, c.ap.chain)), delay_min: Math.round(F * extraOf(share)),
         share: Object.fromEntries(Object.entries(share).map(([k, v]) => [k, r3(v)])),
-        routes: routes.map(r => ({ ...r, extra_min: round1(r.extra_min) })),
+        routes: routes.map(({ gain_s, ...r }) => ({ ...r, extra_min: round1(r.extra_min) })), // eslint-disable-line no-unused-vars
         by_type,
         signs: c.reqs.signs.map(s => ({ m: s.m, kind: s.kind, read_s: s.read_s, ...(s.frames ? { frames: s.frames } : { text: s.text }) })),
       };
@@ -209,7 +215,7 @@ export function createEngine({ network, flows, readSigns, params, personas, mix 
       if (extra > 0.5) hot.push({ id, name: l.name, extra_min: Math.round(extra), v: Math.round(x.v), cap: Math.round(x.cap), queue_m: Math.round(x.queue_m) });
     }
     hot.sort((a, z) => z.extra_min - a.extra_min);
-    const delay = Math.round((ev.tt_s - b.tt_s) / 60);
+    const delay = Math.round((ev.tt_s - b.tt_s + credit) / 60);
     const by_type = {};
     let typed = 0;
     for (const t of TYPES) {
