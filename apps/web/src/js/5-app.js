@@ -393,7 +393,7 @@ function renderLegend(){
   el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${L('ILLUSTRATIVE','示意')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
   <div class="legend-body">${Lg.min?`<div class="legend-ramp" style="background:${rampCss(k)}"></div><div class="legend-scale"><span>${Lg.min}</span><span class="u">${Lp(Lg.u)}</span><span>${Lg.max}</span></div>`:''}
   <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
-  $('#legToggle').onclick=()=>{el.classList.toggle('collapsed');ls.set('rt-leg',el.classList.contains('collapsed')?'1':'0');};
+  $('#legToggle').onclick=()=>el.classList.toggle('collapsed');
   updateLegendLive();
 }
 function updateLegendLive(){const m=$('#legM');if(!m)return;const html=legendMetrics().map(([a,b])=>`<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');if(m.innerHTML!==html)m.innerHTML=html;}
@@ -444,8 +444,7 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
-function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
-  const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
+function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));}
 
 /* ---------- histogram ---------- */
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
@@ -506,8 +505,7 @@ function loop(now){
   if(toastT>0){toastT-=dt;if(toastT<=0)$('#toast').hidden=true;}
   if(histT>.2){histT=0;drawHist();}
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
-    document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));
-    $('#metaAcq').textContent=microOn()?`2026-09-29 ${fmtClock(S.clock)} AEST`:`${WORKS_TIME.from} ${engHour(EP.hour)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
+    document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));}
   if(legT>.5){legT=0;updateLegendLive();}
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
@@ -520,7 +518,7 @@ function boot(){
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
-  const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
+  $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
   initGlass();resize();sizeHist();bindInput();engBindMap();
   renderWxSwitcher();renderLegend();updateBasemapUI();renderCredits();
