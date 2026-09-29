@@ -102,7 +102,7 @@ check("路名 / 报错 / 来源进 HTML 模板都过 esc()（含 L() 里嵌的�
 probe = "`${L(`One lane on ${shortSt(s.street)} backs up`,`x`)}` `${esc(a.src)}`"
 check("自检：嵌在 L() 里的未转义路名会被抓到", unsafe_in(probe) == ["shortSt(s.street)"], str(unsafe_in(probe)))
 app_js = (SRC / "js" / "5-app.js").read_text(encoding="utf-8")
-check("第 1 步标题里的路名过 esc()", "esc(shortSt(EP.street))" in app_js and "${shortSt(EP.street)" not in app_js)
+check("第 1 步标题里的路名过 esc()", "esc(shortSt(EP.street)" in app_js and not unsafe_in(app_js[app_js.find("S.step===1"):app_js.find("S.step===2")]))
 
 # 4. 反向断言（秘密）：源码里没有 key / token 形状的字符串
 check("源码里没有 key / token", not re.search(r"(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9])", JS + BODY, re.I))

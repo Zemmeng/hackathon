@@ -1467,9 +1467,9 @@ const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
   const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
   if(S.step===1){
-    const eng=!!BE.api&&!!EP.street;
+    const eng=!!BE.api&&!!EP.link;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
-    <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street))} ${dirL(EP.dir)} lane closure`,`${esc(shortSt(EP.street))} ${dirL(EP.dir)}封道`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
+    <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
@@ -1747,6 +1747,17 @@ function planFrom(ep){
   return{when:{date:'2026-10-06',hour:ep.hour},worksites:[{id:'W-1',name:`${ep.street||'Road'} lane closure`,links:[ep.link],closes:{lanes:ep.lanes},
     time:{from:tm.from,to:tm.to,hours:[tm.hours[0],tm.hours[1]]},equipment:eq}]};
 }
+// A whole plan (e.g. an advisor option) → the form fields planFrom() reads. By type, not id: the advisor adds a VMS of
+// its own (id vms-new) when the plan had none. Only fields the plan has are returned.
+function formFromPlan(plan){
+  const ws=plan&&plan.worksites&&plan.worksites[0],out={};if(!ws)return out;const eq=ws.equipment||[];
+  const vms=eq.find(e=>e.id==='VMS-1')||eq.find(e=>e.type==='vms');
+  if(vms){out.vmsAt=vms.at_m;out.f1=(vms.frames&&vms.frames[0]||[]).join('\n');out.f2=(vms.frames&&vms.frames[1]||[]).join('\n');}
+  const sign=eq.find(e=>e.id==='S-1')||eq.find(e=>e.type==='sign');if(sign){out.signAt=sign.at_m;out.sign=sign.text||'';}
+  const arrow=eq.find(e=>e.type==='arrow');if(arrow)out.arrowAt=arrow.at_m;
+  if(ws.time)out.time={from:ws.time.from,to:ws.time.to,hours:[ws.time.hours[0],ws.time.hours[1]]};
+  return out;
+}
 /* pure:end */
 
 const BE={api:null,err:null};
@@ -1798,15 +1809,7 @@ function engSetLink(id){
   return true;
 }
 // Advisor / compare hand back whole plans: copy the worksite's equipment and dates back into the form
-function engLoadPlan(plan){
-  const ws=plan&&plan.worksites&&plan.worksites[0];if(!ws)return;
-  for(const e of ws.equipment||[]){
-    if(e.id==='VMS-1'){EP.vmsAt=e.at_m;EP.f1=(e.frames&&e.frames[0]||[]).join('\n');EP.f2=(e.frames&&e.frames[1]||[]).join('\n');}
-    if(e.id==='S-1'){EP.signAt=e.at_m;EP.sign=e.text||'';}
-    if(e.id==='A-1')EP.arrowAt=e.at_m;
-  }
-  if(ws.time)EP.time={from:ws.time.from,to:ws.time.to,hours:[ws.time.hours[0],ws.time.hours[1]]};
-}
+function engLoadPlan(plan){Object.assign(EP,formFromPlan(plan));}
 let candCache=null;
 function engCands(){
   const net=engNet();if(!net)return[];if(candCache&&candCache.net===net)return candCache.list;
@@ -1843,7 +1846,7 @@ async function engStep4(){
     EP.advKey=key;EP.adv=null;EP.cmp=null;EP.cmpKey='';EP.pick=-1;EP.advBusy=true;engRender4();
     let a=null;try{a=await BE.api.advise(plan);}catch(e){console.warn('advisor failed',e);}
     if(EP.advKey!==key)return;
-    EP.adv=a;EP.advBusy=false;EP.pick=a?a.options.findIndex(o=>o.better&&o.plan&&o.kind!=='shift'):-1;
+    EP.adv=a;EP.advBusy=false;EP.pick=a&&a.flags.ok?a.options.findIndex(o=>o.better&&o.plan&&!o.skipped&&o.kind!=='shift'):-1; // untrusted savings: don't pre-pick
   }
   await engCompare();
 }
@@ -1877,10 +1880,13 @@ function engBadges(f){
   b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
+// Worst queue anywhere this hour: on the closed street, or (full closure) on the streets the detours pile onto
+function engWorstQ(s){let q={m:s.queue_m||0,name:s.street};for(const h of s.hot||[])if((h.queue_m||0)>q.m)q={m:h.queue_m,name:h.name};return q;}
+const engFull=s=>(s.detour_share||0)>=.99||(s.blocked_vph||0)>0;
 function engMetrics(s){
-  const top=s.routes.find(r=>r.id!=='stay');
+  const top=s.routes.filter(r=>r.id!=='stay').sort((a,b)=>(b.share||0)-(a.share||0))[0],q=engWorstQ(s),elsewhere=q.m>(s.queue_m||0);
   return`<div class="metrics">
-    <div class="metric"><span class="eyebrow">${L('Queue','排队')}</span><div class="v" style="color:${s.queue_m>0?'var(--risk)':'var(--accent)'}">${fmtN(s.queue_m)}<small>m</small></div></div>
+    <div class="metric"><span class="eyebrow">${elsewhere?L('Worst queue','最长排队'):L('Queue','排队')}</span><div class="v" style="color:${q.m>0?'var(--risk)':engFull(s)?'var(--fg)':'var(--accent)'}">${fmtN(q.m)}<small>m${elsewhere?' · '+esc(shortSt(q.name)):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Detouring','绕行')}</span><div class="v">${pctS(s.detour_share)}<small>${top?esc(shortSt(top.name))+' '+pctS(top.share):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Network delay','全网延误')}</span><div class="v">${fmtN(s.delay_min)}<small>${L('veh·min / h','车·分钟 / 时')}</small></div></div></div>`;
@@ -1913,7 +1919,7 @@ function engPanel1(){
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
-    <input type="range" id="vmsAt" min="40" max="400" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
+    <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>
     <div id="engCheck" class="stack"></div></div>
@@ -1938,8 +1944,14 @@ function engTabs3(){
   return`<div class="eng-seg" role="tablist" aria-label="${L('Ripple view','涟漪视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
+function engHeadline(s){
+  const st=esc(shortSt(s.street)),q=engWorstQ(s);
+  if(s.flags&&s.flags.inactive)return L(`No works on ${st} at ${engHour(s.when.hour)}`,`${engHour(s.when.hour)} ${st} 不施工`);
+  if(engFull(s))return q.m>0?L(`Closing ${st} sends ${pctS(s.detour_share)} round — ${esc(shortSt(q.name))} queues ${fmtN(q.m)} m`,`${st} 全封，${pctS(s.detour_share)} 的车绕行 —— ${esc(shortSt(q.name))} 排队 ${fmtN(q.m)} 米`):L(`Closing ${st} sends ${pctS(s.detour_share)} of drivers round`,`${st} 全封，${pctS(s.detour_share)} 的车绕行`);
+  return s.queue_m>0?L(`One lane on ${st} backs up ${fmtN(s.queue_m)} m`,`${st} 封一条道，排队 ${fmtN(s.queue_m)} 米`):L(`One lane on ${st}: no queue this hour`,`${st} 封一条道：这个小时不排队`);
+}
 function engPanel3(){
-  const s=EP.sum;
+  const s=EP.badText?null:EP.sum;
   if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
@@ -1950,7 +1962,7 @@ function engPanel3(){
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
   return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
-  <div class="stack"><h2>${L(`One lane on ${esc(shortSt(s.street))} backs up ${fmtN(s.queue_m)} m`,`${esc(shortSt(s.street))} 封一条道，排队 ${fmtN(s.queue_m)} 米`)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
+  <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engBadges(f)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
@@ -1977,8 +1989,9 @@ function eng4HTML(){
   const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{
     const what=o.kind==='text'&&o.frames?o.frames.map(f=>f.join(' / ')).join('  ▸  '):o.kind==='move'?`${esc(o.equipment||'')} → ${fmtN(o.at_m)} m ${L('upstream','上游')}`:o.kind==='shift'?`${o.days>0?'+':''}${fmtN(o.days)} ${L('days','天')}`:'';
-    const d=Number(o.delta_min),gain=o.better&&Number.isFinite(d);
-    return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):Number.isFinite(d)?`${d>0?'+':'−'}${fmtN(Math.abs(d)/60)} ${L('veh·h','车·时')}`:'—'}</span></button>`;}).join('');
+    const d=Number(o.delta_min),hrs=Math.round(Math.abs(d)/60),gain=o.better&&Number.isFinite(d)&&a.flags.ok;
+    return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}`}</span></button>`;}).join('');
+  if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
   <p class="legend-src">${L(`Savings are summed over the whole works period (${a.window.whens} sampled hours${a.window.single_hour?', this hour only':''}). Advisor: ${a.src==='rule'?'rules (LLM advisor pending)':esc(a.src)}.`,`节省量按整个施工期加总（采样 ${a.window.whens} 个小时${a.window.single_hour?'，只有这一小时':''}）。顾问：${a.src==='rule'?'规则（大模型顾问待接）':esc(a.src)}。`)}</p>`;
   const o=a.options[EP.pick];
@@ -1990,7 +2003,7 @@ function eng4HTML(){
     else{
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
       const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better?'var(--accent)':'var(--works)'}">${y}</span></div>`;
-      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay','全网延误'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}</div>
+      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min','全网延误 · 车·分钟'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}</div>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }

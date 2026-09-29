@@ -15,8 +15,8 @@ const m = src.match(/\/\* pure:begin[^\n]*\n([\s\S]*?)\/\* pure:end \*\//);
 ok(!!m, '6-engine.js 有 pure:begin / pure:end 段');
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(m[1] + '\n;globalThis.G={geoToWorld,dirOf,pickLink,parseFrame,planFrom,linkPts,NO_WORKS,WORKS_TIME};', ctx);
-const { geoToWorld, dirOf, pickLink, parseFrame, planFrom, linkPts, NO_WORKS } = ctx.G;
+vm.runInContext(m[1] + '\n;globalThis.G={geoToWorld,dirOf,pickLink,parseFrame,planFrom,formFromPlan,linkPts,NO_WORKS,WORKS_TIME};', ctx);
+const { geoToWorld, dirOf, pickLink, parseFrame, planFrom, formFromPlan, linkPts, NO_WORKS } = ctx.G;
 
 const net = JSON.parse(readFileSync(APPS + 'roads/public/cbd/network.json', 'utf8'));
 const nodes = new Map(net.nodes.map(n => [n.id, n]));
@@ -81,6 +81,17 @@ const off = await be.run(planFrom({ ...EP, hour: 22 }));
 ok(off.flags.inactive && off.queue_m === 0, '22 点不在施工时段 → flags.inactive，数字为 0');
 const adv = await be.advise(planFrom(EP));
 ok(adv.options.some(o => o.better && o.plan), `顾问至少给出一个更好的改法（${adv.options.map(o => o.kind + ' ' + o.delta_min).join(' · ')}）`);
+
+// 5 顾问的改法套回表单（「用到我的方案上」）：没有屏的方案，顾问会新加一块 id 不是 VMS-1 的屏，也要套得回来
+const noVms = { ...EP, f1: '', f2: '' };
+const adv2 = await be.advise(planFrom(noVms)), opt = adv2.options.find(o => o.better && o.plan && o.kind === 'text');
+if (opt) {
+  const form = { ...noVms, ...formFromPlan(opt.plan) }, back = planFrom(form).worksites[0].equipment.find(e => e.type === 'vms');
+  ok(back && JSON.stringify(back.frames) === JSON.stringify(opt.plan.worksites[0].equipment.find(e => e.type === 'vms').frames), `没有屏的方案用顾问的「${opt.frames.map(f => f.join(' / ')).join(' ▸ ')}」：套回表单后方案里真有这块屏`);
+  const s2 = await be.run(planFrom(form));
+  ok(s2.queue_m < (await be.run(planFrom(noVms))).queue_m, `套用后重算：排队确实变短（→ ${s2.queue_m} 米）`);
+} else ok(false, '没有屏的方案，顾问没给出 text 改法');
+ok(JSON.stringify(formFromPlan(null)) === '{}' && JSON.stringify(formFromPlan({ worksites: [{ equipment: [] }] })) === '{}', 'formFromPlan：空方案不改表单');
 
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
