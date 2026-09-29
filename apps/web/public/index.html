@@ -599,13 +599,28 @@ function clipSide(P,ax,c,sg){
   for(let i=0;i<ch.length;i++){if(used[i])continue;const ring=[];let k=i;while(k>=0&&!used[k]){used[k]=true;ring.push(...ch[k].pts);k=next[k];}if(ring.length>=3)out.push(ring);}
   return out;
 }
+/* Where a page street really exists (network.json, T3): Little La Trobe only between Elizabeth and Swanston, A'Beckett only west
+   of Swanston. The page grid draws both across the whole width, but east of Swanston (RMIT) and west of Elizabeth real buildings
+   stand there, so footprints are only cut along the real stretch. [a, b] = page x range (these two are h streets). */
+const STREET_SPAN={llatrobe:[-185,-15],abeckett:[-Infinity,-15]};
+/* cut this far outside the street edge: 2 m cell centres sit exactly on some edges (x = ±15, y = −95 …), and a roof that
+   ends on the edge would repaint that footpath cell as roof in buildGrids */
+const CLIP_EPS=.05;
+/* pieces thinner than this on average (area / longest bbox side) are clipping slivers, not buildings (assumed threshold) */
+const MIN_PIECE_W=1.5;
 /* cut away every part that lies on a page street (carriageway + footpath), so roads, tram stops and footpaths stay clear */
 function clipStreets(P){
   let parts=[P];
-  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,lo=ax?r.y0:r.x0,hi=ax?r.y1:r.x1,out=[];
-    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));}
+  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,al=1-ax,lo=(ax?r.y0:r.x0)-CLIP_EPS,hi=(ax?r.y1:r.x1)+CLIP_EPS,sp=STREET_SPAN[s.id],out=[];
+    const cutStrip=q=>{out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));};
+    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}
+      if(!sp){cutStrip(q);continue;}
+      /* a street that exists only on [a, b]: split the piece at a and b, cut the strip out of the middle part only */
+      let pcs=[q];
+      for(const c of sp){if(!isFinite(c))continue;const nx=[];for(const p of pcs){const pb=bboxOf(p),pl=al?pb.y0:pb.x0,ph=al?pb.y1:pb.x1;if(pl<c&&ph>c)nx.push(...clipSide(p,al,c,-1),...clipSide(p,al,c,1));else nx.push(p);}pcs=nx;}
+      for(const p of pcs){const pb=bboxOf(p),m=al?(pb.y0+pb.y1)/2:(pb.x0+pb.x1)/2;if(m>sp[0]&&m<sp[1])cutStrip(p);else out.push(p);}}
     parts=out;}
-  return parts.filter(q=>Math.abs(polyArea(q))>=4);
+  return parts.filter(q=>{const a=Math.abs(polyArea(q)),b=bboxOf(q);return a>=4&&a/Math.max(b.x1-b.x0,b.y1-b.y0)>=MIN_PIECE_W;});
 }
 /* a point well inside the polygon (for labels and probes): the centroid when it is inside, else the deepest of a 7 × 7 sample */
 function innerPt(P,b){
@@ -940,9 +955,10 @@ function drawLabels(c,V,W,pal){
     const txt=L(st.name.toUpperCase(),st.zh);const tw=c.measureText(txt).width+12;
     const H=st.axis==='h',step=Math.max(520,tw*2.2)/V.s;
     const lo=H?V.wx(0):V.wy(V.h),hi=H?V.wx(V.w):V.wy(0);
-    const spans=freeSpans(st,tw/2/V.s+2);
+    const spans=freeSpans(st,tw/2/V.s+2),real=W.real&&STREET_SPAN[st.id]; /* real city: no street name where only real buildings stand */
     for(let u=Math.floor(lo/step)*step+step*.5;u<hi;u+=step){
       if(!spans.some(([a,b])=>u>a&&u<b))continue;
+      if(real&&!(u>real[0]&&u<real[1]))continue;
       const off=st.tram?0:0;const px=H?V.X(u):V.X(st.c+off),py=H?V.Y(st.c+off):V.Y(u);
       c.save();c.translate(px,py);if(!H)c.rotate(-Math.PI/2);
       c.strokeStyle=pal.halo;c.lineWidth=3.2;c.strokeText(txt,0,0);c.fillStyle=pal.label;c.fillText(txt,0,0);c.restore();
@@ -1798,17 +1814,25 @@ function applyTheme(){
   updateBasemapUI();renderWxSwitcher();renderLegend();if(S.step===3&&S.event){S.nodes=causal(S.event);renderPanel();}
 }
 /* ---------- real buildings (T15) ---------- */
-function rebuildWorld(nw){
-  const g=buildGrids(nw);W=nw;G=g;WX.rebind(W,G);
+/* g / imgs: grids and imagery already built for nw (loadBuildings makes them in earlier tasks); missing ones are rebuilt here */
+function rebuildWorld(nw,g,imgs){
+  W=nw;G=g||buildGrids(nw);WX.rebind(W,G);
   for(const k of Object.keys(IMG))delete IMG[k];
+  if(imgs)Object.assign(IMG,imgs);
   baseKey='';probeKey='';heatStats=null;updateBasemapUI();
 }
-/* same-origin data from T3 (apps/roads). Fails on file://, the web-only static server or offline → the synthetic city stays */
+/* same-origin data from T3 (apps/roads). Fails on file://, the web-only static server or offline → the synthetic city stays.
+   The swap runs in separate tasks (footprints → grids → imagery → swap): when the data lands after the page started, the
+   animation keeps drawing the old city in between and the map flips to the real one in a single frame, instead of one
+   ~0.4 s freeze. Before the first frame it just finishes a few ms later. */
+const nextTask=()=>new Promise(r=>setTimeout(r,0));
 function loadBuildings(){
-  return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(d=>{
+  return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(async d=>{
     const nw=d?buildWorldReal(d,geoToWorld):null;
     if(!nw||nw.buildings.length<REAL_MIN)return false;
-    rebuildWorld(nw);console.info('buildings: real footprints',nw.count);return true;
+    await nextTask();const g=buildGrids(nw);
+    await nextTask();const bm=S.basemap,imgs=bm==='streets'?null:{[bm]:renderImagery(nw,bm==='nir'?PAL_NIR:PAL_RGB)};
+    await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
 function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
@@ -1890,8 +1914,10 @@ function boot(){
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
   resize();sizeHist();bindInput();engBindMap();
-  WX.set(S.wx);renderWxSwitcher();renderLegend();updateBasemapUI();
-  const start=()=>{if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
+  renderWxSwitcher();renderLegend();updateBasemapUI();
+  /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
+     on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
+  const start=()=>{if(WX.kind!==S.wx)WX.set(S.wx);if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
   /* wait up to 1.2 s for the real footprints so the first frame is already the real city; slower → start synthetic, swap on arrival */
   let go=false;const once=()=>{if(go)return;go=true;if(S.basemap==='streets')start();else setTimeout(start,40);};
   loadBuildings().then(once);setTimeout(once,1200);

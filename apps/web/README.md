@@ -26,7 +26,7 @@ Owner: @unicornnnnnny
 `bash apps/web/test.sh` —— 不开浏览器，三个文件：
 
 - `tests/test_engine.py`（调 `node tests/engine_glue.mjs`，要 node ≥ 18）：`6-engine.js` 里 `pure:begin…pure:end` 那段纯函数——真路网坐标换到页面方格（主干路口误差 ≤ 3 m）、点街选路段（靠左行驶，点哪侧选哪个方向）、拼方案（契约 §施工方案，空 VMS 不发）——再把页面拼的方案交给真的 `backend.js` 跑：默认方案排队 > 0、加一帧 USE / RUSSELL ST 排队变短、超长的行被 check 拦下、全封、非施工时段、顾问给出更好的改法
-- `tests/test_world.py`（调 `node tests/world_real.mjs`，要 node ≥ 18）：真建筑——U 形楼被街切成两块不留连桥、压进人行道的楼切到街边、整块在路面上的丢掉；真数据落进画面 > 150 栋、La Trobe × Swanston 路口和 8 条街上没有楼也没有屋顶格（反向断言）、人行道有楼影、楼后有风影、影子朝东南；州立图书馆 / Melbourne Central 用真名注记且落在楼上、不出「BUILDING 8」这种编号名、Melbourne Central 外框不按 211 m 画；坏数据不抛错一栋不画、程序生成的城市照旧
+- `tests/test_world.py`（调 `node tests/world_real.mjs`，要 node ≥ 18）：真建筑——U 形楼被街切成两块不留连桥、压进人行道的楼切到街边外 0.05 m（格心正好在街边线上的那格留给人行道）、整块在路面上的丢掉、切剩 < 1.5 m 宽的细条丢掉；Little La Trobe / A'Beckett 只在真路网有的那段切（`STREET_SPAN` 和 network.json 对得上），Swanston 以东 RMIT 那几栋不再被页面上多画的街切开（反向断言）；真数据落进画面 > 150 栋、La Trobe × Swanston 路口和 8 条街上（含边界线）没有楼也没有屋顶格、Little Lonsdale 北侧那排人行道格没被屋顶盖掉（反向断言）、人行道有楼影、楼后有风影、影子朝东南；州立图书馆 / Melbourne Central 用真名注记且落在楼上、不出「BUILDING 8」这种编号名、Melbourne Central 外框不按 211 m 画；坏数据不抛错一栋不画、程序生成的城市照旧
 - `tests/test_web.py`：静态断言：打包产物与源码一致、体积 < 2MB、`import()` / `fetch()` 只用同源固定路径（`/engine/ /roads/ /params/ /api/`）、外部地址只有 Google Fonts、引擎连不上走 `BE.err` 并保留预设数字、T5 / 顾问的 `why` 只用 `textContent`、路名和报错进 HTML 前过 `esc()`、没有 key、四步和六种天气配置齐全、修复方案在每种天气下都比原方案好、方案 v2 的几何和文案对得上（护栏西移 8 m 等）、中英文案成对、兜底城市先同步建好再异步取 `buildings.json`（`catch` + `REAL_MIN`，最多等 1.2 s）、`geoToWorld` 只在异步回调里用、楼名只画在 canvas 上不进 HTML。最后一行 `N passed, M failed`。
 
 浏览器里人工验过：桌面 1440×900 和手机 375px、深 / 浅主题、中 / 英、六种天气、四步流程（第 2 步 C-17 × D-42 严重冲突会自动触发，TTC 约 0.6 s）。
@@ -54,11 +54,11 @@ Owner: @unicornnnnnny
 |---|---|
 | `src/head.html` `src/body.html` `src/styles.css` | 页面骨架、深浅两套颜色 token；静态文案的中文写在 `data-zh` 属性里 |
 | `src/js/0-i18n.js` | `L(英, 中)` 取当前语言的文案 |
-| `src/js/1-world.js` | 路口一带的世界模型（米，x 向东 y 向北）：街道、建筑、地标，2 m 地表分类 / 阴影 / 风影栅格。`buildWorld()` 是程序生成的兜底城市（矩形楼）；`buildWorldReal(data, geoToWorld)` 把真轮廓换成多边形楼（`pts` + 包围盒 + 楼内标注点 `cx, cy`），`clipStreets()` 切掉压在街上的部分；`buildGrids()` 对多边形用扫描线栅格化、沿太阳 / 风向扫出楼影和风影 |
+| `src/js/1-world.js` | 路口一带的世界模型（米，x 向东 y 向北）：街道、建筑、地标，2 m 地表分类 / 阴影 / 风影栅格。`buildWorld()` 是程序生成的兜底城市（矩形楼）；`buildWorldReal(data, geoToWorld)` 把真轮廓换成多边形楼（`pts` + 包围盒 + 楼内标注点 `cx, cy`），`clipStreets()` 切掉压在街上的部分（切在街边外 `CLIP_EPS` = 0.05 m；Little La Trobe / A'Beckett 只切 `STREET_SPAN` 那段；丢掉 < `MIN_PIECE_W` 宽的细条）；`buildGrids()` 对多边形用扫描线栅格化、沿太阳 / 风向扫出楼影和风影 |
 | `src/js/2-basemap.js` | 底图：正射影像（RGB / 近红外假彩色）预渲染，矢量街道图分浅色 / 深色。真楼按用途 + 高度着色（`roofRgb` / `vecRgb`），楼影是轮廓沿太阳方向拉伸后的并集（`extrudePath`）；楼名注记按面积排、互相压住的跳过 |
 | `src/js/3-weather.js` | 天气图层：雷达 dBZ、SAR 淹没深度、雾、地表温度、风场；等值线、粒子流、闪电、鼠标取值 |
 | `src/js/4-sim.js` | 多智能体仿真：IDM 跟驰、信号相位、行人放行、TTC 冲突检测、脚本化的 C-17 / D-42 / Bus 250 事件 |
-| `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑、`rebuildWorld()` 换掉 `W / G` 并清影像缓存（`WX.rebind()` 重建天气栅格） |
+| `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑，分几个 task 先建好轮廓、栅格、当前底图的影像，最后 `rebuildWorld(nw, g, imgs)` 在一帧里换掉 `W / G / IMG`（`WX.rebind()` 重建天气栅格）；存下来的天气（如高温）的栅格只在 `start()` 里建一次 |
 | `src/js/6-engine.js` | 接引擎（T13）：连 `backend.js`、第 1 步方案表单、第 3 步路网涟漪、第 4 步顾问 + 前后对比、地图上的施工区 / 排队 / 绕行 / 变慢路段；开头 `pure:begin…pure:end` 是测试要跑的纯函数（坐标换算、选路段、拼方案） |
 | `build.py` | 打包成 `public/index.html`（进仓库）和 `out/web-artifact.html`（不进仓库） |
 | `tests/test_web.py` `tests/test_engine.py` `tests/engine_glue.mjs` | 上面「怎么测」的断言 |
@@ -78,6 +78,8 @@ Owner: @unicornnnnnny
 - 路口几何是简化的正交网格，不是测绘数据；道路方向按澳洲靠左行驶（西行车流在 La Trobe St 南侧）
 - 手机上隐藏了鼠标取值条，图例默认折叠
 - 真建筑（T15）：La Trobe 以北页面把街区拉高了，楼跟着拉长，Little La Trobe / A'Beckett 两边会空出几米到十几米的地；页面方格上没有的小巷和院子画成平铺地面（地表分类算「空地」）
+- 页面方格把 Little La Trobe 和 A'Beckett 画满全宽，真路网里 Little La Trobe 只在 Elizabeth–Swanston 之间、A'Beckett 只在 Swanston 以西：真楼在多出来的那几段上照原样画（盖住路面），那几段不标街名，但楼缝里仍露出页面画的路面、地表分类里算路面 / 人行道。不画这几段是另一项活（要改 `STREETS` 和底图，不在 T15 里）
+- 切楼的细条阈值 1.5 m（`MIN_PIECE_W`）是假设值
 - 真建筑的屋顶反照率、屋顶设备、「历史建筑」归类（按名字里有 Library Victoria / Church / Cathedral / Gaol / Watch House）都是假设值，数据里没有；高温图层的「冷屋顶」标注因此只是示意
 - 数据里有 4 个「外框」把一整片楼圈起来（如 Melbourne Central 外框带着 211 m 塔楼的高度）：里面的楼占外框 ≥ 30% 时外框改用里面楼高的中位数，塔楼本身不动
 - 州立图书馆的穹顶、Melbourne Central 的玻璃锥和制弹塔仍是页面手摆的位置，只在落进对应真楼时保留；门前草坪按原样保留（楼画在上面）
