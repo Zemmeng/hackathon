@@ -35,6 +35,7 @@ def main():
     ox.settings.cache_folder = os.path.join(a.out, 'osm_cache')  # 默认是当前目录的 cache/，会落到模块外
     if a.overpass:
         ox.settings.overpass_url = a.overpass
+    ox.settings.requests_timeout = 300  # 行人路网比车行路网大得多，镜像站默认 180 秒会读超时
     ox.settings.useful_tags_way = sorted(set(ox.settings.useful_tags_way) | set(EXTRA_WAY_TAGS) | set(WALK_WAY_TAGS))
     ox.settings.useful_tags_node = sorted(set(ox.settings.useful_tags_node) | {'highway', 'crossing'})
     if a.walk:

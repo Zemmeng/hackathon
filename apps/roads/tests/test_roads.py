@@ -3,7 +3,7 @@
 文件还没生成时只做骨架检查；文件一出现，对应的校验自动生效。
 用法：python3 tests/test_roads.py（test.sh 会自动跑）；最后一行固定「N passed, M failed」
 """
-import json, math, os, sys
+import collections, json, math, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MOD = os.path.dirname(HERE)
@@ -185,6 +185,52 @@ if tr is not None:
     bad = ['%s/%s/%s' % (r['id'], d['dir'], k) for r in routes for d in r['dirs'] for k in ('wd', 'we')
            if not (len(d['trips'].get(k, [])) == 24 and all(isinstance(v, (int, float)) and v >= 0 for v in d['trips'][k]))]
     ok(not bad, '每个方向的班次都是 24 个非负数%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+
+# ---- walk.json + peds.json（PRD-2 §6）----
+wk, p = load('walk.json')
+wl_ids = set()
+if wk is not None:
+    ok(isinstance(wk.get('version'), int) and os.path.getsize(p) < 2 * 1024 * 1024, 'walk.json：version 是整数、小于 2 MB（%d KB）' % (os.path.getsize(p) // 1024))
+    wn, wls = wk.get('nodes', []), wk.get('links', [])
+    wnid = [x['id'] for x in wn]; wl_ids = {x['id'] for x in wls}
+    ok(wn and wls and len(wnid) == len(set(wnid)) and len(wl_ids) == len(wls), '行人节点 %d、路段 %d，id 各自唯一' % (len(wnid), len(wls)))
+    ns = set(wnid)
+    bad = [x['id'] for x in wls if x['a'] not in ns or x['b'] not in ns]
+    if net is not None:
+        lk = {l['id'] for l in net['links']}
+        bad += [x['road_link'] for x in wls if x.get('road_link') is not None and x['road_link'] not in lk]
+    ok(not bad, '行人路段的端点、挂的 road_link 都存在%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    KIND = {'sidewalk', 'crossing', 'path', 'mall', 'other'}; CROSS = {'signal', 'zebra', 'uncontrolled', None}
+    bad = [x['id'] for x in wls if x.get('kind') not in KIND or x.get('crossing') not in CROSS or x.get('side') not in ('left', 'right', None)]
+    ok(not bad, 'kind / crossing / side 都在约定取值里%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    # 无向图最大连通块（并查集）
+    par = {x: x for x in ns}
+
+    def find(x):
+        while par[x] != x:
+            par[x] = par[par[x]]; x = par[x]
+        return x
+    for x in wls:
+        par[find(x['a'])] = find(x['b'])
+    comp = collections.Counter(find(x) for x in ns) if ns else collections.Counter()
+    share = max(comp.values()) / len(ns) if ns else 0
+    ok(share >= 0.9, '行人路网连通：最大连通块占 %.0f%% 的节点（要求 ≥ 90%%）' % (share * 100))
+
+pd_, p = load('peds.json')
+if pd_ is not None:
+    ok(isinstance(pd_.get('version'), int) and os.path.getsize(p) < 2 * 1024 * 1024, 'peds.json：version 是整数、小于 2 MB（%d KB）' % (os.path.getsize(p) // 1024))
+    days = pd_.get('days', {})
+    bad = ['%s/%s' % (d, k) for d in ('wd', 'we') for k, arr in days.get(d, {}).items()
+           if not (isinstance(arr, list) and len(arr) == 24 and all(isinstance(v, (int, float)) and v >= 0 for v in arr))]
+    ok(not bad, '行人流量每组都是 24 个非负数%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    if wl_ids:
+        bad = [k for d in ('wd', 'we') for k in days.get(d, {}) if k not in wl_ids]
+        bad += [x['walk_link'] for x in pd_.get('sensors', []) if x.get('walk_link') is not None and x['walk_link'] not in wl_ids]
+        ok(not bad, '行人流量和传感器挂的 walk_link 都在 walk.json 里%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    cov = pd_.get('coverage', {})
+    ok(cov.get('links') == cov.get('measured', -1) + cov.get('estimated', -1), 'peds coverage：links = measured + estimated')
+    peaks = [max(days['wd'][x['walk_link']]) for x in pd_.get('sensors', []) if x.get('walk_link') in days.get('wd', {})]
+    ok(peaks and 500 <= max(peaks) <= 10000, '常识：传感器工作日最忙那小时的最大值在 500–10000 人 / 小时（%s）' % (max(peaks) if peaks else '无'))
 
 print('%d passed, %d failed' % (P, F))
 sys.exit(1 if F else 0)

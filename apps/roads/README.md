@@ -29,6 +29,24 @@ apps/roads/.venv/bin/python apps/roads/tools/build_transit.py    # → public/cb
 - La Trobe St 上挂着 30、35、86 路；19 路工作日高峰每小时 13 班、96 路 10 班
 - 12 个站点 30 米内没有机动车路段（`road_link: null`），多在电车专用段上
 
+```bash
+apps/roads/.venv/bin/python apps/roads/tools/fetch_osm.py --walk # OSM 行人路网 → raw/（主站拒连就加 --overpass <镜像>）
+B=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets
+curl -sS -G "$B/pedestrian-counting-system-monthly-counts-per-hour/exports/csv" --data-urlencode "where=sensing_date>=date'2026-08-01' and sensing_date<=date'2026-09-27'" -o apps/roads/raw/peds.csv
+curl -sS "$B/pedestrian-counting-system-sensor-locations/exports/csv" -o apps/roads/raw/ped_sensors.csv
+apps/roads/.venv/bin/python apps/roads/tools/build_walk.py       # → public/cbd/walk.json、peds.json（约 5 秒）
+```
+
+`walk.json` 用 OSM（09-29 查：CBD 人行道 77 km 是单独画的 `footway=sidewalk`，只挂在道路 `sidewalk=*` 标签上的只有 3 km，所以不用 City of Melbourne 的 Pedestrian Network）。节点 5198、路段 6802（人行道 1948、人行横道 988、小路 1808、沿车行道 1844、步行街 214）。人行道 92% 挂上了车行道，其中 82% 在那个方向的左边。
+
+`peds.json`：bbox 内 71 个传感器（70 个挂上人行道），2026-08-01..09-27，工作日 39 天、周末 18 天。核对：Swanston St `Swa148_T` 工作日 17 点平均 1938 人（PRD-2 参考 09-27 周六 17 点 1626）；最忙的是 Collins St `Col620_T` 17 点 3299 人。
+
+| method | 怎么算 | 条数 |
+|---|---|---|
+| `sensor` | 传感器挂的那条人行道，8 周分小时平均 | 67 |
+| `street_interp` | 同名街道 800 m 内最近的传感器 | 1825 |
+| `class_default` | 所挨车行道等级的传感器中位数；不挨车行道的小路取全部传感器 25 分位 | 4910 |
+
 `equipment.json`：16 种设备（护栏 3、静态标志 9、VMS 2、箭头板 1、行人临时信号灯 1）。规格抄自 RPM Hire 官网产品页（每项 `url`，2026-09-29 查）；**`qty`、`day_rate_aud` 全是假设**（官网没有公开价格），列在每项的 `assumed` 里。标志编号只填查实的 T1-1、T2-16，其余 `null`。RPM 官网没有静态标志牌的产品页。
 
 `flows.json` 里每条路段的 `method`：
@@ -77,6 +95,7 @@ apps/roads/.venv/bin/python apps/roads/tools/build_transit.py    # → public/cb
 | `tools/build_equipment.py` | 生成 `equipment.json`（设备清单和来源写在脚本里） |
 | `tools/fetch_gtfs.py` | 从 GTFS 总包里只抽电车、市区巴士两个子包 |
 | `tools/build_transit.py` | 生成 `transit.json`：线路走向对到有向路段、每小时班次、站点 |
+| `tools/build_walk.py` | 生成 `walk.json` + `peds.json`：人行道挂车行道和左右、传感器挂人行道、插值 |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
 | `raw/` | 原始数据（已 gitignore，不提交） |
@@ -99,6 +118,8 @@ apps/roads/.venv/bin/python apps/roads/tools/build_transit.py    # → public/cb
 - 151 个信号灯站点里 27 个在 30 米内没有节点（17 个行人灯 POS、5 个闪黄灯、5 个路口 INT），`node` 为 `null`
 - SCATS 检测器不能按流量大小区分车 / 自行车 / 电车：2921 的 1 号是 Swanston 自行车检测器，一天 5500 次，和车道一样多 → `site_split` 用「车道检测器平均 × 车道数」，不用「路口总量按车道分摊」（后者会把自行车、电车全算成车，高估 2–3 倍）；也不能把所有检测器一起平均（电车、行人按钮流量小，会把每车道流量拉低到实测的 40%）
 - GTFS 总包里的子包是压缩存放的，不能再往里 Range，只能整个子包下（电车 14 MB、巴士 87 MB）；子包编号 3 电车、4 市区巴士，按 `routes.txt` 的 `route_type` 核对过
+- Overpass 主站偶尔拒连、镜像 180 秒读超时：`fetch_osm.py` 超时已放到 300 秒，可用 `--overpass` 换镜像（09-29 kumi 超时，主站重试成功）
+- `walk.json`、`peds.json` 离 2 MB 上限不远（1.7 / 1.8 MB）：已去掉室内通道、停车场过道、私家车道（约 700 条）；换更大的街区要先看体积
 - `fetch_scats.py` 远程读 zip 时缓冲要大（4 MB）：每次读都是一次 HTTPS Range 请求，64 KB 时一天要 2 分钟，4 MB 时几秒
 - 双向有中央隔离带的路（如 La Trobe，电车在中间）在 OSM 里是两条单行道，一个路口由 2–4 个节点组成；这些节点都标同一个站点号，节点之间的连接段不算进口，走插值
 - 2921 的 3 号检测器（Swanston 南行左转）挂不上：OSM 机动车路网里没有 Swanston 从北往南进这个路口的路段
