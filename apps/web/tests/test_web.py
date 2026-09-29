@@ -54,8 +54,8 @@ check("6-engine.js 加载 /engine/public/js/backend.js 并调 connect()",
       "import('/engine/public/js/backend.js')" in ENG and re.search(r"\.then\(m=>m\.connect\(\)\)", ENG))
 check("后端加载失败的分支：catch 里记 BE.err，不往外抛",
       re.search(r"\.catch\(e=>\{BE\.err=e;", ENG) and "engOfflineCard" in ENG)
-check("引擎连不上时第 4 步仍显示预设的小汽车延误（RESULTS.car）",
-      re.search(r"\$\{eng\?'':row\(L\('Mean car delay'", JS) is not None)
+check("反向（T20）：引擎连不上时不再拿预设数字顶上（没有 RESULTS 查表，离线卡片写「暂时没有数字」）",
+      "RESULTS" not in JS and "Engine offline — no numbers to show" in ENG and "showing preset numbers" not in ENG)
 
 # 3c. 反向断言（注入）：引擎 / T5 / 顾问给的文字（why、路名、报错）不原样拼进 HTML
 #     why 只用 textContent；路名、报错进模板一律过 esc()；画在 canvas 上的（drawTag）和剪贴板文字（engPlaybook）不算 HTML
@@ -147,20 +147,15 @@ check("源码里没有 key / token", not re.search(r"(sk-[A-Za-z0-9]{16,}|api[_-
 steps = re.findall(r'data-step="(\d)"', BODY)
 check("stepper 有 01–04 四步", steps == ["1", "2", "3", "4"], str(steps))
 
-# 6. 六种天气：每种都有颜色、图标、图例、影响说明、对比结果、复现种子
+# 6. 六种天气：每种都有颜色、图标、图例、影响说明（对比结果、复现种子是写死的假数，T20 删了）
 for k in WX_KINDS:
     ok = all(re.search(pat, JS, re.S) for pat in [
         rf"WX_META=\{{.*?\b{k}:\{{label:", rf"WX_ICON=\{{.*?\b{k}:'", rf"const LEG=\{{.*?\b{k}:\{{t:",
-        rf"const IMPACT=\{{.*?\b{k}:\[", rf"const RESULTS=\{{.*?\b{k}:\{{severe:", rf"const SEEDS=\{{.*?\b{k}:\d"])
+        rf"const IMPACT=\{{.*?\b{k}:\["])
     check(f"天气 {k} 的配置齐全", ok)
 
-# 7. 修复方案在每种天气下都要比原方案好（安全分升、严重冲突降、无路可走不增加）
-rows = re.findall(r"\b(\w+):\{severe:\[(\d+),(\d+)\],conf:\[(\d+),(\d+)\],noRoute:\[(\d+),(\d+)\],.*?score:\[(\d+),(\d+)\]\}", JS)
-check("RESULTS 覆盖 6 种天气", sorted(r[0] for r in rows) == sorted(WX_KINDS), str([r[0] for r in rows]))
-for r in rows:
-    k = r[0]
-    s0, s1, c0, c1, n0, n1, sc0, sc1 = map(int, r[1:])
-    check(f"{k}：修复后严重冲突 {s0}→{s1}、安全分 {sc0}→{sc1}", s1 < s0 and c1 < c0 and n1 <= n0 and sc1 > sc0)
+# 7. 反向（T20）：安全分、修复前后对比表、复现种子、预期冲突曲线这些按天气查表的假数都删了
+check("没有 RESULTS / SEEDS / PROFILE 查表", not re.search(r"\bconst (RESULTS|SEEDS|PROFILE)=", JS))
 
 # 8. 方案 v2 的几何和文案对得上：护栏西移 8 m、收窄 0.9 m、无障碍通道 1.8 m、VMS 上游移 80 m
 lay = {m.group(1): dict((k, float(v)) for k, v in re.findall(r"(\w+):(-?[\d.]+)", m.group(2)))
@@ -190,6 +185,18 @@ check("wrangler.jsonc 是纯静态：没有 main / durable_objects / vars", not 
 pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 check("package.json 的 deploy 是 wrangler deploy", pkg.get("scripts", {}).get("deploy") == "wrangler deploy")
 check("反向断言：部署配置里没有 token / account_id", not re.search(r"api[_-]?token|account_id|CLOUDFLARE_", wr_txt, re.I))
+
+# T21 叠加检查（8-clash.js，D-0929-2011 ②）：登记表从同源 /api/ 取，数全由 be.clash / be.stagger 算；不可信时不显示负数
+CLASH = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
+check("T21 登记表走 /api/public/js/worksites.js，数由 BE.api.clash / stagger 算",
+      "import('/api/public/js/worksites.js')" in CLASH and "BE.api.clash(" in CLASH and "BE.api.stagger(" in CLASH)
+check("T21 flags.reliable = false 时写「≈ 0 · 结果不可信」（中英）",
+      "!r.flags.reliable" in CLASH and "result not reliable" in CLASH and "结果不可信" in CLASH)
+check("T21 两种 ≈ 0 分开写：negative_delay 说基线超通行能力，substitutes 说同一走廊；错开前看 best.reliable",
+      "r.flags.negative_delay?" in CLASH and "r.flags.substitutes?" in CLASH and "same corridor" in CLASH and "同一走廊" in CLASH and "b&&!b.reliable" in CLASH)
+check("T21 第 3 步挂上叠加检查（clashMount）、地图画那处施工（clashDraw）", "clashMount();" in app_js and "clashDraw();" in app_js)
+raw_title = [x for x in interpolations(CLASH) if "${" not in x and re.search(r"\.(title|name)\b", x) and "esc(" not in x]
+check("T21 反向断言：登记表的标题 / 路名进 HTML 都过 esc()", not raw_title and "esc(o.title)" in CLASH, str(raw_title[:3]))
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
