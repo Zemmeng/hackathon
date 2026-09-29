@@ -1,10 +1,32 @@
-# T26 + T27 网页：T20 收尾 + 地图放下整个 CBD（PRD）
+# T28 + T26 + T27：引擎 extra_min + T20 收尾 + 地图放下整个 CBD（PRD）
 
-> 负责人：@unicornnnnnny（高h）· 模块 `apps/web/` · 写于 2026-09-29 23:54（lead）
-> 分支：先 `unicornnnnnny/web/T26-t20-tail`（约 1.5h），合完再开 `unicornnnnnny/web/T27-full-cbd`（阶段 1 约 5h，时间盒 09-30 22:00）。两单都改 `apps/web`，**按顺序做，不要并行**
-> 合并顺序：**#72（署名，✅ 09-29 已合）→ `lead/ai-panel`（AI 路人面板）→ T26 → T27**。开工前先读第 4 节「和 lead 并行的改动」。另外 #73（T23 接入 AI 方案解读）也已合，改了 `8-compare.js`
-> 依据：lead 原话「高h把我的评审意见都改完了吗」→ 核对结果见第 1 节；「我感觉可以放整个city」「不用你做 给高h写pr就可以」「结合上面的问题 然后汇总 push 上去」。决定见 `docs/decisions.md` D-0929-2354
+> 负责人：@unicornnnnnny（高h）· 三单全归你 · 写于 2026-09-29 23:54，09-30 00:05 改（lead：T28 也给你）
+> 顺序和分支：
+> 1. **T28** `unicornnnnnny/engine/T28-extra-min`（约 1h，第 0 节）：只改 `apps/engine`，不碰 AI 面板，**等 AI 面板合进来的这段时间先做它**
+> 2. **T26** `unicornnnnnny/web/T26-t20-tail`（约 1.5h，第 2 节）
+> 3. **T27** `unicornnnnnny/web/T27-full-cbd`（阶段 1 约 5h，第 3 节，时间盒 09-30 22:00）
+>
+> 每单从最新的 `origin/main` 开，上一单合了再开下一单；T26、T27 都改 `apps/web`，**不要并行**
+> 合并顺序：**#72（署名，✅ 09-29 已合）→ `lead/ai-panel`（AI 路人面板）→ T26 → T27**；T28 不碰 `apps/web`，随时可以合，但 T27 合并前 T28 必须已在 main。开工前先读第 4 节「和 lead 并行的改动」。另外 #73（T23 接入 AI 方案解读）也已合，改了 `8-compare.js`
+> 依据：lead 原话「高h把我的评审意见都改完了吗」→ 核对结果见第 1 节；「我感觉可以放整个city」「不用你做 给高h写pr就可以」「结合上面的问题 然后汇总 push 上去」「直接把prd给高h吧 让他全部做完」。决定见 `docs/decisions.md` D-0929-2354、D-0930-0005
 > 冻结：功能冻结 10-01 06:00。T27 只合做完的「阶段 1」，到 09-30 22:00 还没绿就不合、走兜底（第 3.4 节），别留半成品
+
+## 0. T28 · 引擎给每条路段多给一个 `extra_min`（约 1h，最先做）
+
+**为什么**：页面的「变慢路段」这一层现在是拿**自由流**比（`apps/engine/public/js/pipeline.js:213` 的 `delay_s = t − t0_s`；页面 `apps/web/src/js/6-engine.js:465-466` 按 `v·delay_s/60` 筛），不是拿**同一小时不施工**比。Flinders / King St 早 8 点本来就排 3,952 m，这段路在每个方案里都会被当成「施工造成的涟漪」画成红线。现在因为它在地图窗口外才没人看见；T27 把地图扩到整个 CBD 以后就会露出来。
+
+**做法**：
+- 分支：`git fetch origin && git switch -c unicornnnnnny/engine/T28-extra-min origin/main`（模块段写 `engine`，`check [3]` 才放你写 `apps/engine`）
+- `apps/engine/public/js/pipeline.js` 约 212–215 行：`links.push({...})` 里多给 `extra_min: round1((x.v * x.t - bx.v * bx.t) / 60)`，就是下一行 `hot` 已经在算的那个数（车·分钟，和同一小时不施工时比）。负数照实给，不截成 0，页面自己决定怎么画
+- 别的字段一个都不改、不删（`delay_s` 还有别处在用）
+- 测试加在 `apps/engine/tests/`，照那里现有测试的写法：
+  - 反向断言：Lonsdale 西行 08:00 封 1 道时，Flinders St / King St 那几段 `delay_s` 很大，但 `extra_min < 2`
+  - 施工路段本身 `extra_min > 0`
+  - 每条 `raw.links` 都有数值型的 `extra_min`
+- **页面那侧不在 T28 里改**：`6-engine.js:466` 改用 `extra_min` 来筛，放在 T27 里做（第 3.2 节）
+- 契约：`docs/contract.md` 是 lead 的独占区。你在 PR 的「要改的共享文件」里写「§引擎原始结果 raw.links 加 `extra_min`（车·分钟，和同一小时不施工时比，可 < 0）」，lead 落实
+- `apps/engine/` 的代码归 lead（CODEOWNERS），**PR 由 lead 审过再合**，你不要自己合
+- 验收：`bash apps/engine/test.sh` 全绿、`bash scripts/check.sh --quick` 无 ❌，贴汇总行
 
 ## 1. T20 核对结果（09-29 23:30，线上 = main `f3d4d95` 构建）
 
@@ -124,7 +146,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
    - `tests/test_t20.py:69` 钉死了 `engUp(Math.min(s.queue_m,engWorldReach()))` 这段原文，改完要同步改这条断言
 6. **比例尺**：按 1 m ≈ 0.863 页面单位修正（`5-app.js:165-170`），全城和路口两种缩放下都对
 
-**依赖 lead 那边先做的（你不改 `apps/engine`）**：「变慢路段」这一层现在是和自由流比（`apps/engine/public/js/pipeline.js:213` 的 `delay_s = t − t0_s`；页面 `6-engine.js:465-466` 按 `v·delay_s/60` 筛），不是和不施工时比。视野一放开，Flinders / King St 本来就有的 3,952 m 排队，会在**每个方案**里被画成红色的施工涟漪。lead 会让引擎在 `raw.links` 里多给一个 `extra_min`（和不施工时比，`pipeline.js:214` 已经算好了），你把 `6-engine.js:466` 改成用它来筛。**lead 这个没进 main 之前，T27 不合**。任务号 T28，见 `docs/3-tasks.md` @Zemmeng 那节
+7. **变慢路段改用 `extra_min` 筛**（引擎那侧你在 T28 里已经做了）：`6-engine.js:465-466` 现在按 `(l.v||0)*(l.delay_s||0)/60` 筛，改成按 `l.extra_min`（≥ 2 才画，红 / 黄的阈值照旧）。这样 Flinders / King St 本来就有的排队不会在每个方案里被画成施工涟漪。**T28 没进 main 之前，T27 不合**
 
 **阶段 2（可选，阶段 1 合了还有时间再做）**
 - 全城层上给约 15 条主街写街名（`drawLabels` 现在只画楼名，`2-basemap.js:199` 起）
@@ -140,7 +162,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 - 六种天气各点一遍：只出现在原来那块窗口里，缩小时隐藏，不报错
 - 切到 La Trobe 17:00 方案、全封方案、T21 叠加各看一次，绕行线和受影响公交线都画全
 - 反向断言（新建 `tests/test_t27.py`）：
-  - Lonsdale 方案下不画 Flinders / King St 的背景排队（依赖 T28 的 `extra_min`）
+  - Lonsdale 方案下不画 Flinders / King St 的背景排队（用 T28 的 `extra_min`）
   - 排队线的长度不超过它经过的真实路段长度之和
   - 缩放小于 1 时 `engCands` 不接受点选
   - 天气、微观仿真的网格仍按 `WORLD` 建，不按 `CITY`
@@ -148,7 +170,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 
 ### 3.4 时间盒和兜底
 - 时间盒：**09-30 22:00 前 PR 要绿**（check 无 ❌，两张截图过了），给冻结前留出修 bug 和部署的时间
-- 到点没绿，T27 不合；兜底是 lead 用 node 离线画一张「全 CBD 影响」静态图，放进 pitch。T28 的 `extra_min` 不管 T27 合不合都要合
+- 到点没绿，T27 不合；兜底是 lead 用 node 离线画一张「全 CBD 影响」静态图，放进 pitch。T28 不管 T27 合不合都要合
 - 阶段 1 超过 5h 还没做完，先停下来找 lead，不要自己砍验收
 
 ## 4. 和 lead 并行的改动（先合谁、别动哪里）
@@ -166,7 +188,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 | `apps/engine/public/js/backend.js` | 对外加 `be.aiLog()` |
 
 ### 4.2 合并顺序
-**#72（你的署名）→ `lead/ai-panel` → T26 → T27**，每一步都等上一步进了 main 再开下一个分支。
+**#72（你的署名，✅ 已合）→ `lead/ai-panel` → T26 → T27**，每一步都等上一步进了 main 再开下一个分支。T28 只改 `apps/engine`（AI 面板只在 `backend.js` 加 `be.aiLog()`，不碰 `pipeline.js`），不用排队，现在就能开；但要在 T27 之前进 main。
 
 T26 开工：
 ```bash
