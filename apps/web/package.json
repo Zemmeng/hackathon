@@ -1,0 +1,13 @@
+{
+  "name": "web",
+  "private": true,
+  "scripts": {
+    "build": "python3 build.py",
+    "dev": "python3 -m http.server 4175 -d public",
+    "test": "bash test.sh",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}

@@ -1,0 +1,11 @@
+// apps/web 的 Cloudflare 部署配置：纯静态页，只用 assets 托管 public/，没有 Worker 代码、没有 Durable Object。
+// 部署走 bash scripts/deploy.sh web（只有 DEPLOYER 能跑），它会调本目录的 npm run deploy。
+{
+  "name": "rippletwin",               // Worker 名 = workers.dev 链接前缀：rippletwin.<账号子域>.workers.dev
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,                // 比赛期间开着拿 demo 链接
+  "preview_urls": false,
+  "assets": { "directory": "public" }
+  // 要绑正式域名时打开：
+  // "routes": [{ "pattern": "rippletwin.wawazhiliao.com", "custom_domain": true }]
+}
