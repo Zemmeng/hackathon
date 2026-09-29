@@ -267,6 +267,11 @@ elif sub == 'conf':
 # ---------------------------------------------------------------- [6] 卫生
 elif sub == 'hygiene':
     MB = 1024 * 1024
+    # apps/<模块>/public/ 下的 .json 数据文件上限 2MB、不报 500KB 提醒（PRD「每个文件 < 2 MB」，D-0929-1430）；其余 1MB
+    DATA_RE = re.compile(r'apps/[^/]+/public/.+\.json$')
+
+    def is_data(p):
+        return DATA_RE.match(p) is not None
     tracked = {}
     for rec in git('ls-files', '-s', '-z').split(b'\0'):
         if b'\t' not in rec:
@@ -283,14 +288,18 @@ elif sub == 'hygiene':
         if tracked[p] == '160000' or os.path.islink(fp) or not os.path.isfile(fp):
             continue
         sz = os.path.getsize(fp)
-        if sz > MB:
+        if is_data(p):
+            if sz > 2 * MB:
+                emit('E', '%s %.1fMB > 2MB（数据文件上限；抽稀、省字段或拆文件）' % (p, sz / MB))
+        elif sz > MB:
             emit('E', '%s %.1fMB > 1MB（压缩或放网盘；git rm --cached %s）' % (p, sz / MB, p))
         elif sz > 500 * 1024:
             emit('W', '%s %dKB > 500KB（能压就压）' % (p, sz // 1024))
     for p in sorted(untracked):
         fp = fpath(p)
-        if os.path.isfile(fp) and not os.path.islink(fp) and os.path.getsize(fp) > MB:
-            emit('W', '%s（未跟踪）%.1fMB > 1MB：别 git add，放 out/ 或网盘' % (p, os.path.getsize(fp) / MB))
+        lim = 2 * MB if is_data(p) else MB
+        if os.path.isfile(fp) and not os.path.islink(fp) and os.path.getsize(fp) > lim:
+            emit('W', '%s（未跟踪）%.1fMB > %dMB：别 git add，放 out/ 或网盘' % (p, os.path.getsize(fp) / MB, lim // MB))
     shells = [p for p in list(tracked) + untracked if p.endswith('.sh') or p.startswith('.githooks/')]
     for p in sorted(set(shells)):
         fp = fpath(p)
@@ -475,11 +484,11 @@ add_d() { ID_EXTRA=$((ID_EXTRA + 1)); _add_detail "$1"; }
 finish_item() {  # finish_item <编号> <名称> [全绿时的说明]
   local reason
   if [ "$IE_N" -gt 0 ]; then
-    reason="$IE"; [ "$IE_N" -gt 1 ] && reason="${reason}（共 $IE_N 处 ❌）"
-    [ "$IW_N" -gt 0 ] && reason="${reason}；另有 $IW_N 处 ⚠️"
+    reason="$IE"; [ "$IE_N" -gt 1 ] && reason="$reason（共 $IE_N 处 ❌）"
+    [ "$IW_N" -gt 0 ] && reason="$reason；另有 $IW_N 处 ⚠️"
     item "$1" "$2" err "$reason"
   elif [ "$IW_N" -gt 0 ]; then
-    reason="$IW"; [ "$IW_N" -gt 1 ] && reason="${reason}（共 $IW_N 处 ⚠️）"
+    reason="$IW"; [ "$IW_N" -gt 1 ] && reason="$reason（共 $IW_N 处 ⚠️）"
     item "$1" "$2" warn "$reason"
   else
     item "$1" "$2" ok "${3:-}"
@@ -514,7 +523,7 @@ py_item() {  # py_item <编号> <名称> <子命令>
       *) [ "$rc" -ne 0 ] && [ -n "$line" ] && add_d "$line" ;;
     esac
   done <<<"$out"
-  [ "$rc" -ne 0 ] && add_e "检查脚本自身出错（python 退出码 ${rc}）——这是 check.sh 的 bug，找 lead"
+  [ "$rc" -ne 0 ] && add_e "检查脚本自身出错（python 退出码 $rc）——这是 check.sh 的 bug，找 lead"
   finish_item "$1" "$2" "$okmsg"
 }
 
@@ -543,11 +552,11 @@ run_e2e() {
   fetch() {  # fetch <路径> <输出文件> → 设置 code rc
     code=$(curl -sS -m 3 -o "$2" -w '%{http_code}' "$url$1" 2>"$tmp/err"); rc=$?
   }
-  why_curl() { [ "$rc" = 28 ] && echo "超过 3 秒没返回" || echo "请求失败（curl 退出码 ${rc}：$(head -n 1 "$tmp/err")）"; }
+  why_curl() { [ "$rc" = 28 ] && echo "超过 3 秒没返回" || echo "请求失败（curl 退出码 $rc：$(head -n 1 "$tmp/err")）"; }
 
   fetch "/" "$tmp/index.html"
   if [ "$rc" -ne 0 ]; then item E1 "首页 GET /" err "$(why_curl)"
-  elif [ "$code" != 200 ]; then item E1 "首页 GET /" err "HTTP ${code}（要 200）"
+  elif [ "$code" != 200 ]; then item E1 "首页 GET /" err "HTTP $code（要 200）"
   elif ! grep -q 'data-smoke' "$tmp/index.html"; then item E1 "首页 GET /" err "200，但页面里没有 data-smoke 标记（部署的不是这个站？）"; got_index=1
   else item E1 "首页 GET /" ok "200，含 data-smoke"; got_index=1
   fi
@@ -556,7 +565,7 @@ run_e2e() {
   body=$(head -c 160 "$tmp/health" 2>/dev/null | tr -d '\r\n')
   if [ "$rc" -ne 0 ]; then item E2 "健康检查 GET /api/health" err "$(why_curl)"
   elif grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$tmp/health"; then item E2 "健康检查 GET /api/health" ok "$body"
-  else item E2 "健康检查 GET /api/health" err "HTTP ${code}，响应里没有 \"ok\":true（开头：${body:-空}）"
+  else item E2 "健康检查 GET /api/health" err "HTTP $code，响应里没有 \"ok\":true（开头：${body:-空}）"
   fi
 
   if [ "$got_index" -eq 1 ]; then
@@ -576,9 +585,9 @@ run_e2e() {
 # --selftest：门禁本身也要被验证
 # =====================================================================
 run_selftest() {
-  local T="$WORK/selftest" i=0 total=8 out rc
+  local T="$WORK/selftest" i=0 total=19 out rc q v
   mkdir -p "$T"
-  say "🧪 check.sh --selftest（临时目录 ${T}，结束后删除）"
+  say "🧪 check.sh --selftest（临时目录 $T，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
              -c core.hooksPath=/dev/null -c init.defaultBranch=main "$@"; }
   mkrepo() {  # mkrepo <目录>：main 上一个干净、全绿的最小仓库
@@ -603,7 +612,7 @@ run_selftest() {
     local ok=0 why=""
     if ! printf '%s\n' "$out" | grep -q '^======== 汇总 '; then why="输出里没有汇总行"
     elif [ "$2" = green ]; then
-      [ "$rc" -eq 0 ] && ok=1 || why="应该无 ❌，实际退出码 ${rc}：$(printf '%s\n' "$out" | grep -E '^\[[0-9]\] .*❌' | head -n 1)"
+      [ "$rc" -eq 0 ] && ok=1 || why="应该无 ❌，实际退出码 $rc：$(printf '%s\n' "$out" | grep -E '^\[[0-9]\] .*❌' | head -n 1)"
     else
       if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | sed -n '/^======== 汇总/,$p' | grep -qF "$2"; then ok=1
       else why="应该在汇总节里看到「$2」，实际退出码 $rc"; fi
@@ -646,6 +655,63 @@ run_selftest() {
   ( mkrepo "$T/rules" && gq checkout -q -b lead/rules &&
     printf '# AGENTS.md\n\n1. 规则一\n2. 规则二\n' >AGENTS.md ) >/dev/null 2>&1
   run_case "RULES 标记缺失：AGENTS.md 删了 BEGIN/END → [7] ❌" "[7] RULES 块一致 ❌ AGENTS.md 缺" "$T/rules"
+
+  # docs/llm-apis/：每人只建 / 改自己的卡（文件名以「分支 handle-」开头），卡里不许有 key 的值
+  ( mkrepo "$T/card" && gq checkout -q -b alice/demo/T6-card && mkdir -p docs/llm-apis &&
+    printf '# alice 的卡\n\n变量名 `DEMO_API_KEY`，key 在 @alice 手里\n' >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：新建自己的 docs/llm-apis/alice-demo.md → 应全绿" green "$T/card"
+
+  ( mkrepo "$T/card-other" && mkdir -p docs/llm-apis && printf '# bob 的卡\n' >docs/llm-apis/bob-demo.md &&
+    gq add -A && gq commit -qm bob-card && gq checkout -q -b alice/demo/T7-card && echo "x" >>docs/llm-apis/bob-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：改了别人的 docs/llm-apis/bob-demo.md → [3] ❌" "[3] 分支与越界 ❌ 改了别人的 API 卡" "$T/card-other"
+
+  ( mkrepo "$T/card-name" && gq checkout -q -b alice/demo/T8-card && mkdir -p docs/llm-apis &&
+    printf '# 卡\n' >docs/llm-apis/demo.md ) >/dev/null 2>&1
+  run_case "API 卡：新建的卡没以自己的 handle 开头 → [3] ❌" "[3] 分支与越界 ❌ 新建的 API 卡" "$T/card-name"
+
+  # 五种写法各一行：Bearer 直接写值、hf_、gsk_、xai-、r8_；值在运行时拼，本文件里不出现完整的串
+  q=$(printf 'Q%.0s' $(seq 1 44)); FAKE_KEY="selftest$q"
+  ( mkrepo "$T/card-key" && gq checkout -q -b alice/demo/T9-card && mkdir -p docs/llm-apis &&
+    printf 'curl -H "Authorization: Bearer %s" https://api.example.com\nhf: %s\ngroq: %s\nxai: %s\nreplicate: %s\n' \
+      "$FAKE_KEY" "hf_$q" "gsk_$q" "xai-$q" "r8_$q" >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡里贴了 key（Bearer / hf_ / gsk_ / xai- / r8_）→ [1] ❌ 命中 5 处且不回显值" "[1] 秘密扫描 ❌ 命中 5 处" "$T/card-key"
+  FAKE_KEY=""
+
+  # 反向：只写变量名 / 占位的 Bearer 不误报；handle 大小写不同、文件名带点也算自己的卡
+  ( mkrepo "$T/card-case" && gq checkout -q -b Alice/demo/T13-card && mkdir -p docs/llm-apis &&
+    printf 'curl -H "Authorization: Bearer CLOUDFLARE_API_TOKEN"\ncurl -H "Authorization: Bearer YOUR-OPENROUTER-API-KEY"\ncurl -H "Authorization: Bearer $DEEPSEEK_API_KEY"\napi_key: CLOUDFLARE_API_TOKEN\n' \
+      >docs/llm-apis/alice-qwen2.5.md ) >/dev/null 2>&1
+  run_case "API 卡：分支 Alice/ 建 alice-qwen2.5.md，只写变量名的 Bearer → 应全绿" green "$T/card-case"
+
+  ( mkrepo "$T/card-rm" && mkdir -p docs/llm-apis && printf '# bob 的卡\n' >docs/llm-apis/bob-demo.md &&
+    gq add -A && gq commit -qm bob-card && gq checkout -q -b alice/demo/T14-card &&
+    gq rm -q docs/llm-apis/bob-demo.md && gq commit -qm rm ) >/dev/null 2>&1
+  run_case "API 卡：删了别人的 docs/llm-apis/bob-demo.md → [3] ❌" "[3] 分支与越界 ❌ 删了别人的 API 卡" "$T/card-rm"
+
+  ( mkrepo "$T/card-sub" && gq checkout -q -b alice/demo/T15-card && mkdir -p docs/llm-apis/sub &&
+    printf '# 卡\n' >docs/llm-apis/sub/alice-x.md ) >/dev/null 2>&1
+  run_case "API 卡：建子目录 docs/llm-apis/sub/ → [3] ❌" "[3] 分支与越界 ❌ 1 个文件超出模块 demo" "$T/card-sub"
+
+  ( mkrepo "$T/card-cn" && gq checkout -q -b alice/demo/T16-card && mkdir -p docs/llm-apis &&
+    printf '# 卡\n' >"docs/llm-apis/alice-通义.md" ) >/dev/null 2>&1
+  run_case "API 卡：中文文件名 alice-通义.md → [3] ❌" "[3] 分支与越界 ❌ API 卡" "$T/card-cn"
+
+  # 没有固定前缀的 key 写在标签后面（全角冒号、…_SECRET_KEY=），以及 pplx- 和 JWT：各一行
+  v=$(printf 'Ab3%.0s' $(seq 1 11)); FAKE_KEY="$v"
+  ( mkrepo "$T/card-key2" && gq checkout -q -b alice/demo/T17-card && mkdir -p docs/llm-apis &&
+    printf -- '- API Key：%s\nQIANFAN_SECRET_KEY=%s\npplx: %s\njwt: %s\n' "$v" "$v" "pplx-$q" "eyJ$v.eyJ$v.$v" \
+      >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：API Key：… / …_SECRET_KEY= / pplx- / JWT → [1] ❌ 命中 4 处且不回显值" "[1] 秘密扫描 ❌ 命中 4 处" "$T/card-key2"
+  FAKE_KEY=""
+
+  # 大小上限：apps/<模块>/public/ 下的 .json 数据文件 2MB，其余 1MB（D-0929-1430）
+  ( mkrepo "$T/data" && gq checkout -q -b alice/demo/T6-data && mkdir -p apps/demo/public &&
+    head -c 1572864 /dev/zero | tr '\0' '1' >apps/demo/public/big.json && gq add apps/demo/public/big.json ) >/dev/null 2>&1
+  run_case "数据文件：apps/demo/public/big.json 1.5MB → 应全绿（上限 2MB）" green "$T/data"
+
+  ( mkrepo "$T/big" && gq checkout -q -b alice/demo/T7-big &&
+    head -c 1572864 /dev/zero | tr '\0' '1' >apps/demo/big.txt && gq add apps/demo/big.txt ) >/dev/null 2>&1
+  run_case "大文件：apps/demo/big.txt 1.5MB → [6] ❌（非数据文件上限 1MB）" "[6] 仓库卫生 ❌" "$T/big"
 
   [ "$i" -eq "$total" ] || item S0 "场景数" err "跑了 $i 个场景，应为 $total"
   ROOT=""   # 自测不覆盖真仓库的 logs/last-check.txt
@@ -705,7 +771,7 @@ CHANGED_FILE="$WORK/changed.txt"
 } 2>/dev/null | sed '/^$/d' | sort -u >"$CHANGED_FILE"
 N_CHANGED=$(wc -l <"$CHANGED_FILE" | tr -d ' ')
 
-if [ -n "$MB" ]; then BASE_SHOW="$BASE"; else BASE_SHOW="无（${BASE_NOTE}）"; fi
+if [ -n "$MB" ]; then BASE_SHOW="$BASE"; else BASE_SHOW="无（$BASE_NOTE）"; fi
 say "🔍 check.sh（$([ "$MODE" = quick ] && echo 快速 --quick || echo 全量)）· $(basename "$ROOT") · 分支 ${BRANCH_NAME:-（detached）} · base $BASE_SHOW · 改动 $N_CHANGED 个文件 · $(date '+%Y-%m-%d %H:%M')"
 
 # =====================================================================
@@ -731,7 +797,7 @@ check_1() {
     while IFS= read -r f; do [ -n "$f" ] && add_d "$f"; done <<<"$out"
     finish_item 1 "秘密扫描"
   else
-    add_e "secret-scan.sh 自身出错（退出码 ${rc}）"; finish_item 1 "秘密扫描"
+    add_e "secret-scan.sh 自身出错（退出码 $rc）"; finish_item 1 "秘密扫描"
   fi
 }
 
@@ -773,7 +839,7 @@ check_3() {
         else add_e "在 $BRANCH_NAME 上有 $N_CHANGED 个改动：先开分支 git switch -c <handle>/<模块>/T<n>-<slug>（lead 用 lead/<slug>）"; fi
         while IFS= read -r f; do add_d "$f"; done <"$CHANGED_FILE"
       fi
-      [ -z "$MB" ] && add_w "没有 base（${BASE_NOTE}），只看了工作区改动"
+      [ -z "$MB" ] && add_w "没有 base（$BASE_NOTE），只看了工作区改动"
       finish_item 3 "$name" "在 $BRANCH_NAME 上，没有改动"; return ;;
     lead/*)
       # 只提醒不拦：CI 里 GITHUB_ACTOR 可能是机器人，拦了会误伤
@@ -781,9 +847,9 @@ check_3() {
       if [ -z "$lead" ]; then add_w "hackathon.conf 的 LEAD 为空，核不了 lead/* 分支的身份"
       elif [ -z "$me" ]; then add_w "lead/* 只给 lead 用：认不出你是谁（git config hack.me 为空），LEAD=@$lead"
       elif [ "$(lower "$me")" != "$(lower "$lead")" ] && { [ -z "$backup" ] || [ "$(lower "$me")" != "$(lower "$backup")" ]; }; then
-        add_w "lead/* 只给 lead 用：你是 @${me}，LEAD=@$lead${backup:+，BACKUP_LEAD=@$backup}（队员请用 <handle>/<模块>/T<n>-<slug>）"
+        add_w "lead/* 只给 lead 用：你是 @$me，LEAD=@$lead${backup:+，BACKUP_LEAD=@$backup}（队员请用 <handle>/<模块>/T<n>-<slug>）"
       fi
-      finish_item 3 "$name" "$BRANCH_NAME 是 lead 分支（@${me}），全仓库可写"; return ;;
+      finish_item 3 "$name" "$BRANCH_NAME 是 lead 分支（@$me），全仓库可写"; return ;;
   esac
   if [[ ! "$BRANCH_NAME" =~ $re ]]; then
     example="git branch -m ${me:-<handle>}/<模块>/T<n>-<slug>（例：git branch -m ${me:-alice}/web/T3-login）"
@@ -797,7 +863,7 @@ check_3() {
     finish_item 3 "$name"; return
   fi
   handle="${BASH_REMATCH[1]}"; mod="${BASH_REMATCH[2]}"
-  [ -z "$MB" ] && add_w "没有 base（${BASE_NOTE}），只检查了工作区改动"
+  [ -z "$MB" ] && add_w "没有 base（$BASE_NOTE），只检查了工作区改动"
   ref="${MB:-HEAD}"; ref_short=$(g rev-parse --short "$ref" 2>/dev/null || echo "$ref")
   while IFS= read -r f; do
     [ -n "$f" ] || continue
@@ -811,13 +877,30 @@ check_3() {
         # 交接单只新建自己的：文件名 -T 之前的前缀必须是本分支的 handle（不区分大小写）
         prefix=$(basename "$f" | sed -E 's/-T[0-9]+-.*$//')
         if g cat-file -e "$ref:$f" 2>/dev/null; then
-          if [ ! -e "$f" ]; then add_e "删了交接单 ${f}（交接单只由 lead git mv 到 handoff/done/）"
-          elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then add_e "改了别人的交接单 ${f}（交接单只新建，不改旧单）"; fi
+          if [ ! -e "$f" ]; then add_e "删了交接单 $f（交接单只由 lead git mv 到 handoff/done/）"
+          elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then add_e "改了别人的交接单 $f（交接单只新建，不改旧单）"; fi
         elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then
-          add_e "新建的交接单 $f 前缀是「${prefix}」，不是本分支的 handle「${handle}」（命名 $handle-T<n>-<MMDD-HHMM>.md；替别人写的内容放自己那张单里）"
+          add_e "新建的交接单 $f 前缀是「$prefix」，不是本分支的 handle「$handle」（命名 $handle-T<n>-<MMDD-HHMM>.md；替别人写的内容放自己那张单里）"
         fi ;;
       docs/4-demo.md|docs/pitch-assets/*)
         [ "$mod" = pitch ] || { out_n=$((out_n + 1)); out_list="$out_list$f"$'\n'; } ;;
+      docs/llm-apis/README.md|docs/llm-apis/TEMPLATE.md|docs/llm-apis/*/*) out_n=$((out_n + 1)); out_list="$out_list$f"$'\n' ;;
+      docs/llm-apis/*)
+        # API 卡只动自己的：文件名以「本分支 handle-」开头（不区分大小写）；别人的卡不改不删
+        case "$(lower "$(basename "$f")")" in
+          "$(lower "$handle")"-?*)
+            # 自己的卡：文件名全 ASCII（D-05），后缀 .md 或 .json（-response.json）
+            if [ -e "$f" ] && ! printf '%s' "$(lower "$(basename "$f")")" | LC_ALL=C grep -Eq '^[a-z0-9._-]+\.(md|json)$'; then
+              add_e "API 卡 ${f} 的文件名只能用小写字母、数字、. _ -，后缀 .md 或 .json（例：docs/llm-apis/${handle}-deepseek.md）"
+            fi ;;
+          *)
+            if g cat-file -e "$ref:$f" 2>/dev/null; then
+              if [ -e "$f" ]; then add_e "改了别人的 API 卡 ${f}（只能改文件名以 ${handle}- 开头的卡）"
+              else add_e "删了别人的 API 卡 ${f}（只能删自己的）"; fi
+            else
+              add_e "新建的 API 卡 ${f} 要以本分支的 handle 开头：docs/llm-apis/${handle}-<服务商>.md"
+            fi ;;
+        esac ;;
       *) out_n=$((out_n + 1)); out_list="$out_list$f"$'\n' ;;
     esac
   done <"$CHANGED_FILE"
@@ -825,11 +908,11 @@ check_3() {
     if [ "${ALLOW_CROSS:-}" = 1 ]; then
       add_w "ALLOW_CROSS=1 放行 $out_n 个越界文件（模块 $mod 的范围外）"
     else
-      add_e "$out_n 个文件超出模块 $mod 的可写范围（apps/$mod/ + 3-tasks / decisions / pitfalls 只追加 / 自己的新交接单$([ "$mod" = pitch ] && echo ' / 4-demo / pitch-assets')）：挪回自己模块，或写进交接单第 2 节交给 lead；lead 同意跨模块后用 ALLOW_CROSS=1 git push，PR 打 cross-module 标签"
+      add_e "$out_n 个文件超出模块 $mod 的可写范围（apps/$mod/ + 3-tasks / decisions / pitfalls 只追加 / 自己的新交接单 / 自己的 API 卡 docs/llm-apis/${handle}-*$([ "$mod" = pitch ] && echo ' / 4-demo / pitch-assets')）：挪回自己模块，或写进交接单第 2 节交给 lead；lead 同意跨模块后用 ALLOW_CROSS=1 git push，PR 打 cross-module 标签"
     fi
     while IFS= read -r f; do [ -n "$f" ] && add_d "越界：$f"; done <<<"$out_list"
   fi
-  finish_item 3 "$name" "$BRANCH_NAME → 模块 ${mod}，$N_CHANGED 个改动都在范围内"
+  finish_item 3 "$name" "$BRANCH_NAME → 模块 $mod，$N_CHANGED 个改动都在范围内"
 }
 
 # =====================================================================
@@ -865,7 +948,7 @@ run_test() {  # run_test <path/test.sh> → 设置 T_OK T_LAST T_WHY T_P T_LOG T
   local t="$1" log pid ticks=0 limit rc timed_out=0 f
   log="logs/test-$(printf '%s' "${t%/test.sh}" | tr '/' '-').txt"
   mkdir -p logs 2>/dev/null
-  progress "运行 ${t}（限时 ${TEST_TIMEOUT}s）"
+  progress "运行 $t（限时 ${TEST_TIMEOUT}s）"
   set -m   # 让 test.sh 自成一个进程组：超时 / 被信号打断时整组杀掉，连它起的 node、后台进程一起
   MOCK="${MOCK:-1}" bash "$t" >"$log" 2>&1 </dev/null &
   pid=$!
@@ -892,7 +975,7 @@ run_test() {  # run_test <path/test.sh> → 设置 T_OK T_LAST T_WHY T_P T_LOG T
   T_LAST=$(sed '/^[[:space:]]*$/d' "$log" | tail -n 1 | tr -d '\r' | cut -c 1-300)
   T_OK=0; T_P=0; T_WHY=""
   if [ "$timed_out" -eq 1 ]; then T_WHY="超时（>${TEST_TIMEOUT}s，已杀掉整个进程组）"
-  elif ! printf '%s\n' "$T_LAST" | grep -Eq '[0-9]+ passed, [0-9]+ failed'; then T_WHY="最后一行没有「N passed, M failed」（退出码 ${rc}，多半是崩了）"
+  elif ! printf '%s\n' "$T_LAST" | grep -Eq '[0-9]+ passed, [0-9]+ failed'; then T_WHY="最后一行没有「N passed, M failed」（退出码 $rc，多半是崩了）"
   else
     T_P=$(printf '%s\n' "$T_LAST" | grep -oE '[0-9]+ passed' | head -n 1 | grep -oE '[0-9]+')
     f=$(printf '%s\n' "$T_LAST" | grep -oE '[0-9]+ failed' | head -n 1 | grep -oE '[0-9]+')
