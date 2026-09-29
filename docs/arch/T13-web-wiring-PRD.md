@@ -83,20 +83,24 @@ python3 -m http.server 8000 -d apps      # 从 apps/ 起，路径和线上一样
 |---|---|---|
 | 第 1 步 方案 | 预设几何 | 用户选的路段 → `links`；摆的设备 → `equipment` |
 | 第 2 步 压力测试 | 天气预设 `RESULTS` | **不动**（天气是第二层，引擎不管天气） |
+| 第 3 步 哪段路 | 预设 | `s.street`（主路段 = 延误最大的那段；多个施工时其余的在 `s.approaches[]`，主路段是 `s.approaches[s.main]`） |
 | 第 3 步 各路线分流 | 预设 | `s.routes[]`：`name`、`share`（0–1）、`now_min`、`usual_min`；`id === 'stay'` 是原路；`s.detour_share` = 绕行比例 |
 | 第 3 步 排队 | 预设 | `s.queue_m`（米） |
 | 第 3 步 受影响的车 | 预设 | `s.vehicles`（辆 / 小时）、`s.mean_delay_s`（平均每辆多几秒） |
 | 第 3 步 每类人 | 预设 | `s.by_type[类型].per_capita_min`（人均多几分钟）；类型 = commuter / local / tourist / delivery |
-| 第 3 步 「为什么」 | 预设文案 | `s.approaches[0].by_type[类型].why`（T5 给的一句理由；**用 `textContent`**，别用 `innerHTML`） |
+| 第 3 步 「为什么」 | 预设文案 | `s.why[类型]`（主路段上 T5 给的一句理由；**用 `textContent`**，别用 `innerHTML`） |
 | 第 3 步 地图高亮 | — | `s.hot[]`：最堵的 ≤ 5 段 `{ id, name, extra_min, v, cap, queue_m }`；全部路段在 `s.raw.links[]`；几何按 `id` 从 `/roads/public/cbd/network.json` 的 `links[].geometry` 取 |
 | 第 4 步 小汽车平均延误 | `R.car` | `c.before.mean_delay_s` → `c.after.mean_delay_s`（`c` = `beCompare` 的结果；`c.delta.*` 负数 = 变好） |
-| 第 4 步 排队 / 绕行 | — | `c.before.queue_m` → `c.after.queue_m`；`detour_share` 同理 |
+| 第 4 步 排队 / 绕行 | — | `c.delta.queue_m`、`c.delta.detour_share`：按**改之前的主路段**（`c.delta.street`）前后对比同一段路；`c.delta.main_changed = true` 时改完以后最堵的换成了别的路，界面提示一句 |
 | 第 4 步 AI 改法 | 预设 Δ1–Δ4 | `beAdvise(plan)` → `options[]`：`kind`（text 改字 / move 挪设备 / shift 错开日期）、`why`、`frames` / `at_m` / `days`、`delta_min`（负 = 变好，整个施工期加总）、`better`、`plan`（改完的方案，可以直接 `beRun` 画出来） |
 | 第 4 步 冲突、急刹、TTC、公交、应急通道、安全分 | 微观仿真 + 预设 | **不动**（引擎不算这些），保留「模拟结果」标注 |
 
 数字来源（评审问「哪来的」时用），在 `s.flags`：
 
-- `ok`：false = 有读数没拿到 / 校准没命中 / 屏上文字不合规范 → 标黄，别当真数字
+- `ok`：false = 有读数没拿到 / 校准没命中 / 屏上文字不合规范 / 有车全封又无路可绕 → 标黄，别当真数字
+- `blocked_vph`：> 0 = 全封又无路可绕、卡住的车（veh/h），不算进延误，要单独显示
+- `inactive`：true = 方案里的施工这个小时都不在做（数字全是 0），提示「此时段不施工」
+- 顾问 `beAdvise` 的结果也有 `flags.ok`（有读数没拿到时 `delta_min` / `better` 不可信）；施工没写日期时只比这一个小时（`window.single_hour`）
 - `reading_src`：`rule` = 关键词规则估算；换成大模型后是模型名
 - `params`：`params` = 有出处（T12）；`default` = 假设值
 - `sign_errors[]` / `sign_warnings[]`：屏上文字的问题（`msg` 中文）

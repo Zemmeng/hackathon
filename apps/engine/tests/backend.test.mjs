@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { ok, t, done } from './_t.mjs';
 import { connect, demoPlan, summarize, PATHS, DEMO_NAMES } from '../public/js/backend.js';
+const clone = x => JSON.parse(JSON.stringify(x));
 
 const APPS = new URL('../../', import.meta.url); // apps/
 const file = p => new URL('.' + p, APPS); // '/roads/public/…' → apps/roads/public/…
@@ -75,6 +76,57 @@ await t('演示方案', async () => {
   ok(p.worksites[0].equipment[0].frames[0][0] === 'X' && p.worksites[0].equipment[0].at_m === 180 && p.when.hour === 17 && demoPlan('lonsdale').worksites[0].equipment[0].at_m === 300, 'demo(名, { frames, at_m, hour }) 每次给新的一份，不改原件');
   let threw = false; try { demoPlan('nope'); } catch { threw = true; }
   ok(threw && typeof summarize === 'function', '没有的方案名 → 抛错');
+});
+
+await t('审查确认的 7 条（review-backend-logic / browser）', async () => {
+  const be = await connect({ fetch: fakeFetch, importer: noImporter });
+  // 1 全封：封死路段上的车全部改道，不许悄悄记成「卡住」而让全封显得更好
+  const all = be.demo('lonsdale'); all.worksites[0].closes.lanes = 2;
+  const full = await be.run(all);
+  const closed = full.raw.links.find(l => l.id === 'l595594354_9756035316');
+  ok(full.blocked_vph === 0 && closed.v === 0 && full.vehicles >= 1100 && full.raw.links.every(l => l.v >= 0) && full.flags.ok,
+    `全封：封闭路段剩 ${closed.v} 辆、卡住 ${full.blocked_vph}、改道 ${full.vehicles} 辆（整条路段的车，不是只挪从头走到尾的 513 辆），没有负流量`);
+  const line = { version: 1, nodes: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, lat: -37.81, lon: 144.95 + i * 0.002 })),
+    links: [['a', 'b'], ['b', 'c'], ['c', 'd']].map(([x, y]) => ({ id: x + y, from: x, to: y, name: 'Solo St', len_m: 200, lanes: 2, speed_kmh: 40, cap_vph: 1800, t0_s: 18 })) };
+  const lineFlows = { days: { wd: Object.fromEntries(line.links.map(l => [l.id, Array(24).fill(500)])), we: Object.fromEntries(line.links.map(l => [l.id, Array(24).fill(500)])) } };
+  const bl = await connect({ network: line, flows: lineFlows, fetch: null, importer: noImporter });
+  const stuck = await bl.run({ when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'X', links: ['bc'], closes: { lanes: 2 }, time: { from: '2026-10-05', to: '2026-10-09', hours: [7, 19] }, equipment: [] }] });
+  ok(stuck.blocked_vph > 0 && stuck.flags.blocked_vph === stuck.blocked_vph && stuck.flags.ok === false, `全封又无路可绕：卡住 ${stuck.blocked_vph} veh/h → flags.ok = false（反向断言：不许当成没事）`);
+  // 2 多个施工：「为什么」和排队、分流来自同一段路
+  const two = be.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] });
+  two.worksites.unshift({ ...be.demo('latrobe', { frames: [['ROADWORK', 'AHEAD']] }).worksites[0], id: 'C-7' });
+  const s2 = await be.run(two);
+  const m = s2.approaches[s2.main];
+  ok(s2.approaches.length === 2 && m.worksite === 'B-12' && s2.why.commuter === m.by_type.commuter.why && s2.routes === m.routes && s2.street === m.street,
+    `两个施工：主路段 ${m.street}，why / routes / queue_m 都取它（why = ${s2.why.commuter}）`);
+  // 3 前后对比按同一段路比
+  const king = { id: 'K-1', links: ['l9146197565_8955976454'], closes: { lanes: 1 }, time: { from: '2026-10-05', to: '2026-10-09', hours: [7, 19] }, equipment: [] };
+  const pre = be.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD']] }), post = be.demo('lonsdale');
+  pre.worksites.push(king); post.worksites.push(clone(king));
+  const c3 = await be.compare(pre, post);
+  const lonB = c3.before.approaches.find(x => x.worksite === 'B-12'), lonA = c3.after.approaches.find(x => x.worksite === 'B-12');
+  ok(c3.delta.street === 'Lonsdale Street' && c3.delta.queue_m === +(lonA.queue_m - lonB.queue_m).toFixed(3) && c3.delta.queue_m < 0,
+    `前后对比按改之前的主路段比：Lonsdale 排队 ${lonB.queue_m} → ${lonA.queue_m}（delta ${c3.delta.queue_m}，main_changed ${c3.delta.main_changed}）`);
+  // 4 屏上文字检查和时段无关；不在施工的时段要标出来
+  const bt = T5 ? await connect({ fetch: fakeFetch, importer: repoImporter }) : null;
+  const off = be.demo('lonsdale', { frames: [['ROADWORKSAHEAD']], hour: 22 });
+  const s4 = await be.run(off);
+  ok(s4.flags.inactive && s4.active.length === 0 && (!bt || (bt.check(off).some(c => !c.ok) && (await bt.run(off)).flags.ok === false)), '晚上 10 点不施工：flags.inactive = true；文字不合规范照样查出来（T5 checkSigns）');
+  // 5 施工没写日期：顾问只比这一个小时，不把每个改法都算成 0
+  const noTime = be.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD']] }); delete noTime.worksites[0].time;
+  const a5 = await be.advise(noTime);
+  ok(a5.window.single_hour && a5.options.some(o => o.better && o.delta_min < 0), `施工没写日期：顾问按这一个小时比（${a5.options.map(o => o.kind + ' ' + o.delta_min).join(' · ')}）`);
+  // 6 顾问也要报读数失败
+  const sign = err => { const e = new Error(err); e.code = err; return e; };
+  const bad = await connect({ fetch: fakeFetch, importer: noImporter, readSigns: async req => { if (req.persona === 'tourist') throw sign('bad_kind'); return (await import('../public/js/index.js')).mockReadSigns(req); } });
+  const a6 = await bad.advise(bad.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD']] }));
+  ok(a6.flags.ok === false && a6.flags.failed > 0, `顾问：有读数被拒 → flags.ok = false（failed ${a6.flags.failed}）`);
+  // 7 非 https 页面上 T5 算缓存键抛普通错误：这一条退回引擎规则读数，不许悄悄变成「没人被说动」
+  const noCrypto = await connect({ fetch: fakeFetch, importer: noImporter, readSigns: async () => { throw new TypeError("Cannot read properties of undefined (reading 'digest')"); } });
+  const s7 = await noCrypto.run(noCrypto.demo('lonsdale'));
+  const ref = await be.run(be.demo('lonsdale'));
+  ok(s7.flags.failed === 0 && s7.flags.missing === 0 && s7.queue_m === ref.queue_m && Object.keys(noCrypto.status().reader_errors).every(k => k.startsWith('fallback')),
+    `T5 读屏抛普通错误（没有 crypto.subtle）→ 退回引擎规则，排队 ${s7.queue_m} 米和规则读数一致，status 记下 fallback`);
 });
 
 done();

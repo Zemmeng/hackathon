@@ -10,7 +10,7 @@
 
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
-  requestsFor, affected, capFactors, isActive,
+  requestsFor, affected, capFactors, windowWhens,
 } from './index.js';
 
 export const PATHS = {
@@ -77,7 +77,7 @@ export function summarize(res, { failed = 0, params = null, signCheck = null } =
   const veh = TYPES.reduce((s, t) => s + (res.by_type[t]?.vehicles || 0), 0);
   const affectedMin = TYPES.reduce((s, t) => s + (res.by_type[t]?.delay_min || 0), 0);
   const approaches = res.approaches.map(a => ({
-    worksite: a.worksite, street: a.street, dir: a.dir, to: a.to, volume: a.volume, blocked: a.blocked,
+    worksite: a.worksite, entry: a.entry, street: a.street, dir: a.dir, to: a.to, volume: a.volume, blocked: a.blocked,
     queue_m: a.queue_m, delay_min: a.delay_min, detour_share: +(1 - (a.share?.stay ?? 0)).toFixed(3),
     routes: a.routes.map(r => ({ id: r.id, name: r.name, share: r.share, usual_min: r.usual_min, now_min: r.now_min, extra_min: r.extra_min, turn_m: r.turn_m, truck: r.truck })),
     by_type: Object.fromEntries(TYPES.map(t => [t, {
@@ -85,7 +85,9 @@ export function summarize(res, { failed = 0, params = null, signCheck = null } =
       why: a.by_type[t]?.reading?.why ?? null, // 显示时用 textContent
     }])),
   }));
-  const main = approaches.slice().sort((a, b) => (b.delay_min || 0) - (a.delay_min || 0))[0] || null;
+  // 主路段 = 延误最大的那段：排队、分流、「为什么」都取它，别从不同路段拼（多个施工时）
+  const mainIdx = approaches.reduce((bi, a, i) => ((a.delay_min || 0) > (approaches[bi]?.delay_min || 0) ? i : bi), 0);
+  const main = approaches[mainIdx] || null;
   const signErrors = (signCheck || []).filter(c => !c.ok);
   return {
     when: res.when,
@@ -94,17 +96,23 @@ export function summarize(res, { failed = 0, params = null, signCheck = null } =
     others_min: res.others_min, // 没受影响、被绕行车流拖慢的背景车流
     vehicles: Math.round(veh),
     mean_delay_s: veh ? Math.round((affectedMin / veh) * 60) : 0, // 受影响的车平均每辆多几秒
+    main: main ? mainIdx : null, // approaches 里哪一段是主路段
+    street: main ? main.street : null,
     queue_m: main ? main.queue_m : 0,
     detour_share: main ? main.detour_share : 0,
     routes: main ? main.routes : [],
-    blocked_vph: res.blocked_vph,
+    why: Object.fromEntries(TYPES.map(t => [t, main ? main.by_type[t].why : null])), // 每类人一句理由（主路段的；用 textContent 显示）
+    blocked_vph: res.blocked_vph, // 全封又无路可绕、卡住的车（veh/h），不算进延误
+    active: res.active, // 这个时段在施工的施工 id；空 = 此时不施工，数字全是 0
     by_type: Object.fromEntries(TYPES.map(t => [t, { per_capita_min: res.by_type[t]?.per_capita_min ?? 0, vehicles: res.by_type[t]?.vehicles ?? 0, delay_min: res.by_type[t]?.delay_min ?? 0 }])),
     approaches,
     hot: res.hot,
     flags: {
       // ok = 数字可以当真（读数都拿到、校准命中、屏上文字合规范）；false 时界面标黄
-      ok: !res.missing && !failed && res.calib.ok && !signErrors.length,
+      ok: !res.missing && !failed && res.calib.ok && !signErrors.length && !(res.blocked_vph > 0),
       missing: res.missing, failed,
+      blocked_vph: res.blocked_vph,
+      inactive: !res.active.length, // true = 方案里的施工这个时段都不在做
       reading_src: res.calib.src, // rule = 关键词规则估算；换成大模型后是 file / model 名
       calib_ok: res.calib.ok,
       params: params ? params.src : null, // params = 有出处（T12）；default = 假设值
@@ -137,14 +145,17 @@ export async function connect(opts = {}) {
     try { rs = (await importer(base + PATHS.reader)).readSigns; if (typeof rs !== 'function') throw new Error('reader.js 没有导出 readSigns'); status.reader = 't5'; }
     catch (e) { rs = mockReadSigns; status.reader = 'engine-mock'; status.errors.push(`T5 读屏没加载上，用引擎自带规则：${e?.message || e}`); }
   }
-  // 读屏抛错时记下原因（引擎会把这类人按「没人被说动」算，summary.flags.failed 报条数）
+  // 读屏抛错：请求不合规范（SignError，带 .code）→ 照抛，引擎把这类人按「没人被说动」算，summary.flags.failed 报条数；
+  // 其他错（比如非 https 页面上没有 crypto.subtle，T5 算缓存键就抛）→ 这一条改用引擎自带的规则读数，不让数字悄悄变差
   const reader = async req => {
     try { return await rs(req); } catch (e) {
-      const k = e?.code || e?.message || String(e);
+      const k = e?.code || 'fallback: ' + (e?.message || String(e));
       status.reader_errors[k] = (status.reader_errors[k] || 0) + 1;
+      if (!e?.code && rs !== mockReadSigns) return mockReadSigns(req);
       throw e;
     }
   };
+  const errCount = () => Object.entries(status.reader_errors).filter(([k]) => !k.startsWith('fallback')).reduce((n, [, c]) => n + c, 0);
   // 4 屏上文字规范检查（T5 checkSigns）
   let check = opts.checkSigns;
   if (check) status.check = 'given';
@@ -157,12 +168,13 @@ export async function connect(opts = {}) {
   status.params = engine.params.src;
   if (engine.params.errors.length) status.errors.push(...engine.params.errors.map(e => '参数：' + e));
 
-  // 屏上文字合不合规范：按引擎实际会发的请求查（每段受影响的路 × 通勤者那一份「全部标志」）
+  // 屏上文字合不合规范：按引擎实际会发的请求查（每段受影响的路 × 通勤者那一份「全部标志」）。
+  // 文字合不合规范和时段无关：方案里所有施工都查，不只查这个时段在做的
   function checkPlan(plan) {
-    const active = (plan.worksites || []).filter(ws => isActive(ws, plan.when));
-    const factors = capFactors(engine.net, active);
+    const all = plan.worksites || [];
+    const factors = capFactors(engine.net, all);
     const out = [];
-    for (const ws of active) {
+    for (const ws of all) {
       for (const ap of affected(engine.net, engine.flows, ws, plan.when, factors)) {
         const req = requestsFor(ap, ws, ['commuter']).full.commuter;
         if (!req) continue;
@@ -182,18 +194,37 @@ export async function connect(opts = {}) {
   }
 
   // 前后对比（第 4 步）：同一时段两份方案，负数 = 变好
+  // 排队、绕行比例按「改之前的主路段」对齐比：改完以后主路段换成别的街，也还是比同一段路（main_changed 标出来）
   async function compare(before, after) {
     const [a, b] = [await run(before), await run(after)];
+    const am = a.main == null ? null : a.approaches[a.main];
+    const bm = am ? b.approaches.find(x => x.worksite === am.worksite && x.entry === am.entry) : null;
+    // 同一段路：改之前的主路段在改之后的结果里（改之后这段路不在了 = 不堵了，按 0 算）
+    const pick = (x, k) => (am ? (x === a ? am[k] : bm ? bm[k] : 0) : x[k]);
+    const same = k => +(pick(b, k) - pick(a, k)).toFixed(3);
     const d = k => +(b[k] - a[k]).toFixed(3);
-    return { before: a, after: b, delta: { delay_min: d('delay_min'), affected_min: d('affected_min'), mean_delay_s: d('mean_delay_s'), queue_m: d('queue_m'), detour_share: d('detour_share') } };
+    return {
+      before: a, after: b,
+      delta: {
+        delay_min: d('delay_min'), affected_min: d('affected_min'), mean_delay_s: d('mean_delay_s'),
+        queue_m: same('queue_m'), detour_share: same('detour_share'),
+        street: am ? am.street : null, main_changed: Boolean(am && b.main != null && b.approaches[b.main] !== bm),
+      },
+    };
   }
 
   // 规划顾问（第 ⑦ 步）：大模型顾问还没定，先用规则顾问；每个改法都用引擎重算。数字是整个施工期（按天 × 采样小时）加总
+  // 施工没写日期（time）时施工期是空的：就只比 plan.when 这一个小时，不然每个改法都算成 0、标成「不建议」
   async function advise(plan, { askAdvisor = mockAdvise } = {}) {
-    const r = await adviseCore(engine, plan, { askAdvisor });
+    const e0 = errCount();
+    const whens = windowWhens(plan.worksites || []).length ? undefined : [plan.when];
+    const r = await adviseCore(engine, plan, { askAdvisor, whens });
+    const missing = (r.before.result?.missing || 0) + r.options.reduce((n, o) => n + (o.result?.missing || 0), 0);
+    const failed = errCount() - e0;
     return {
       src: r.src,
-      window: { whens: r.whens, truncated: r.truncated },
+      window: { whens: r.whens, truncated: r.truncated, single_hour: Boolean(whens) },
+      flags: { ok: !missing && !failed && engine.calib.ok, missing, failed, reading_src: engine.calib.src },
       before_min: r.before.delay_min,
       options: r.options.map(o => ({
         kind: o.suggestion.kind, worksite: o.suggestion.worksite, why: o.suggestion.why ?? null,
