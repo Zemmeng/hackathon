@@ -31,6 +31,7 @@ const result = engine.evaluate(plan);
 | `tests/peds.test.mjs` | T17 封人行道：主演示 Lonsdale 西行 8 点封左侧 → 人/小时、每人多走几米、多花几人·分钟、过几次马路；左 / 右（双幅路找对面那幅，按并排长度选）/ 两侧；校验 `closes.footpath`（`bad_plan`）；没路可绕记 `blocked`、死胡同 / 小孤岛记 `dead_end`（小图）；过马路按过几条街数（La Trobe = 4）；计数器要在同一侧；直街不拆段；反向断言：没封 / 不在时段全 0、绕行不经过也不贴着封闭段走、walk / peds 拿不到或还没到时 `src = null` 而不是假装 0、找不到人行道报 `unmatched`、connect 不等行人数据、封人行道不改车的数字 |
 | `tests/e2e.test.mjs` | MOCK 读数跑演示三幕（8 点、17 点）、屏的位置（摆在拐口之后不算）、顾问改法重算；T3 真路网：加载、单次 < 100 毫秒、第一幕方向成立 |
 | `tests/transit.test.mjs` | 电车公交（T16，真 transit.json）：Lonsdale 8 点 15 条公交跟着堵、每趟多的秒数 ≈ 留在 Lonsdale 的车（差 ≤ 25%）、车次 / 人数 / 乘客·分钟口径；La Trobe 全封 30 路电车停；Lonsdale 全封公交就近绕（只走主干道）；路口短路段补缺口；周末 / 平峰；前后对比 delta；transit.json 拿不到、这一块算挂了都照样出数。反向断言：不施工时段全是 0、比的是「没施工」不是自由流（本来就堵的路段不算）、封部分车道不列电车 |
+| `tests/options.test.mjs` | T22 按库存出 3 套方案（真路网 + 真 equipment.json）：三档形状、护栏件数 = ⌈封闭长度 ÷ 每节长⌉、租金 = 件数 × 日租 × 天数、报价行和方案设备对得上、单条施工 / when / n / worksite、全封、两侧人行道；反向断言：每种设备不超库存（库存很少时照样不超、缺口进 `stock.short`）、租金必须标 `assumed`、引导档 VMS 文字合规范（含 T5 checkSigns）、同样输入逐字同样输出、不改输入、库存取不到抛 `no_inventory`。哪套更少堵只记录，不断言 |
 
 ## 对外接口（→ docs/contract.md §施工方案、§evaluate、§路人读数）
 
@@ -42,6 +43,8 @@ const result = engine.evaluate(plan);
 | `pedImpact(walk, peds, 方案, { net? })`（T17） | 封人行道（`closes.footpath` ∈ `left / right / both`）→ `{ src, footpath, active, day, hour, closed, closed_m, ped_h, detour_m, extra_min, crossings, blocked, blocked_ped_h, dead_end, unmatched, unmatched_sides, note, note_zh, step_free: null, measured, method, sensor, detour, stretches, assumed }`（`footpathActive(方案)` = 这个小时有没有在封人行道）；`backend.run` 把它放在 `summary.peds`，字段表见 `docs/contract.md` §evaluate「行人」。`validatePlan(方案)` / `validateWorksite(施工)` → 错误列表 |
 | `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
+| `be.options(施工 \| 方案, { n = 3, when?, worksite? })`（T22） | 按 RPM Hire 库存出 最省 / 标准 / 引导 3 套交通管理方案，每套用引擎跑同一个小时，带租金（假设值）和库存检查 → `{ worksite, when, days, site, inventory, options: [{ id, label, plan, hire, stock, result, flags, vs, guide? }] }`；见下面「按库存出方案」和 contract §施工方案 v3.7 |
+| `options.js` 的 `tierNeeds` `resolveNeeds` `hireOf` `stockOf` `vmsTextOk` `daysOf` | 上面那个的纯函数零件：摆什么、对库存（不超）、算租金、查 VMS 文字 |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
 | `makeGrid()` | 测试用的 5 × 9 方格路网（Hoddle Grid 街名、假设车流） |
 | `PERSONAS` `MIX` `chooseShares` `calibrate` … | 选择模型和校准的零件（见 `index.js`） |
@@ -104,6 +107,23 @@ const result = engine.evaluate(plan);
 | 无障碍 | `step_free` 一律 `null` | `walk.json` 没有台阶 / 坡道数据 |
 
 实测（2026-09-29 复审修完，真数据）：Lonsdale 西行 8 点封左侧 47 米 → 185 人/小时、每人多走 176 米、过 2 次马路、417 人·分钟；封右侧（对面那幅路的北侧人行道 102 米）→ 185 人/小时、多走 67 米、158 人·分钟；两侧都封 → 370 人/小时、1125 人·分钟。La Trobe 西行 17 点封左 / 右 → 818 人/小时、过 4 次马路、约 1020 / 1070 人·分钟。
+
+## 按库存出方案（T22，`public/js/options.js` + `be.options()`）
+
+D-0929-2011 ③。给一处施工配 3 套方案，**数字全由引擎算**（每套都 `run()` 同一个小时），不调大模型；同样输入逐字同样输出。
+
+| 档 | 摆什么 | 为什么这么分 |
+|---|---|---|
+| `o1` Minimum | 护栏（水马 `barrier_water`，件数 = ⌈封闭长度 ÷ 2 米⌉）+ ROADWORK AHEAD + LEFT/RIGHT LANE CLOSED（全封换 DETOUR AHEAD）+ END ROADWORK（摆在施工段末端，`at_m` 为负） | 合规最低配 |
+| `o2` Standard | o1 + 箭头板 + 一块 VMS 写 ROADWORK / AHEAD | 常见做法 |
+| `o3` Guided | o2，同一块 VMS 加一帧点名最快绕行（`mockAdvise` 的写法，如 USE / RUSSELL / SAVE 9 MIN） | 引擎里只有「点名绕行」会让人改道 |
+
+- VMS 位置：先跑 o1，按规则顾问找最快绕行，摆在它拐口上游 +100 米（取整 50）；o2、o3 同位置，两者只差屏上的字。没有更快的绕行 → o3 字同 o2、`flags.no_faster_detour`
+- 封人行道（`closes.footpath`）：每侧一排能封人行道的护栏 + 一块 FOOTPATH CLOSED
+- 库存：按优先顺序挑剩余库存够的条目（水马 → 塑料隔板 → 钢护栏；VMS A 类 → C 类）；都不够就只摆剩下的件数、缺口进 `stock.short`，**方案里每种设备件数永远 ≤ 库存**。只看这一处施工；多处同几天共用库存看 api 的 `pack.js` `stockCheck()`
+- 租金 = 件数 × `day_rate_aud` × 天数（`time.from`–`time.to` 日历天数含两头）。**库存件数和日租价都是假设值**（equipment.json 官网没价），`hire.assumed = true`、`flags.assumed`，界面标「假设值」（D-0929-1536）
+- 设备条目都带 `item`（equipment.json 的 id）和 `qty`，和 contract `equipment[].item / qty` 同口径，pack.js 能按同一份方案报价
+- 2026-09-29 实测 Lonsdale 西行 8 点（引擎规则读数）：o1 排队 918 米 / 全网 10493 车·分 / A$515；o2 一样 918 / 10493 / A$1765（箭头板和「前方施工」在引擎里不改路线选择）；o3 276 / 2800 / A$1765。La Trobe 17 点三套都几乎不堵，o3 没有更快的绕行
 
 ## 结构
 

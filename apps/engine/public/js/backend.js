@@ -15,7 +15,9 @@
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
   requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit, validatePlan, pedImpact, pedsUnavailable, footpathActive,
+  advisorSummary, sampleHours,
 } from './index.js';
+import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk } from './options.js';
 
 export const PEDS_WAIT_MS = 8000; // 封了人行道、行人数据还在路上时 run() 最多等几毫秒（再慢就先给车的数字，summary.peds.src = null、pending = true）
 
@@ -25,6 +27,7 @@ export const PATHS = {
   transit: '/roads/public/cbd/transit.json',
   walk: '/roads/public/cbd/walk.json', // T17 人行道路网
   peds: '/roads/public/cbd/peds.json', // T17 每条人行道每小时多少人
+  equipment: '/roads/public/cbd/equipment.json', // T7 RPM Hire 设备库存 + 日租价（假设值）；be.options() 第一次调用时才取（T22）
   params: PARAMS_URL,
   reader: '/api/public/js/reader.js',
   check: '/api/public/js/check.js',
@@ -322,8 +325,97 @@ export async function connect(opts = {}) {
     };
   }
 
+  // 按库存出方案（T22，D-0929-2011 ③）：一处施工 → 最省 / 标准 / 引导 3 套交通管理方案，每套都用引擎跑同一个小时，带租金和库存检查。
+  // 输入：一条施工方案（要给 when，或施工写了 time → 默认开工那天、时段里第一个采样小时），或整份方案 { when, worksites }（配 worksites[0]，
+  // 或 opts.worksite 指定哪一条；别的施工原样留着一起算）。不改输入；同样输入同样输出；不调大模型（引导那一帧用规则顾问 mockAdvise 的写法）。
+  let inventory = opts.equipment || null;
+  let invSrc = inventory ? 'given' : null;
+  async function inventoryOf() {
+    if (!inventory) {
+      try {
+        const inv = await getJSON(base + PATHS.equipment, f);
+        if (!Array.isArray(inv?.items)) throw new Error('equipment.json 没有 items[]');
+        inventory = inv; invSrc = 'fetched';
+      } catch (e) {
+        const err = new Error(`设备库存没加载上，出不了方案：${e?.message || e}`);
+        err.code = 'no_inventory';
+        throw err;
+      }
+    }
+    return inventory;
+  }
+  const brief = s => ({
+    when: s.when, street: s.street, queue_m: s.queue_m, delay_min: s.delay_min, affected_min: s.affected_min, others_min: s.others_min,
+    vehicles: s.vehicles, mean_delay_s: s.mean_delay_s, detour_share: s.detour_share, blocked_vph: s.blocked_vph,
+    routes: s.routes.map(r => ({ id: r.id, name: r.name, share: r.share, extra_min: r.extra_min })),
+    transit: s.transit?.src ? { src: s.transit.src, pax_min: s.transit.pax_min, blocked_pax_h: s.transit.blocked_pax_h } : null,
+    peds: s.peds?.src ? { src: s.peds.src, extra_min: s.peds.extra_min } : null,
+  });
+
+  async function options(input, { n = 3, when, worksite } = {}) {
+    const inv = await inventoryOf();
+    const isPlan = Boolean(input && Array.isArray(input.worksites));
+    const plan0 = clone(isPlan ? input : { when: null, worksites: [input] });
+    const errs = validate(plan0);
+    if (errs.length) throw planError(errs);
+    const idx = worksite != null ? plan0.worksites.findIndex(w => w.id === worksite) : 0;
+    if (idx < 0 || !plan0.worksites[idx]) throw planError([worksite != null ? `方案里没有施工 ${worksite}` : '方案里没有施工']);
+    const ws = plan0.worksites[idx];
+    if (when) plan0.when = clone(when);
+    if (!plan0.when && ws.time?.from) plan0.when = { date: ws.time.from, hour: sampleHours([ws])[0] };
+    if (!plan0.when) throw planError(['施工没写 time，要给 when（{ date, hour }）']);
+    const site = siteOf(engine.net, ws);
+    if (site.lanes == null) throw planError([`施工 ${ws.id ?? '?'}：links 里的路段都不在路网里`]);
+    const days = daysOf(ws.time);
+    const count = Math.max(1, Math.min(TIERS.length, Math.floor(Number(n)) || TIERS.length));
+    const planWith = equipment => ({ when: clone(plan0.when), worksites: plan0.worksites.map((w, i) => (i === idx ? { ...clone(w), equipment } : clone(w))) });
+
+    const out = [];
+    let guide = null; // 由「最省」那套的引擎结果定：最快的绕行叫什么、省几分钟、VMS 摆在拐口前多远
+    for (const tier of TIERS.slice(0, count)) {
+      const frames = tier.guided && guide?.frames ? guide.frames : [WARN_FRAME];
+      const needs = tierNeeds(tier, ws, site, { vmsAt: guide?.at_m ?? VMS_AT_M, frames });
+      const { equipment, short } = resolveNeeds(needs, inv);
+      const plan = planWith(equipment);
+      const s = await run(plan);
+      if (tier.id === 'o1' && count > 1) {
+        const adv = await mockAdvise(advisorSummary(s.raw, [plan.worksites[idx]]));
+        const sug = (adv?.suggestions || []).find(x => x.kind === 'text' && x.worksite === ws.id);
+        const fr = sug ? guidedFrames(sug.frames?.[0]) : null;
+        guide = { frames: fr, at_m: Number.isFinite(sug?.at_m) ? sug.at_m : VMS_AT_M, why: sug?.why ?? null };
+      }
+      const vms = equipment.find(e => e.type === 'vms');
+      const stock = stockOf(equipment, inv, short);
+      const flags = {
+        ok: s.flags.ok && stock.ok && (!vms || vmsTextOk(vms.frames)),
+        stock_ok: stock.ok,
+        vms_text_ok: vms ? vmsTextOk(vms.frames) : null,
+        guided: Boolean(tier.guided && guide?.frames && vms),
+        no_faster_detour: Boolean(tier.guided && !guide?.frames), // 引擎算下来没有哪条绕行更快：引导档的屏上文字和标准档一样
+        sign_errors: s.flags.sign_errors, reading_src: s.flags.reading_src, params: s.flags.params, failed: s.flags.failed, missing: s.flags.missing,
+        inactive: s.flags.inactive, full_closure: site.full, footpath: site.footpath, no_time: !ws.time, missing_links: site.missing,
+        assumed: ['hire.day_rate_aud', 'stock.qty'], // D-0929-1536：租金和库存是假设值，界面标「假设值」
+      };
+      const hire = hireOf(equipment, inv, days), result = brief(s), first = out[0];
+      out.push({
+        id: tier.id, label: tier.label, label_zh: tier.label_zh,
+        plan, hire, stock, result, flags,
+        // 和最省那套比（后 − 前，负数 = 少堵）；引擎算出来一样就是一样，不硬凑差别
+        vs: first ? { id: first.id, delay_min: +(result.delay_min - first.result.delay_min).toFixed(3), affected_min: result.affected_min - first.result.affected_min,
+          queue_m: result.queue_m - first.result.queue_m, hire_aud: hire.total_aud - first.hire.total_aud } : null,
+        ...(tier.guided ? { guide: { frames: guide?.frames ?? null, at_m: guide?.at_m ?? null, why: guide?.why ?? null } } : {}),
+      });
+    }
+    return {
+      worksite: ws.id ?? null, when: clone(plan0.when), days,
+      site: { len_m: site.len_m, lanes: site.lanes, close_lanes: site.close_lanes, full: site.full, footpath: site.footpath },
+      inventory: { src: invSrc, version: inventory.version ?? null, assumed: true }, options: out,
+    };
+  }
+
   return {
     engine,
+    options,
     status: () => JSON.parse(JSON.stringify({ ...status, calib: engine.calib, params_used: engine.params.used })),
     run, compare, advise, check: checkPlan, validate,
     pedsReady: () => pedsP, // 行人数据取完（不管成没成）→ status().peds：fetched / given / none
