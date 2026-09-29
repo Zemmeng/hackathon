@@ -86,3 +86,7 @@ Owner: @unicornnnnnny
 - 真建筑的屋顶反照率、屋顶设备、「历史建筑」归类（按名字里有 Library Victoria / Church / Cathedral / Gaol / Watch House）都是假设值，数据里没有；高温图层的「冷屋顶」标注因此只是示意
 - 数据里有 4 个「外框」把一整片楼圈起来（如 Melbourne Central 外框带着 211 m 塔楼的高度）：里面的楼占外框 ≥ 30% 时外框改用里面楼高的中位数，塔楼本身不动
 - 州立图书馆的穹顶、Melbourne Central 的玻璃锥和制弹塔仍是页面手摆的位置，只在落进对应真楼时保留；门前草坪按原样保留（楼画在上面）
+
+## T23 AI 解读（#71 接口）
+
+每套方案评分后调用 `explainOptions({lang, options})`，options 来自 `optionFromRun()` 并带引擎租金和天数。卡片显示 summary / pros / cons，下面显示 lean 与服务端固定 decide；全部用 textContent。切换语言重新解读，过期响应丢弃；读数不变的重绘不重复请求。接口断线或超时由 explain.js 回规则解读，页面标「规则兜底」。解读不阻塞选定、理由和导出。

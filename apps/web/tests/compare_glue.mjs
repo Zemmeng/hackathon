@@ -131,5 +131,27 @@ if (typeof be.options !== 'function') {
   }
 }
 
+// Asynchronous explanation: repaint dedupe and out-of-order language responses.
+{
+  const source=readFileSync(WEB+'src/js/8-compare.js','utf8');
+  const pending=[],requests=[];
+  const state={key:'plan',rows:[{id:'a',s:{delay_min:937},hire:1765,days:5}],exSeq:0,mod:{ex:{
+    optionFromRun:(id,label,run,extra)=>({id,label,metrics:{delay_veh_min:run.delay_min,...extra}}),
+    explainOptions:req=>{requests.push(req);return new Promise(resolve=>pending.push(resolve));}
+  }}};
+  const language={cur:'en'};
+  const c={CP:state,LANG:language,cmpLabel:()=>language.cur,cmpRender:()=>{},console};vm.createContext(c);
+  vm.runInContext(source.slice(source.indexOf('function cmpExplainUpdate()'),source.indexOf('function cmpExplainRender(')),c);
+  c.cmpExplainUpdate();c.cmpExplainUpdate();await new Promise(r=>setImmediate(r));
+  ok(requests.length===1&&requests[0].options[0].metrics.hire_aud===1765,'AI 解读重绘不重复请求，租金来自现有方案');
+  language.cur='zh';c.cmpExplainUpdate();await new Promise(r=>setImmediate(r));
+  pending[0]({lang:'en'});await new Promise(r=>setImmediate(r));
+  ok(state.explain===null,'切换语言后的过期响应不能覆盖新解读');
+  pending[1]({lang:'zh',src:'rule'});await new Promise(r=>setImmediate(r));
+  ok(state.explain.lang==='zh'&&!state.exBusy,'当前语言的规则兜底正常完成');
+  state.key='new plan';state.busy=true;c.cmpExplainUpdate();
+  ok(state.explain===null&&!state.exKey,'重新计算方案立即清除旧解读');
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

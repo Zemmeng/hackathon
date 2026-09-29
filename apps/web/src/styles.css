@@ -642,3 +642,6 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print{display:none!important}
 }
+
+.cmp-explain{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.cmp-explain small{display:block;opacity:.7}.cmp-explain p{margin:8px 0}.cmp-explain ul{padding-left:18px;margin:6px 0 12px}.cmp-lean{font-size:14px;line-height:1.6}
