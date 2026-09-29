@@ -10,9 +10,10 @@ Owner: @Zemmeng（lead 暂管；T4 认领后改成认领人）
 - 浏览器里（要经 http 打开，ES module 不能 file://；网页、引擎、路网数据要同源）：
 
 ```js
-import { createEngine, mockReadSigns } from '/engine/public/js/index.js';
+import { createEngine, mockReadSigns, loadParams } from '/engine/public/js/index.js';
 const [network, flows] = await Promise.all(['network', 'flows'].map(f => fetch(`/roads/public/cbd/${f}.json`).then(r => r.json())));
-const engine = createEngine({ network, flows, readSigns: mockReadSigns }); // T5 的 readSigns 到了换掉
+const params = await loadParams();                         // T12 的 /params/public/params.json；读不到就用假设值，不抛错
+const engine = createEngine({ network, flows, readSigns: mockReadSigns, params }); // T5 的 readSigns 到了换掉
 const plan = { when: { date: '2026-10-06', hour: 17 }, worksites: [施工方案] };
 await engine.prepare(plan);
 const result = engine.evaluate(plan);
@@ -20,22 +21,43 @@ const result = engine.evaluate(plan);
 
 ## 怎么测
 
-`bash apps/engine/test.sh`（2026-09-29 实跑：67 passed, 0 failed）。
+`bash apps/engine/test.sh`（2026-09-29 15:25 实跑：104 passed, 0 failed）。
 
 | 文件 | 测什么 |
 |---|---|
 | `tests/engine.test.mjs` | 路网、最短路、BPR、施工时段、绕行路线、读数请求、选择模型、两点校准（正好 3% / 20%）、evaluate（确定性、缺读数、全封卡住、同路段两施工不重复算、readSigns 全挂不崩）、冲突成本、顾问 |
+| `tests/params.test.mjs` | 参数入口：合格的数照用、缺的逐项回退、不合格整组回退并报错、`sign_trust` 换算、读不到不抛错、校准目标跟着变；反向断言：塞不进第 5 类人、`__proto__` 不污染、默认值不被改 |
 | `tests/e2e.test.mjs` | MOCK 读数跑演示三幕（8 点、17 点）、屏的位置（摆在拐口之后不算）、顾问改法重算；T3 真路网：加载、单次 < 100 毫秒、第一幕方向成立 |
 
 ## 对外接口（→ docs/contract.md §施工方案、§evaluate、§路人读数）
 
 | 导出 | 用法 |
 |---|---|
-| `createEngine({ network, flows, readSigns })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib }` |
+| `createEngine({ network, flows, readSigns, params? })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib, params }`；`engine.params` 报每项参数用的是 params.json 还是假设值 |
+| `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
 | `makeGrid()` | 测试用的 5 × 9 方格路网（Hoddle Grid 街名、假设车流） |
 | `PERSONAS` `MIX` `chooseShares` `calibrate` … | 选择模型和校准的零件（见 `index.js`） |
+
+## 参数（T12 @Unzzip 的 `apps/params/public/params.json`）
+
+格式照 `docs/arch/T12-params-PRD.md` 第 4 节：每个数写成 `{ value, range, source, confidence }`（直接写数也认），`value: null` = 没找到 → 用假设值、不算错。**引擎认的字段以这张表为准**：
+
+| 字段 | 引擎怎么用 | 不合格时 |
+|---|---|---|
+| `mix.commuter / local / tourist / delivery` | 4 类人占车流的比例，加起来 1 ± 0.02（会归一） | 整组用假设值 50 / 25 / 10 / 15 |
+| `anchors.generic_warning_divert` | 两点校准低点：只写 ROADWORK / AHEAD 时全体车辆的绕行比例 | 两个都要合格（0–1、低 < 高），否则都用 3% / 20% |
+| `anchors.named_route_divert` | 两点校准高点：写 USE / RUSSELL ST 时的绕行比例 | 同上 |
+| `persona.<类型>.hurry` | 赶不赶时间，乘在每分钟的效用上（平均 ≈ 1，0.05–5） | 这一项用假设值 |
+| `persona.<类型>.familiar` | 熟不熟路：会不会自己想到这条绕行（0.01–1，进 `ln()`） | 同上 |
+| `persona.<类型>.trust` | 信不信屏：乘在读数的 `trust` 上的**相对倍数**（平均的人 = 1，0–3） | 同上 |
+| `persona.<类型>.sign_trust` | 照屏上说的走的比例（0–1）。没给 `trust` 的类型用它换算：`sign_trust ÷ 按占比加权的平均`；要 4 类都有才换算 | 报一条错，trust 用假设值 |
+| `persona.<类型>.queue_averse` | 怕不怕堵：乘在「看到的排队」上（0–5） | 这一项用假设值 |
+| `persona.<类型>.truck_only` | 只能走货车路（布尔） | 这一项用假设值 |
+
+- **收下但还没用**（列在 `engine.params.ignored`）：`anchors.stated_to_actual`（D-0929-1435 后大模型不回比例，用不上问卷→实际的换算）、`value_of_time`、`vms`。要让它们进模型，先在这里加一行再改代码
+- 绝对的「信不信」由两点校准的推荐力度 B 吸收，所以 `trust` / `sign_trust` 只有**各类人之间的相对高低**会改结果
 
 ## 外部 API
 
@@ -49,6 +71,7 @@ const result = engine.evaluate(plan);
 | `public/js/pipeline.js` | `createEngine`：prepare / evaluate / window / conflict，排队反馈的逐次平均 |
 | `public/js/choice.js` | 第 ④ 步选择模型：每类人参数（赶时间 · 熟路 · 信屏 · 怕堵 · 只能走货车路）+ 被说动的比例 → 各路线比例 |
 | `public/js/calibrate.js` | 两点校准：在参考场景上解出绕行惯性 A、推荐力度 B |
+| `public/js/params.js` | 读 T12 的 `params.json`，逐项校验、回退，报每项用的是哪个 |
 | `public/js/reading.js` | 第 ② 步读数请求（全部标志 + 每条绕行拐口前的标志）、MOCK 读数器 |
 | `public/js/routes.js` | 第 ① 步：受影响的车、原路、最多 3 条绕行（上游约 400 米、下游约 300 米） |
 | `public/js/assign.js` | 第 ⑤ 步：分流，BPR + D/D/1 排队，全网总行程时间 |
@@ -67,7 +90,7 @@ const result = engine.evaluate(plan);
 
 ## 已知问题
 
-- 每类人参数、占比 `MIX`、`BETA`、「看到排队 1 公里 ≈ 多堵 4 分钟」都是工程假设；两点校准的 3% / 20% ［待核］
+- 每类人参数、占比 `MIX`、两点校准的 3% / 20% 在 T12 的 `params.json` 到之前是假设值［待核］；`BETA`、「看到排队 1 公里 ≈ 多堵 4 分钟」是工程假设，不在 params.json 里
 - T3 的车流有些路段本身就超过通行能力（如 Flinders Street 2526 / 1800）：引擎只算比没施工多出来的，但绝对数会偏大
 - BPR + 确定性排队，没有排队回溢到上游路口；路线按自由流定，不随拥堵重新找路；只改道施工第一段上的车
 - 只模拟开车的人（每车 1 人）：电车公交乘客、行人、骑车、轮椅还没做

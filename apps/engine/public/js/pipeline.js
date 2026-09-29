@@ -11,8 +11,9 @@ import { isActive, capFactors, overlaps, windowWhens, dayType } from './worksite
 import { affected } from './routes.js';
 import { round1, cleanName } from './cards.js';
 import { canon } from './canon.js';
-import { TYPES, MIX, PERSONAS, DEFAULT_AB, chooseShares, informed } from './choice.js';
+import { TYPES, DEFAULT_AB, chooseShares, informed } from './choice.js';
 import { calibrate, anchorRequest } from './calibrate.js';
+import { applyParams } from './params.js';
 import { requestsFor, requestKey } from './reading.js';
 import { evaluate as assign, pathNow, maxQueue } from './assign.js';
 
@@ -21,7 +22,19 @@ export const OCCUPANCY = 1; // 每辆车算 1 个人（公交电车乘客还没�
 
 const r3 = x => Math.round(x * 1000) / 1000;
 
-export function createEngine({ network, flows, readSigns, personas = PERSONAS, mix = MIX } = {}) {
+// params：loadParams() / applyParams() 的结果（或者直接传 params.json 的内容），不传就全用假设值；
+// 显式传的 personas / mix 优先于 params
+export function createEngine({ network, flows, readSigns, params, personas, mix } = {}) {
+  const P = params && typeof params === 'object' && params.used ? params : applyParams(params ?? null);
+  personas = personas || P.personas;
+  mix = mix || P.mix;
+  const anchors = P.anchors;
+  const paramsInfo = {
+    src: P.used.src, version: P.used.version,
+    used: { mix: P.used.mix, anchors: P.used.anchors, persona: P.used.persona },
+    ignored: P.used.ignored, errors: P.used.errors,
+    override: [personas !== P.personas && 'personas', mix !== P.mix && 'mix'].filter(Boolean),
+  };
   const net = isNet(network) ? network : loadNetwork(network);
   const readings = new Map(); // requestKey → 读数
   const structCache = new Map();
@@ -99,7 +112,7 @@ export function createEngine({ network, flows, readSigns, personas = PERSONAS, m
     }));
     for (const [k, r] of got) if (r) readings.set(k, r);
     const pick = which => Object.fromEntries(TYPES.map(t => [t, readings.get(requestKey(anchorRequest(which, t)))]));
-    calib = calibrate(pick('lo'), pick('hi'), { personas, mix });
+    calib = calibrate(pick('lo'), pick('hi'), { personas, mix, anchors });
     return { asked: need.size, failed: got.filter(([, r]) => !r).length, calib: { ...calib } };
   }
 
@@ -225,5 +238,5 @@ export function createEngine({ network, flows, readSigns, personas = PERSONAS, m
     return { a: A.delay_min, b: B.delay_min, ab: AB.delay_min, cost: AB.delay_min - A.delay_min - B.delay_min, overlap: overlaps(a, b), whens: W.length, truncated: Boolean(W.truncated) };
   }
 
-  return { net, flows, prepare, evaluate, window, conflict, readings, get calib() { return { ...calib }; } };
+  return { net, flows, prepare, evaluate, window, conflict, readings, get calib() { return { ...calib }; }, get params() { return JSON.parse(JSON.stringify({ ...paramsInfo, mix, personas, anchors })); } };
 }

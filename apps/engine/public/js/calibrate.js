@@ -69,21 +69,27 @@ function bisect(f, lo, hi, target, increasing, iters = 60) {
 }
 
 // lo / hi：每类人对两块标准屏的读数 { persona: reading }。缺任何一类就不校准（method: 'default'）
+// opts.anchors = { lo, hi }：两块标准屏的目标绕行比例（T12 params.json 的 anchors；不给就用 ANCHORS 里的假设值）
 export function calibrate(lo, hi, opts = {}) {
   const have = x => x && TYPES.every(t => x[t]);
   if (!have(lo) || !have(hi)) return { ...DEFAULT_AB, method: 'default', ok: false };
-  const A = bisect(a => refDetour(lo, a, 0, opts), -10, 20, ANCHORS.lo.real, false);
+  const tLo = opts.anchors?.lo ?? ANCHORS.lo.real;
+  const tHi = opts.anchors?.hi ?? ANCHORS.hi.real;
+  const A = bisect(a => refDetour(lo, a, 0, opts), -10, 20, tLo, false);
   const dMax = refDetour(hi, A, 40, opts);
-  const B = dMax < ANCHORS.hi.real ? 40 : bisect(b => refDetour(hi, A, b, opts), 0, 40, ANCHORS.hi.real, true);
+  const B = dMax < tHi ? 40 : bisect(b => refDetour(hi, A, b, opts), 0, 40, tHi, true);
+  const loD = refDetour(lo, A, B, opts), hiD = refDetour(hi, A, B, opts);
   const srcs = new Set(TYPES.flatMap(t => [lo[t].src, hi[t].src]));
   const models = new Set(TYPES.flatMap(t => [lo[t].model, hi[t].model]));
   return {
     A: +A.toFixed(4),
     B: +B.toFixed(4),
     method: 'two_point',
-    ok: dMax >= ANCHORS.hi.real, // false = 读数里「点名路线」的力度不够，推荐力度顶到上限也到不了 20%
-    lo_detour: +refDetour(lo, A, B, opts).toFixed(4),
-    hi_detour: +refDetour(hi, A, B, opts).toFixed(4),
+    // false = 两个目标至少有一个够不着：比如读数里「点名路线」的力度不够，推荐力度顶到上限也到不了高点；或者目标本身离谱
+    ok: Math.abs(loD - tLo) < 0.005 && Math.abs(hiD - tHi) < 0.005,
+    target: { lo: tLo, hi: tHi },
+    lo_detour: +loD.toFixed(4),
+    hi_detour: +hiD.toFixed(4),
     src: srcs.size === 1 ? [...srcs][0] : 'mixed',
     model: models.size === 1 ? [...models][0] : 'mixed',
   };
