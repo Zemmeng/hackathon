@@ -52,7 +52,7 @@ function planFrom(ep){
 const BE={api:null,err:null};
 const EP={preset:'lonsdale',link:null,pts:null,street:null,dir:null,lanes:1,lanesMax:1,all:false,hour:8,time:null,
   f1:'ROADWORK\nAHEAD',f2:'',vmsAt:300,sign:'RIGHT LANE CLOSED',signAt:100,arrowAt:60,
-  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',mix:null,
+  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',mix:null,idx:null,alts:[],altsKey:'',
   adv:null,advKey:'',advBusy:false,pick:-1,cmp:null,cmpKey:'',cmpBusy:false};
 BE.ready=import('/engine/public/js/backend.js')
   .then(m=>m.connect()) // road network + flows + T12 parameters + T5 sign reader + engine, loaded once
@@ -79,6 +79,7 @@ function engAfterConnect(){
   try{
     if(BE.api){
       engPreset(EP.preset,true);
+      import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -129,7 +130,7 @@ async function engRun(){
   if(EP.badText){EP.busy=false;engRenderOut();return;} // PRD §3: text that breaks the sign rules never goes to run()
   EP.busy=true;engRenderOut();
   const plan=planFrom(EP);
-  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;}
+  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);}
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
   EP.busy=false;engRenderOut();
   if(S.step===3)renderPanel();
@@ -208,7 +209,7 @@ function engPanel1(){
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Work zone','施工区')}</span><span class="eyebrow">${L('click a street to move it','点地图上的街可以挪')}</span></div>
     <div class="chips">${presets.map(([k,t])=>`<button type="button" data-preset="${k}" aria-pressed="${EP.preset===k}">${t}</button>`).join('')}${EP.preset==='custom'?`<button type="button" aria-pressed="true">${L('Picked on map','地图上选的')}</button>`:''}</div>
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
-    <div class="row between"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
+    <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
@@ -251,6 +252,7 @@ function engPanel3(){
   return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${L(`One lane on ${esc(shortSt(s.street))} backs up ${fmtN(s.queue_m)} m`,`${esc(shortSt(s.street))} 封一条道，排队 ${fmtN(s.queue_m)} 米`)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engBadges(f)}
+  <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
@@ -313,10 +315,23 @@ function engPlaybook(){
 }
 
 /* ---------- map ---------- */
-// Frame the work zone and the La Trobe × Swanston junction together
+// Detour paths of the main approach, from the engine's own affected() (the same routes run() scores): only the part off the
+// closed street is drawn. Route ids (r1, r2 …) match summary.routes, whose shares set the line width.
+function engAlts(plan,s){
+  const key=`${EP.link}|${EP.lanes}|${plan.when.hour}`;if(!EP.idx||EP.altsKey===key)return;
+  try{
+    const net=engNet(),main=s.approaches[s.main];EP.alts=[];EP.altsKey=key;if(!main)return;
+    const aps=EP.idx.affected(net,BE.api.engine.flows,plan.worksites[0],plan.when,EP.idx.capFactors(net,plan.worksites)),a=aps.find(x=>x.entry===main.entry);if(!a)return;
+    const stay=new Set(a.stayLinks||[]);
+    EP.alts=(a.alts||[]).map(r=>({id:r.id,name:r.name,polys:r.links.filter(id=>!stay.has(id)).map(engGeo).filter(Boolean)}));
+  }catch(e){EP.alts=[];console.warn('detour paths unavailable',e);}
+}
+// Frame the work zone, the La Trobe × Swanston junction and every detour taking ≥ 5 % (clamped to the drawn world)
 function engFit(){
-  if(!EP.pts)return null;const xs=[0],ys=[0];for(const p of EP.pts){xs.push(p[0]);ys.push(p[1]);}
-  const x0=Math.min(...xs)-70,x1=Math.max(...xs)+70,y0=Math.min(...ys)-60,y1=Math.max(...ys)+60;
+  if(!EP.pts)return null;const xs=[0],ys=[0],add=p=>{xs.push(clamp(p[0],WORLD.x0,WORLD.x1));ys.push(clamp(p[1],WORLD.y0,WORLD.y1));};
+  EP.pts.forEach(add);const sh=new Map(((EP.sum&&EP.sum.routes)||[]).map(r=>[r.id,r.share||0]));
+  for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
+  const x0=Math.min(...xs)-50,x1=Math.max(...xs)+50,y0=Math.min(...ys)-40,y1=Math.max(...ys)+50;
   return[(x0+x1)/2,(y0+y1)/2,clamp(Math.min(V.w/(x1-x0),V.h/(y1-y0)),1.1,3.6)];
 }
 function engFly(d){const f=engFit();if(f)flyTo(f[0],f[1],f[2],d);}
@@ -334,11 +349,12 @@ function engDraw(which){
   const s=engSumFor(which),k=clamp(V.s/2.4,.7,1.6),off=3.5;
   ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
   if(s&&S.step!==2){
-    const faint=S.step===1;
+    const faint=S.step===1,share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));
+    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.005)continue;ctx.globalAlpha=faint?.55:.85;ctx.strokeStyle=TK.accent;ctx.lineWidth=(2+10*sh)*k;for(const P of r.polys){engLine(P,off);ctx.stroke();}}
     for(const l of s.raw.links){
-      if(!(l.delay_s>=1)&&!(l.queue_m>0))continue;if(l.id===EP.link)continue;const P=engGeo(l.id);if(!P)continue;
-      const sev=l.delay_s>=90||l.queue_m>0?2:l.delay_s>=20?1:0;
-      ctx.globalAlpha=(faint?.45:.9)*(sev?1:.6);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.4)*k;engLine(P,off);ctx.stroke();
+      const ex=(l.v||0)*(l.delay_s||0)/60;if(!(ex>=2)&&!(l.queue_m>0))continue;if(l.id===EP.link)continue;const P=engGeo(l.id);if(!P)continue;
+      const sev=l.queue_m>0||ex>=60?2:ex>=10?1:0;
+      ctx.globalAlpha=(faint?.5:.9)*(sev?1:.7);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.6)*k;engLine(P,off);ctx.stroke();
     }
     if(s.queue_m>0){const q=engUp(s.queue_m),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
     if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),24,which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
@@ -360,7 +376,10 @@ function engLabels(){
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,engVisible()));drawTag(ctx,V.X(q[0]),V.Y(q[1]),20,46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>engVisible()?' →':''}`,TK.works);}
   }
-  if(S.step===3&&s){let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
+  if(S.step===3&&s){
+    const share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));let k2=0;
+    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
+    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
 }
 // How far upstream stays inside the drawn world (for clamping tags)
 function engVisible(){let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>WORLD.x0&&p[0]<WORLD.x1&&p[1]>WORLD.y0&&p[1]<WORLD.y1)lo=mid;else hi=mid;}return Math.max(0,lo-8);}

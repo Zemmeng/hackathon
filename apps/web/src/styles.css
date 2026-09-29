@@ -308,3 +308,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-opt .w .mono{font-size:10.5px;color:var(--works);overflow-wrap:anywhere}
 .eng-opt .d{font:700 12px/1 var(--f-mono);white-space:nowrap}
 .eng-table>div{grid-template-columns:1fr 66px 14px 66px}
+.eng-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 10px/1.2 var(--f-mono);color:var(--fg-2)}
+.eng-legend span{display:inline-flex;align-items:center;gap:6px}
+.eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
+.eng-wrap{flex-wrap:wrap;gap:8px}
