@@ -3,6 +3,8 @@
 // 拿回能直接显示的数字（summary），引擎原始结果在 .raw。任何一样没加载上都不抛（路网除外）：
 //   参数 → 假设值；T5 读屏 → 引擎自带的关键词规则；checkSigns → 不检查；公交电车 → 不算（summary.transit = { src: null }）。
 //   status() 里写清楚每样用的是什么。
+// T17：另外加载人行道路网 walk.json + 行人流量 peds.json，方案里封了人行道（closes.footpath）就算行人绕行 → summary.peds；
+//   这两个文件拿不到不抛，summary.peds = { src: null, footpath }，status().peds = 'none'。
 // 用法（浏览器，和 /engine/ /roads/ /api/ /params/ 同源）：
 //   const be = await (await import('/engine/public/js/backend.js')).connect();
 //   const s = await be.run(be.demo('lonsdale'));     // s.queue_m、s.mean_delay_s、s.routes、s.by_type、s.flags、s.transit（电车公交，T16）…
@@ -11,13 +13,15 @@
 
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
-  requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit,
+  requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit, validatePlan, pedImpact, pedsUnavailable,
 } from './index.js';
 
 export const PATHS = {
   network: '/roads/public/cbd/network.json',
   flows: '/roads/public/cbd/flows.json',
   transit: '/roads/public/cbd/transit.json',
+  walk: '/roads/public/cbd/walk.json', // T17 人行道路网
+  peds: '/roads/public/cbd/peds.json', // T17 每条人行道每小时多少人
   params: PARAMS_URL,
   reader: '/api/public/js/reader.js',
   check: '/api/public/js/check.js',
@@ -127,15 +131,37 @@ export function summarize(res, { failed = 0, params = null, signCheck = null, tr
   };
 }
 
-// opts：base（前缀，默认同源）、fetch、importer（动态 import，测试里注入）；也可以直接给 network / flows / transit / params / readSigns / checkSigns
+// 方案不合格（比如 closes.footpath 写错）→ 抛这个错：.code = 'bad_plan'，.errors = 每条原因。页面可以先调 be.validate(方案) 挡住
+function planError(errs) {
+  const e = new Error('方案不合格：' + errs.join('；'));
+  e.code = 'bad_plan';
+  e.errors = errs;
+  return e;
+}
+
+// T17 人行道路网 + 行人流量：给了就用，没给就按同源路径取；取不到、格式不对都不抛（→ status.peds = 'none'）
+async function loadPeds(opts, base, f) {
+  if (opts.walk && opts.peds) return { walk: opts.walk, peds: opts.peds, st: 'given' };
+  try {
+    const [walk, peds] = await Promise.all([opts.walk || getJSON(base + PATHS.walk, f), opts.peds || getJSON(base + PATHS.peds, f)]);
+    if (!Array.isArray(walk?.nodes) || !Array.isArray(walk?.links)) throw new Error('walk.json 要有 nodes[] 和 links[]');
+    if (!peds?.days || typeof peds.days !== 'object') throw new Error('peds.json 要有 days');
+    return { walk, peds, st: 'fetched' };
+  } catch (e) {
+    return { walk: null, peds: null, st: 'none', err: `人行道 / 行人数据没加载上，行人影响不算（summary.peds.src = null）：${e?.message || e}` };
+  }
+}
+
+// opts：base（前缀，默认同源）、fetch、importer（动态 import，测试里注入）；也可以直接给 network / flows / transit / params / readSigns / checkSigns / walk / peds
 export async function connect(opts = {}) {
   const base = opts.base ?? '';
   const f = 'fetch' in opts ? opts.fetch : globalThis.fetch;
   const importer = opts.importer || (u => import(u));
-  const status = { network: 'given', transit: null, params: null, reader: null, check: null, errors: [], reader_errors: {} };
+  const status = { network: 'given', transit: null, params: null, reader: null, check: null, peds: null, errors: [], reader_errors: {} };
   // 0 公交电车（T3 的 transit.json）：和路网一起开始下载；拿不到不抛，只是不算公交电车
   const transitP = opts.transit ? Promise.resolve(opts.transit) : getJSON(base + PATHS.transit, f);
   transitP.catch(() => {}); // 先接住，下面再 await（路网先失败抛出时不留未处理的 rejection）
+  const pedsP = loadPeds(opts, base, f); // 和路网一起取，不拖慢 connect
 
   // 1 路网 + 车流：没有就什么都算不了，这一步失败照样抛
   let { network, flows } = opts;
@@ -182,6 +208,17 @@ export async function connect(opts = {}) {
   status.params = engine.params.src;
   if (engine.params.errors.length) status.errors.push(...engine.params.errors.map(e => '参数：' + e));
 
+  // 5 人行道 + 行人（T17）
+  const pd = await pedsP;
+  status.peds = pd.st;
+  if (pd.err) status.errors.push(pd.err);
+  function pedsOf(plan) {
+    if (!pd.walk) return pedsUnavailable(plan);
+    try { return pedImpact(pd.walk, pd.peds, plan, { net: engine.net }); }
+    catch (e) { return { ...pedsUnavailable(plan), error: String(e?.message || e) }; } // 数据有毛病也不拖垮车的数字
+  }
+  const validate = plan => validatePlan(plan);
+
   // 屏上文字合不合规范：按引擎实际会发的请求查（每段受影响的路 × 通勤者那一份「全部标志」）。
   // 文字合不合规范和时段无关：方案里所有施工都查，不只查这个时段在做的
   function checkPlan(plan) {
@@ -208,9 +245,13 @@ export async function connect(opts = {}) {
   }
 
   async function run(plan) {
+    const errs = validate(plan);
+    if (errs.length) throw planError(errs);
     const prep = await engine.prepare(plan);
     const res = engine.evaluate(plan);
-    return summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan), transit: transitFor(plan, res) });
+    const s = summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan), transit: transitFor(plan, res) });
+    s.peds = pedsOf(plan); // 封人行道的行人绕行（T17）；没封 / 不在施工时段 = 全 0，数据没加载上 = { src: null }
+    return s;
   }
 
   // 前后对比（第 4 步）：同一时段两份方案，负数 = 变好
@@ -231,6 +272,8 @@ export async function connect(opts = {}) {
         street: am ? am.street : null, main_changed: Boolean(am && b.main != null && b.approaches[b.main] !== bm),
         // 电车公交乘客·分钟（后 − 前，负数 = 变好）；没加载公交数据 = null。停掉的电车不算分钟，看 before / after 的 transit.blocked_pax_h
         transit_pax_min: a.transit.src && b.transit.src ? b.transit.pax_min - a.transit.pax_min : null,
+        // 行人多花的人·分钟（T17）；行人数据没加载上 = null
+        peds_extra_min: a.peds?.src && b.peds?.src ? +(b.peds.extra_min - a.peds.extra_min).toFixed(3) : null,
       },
     };
   }
@@ -238,6 +281,8 @@ export async function connect(opts = {}) {
   // 规划顾问（第 ⑦ 步）：大模型顾问还没定，先用规则顾问；每个改法都用引擎重算。数字是整个施工期（按天 × 采样小时）加总
   // 施工没写日期（time）时施工期是空的：就只比 plan.when 这一个小时，不然每个改法都算成 0、标成「不建议」
   async function advise(plan, { askAdvisor = mockAdvise } = {}) {
+    const errs = validate(plan);
+    if (errs.length) throw planError(errs);
     const e0 = errCount();
     const whens = windowWhens(plan.worksites || []).length ? undefined : [plan.when];
     const r = await adviseCore(engine, plan, { askAdvisor, whens });
@@ -260,7 +305,7 @@ export async function connect(opts = {}) {
   return {
     engine,
     status: () => JSON.parse(JSON.stringify({ ...status, calib: engine.calib, params_used: engine.params.used })),
-    run, compare, advise, check: checkPlan,
+    run, compare, advise, check: checkPlan, validate,
     demo: demoPlan, demos: DEMO_NAMES,
   };
 }

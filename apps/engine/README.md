@@ -21,13 +21,14 @@ const result = engine.evaluate(plan);
 
 ## 怎么测
 
-`bash apps/engine/test.sh`（2026-09-29 17:50 实跑：177 passed, 0 failed）。
+`bash apps/engine/test.sh`（2026-09-29 T16 电车公交 + T17 行人合并后实跑，数字见集成 PR）。
 
 | 文件 | 测什么 |
 |---|---|
 | `tests/engine.test.mjs` | 路网、最短路、BPR、施工时段、绕行路线、读数请求、选择模型、两点校准（正好 3% / 20%）、evaluate（确定性、缺读数、全封卡住、同路段两施工不重复算、readSigns 全挂不崩）、冲突成本、顾问 |
 | `tests/params.test.mjs` | 参数入口：合格的数照用、缺的逐项回退、不合格整组回退并报错、`sign_trust` 换算、读不到不抛错、校准目标跟着变；反向断言：塞不进第 5 类人、`__proto__` 不污染、默认值不被改 |
 | `tests/backend.test.mjs` | 接线层：兜底（T5、参数加载不上照样出数；路网取不到要抛）、用仓库里 T5 真的读屏和规范检查、summary 口径（每车延误只算受影响的车）、屏上文字不合规范报错；审查确认的 7 条（全封时封闭路段上的车全部改道、多个施工时 why 和排队取同一段、前后对比按同一段路、不施工时段标出来、没日期的施工顾问按一小时比、顾问报读数失败、没有 crypto.subtle 时退回规则）；反向断言：读屏抛错、全封无路可绕都必须在 `flags` 里报出来 |
+| `tests/peds.test.mjs` | T17 封人行道：主演示 Lonsdale 西行 8 点封左侧 → 人/小时、每人多走几米、多花几人·分钟、过几次马路；左 / 右（双幅路找对面那幅）/ 两侧；校验 `closes.footpath`（`bad_plan`）；没路可绕记 `blocked`（小图）；反向断言：没封 / 不在时段全 0、绕行不经过封闭段、walk / peds 拿不到时 `src = null` 而不是假装 0、封人行道不改车的数字 |
 | `tests/e2e.test.mjs` | MOCK 读数跑演示三幕（8 点、17 点）、屏的位置（摆在拐口之后不算）、顾问改法重算；T3 真路网：加载、单次 < 100 毫秒、第一幕方向成立 |
 | `tests/transit.test.mjs` | 电车公交（T16，真 transit.json）：Lonsdale 8 点 15 条公交跟着堵、每趟多的秒数 ≈ 留在 Lonsdale 的车（差 ≤ 25%）、车次 / 人数 / 乘客·分钟口径；La Trobe 全封 30 路电车停；Lonsdale 全封公交就近绕（只走主干道）；路口短路段补缺口；周末 / 平峰；前后对比 delta；transit.json 拿不到、这一块算挂了都照样出数。反向断言：不施工时段全是 0、比的是「没施工」不是自由流（本来就堵的路段不算）、封部分车道不列电车 |
 
@@ -38,6 +39,7 @@ const result = engine.evaluate(plan);
 | `createEngine({ network, flows, readSigns, params? })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib, params }`；`engine.params` 报每项参数用的是 params.json 还是假设值 |
 | `backend.js` 的 `connect()`（**网页只用这个**，D-0929-1540） | 一次装好路网 + 车流 + 公交电车 + 参数 + T5 读屏 + 引擎 → `{ run(方案), compare(前, 后), advise(方案), check(方案), demo(名), status() }`；`run` 回能直接显示的 summary（`queue_m mean_delay_s routes by_type hot flags transit` …，原始结果在 `.raw`）。T5、参数、transit.json 加载不上有兜底，`status()` / `flags` 里报。用法和字段见 `docs/arch/T13-web-wiring-PRD.md`，`summary.transit` 见 `docs/contract.md` §evaluate |
 | `transitImpact(net, flows, transit, 方案, 结果)` | 电车公交受影响多少（T16）→ `summary.transit`：每条受影响线路的车次、每趟多几秒、乘客·分钟、绕行 / 停运；`PAX_PER_TRIP` 每趟人数（假设值） |
+| `pedImpact(walk, peds, 方案, { net? })`（T17） | 封人行道（`closes.footpath` ∈ `left / right / both`）→ `{ src, footpath, active, day, hour, closed, closed_m, ped_h, detour_m, extra_min, crossings, blocked, blocked_ped_h, step_free: null, measured, method, sensor, detour, stretches, assumed }`；`backend.run` 把它放在 `summary.peds`，字段表见 `docs/contract.md` §evaluate「行人」。`validatePlan(方案)` / `validateWorksite(施工)` → 错误列表 |
 | `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
@@ -84,6 +86,20 @@ const result = engine.evaluate(plan);
 
 2026-09-29 17:50 实测（`tests/transit.test.mjs`，T12 参数 + 规则读屏）：Lonsdale 演示 8 点封 1 条道，15 条公交每趟多约 356 秒（留在 Lonsdale 的车多约 360 秒），77 趟 / 1925 人每小时，约 1.1 万乘客·分钟；同一段全封，公交经 Russell St → Collins St → Elizabeth St 绕，每趟多约 91 秒；La Trobe 演示全封，30 路电车每小时停 6 趟 / 360 人。单次 < 10 毫秒。
 
+## 行人模型（T17，`public/js/peds.js`）
+
+| 步 | 怎么算 | 假设 |
+|---|---|---|
+| 封哪几段 | `walk.json` 里 `road_link` = 施工路段、`side` 对得上、`kind` 是 `sidewalk / other / path` 的人行道；右侧还要找对面那幅路（同名、方向相反、≤ 40 米、中点落在施工路段长度范围内）挂着的 `left` | 过街（`crossing`）和步行街（`mall`）不封 |
+| 起点、终点 | 每一段（施工 × 哪一侧 × 行车方向）封掉的人行道里离得最远、还连着别处的两个节点 | — |
+| 多走几米 | 人行道路网（不分方向）上避开所有封闭段的最短路 − 平时最短路 | 走最短路 |
+| 多少人 | 这一段封掉的人行道里这个小时人最多的那条（`peds.json`），两侧都封加起来 | 数到的人都走完整段（上限） |
+| 多花几分钟 | `ped_h × detour_m ÷ (1.3 m/s × 60)` | 步速 1.3 m/s［假设值］；等红灯没算 |
+| 没路可绕 | `blocked = true`，人数进 `blocked_ped_h`，不算进 `extra_min` | — |
+| 无障碍 | `step_free` 一律 `null` | `walk.json` 没有台阶 / 坡道数据 |
+
+实测（2026-09-29，真数据）：Lonsdale 西行 8 点封左侧 47 米 → 185 人/小时、每人多走 176 米、过 2 次马路、417 人·分钟；两侧都封 → 370 人/小时、1484 人·分钟。
+
 ## 结构
 
 | 文件 | 一句话 |
@@ -100,6 +116,7 @@ const result = engine.evaluate(plan);
 | `public/js/net.js` · `worksite.js` · `cards.js` · `canon.js` | 路网索引和最短路 · 施工时段和通行能力 · 读屏秒数和路名清洗 · 稳定 JSON |
 | `public/js/advisor.js` | 第 ⑦ 步的引擎这一半 + MOCK 顾问 |
 | `public/js/transit.js` | 电车公交（T16）：线路 → 路段序列（补缺口）、公交延误和绕行、电车停运、乘客·分钟 |
+| `public/js/peds.js` | T17 封人行道 → 行人绕行（人行道路网最短路、每小时人数、过几次马路） |
 | `public/js/grid.js` | 方格路网 |
 | `tools/demo.mjs` · `tests/` · `test.sh` | 演示 · 测试 |
 
@@ -117,7 +134,8 @@ const result = engine.evaluate(plan);
 - T3 的车流有些路段本身就超过通行能力（如 Flinders Street 2526 / 1800）：引擎只算比没施工多出来的，但绝对数会偏大
 - 绕行路线不走 CBD 小巷（OSM `living_street` / `service` 等，见 `routes.js` 的 `NO_DETOUR`）：T3 给 Heffernan Lane 这类小巷的通行能力是 1620 veh/h，比主路单车道还高，不排除的话屏上会点名一条巷子
 - BPR + 确定性排队，没有排队回溢到上游路口；路线按自由流定，不随拥堵重新找路；只改道施工第一段上的车
-- 引擎核心只模拟开车的人（每车 1 人）；电车公交乘客在接线层另算（`summary.transit`，每趟人数是假设值，公交不会因为排队而改道、电车只看全封）；行人、骑车、轮椅还没做
-- 顾问（`advise`）、冲突成本（`conflict`）还只比车的延误，不含电车公交
+- 引擎核心只模拟开车的人（每车 1 人）；电车公交乘客在接线层另算（`summary.transit`，每趟人数是假设值，公交不会因为排队而改道、电车只看全封）；骑车还没做
+- 行人只算「封人行道 → 绕行」（T17，`summary.peds`），不算人流和车流互相影响、不判断轮椅能不能走；`walk` 当只读数据用（索引按对象缓存，改了要给新对象）；peds.json 大多是估算（6802 条里 67 条实测），`measured` / `sensor` 报出来
+- 顾问（`advise`）、冲突成本（`conflict`）还只比车的延误，不含电车公交和行人
 - 冲突 / 顾问的时间窗最多 31 天、每天只采样 1–2 个小时
 - T3 路网没有 `truck` 字段，禁货车限制现在不生效
