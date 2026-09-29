@@ -1,6 +1,7 @@
 # 大模型 API 候选卡
 
 > 每人把自己手里能用的大模型 API 写成一张卡放在这里，T5 和 lead 看卡定用哪家（D-0929-1333「大模型的api到时候再定」）。
+> **接入代码已经留好（T19）**：不管选哪家，Worker 只认 `LLM_API_KEY`（secret）、`LLM_BASE_URL`、`LLM_MODEL` 三个变量，任何 OpenAI 兼容的 `/chat/completions` 都能接。放 key、打开开关的两步和换服务商的表见 `apps/api/README.md`「怎么接大模型」。花钱有两道闸：Worker 里全局每天最多 `LLM_MAX_CALLS_PER_DAY` 次（默认 600），服务商那边只充少量余额。卡上的 `DEEPSEEK_API_KEY` 这类名字只管本机 `.env`，上线时放进 Worker 的是 `LLM_API_KEY`。
 > 🔒 **卡上只写变量名，不写 key 的值。** key 只放自己的 `.env`，上线时由部署人放进 Cloudflare（D-0929-1310）。
 > 贴了 key 会在 commit 时被 pre-commit 拦下（前提是跑过一次 `bash scripts/setup.sh`）；没装 hook 的话，要等 push 之后 CI 才报红，**那时 key 已经泄露了**，必须马上作废。
 
@@ -34,7 +35,7 @@ git push -u origin HEAD && gh pr create --fill                            # 只�
 - 卡上只写：环境变量名（全大写 ASCII，例 `DEEPSEEK_API_KEY`）、key 在谁手里、额度归谁
 - 本地：有 key 的人填自己的 `.env`（Worker 模块本地开发填模块目录的 `.dev.vars`，见 pitfalls「wrangler dev 里 env.XXX 是 undefined」）；没 key 的人用 `MOCK=1`
 - 要借别人的 key：当面或用密码管理器传，**不发群聊，不贴 PR、issue、交接单**
-- 上线：定了用哪家后，key 主人把 key 交给部署人 @unicornnnnnny，由他 `npx wrangler secret put <变量名>`（D-0929-1322），不写进任何文件
+- 上线：定了用哪家后，key 主人把 key 交给部署人 @unicornnnnnny，在 `apps/api` 里 `npx wrangler secret put LLM_API_KEY`（D-0929-1322；lead 备份部署也行），不写进任何文件
 - 真去调用之前，先报调用次数和花费（D-09），花了就记进 `docs/3-tasks.md` 的额度台账
 - 怀疑 key 进过 git 或群聊：马上去服务商后台作废、重新生成，再告诉 lead
 

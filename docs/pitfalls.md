@@ -34,3 +34,4 @@
 | AI | **AI 在留言和汇报里自己估时间，写出了还没到的时刻（15:38、15:35），实际是 15:31** | 没看 hook 注入的「现在 …」就凭感觉写 → 说时间一律照抄 UserPromptSubmit hook 给的那行，不估 | lead · 09-29 |
 | AI | **两个 lead 会话同时给 louis 派了同一件事（T10 底图 vs T11 建筑），PR 撞车** | 同一个指令在两个会话里都下了，各自开了 PR → 派任务只在一个会话做；派之前先查开着的 PR / issue 有没有同类（按需求方原文为准） | lead · 09-29 |
 | git | **Stop 门禁报 `.claude/worktrees/wf_*` 越界，无关会话每个回合都被拦** | Workflow 开 worktree 隔离时把临时 worktree 建在仓库里的 `.claude/worktrees/`，没被 gitignore，`check [3]` 用 `git ls-files --others --exclude-standard` 把它当成本分支的越界改动 → `.gitignore` 加 `.claude/worktrees/`（check.sh 已带 `--exclude-standard`，不用改）；别删这些目录，别的会话可能还在用 | lead · 09-29 |
+| AI | **开了带 worktree 隔离的 Workflow 后，`check.sh [3]` 报 `.claude/worktrees/…` 越界，`deploy.sh` 报工作区不干净** | Workflow 把临时 worktree 建在仓库里的 `.claude/worktrees/`，这个目录没进 .gitignore（AI 不许改 .gitignore）→ workflow 跑完先 `git worktree list` 核对，合并完分支后 `git worktree remove <路径>` 删掉再部署；lead 把 `.claude/worktrees/` 加进 .gitignore | lead · 09-29 |

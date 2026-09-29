@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">RippleTwin — business workflow and system architecture</title>
+  <desc id="desc">Editable vector diagram. Planners enter roadworks and sign wording; sign interpretation and real data feed a deterministic engine. Computed results support human decisions. A planned advisor loop revises inputs and reruns the engine. Feature status is a historical snapshot from the 29 September 2026 pre-screen deck, not a live implementation audit.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#087f80"/></marker>
+    <marker id="purple-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L8 4L0 8Z" fill="#8961ce"/></marker>
+    <style>
+      text {font-family:Arial,Helvetica,sans-serif;fill:#122439}
+      .serif {font-family:Georgia,'Times New Roman',serif;font-weight:bold}
+      .label {font-size:17px;letter-spacing:3px;font-weight:600}
+      .body {font-size:23px}
+      .small {font-size:18px;fill:#526477}
+      .teal {fill:#087f80}
+      .white {fill:#fff}
+      .muted {fill:#b7d2dc}
+      .line {fill:none;stroke:#087f80;stroke-width:2;marker-end:url(#arrow)}
+      .planned {fill:none;stroke:#8961ce;stroke-width:2;stroke-dasharray:7 5;marker-end:url(#purple-arrow)}
+    </style>
+  </defs>
+  <rect width="1920" height="1080" fill="#fcfcfa"/>
+  <g id="heading">
+    <text x="64" y="53" class="label">RIPPLETWIN / SYSTEM ARCHITECTURE</text>
+    <text x="64" y="122" font-size="53" class="serif">From a roadworks plan to a tested decision</text>
+    <text x="64" y="160" class="small">Business inputs, deterministic simulation and a human-led improvement loop</text>
+    <text x="1856" y="53" text-anchor="end" class="label teal">MELBOURNE CBD</text>
+  </g>
+  <g id="planner-inputs">
+    <rect x="64" y="195" width="846" height="142" rx="12" fill="#f0f7f6" stroke="#cadcdd"/>
+    <text x="90" y="229" class="label teal">WHO &amp; WHAT</text>
+    <text x="90" y="266" class="serif" font-size="28">Contractors / council planners</text>
+    <text x="90" y="296" font-size="21">Road segment · lane closure · time window</text>
+    <text x="90" y="324" font-size="21">Equipment placement · VMS wording</text>
+  </g>
+  <g id="data-foundation">
+    <rect x="938" y="195" width="918" height="142" rx="12" fill="#f5f7f8" stroke="#cadcdd"/>
+    <text x="964" y="229" class="label teal">DATA FOUNDATION</text>
+    <text x="964" y="266" font-size="23">OSM roads · SCATS counts · RPM Hire equipment</text>
+    <text x="964" y="296" font-size="21">Research evidence · driver profiles / assumptions</text>
+    <text x="964" y="324" class="small">Tram &amp; pedestrian data loaded; CBD impacts planned*</text>
+  </g>
+  <g id="input-connectors">
+    <path d="M220 337V404" class="line"/>
+    <text x="235" y="373" class="small teal">VMS wording</text>
+    <path d="M650 337V404" class="line"/>
+    <text x="665" y="373" class="small teal">Works configuration</text>
+    <path d="M1060 337V388H925V404" class="line"/>
+    <text x="1075" y="375" class="small teal">Data inputs</text>
+  </g>
+  <g id="interpret">
+    <rect x="64" y="405" width="340" height="310" rx="12" fill="#fff" stroke="#adbdc9"/>
+    <text x="88" y="447" class="label teal">01 / INTERPRET</text>
+    <text x="88" y="493" class="serif" font-size="31">Read the signs</text>
+    <text x="88" y="538" class="body">Four driver profiles</text>
+    <text x="88" y="569" font-size="18">Commuter · local · tourist · delivery</text>
+    <text x="88" y="606" class="body">Keyword rules today</text>
+    <rect x="88" y="625" width="144" height="29" rx="14" fill="#f0eafa" stroke="#bda5e6"/>
+    <text x="102" y="645" font-size="17" fill="#7046b4">LLM planned</text>
+    <path d="M88 670H380" stroke="#cad4dc"/>
+    <text x="88" y="696" font-size="18">Sign meaning → route choice</text>
+  </g>
+  <g id="simulate">
+    <rect x="438" y="405" width="588" height="310" rx="12" fill="#10283a"/>
+    <text x="465" y="447" class="label" fill="#52ddd0" style="fill:#52ddd0">02 / SIMULATE</text>
+    <text x="465" y="493" class="serif white" font-size="34">Deterministic engine</text>
+    <text x="465" y="538" class="body white">Find detours &amp; choose routes</text>
+    <text x="465" y="575" class="body white">Compute queues &amp; delay</text>
+    <text x="465" y="612" class="body white">Evaluate overlapping works</text>
+    <text x="465" y="651" class="small muted">Real-CBD clash integration planned*</text>
+    <path d="M465 670H999" stroke="#456374"/>
+    <text x="465" y="696" font-size="19" class="muted">Same input → same result</text>
+    <g id="engine-motif" fill="none" stroke="#426371" stroke-width="1.5" opacity="0.7">
+      <path d="M895 519L990 546M893 553L990 580M895 587L990 614M901 623L992 650M912 518L901 643M947 527L936 652M981 536L970 658"/>
+      <path d="M899 618L939 629L944 564L986 577" stroke="#52ddd0" stroke-width="4"/>
+      <circle cx="899" cy="618" r="5" fill="#52ddd0"/>
+      <circle cx="986" cy="577" r="5" fill="#52ddd0"/>
+    </g>
+  </g>
+  <g id="review">
+    <rect x="1060" y="405" width="398" height="310" rx="12" fill="#fff" stroke="#adbdc9"/>
+    <text x="1084" y="447" class="label teal">03 / REVIEW</text>
+    <text x="1084" y="493" class="serif" font-size="31">See the impact</text>
+    <text x="1084" y="538" class="body">Detour routes</text>
+    <text x="1084" y="575" class="body">Queues &amp; delay</text>
+    <text x="1084" y="612" class="body">Baseline vs proposed plan</text>
+    <text x="1084" y="647" font-size="17" fill="#526477">Both scenarios run through the same engine</text>
+    <path d="M1084 664H1434" stroke="#cad4dc"/>
+    <text x="1084" y="687" font-size="18">Clash cost: D(A+B) − D(A) − D(B)</text>
+    <text x="1084" y="708" font-size="15" fill="#526477">D = total delay</text>
+  </g>
+  <g id="decide">
+    <rect x="1492" y="405" width="364" height="310" rx="12" fill="#fff" stroke="#adbdc9"/>
+    <text x="1516" y="447" class="label teal">04 / DECIDE</text>
+    <text x="1516" y="493" class="serif" font-size="31">Select a plan</text>
+    <text x="1516" y="538" class="body">Review the comparison</text>
+    <text x="1516" y="575" class="body">Choose the preferred</text>
+    <text x="1516" y="606" class="body">option</text>
+    <path d="M1516 670H1832" stroke="#cad4dc"/>
+    <text x="1516" y="696" font-size="19">Human decision</text>
+  </g>
+  <g id="main-flow">
+    <path d="M404 560H438" class="line"/>
+    <path d="M1026 560H1060" class="line"/>
+    <path d="M1458 560H1492" class="line"/>
+  </g>
+  <g id="advisor-loop">
+    <rect x="438" y="777" width="1418" height="159" rx="14" fill="#faf7ff" stroke="#b198da" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="465" y="808" class="label" style="fill:#7850b0">PLANNED / ADVISOR LOOP*</text>
+    <rect x="716" y="832" width="291" height="54" rx="8" fill="#f0e9fc" stroke="#ccb8e8"/>
+    <text x="862" y="866" text-anchor="middle" font-size="23">Suggest up to 3 fixes</text>
+    <rect x="1054" y="832" width="338" height="54" rx="8" fill="#f0e9fc" stroke="#ccb8e8"/>
+    <text x="1223" y="866" text-anchor="middle" font-size="23">Reword · move · stagger</text>
+    <rect x="1440" y="832" width="388" height="54" rx="8" fill="#f0e9fc" stroke="#ccb8e8"/>
+    <text x="1634" y="866" text-anchor="middle" font-size="23">Send revised inputs</text>
+    <path d="M1259 715V753H862V832" class="planned"/>
+    <text x="1275" y="752" class="small" style="fill:#7850b0">Results</text>
+    <path d="M1007 859H1054" class="planned"/>
+    <path d="M1392 859H1440" class="planned"/>
+    <path d="M1634 886V914H421V751H220V715" class="planned"/>
+    <path d="M421 751H570V715" class="planned"/>
+    <rect x="786" y="899" width="607" height="29" fill="#faf7ff"/>
+    <text x="1089" y="919" text-anchor="middle" font-size="18" style="fill:#7850b0">Re-read changed signs + re-run the engine → compare again</text>
+  </g>
+  <g id="status-notes">
+    <text x="64" y="806" class="label teal">IMPLEMENTATION SNAPSHOT*</text>
+    <circle cx="74" cy="842" r="6" fill="#087f80"/>
+    <text x="91" y="848" class="small">Rule-based reading + engine: working</text>
+    <circle cx="74" cy="877" r="6" fill="none" stroke="#8961ce" stroke-width="2"/>
+    <text x="91" y="883" class="small">LLM / advisor / CBD extensions:</text>
+    <text x="91" y="910" class="small">planned in the source deck</text>
+  </g>
+  <g id="footer">
+    <path d="M64 967H1856" stroke="#a9bac8"/>
+    <text x="64" y="1012" class="serif" font-size="31">AI interprets — the engine calculates</text>
+    <text x="896" y="1000" class="small">VMS text check · rule fallback · API keys stay server-side</text>
+    <text x="896" y="1031" font-size="16" fill="#526477">* Status from pre-screen deck, 29 Sep 2026; review before presenting.</text>
+    <path d="M64 1043H104" class="line"/><text x="117" y="1049" font-size="16">Current core / human workflow</text>
+    <path d="M407 1043H447" class="planned"/><text x="460" y="1049" font-size="16">Planned extension</text>
+  </g>
+</svg>

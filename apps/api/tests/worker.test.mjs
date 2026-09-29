@@ -62,4 +62,32 @@ await sec("反向：MOCK 下不发出任何外部请求（计费）", async () =
   eq(n, 0, "外部 fetch 调用 0 次");
 });
 
+await sec("请求体上限按字节、边读边数：大请求体不整个读进内存", async () => {
+  // 请求对象用普通对象造：node 的 Request 会自己算 content-length，测不到「头说小、体很大」和「头说大」
+  const fake = (headers, body) => ({ url: "https://api.test/api/read", method: "POST", headers: new Headers(headers), body });
+  let pulled = 0;
+  let cancelled = false;
+  const endless = new ReadableStream({
+    pull(c) {
+      pulled++;
+      c.enqueue(new Uint8Array(4096).fill(0x20));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const r = await worker.fetch(fake({}, endless), { MOCK: "1" });
+  eq([r.status, (await r.json()).error], [413, "too_large"], "没有 Content-Length 的无限流 → 413");
+  ok(pulled <= 4 && cancelled, `只读了 ${pulled} 块（每块 4KB）就停，流被取消`);
+
+  let touched = false;
+  const untouchable = { getReader() { touched = true; return new ReadableStream().getReader(); } }; // 流一建好就会预读，所以看有没有人来拿 reader
+  const big = await worker.fetch(fake({ "content-length": String(20 * 1024 * 1024) }, untouchable), { MOCK: "1" });
+  eq([big.status, touched], [413, false], "Content-Length 20MB → 直接 413，一个字节都不读");
+
+  const zh = JSON.stringify({ ...REQ, pad: "路".repeat(3000) }); // 3000 个字 = 9000 字节 UTF-8
+  eq((await post(zh)).status, 413, "按字节算（不是按字符数）");
+  eq((await post(JSON.stringify({ ...REQ, pad: "x".repeat(7000) }))).status, 200, "8KB 以内照常");
+});
+
 done();

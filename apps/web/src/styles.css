@@ -312,3 +312,218 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-legend span{display:inline-flex;align-items:center;gap:6px}
 .eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
 .eng-wrap{flex-wrap:wrap;gap:8px}
+.eng-impacts>div{padding:7px 11px;font-size:12px}
+.eng-impacts .val{font:600 10.5px/1.2 var(--f-mono);color:var(--works)}
+.eng-trs>div{align-items:flex-start}
+.eng-tr .md{min-width:30px;height:20px;padding:0 5px;border-radius:4px;display:inline-grid;place-items:center;font:700 10.5px/1 var(--f-mono);color:#fff;flex:none}
+.eng-tr small{display:block;font:400 10.5px/1.4 var(--f-mono);margin-top:3px;white-space:normal}
+
+/* ============================================================
+   T14 liquid glass (docs/arch/T14-liquid-glass-PRD.md) — appearance only.
+   Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
+   the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
+   comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
+   Apple-style clear glass (09-29 ask): the tint is light (~.4); --glass-tone dims the map behind it (dark) or lifts it
+   (light) so text still clears 4.5:1. Reduced transparency or no backdrop-filter → solid surfaces.
+   ============================================================ */
+:root,:root[data-theme="dark"]{
+  --bg:#07090B;--raised:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.24);
+  --fg:#F7F9FA;--fg-2:#CDD4D9;--fg-3:#B8C1C7;
+  --panel:rgba(22,27,34,.40);--glass:rgba(22,27,34,.38);--glass-line:rgba(255,255,255,.18);
+  --shell:rgba(22,27,34,.40);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
+  --glass-tone:brightness(.5) saturate(1.9);
+  --tone-deep:brightness(.5) saturate(1.9);--shell-deep:rgba(22,27,34,.40);--glass-deep:rgba(22,27,34,.38);--tone-fog:brightness(.33) saturate(1.6);--tone-fog-deep:brightness(.33) saturate(1.6);
+  --shadow:0 20px 50px rgba(0,0,0,.36);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.05),inset 0 26px 40px -34px rgba(255,255,255,.38);
+  --hl:rgba(255,255,255,.08);--hl-2:rgba(255,255,255,.05);--hl-edge:rgba(255,255,255,.18);
+  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;--sun-ink:#FFB340;
+  --tt-moon:var(--sun);--tt-moon-fg:var(--on-sun);--tt-sun:transparent;--tt-sun-fg:var(--fg-3);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+    --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+    --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
+    --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+    --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
+    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+    --shadow:0 18px 44px rgba(28,40,50,.14);
+    --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+    --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
+    --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+  --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+  --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
+  --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+  --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
+  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+  --shadow:0 18px 44px rgba(28,40,50,.14);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+  --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
+  --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
+}
+
+/* glass adapts to what is behind it (like Apple's): over dark content (imagery / NIR basemap, heat layer) light glass
+   lifts harder and turns milkier (dark text needs a near-white ground for 4.5:1); over fog's near-white map dark
+   glass dims harder. Each theme sets its own
+   --tone-deep / --tone-fog(-deep), so these rules hold for both. data-bm / data-wx are set in js/5-app.js. */
+:root[data-bm="imagery"],:root[data-bm="nir"],:root[data-wx="heat"]{--glass-tone:var(--tone-deep);--shell:var(--shell-deep);--glass:var(--glass-deep)}
+:root[data-wx="fog"]{--glass-tone:var(--tone-fog)}
+:root[data-wx="fog"][data-bm="imagery"],:root[data-wx="fog"][data-bm="nir"]{--glass-tone:var(--tone-fog-deep)}
+
+/* glass surfaces: a light tint over a toned backdrop, a sheen across the top-left, a lit rim (brighter top-left,
+   fainter bottom-right) and a soft inner glow for thickness */
+.top,.rail,.panel,.timeline,.panel-open{
+  background:linear-gradient(150deg,var(--hl),transparent 36%,transparent 72%,var(--hl-2)),var(--shell);
+  border:1px solid var(--shell-line);
+  -webkit-backdrop-filter:blur(20px) var(--glass-tone);backdrop-filter:blur(20px) var(--glass-tone);
+  box-shadow:var(--shadow),var(--rim);
+}
+.glass{
+  background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),var(--glass);
+  border:1px solid var(--glass-line);border-radius:16px;
+  -webkit-backdrop-filter:blur(16px) var(--glass-tone);backdrop-filter:blur(16px) var(--glass-tone);
+  box-shadow:0 12px 32px rgba(0,0,0,.2),var(--rim);
+}
+/* real refraction (js/7-glass.js sets --lg-url on the panel and the top bar) */
+.lg-on{-webkit-backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone);backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone)}
+
+/* brand + workflow */
+.brand>svg{width:32px;height:32px;padding:6px;border-radius:50%;background:var(--raised);box-shadow:inset 0 1px 0 var(--hl-edge)}
+.brand-name{font-size:18px;letter-spacing:-.03em}
+.scene{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--raised)}
+.stepper{gap:4px}
+.stepper button{border-radius:999px;padding:9px 12px;transition:background .18s,color .18s}
+.stepper button:hover{background:var(--raised)}
+.stepper button[aria-current="step"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 18px rgba(255,159,10,.24),inset 0 1px 0 rgba(255,255,255,.42)}
+.chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
+
+/* layer rail */
+.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
+.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+
+/* map HUDs */
+.wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
+.wx{padding:4px;gap:3px}
+.wx button,.basemap button{border-radius:999px}
+.wx button{padding:7px 10px}
+.basemap{padding:4px}
+.basemap button{padding:8px 11px}
+.basemap button[aria-pressed="true"]{background:var(--sun);color:var(--on-sun)}
+.zoom{padding:4px;gap:2px}
+.zoom button{width:32px;height:32px;border-radius:50%}
+.legend{border-radius:18px;padding:13px 14px 14px}
+.legend-ramp{border-radius:999px}
+.probe{padding:8px 13px}
+.toast{padding:10px 16px}
+.alert{border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.10),transparent 38%),rgba(40,10,15,.86);color:#F5F7F8}
+.alert .m span{color:#B3A3A6}
+.swipe .knob{background:var(--sun);color:var(--on-sun);border:1px solid rgba(255,255,255,.45)}
+.swipe .tag{border-radius:999px;padding:6px 9px}
+
+/* analysis panel */
+.panel{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.panel h2{font-size:22px;line-height:1.18;letter-spacing:-.025em}
+.pill{border-radius:999px;padding:5px 8px}
+.card,.list,.metric,.agents3 div,.table,.pre,.eng-seg,.eng-opt{border-radius:14px;box-shadow:inset 0 1px 0 var(--hl-edge)}
+.card,.list,.metric,.agents3 div,.table,.pre{background:linear-gradient(135deg,rgba(255,255,255,.06),transparent 50%),var(--raised)}
+.list>div{padding:10px 13px}
+.progress .track,.bars .track,.eng-route .track{border-radius:999px}
+.chips button,.chips span{border-radius:999px;padding:7px 10px}
+.btn{border-radius:14px;box-shadow:0 10px 22px rgba(79,227,193,.16),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.ghost,.btn:disabled{box-shadow:inset 0 1px 0 var(--hl-edge)}
+.chain .c{border-radius:12px}
+.chain .badge{background:var(--shell-solid)}
+.eng-seg{padding:3px}
+.eng-seg button{border-radius:11px}
+.eng-seg button[aria-selected="true"]{background:var(--sun);color:var(--on-sun)}
+.eng-opt[aria-pressed="true"]{border-color:var(--sun);background:var(--sun-tint)}
+.eng-field input{border-radius:10px}
+.eng-vms textarea{border-radius:10px;border-color:#2A2A2A;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.eng-msg{border-radius:10px}
+
+/* compact panel: explanatory copy hides, secondary sections fold behind their heading */
+.panel-tools{display:flex;align-items:center;gap:8px;margin-bottom:-4px}
+.seg-mode{display:inline-flex;gap:2px;padding:3px;border-radius:999px;border:1px solid var(--line);background:var(--raised)}
+.seg-mode button{border:0;background:none;color:var(--fg-2);font:600 10px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:7px 11px;border-radius:999px;cursor:pointer}
+.seg-mode button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+:lang(zh) .seg-mode button{letter-spacing:.02em;text-transform:none}
+.panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
+.panel-hide:hover{color:var(--fg)}
+.panel.compact p.muted{display:none}
+.panel.compact #copyFallback p.muted{display:block}
+.sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
+.sec-head:hover{background:var(--raised)}
+.sec-head::after{content:"";flex:none;width:7px;height:7px;margin:0 4px 3px auto;border-right:1.6px solid var(--fg-3);border-bottom:1.6px solid var(--fg-3);transform:rotate(45deg);transition:transform .18s}
+.sec-head.between::after{margin-left:0}
+.sec-closed>.sec-head::after{transform:rotate(-45deg);margin-bottom:0}
+.sec-closed>:not(.sec-head){display:none!important}
+.panel-open{display:none}
+
+/* one action colour (09-29): every primary / selected control is --sun; teal stays only where it means
+   "better / after repair" (numbers, the v2 tag, OK pills) and on map overlays (AOI, graticule) */
+button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.eng-field input:focus-visible{outline-color:var(--sun)}
+.brand>svg{stroke:var(--sun)}
+.brand>svg circle[fill]{fill:var(--sun)}
+.meta .eyebrow{color:var(--sun-ink)}
+.btn{background:var(--sun);color:var(--on-sun);box-shadow:0 10px 22px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.4)}
+.play{background:var(--sun);color:var(--on-sun);box-shadow:0 8px 20px rgba(255,159,10,.26),inset 0 1px 0 rgba(255,255,255,.45)}
+.chips [aria-pressed="true"],.lang-toggle span.on,.speed button[aria-pressed="true"]{background:var(--sun);border-color:transparent;color:var(--on-sun)}
+.speed{border-radius:999px;padding:3px}
+.speed button{border-radius:999px}
+.progress .track i{background:var(--sun)}
+input[type="range"]#vmsAt{accent-color:var(--sun)}
+
+/* ---------- floating layout (desktop) ---------- */
+@media (min-width:821px){
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .map{position:fixed;inset:0;z-index:0}
+  .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
+  .rail{position:fixed;z-index:5;top:var(--safe-t);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
+  .panel-hide{display:grid}
+  .app.panel-min{--safe-r:64px}
+  .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
+  .panel-open:not([hidden]){display:flex;position:fixed;z-index:5;right:12px;top:var(--safe-t);flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:18px;cursor:pointer;color:var(--fg);font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+  .panel-open span{writing-mode:vertical-rl}
+  :lang(zh) .panel-open{letter-spacing:.2em;text-transform:none}
+
+  /* HUDs keep to the part of the map the glass leaves open */
+  .meta{top:calc(var(--safe-t) + 2px);left:var(--safe-l)}
+  .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
+  .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
+  .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 34px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .swipe .tag{top:calc(var(--safe-t) + 60px)}
+}
+/* narrower desktops: fewer HUDs, a slimmer panel */
+@media (min-width:821px) and (max-width:1360px){ .app:not(.panel-min) .meta{display:none} }
+@media (min-width:821px) and (max-width:1180px){ .app{--panel-w:332px;--safe-r:356px} .app.panel-min{--safe-r:64px} .basemap{top:calc(var(--safe-t) + 52px)} }
+@media (min-width:821px) and (max-width:1000px){ .probe{display:none} .scene{display:none} }
+
+/* ---------- phones / narrow: the stacked flow, glass surfaces kept ---------- */
+@media (max-width:820px){
+  .top{border-radius:0 0 20px 20px;border-width:0 0 1px}
+  .timeline,.panel{border-width:1px 0 0;border-radius:0}
+}
+
+/* ---------- fallbacks ---------- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+}
+@media (prefers-reduced-transparency: reduce){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
+}
+@media (prefers-reduced-motion: reduce){
+  .panel,.app.panel-min .panel,.stepper button,.rail button,.sec-head::after{transition:none}
+}

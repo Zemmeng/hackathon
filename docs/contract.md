@@ -21,6 +21,9 @@ T3 产出，放在 `apps/roads/public/cbd/`，本地和线上都从 `/roads/publ
 | `network.json` | `version, area, bbox[南,西,北,东], generated, sources, assumptions, nodes[], links[]` | 路段有方向；`links[]`：`id, from, to, name, highway, len_m, lanes, speed_kmh, cap_vph, t0_s, tram, bike_lane, osm_way, geometry[[lat,lon]]`；`nodes[]`：`id, lat, lon, osm, signal` |
 | `flows.json` | `version, unit="veh/h", period, days{wd,we}{路段 id: 24 个数}, method{路段 id}, coverage{links, measured, estimated}` | 下标 = 小时；`method` ∈ `detector_map / site_split / street_interp / class_default` |
 | `signals.json` | `version, sites[{site, name, type, lat, lon, node, dist_m}]` | `node` 是 30 米内最近的节点，没有就 `null` |
+| `transit.json` | `version, sources, service_dates{wd,we}, assumptions, routes[], stops[], coverage` | PTV GTFS 电车 / 公交。`routes[]`：`id, mode (tram / bus), short, dirs[{dir, headsign, links[], stops[], trips{wd,we}[24], offnet_m, geometry}]`，`links` 是匹配到的路段 id（按 10 米采样，路口里的短路段可能缺）；`stops[]`：`id, name, lat, lon, mode, road_link, routes[]`。引擎的 `transit.js` 读它（T16） |
+| `walk.json` | `version, area, bbox, sources, assumptions, nodes[{id, lat, lon}], links[]` | 人行道路网（不分方向）：`links[]`：`id, a, b, len_m, kind (sidewalk / other / path / crossing / mall), crossing (null / signal / uncontrolled / zebra), road_link, side (left / right / null), geometry`；`side` 相对 `road_link` 的行车方向 |
+| `peds.json` | `version, unit="ped/h", period, days{wd,we}{walk link id: 24 个数}, method{walk link id}, sensors[{id, name, lat, lon, walk_link, road_link}], coverage` | `method` ∈ `sensor / street_interp / class_default`；只有 `sensor` 是实测 |
 
 - 加字段随时可以；改名、删字段、改单位要开 `contract:` PR，并把文件里的 `version` 加 1
 - 路段 id 从 OSM id 派生，重跑时保持稳定（T2 会用它存用户选的施工路段）
@@ -63,8 +66,8 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
   "why": "Sign says Russell saves 8 min and I'm late",
   "range": { "notice": [0.8, 0.9], "understand": [0.85, 0.95], "trust": [0.6, 0.75] },
   "src": "file",
-  "model": "…",
-  "prompt_v": "r1"
+  "model": "deepseek-flash",
+  "prompt_v": "r2"
 }
 ```
 
@@ -77,7 +80,10 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 | `trust` | 看懂的人里相信这句话的程度，0–1 |
 | `why` | 一句理由（英文，界面显示用 `textContent`） |
 | `range` | 问 3 次的最小到最大；规则兜底时没有这个字段 |
-| `src` | `file / kv / llm / rule` |
+| `src` | `file`（随网页发布的 `demo.json`）/ `kv`（Worker 的缓存：内存、KV 或 Cache API）/ `llm`（刚问的大模型）/ `rule`（关键词规则） |
+| `model` | 大模型名（= Worker 变量 `LLM_MODEL`，例 `deepseek-flash`）；规则读数是 `"rules"` |
+| `prompt_v` | 提示词版本（`apps/api/prompts.md`，例 `r2`）；规则读数是规则版本（例 `k1`） |
+| `note` | 可选，只在 `POST /api/read` 的规则兜底时出现：为什么没用大模型的短码（例 `llm_fallback: 1/3 valid (timeout)`、`llm_rate_limited`）。`readSigns()` 会丢掉它，引擎看不到 |
 
 - 引擎拿读数 + 每类人的参数算各条路的比例（选择模型和两点校准归 T4）；**大模型不回比例**
 - 加字段随时可以；改名、删字段、改取值范围要开 `contract:` PR
@@ -90,7 +96,7 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 {
   "id": "A",
   "links": ["<network.json 的路段 id，按行车方向>"],
-  "closes": { "lanes": 1 },
+  "closes": { "lanes": 1, "footpath": "left" },
   "time": { "from": "2026-10-05", "to": "2026-10-09", "hours": [7, 19] },
   "equipment": [
     { "id": "vms1", "type": "vms", "at_m": 300, "frames": [["USE", "RUSSELL ST", "SAVE 4 MIN"]], "char_mm": 320 },
@@ -100,6 +106,7 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 ```
 
 - `links` 同方向连着的算一段；双向施工两个方向都列。`closes.lanes` ≥ 车道数 = 全封；没全封时剩下车道的通行能力再 × 0.9
+- `closes.footpath`（T17，可选）∈ `left / right / both`：封哪一侧人行道。相对施工路段的行车方向，和 `walk.json` 的 `side` 同口径（靠左行驶，`left` = 挨着被封车道那边的路缘）；不写 / `null` / `"none"` = 人行道不封。别的值（`"LEFT"`、`"north"`、`1` …）`validatePlan()` 报错，`backend.run / advise` 抛 `code: "bad_plan"`（`.errors` 是每条原因；页面可先调 `be.validate(方案)` → 错误列表）。只影响行人（`summary.peds`），不改车的数字
 - `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
 - 屏上文字（`frames`）：≤ 2 帧 × ≤ 4 行 × ≤ 10 字符、合计 ≤ 8 个词、大写（校验归 T5 / T2）
 - 「什么时候」= `when: { date: "YYYY-MM-DD", hour: 0–23, day?: "wd" | "we" }`；`hour` 是 `flows.json` 的下标
@@ -113,6 +120,32 @@ const be = await (await import('/engine/public/js/backend.js')).connect();
 const s = await be.run(方案);          // 能直接显示的数字：queue_m mean_delay_s routes by_type hot flags …；引擎原始结果（下表）在 s.raw
 const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
 ```
+
+**电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
+
+```js
+s.transit = {
+  src: 'gtfs' | null, day: 'wd' | 'we', hour,
+  routes: [{ id, short, mode: 'tram' | 'bus', dir, headsign,
+             trips_h, pax_per_trip, pax_h,          // 这个小时的车次（GTFS）、每趟人数（假设值）、乘客/小时
+             delay_s, pax_min,                      // 每趟多的秒数（≥ 0）、乘客·分钟；停掉的（blocked）和路网外换路的（edge）都是 null
+             diverted, blocked, edge,               // 公交全封要绕 / 电车全封停（公交在路网里绕不过去也算 blocked）/
+                                                    // edge：全封在线路进出路网 400 米内、路网里绕不过去 → 在路网外换路，分钟数算不出，不算停运
+             stops_closed: [{ id, name }],          // 在全封路段上的站
+             links: [路段 id],                      // 这条线路变慢了或全封的路段
+             detour_links: [路段 id], stops_skipped: [{ id, name }] }],  // 公交绕的路、绕开的站（没绕 = []）
+  trips_h, pax_h, pax_min, blocked_routes, blocked_pax_h,   // 合计；pax_min 不含停掉的和 edge 的（≥ 0）
+  edge_routes,                                              // edge 的线路数（不算进 blocked_routes / blocked_pax_h）
+  assumed: { pax_per_trip: { tram, bus }, period: 'peak' | 'offpeak', range: { tram: [低, 高], bus: [低, 高] }, note },
+}
+c.delta.transit_pax_min   // 后 − 前（负数 = 变好）；任何一边没有公交数据 = null
+```
+
+- 只列「这个方向经过的路段被全封」或「整趟比没施工时慢 > 0.1 秒」、这个小时有车次的线路（有的路段因为车流绕走反而变快，整趟加起来不慢的不列）；排序：停掉的在前（按 `pax_h`），其余按 `pax_min` 从大到小，`edge` 的放最后（按 `pax_h`）
+- 公交：跟车流走固定线路，每趟多的秒数 = 线路上每个路段（这个方案的通行时间 − 同一小时没施工时的通行时间）之和，都用引擎的 `linkTime`（不是 `links[].delay_s`，那是比自由流多的）。有路段全封 → 在封闭段前后 400 米内就近绕（最短路，先只走主干道，不走小巷；从哪拐出去、在哪回来按全程时间挑最快的），多的秒数 = 绕完的全程 − 平时全程，**最少记 0**（绕行跳过了线路上本来绕的一圈也不算「变快」：按时刻表跑，早到要等；跳过的站在 `stops_skipped`）
+- 公交 `edge`：`transit.json` 的线路只截到 CBD 路网里；全封离线路进 / 出路网不到 400 米、路网里又绕不过去 → 公交在路网外就换路了：`diverted: true, edge: true`，`delay_s` / `pax_min` 为 `null`，不算停运。界面别显示成「+0 秒」，写「在地图外绕行」
+- 电车：假设 CBD 电车走自己的车道，封部分车道不耽误电车（不列）；全封电车经过的路段 → `blocked`，只报停掉的车次和乘客，不编分钟数
+- 每趟载客人数是**假设值**（D-0929-1536：界面标「假设值」+ 区间）：工作日 7–9、16–18 点高峰电车 60 / 公交 25，其余电车 30 / 公交 12；`assumed` 里给当时用的数和区间
 
 字段表见 `docs/arch/T13-web-wiring-PRD.md` 第 5 节。下面是引擎核心的用法（接线层内部就是这么调的）：
 
@@ -131,7 +164,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 - 排队变长 → 引擎按「看得到的排队」自己重算选择（逐次平均 6 轮），不再问大模型
 - 参数：`loadParams()` 读同源的 `/params/public/params.json`（T12），读不到、不合格逐项回退到假设值、不抛错；引擎认哪些字段见 `apps/engine/README.md`「参数」一节；`engine.params` = `{ src: params | default, version, mix, personas, anchors, used: { mix, anchors, persona.<类型>.<项> } 每项来源, ignored, errors, override }`，界面可以标「参数有出处 / 假设值」
 
-**结果**（数字全由引擎算；单位：`*_min` = 这一小时比「没有施工」多出来的车·分钟；每车按 1 人算，公交电车乘客还没建模）：
+**结果**（数字全由引擎算；单位：`*_min` = 这一小时比「没有施工」多出来的车·分钟；每车按 1 人算；公交电车乘客在接线层的 `s.transit`，见上）：
 
 | 字段 | 含义 |
 |---|---|
@@ -147,6 +180,33 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `calib` | `{ A, B, method: two_point | default, ok, target: { lo, hi }, lo_detour, hi_detour, src, model }`；`ok = false` = 两个目标至少有一个够不着 |
 | `missing` | 还没问到的读数条数 |
 
+**行人（T17，`summary.peds`）**：`backend.js` 的 `connect()` 另外在**后台**取 `/roads/public/cbd/walk.json` + `peds.json`（3.6 MB；也可以 `connect({ walk, peds })` 注入）。`connect()` 不等它们：刚连上时 `status().peds = "loading"`，取完变 `fetched / given / none`；`await be.pedsReady()` → 取完后的那个值。`run()` 只有在这个小时真的封了人行道时才等它们，最多 8 秒（`connect({ pedsWaitMs })` 可改）；没封 / 不在施工时段 = 不用数据、直接全 0。取不到、格式不对都不抛：`status().peds = "none"`，`summary.peds = { src: null, footpath }`；等超时 = `{ src: null, footpath, pending: true, error }`（下次 run 数据到了就有）；两种情况 `compare` 的 `delta.peds_extra_min = null`。拿到了时：
+
+| 字段 | 含义 |
+|---|---|
+| `src` | `"peds"`；数据没加载上是 `null`（其余字段都没有） |
+| `footpath` | 方案里声明封的人行道：`none / left / right / both`（不管这个小时在不在施工） |
+| `active` | 这个小时有没有正在封人行道的施工；`false` 时下面的数字全是 0 |
+| `day` `hour` | 用的是 `peds.json` 的哪一天类型（`wd / we`）、哪个小时 |
+| `closed[]` `closed_m` | 封掉的人行道（`walk.json` 的 link id）和总长（米） |
+| `ped_h` | 这一段封掉的人行道里这个小时人最多的那条（人/小时）；两侧都封时两侧加起来 |
+| `detour_m` | 每人多走的米数 = 避开封闭段的最短路 − 平时最短路（两侧按人数加权） |
+| `extra_min` | `ped_h × detour_m ÷ (walk_mps × 60)`，人·分钟 / 小时（和车的 `delay_min` 同口径）；等红灯没算 |
+| `crossings` | 绕行路线上要过几条街（`kind = crossing` 或 `crossing` 非空）：连着的几段过街（安全岛把一条过街切成几段）算一次，除非前后两段是不同名字的街；两侧都封时取多的那侧 |
+| `blocked` `blocked_ped_h` | 没路可绕（两头都连着像样的路网、中间被切断）；这些人不算进 `extra_min`，单独报人/小时（和 `blocked_vph` 一样） |
+| `dead_end` | 封掉的人行道在 `walk.json` 里是死胡同（一头连不到别的人行道，或者只连着 < 60 个节点的小孤岛）：没有穿过去的人，不算绕行、**不算** `blocked`；`note` 写明 |
+| `unmatched` `unmatched_sides[]` | 方案要封的那一侧在 `walk.json` 里一条人行道都找不到（`[{ worksite, side }]`）：这时 `closed = []`、数字是 0，但**不等于**「人行道照常通行」，页面要按 `unmatched` 区分；`note` 写明 |
+| `note` `note_zh` | 上面两种情况的说明；正常时 `null` |
+| `step_free` | 一律 `null`：`walk.json` 没有台阶 / 坡道数据，不判断轮椅能不能走 |
+| `measured` `method` | 封掉的人行道里有没有真计数器实测的（`peds.json` 的 `method = sensor`）；`method` = `ped_h` 取的那条的来源 |
+| `sensor` | 真计数器 `{ name, ped_h, id, dist_m, on_closed }`：先认装在封掉的人行道上的（`on_closed = true`）；否则要离封闭段 ≤ 40 米（`peds.json assumptions.sensor_m`）**而且在施工路段中心线的同一侧**（马路对面那条人行道上的不算）；都没有就 `null` |
+| `detour[]` | 绕行路线（`walk.json` link id），一定不经过 `closed[]` |
+| `stretches[]` | 每一段（施工 × 哪一侧 × 一串首尾相接、方向差 < 60° 的施工路段）的明细，字段同上加 `from / to / base_m / path_m / base_crossings / dead_end` |
+| `assumed` | `{ walk_mps: 1.3, note, note_zh }`：步速是假设值；`note` 写明「数到的人都走完整段（上限）、不含等红灯、不判断无障碍」 |
+
+- 右侧人行道：CBD 的双幅路（OSM 里两个方向是两条线，Lonsdale / La Trobe 都是）右边那条挂在对面那幅路上、记作它的 `left`，引擎按「同名、方向相反、40 米内」找对面那幅路，再取它的人行道里「和施工路段并排走了 ≥ min(5 米, 自身长度一半)」的那几条（按并排长度，不按中点；一条人行道只能整条封，所以 `closed_m` 可以比施工路段长）
+- `compare` 的 `delta.peds_extra_min` = 后 − 前（负数 = 变好）
+
 其他：`engine.window(worksites, whens)` 一段时间的总延误；`engine.conflict(a, b, { whens?, hours? })` → `{ a, b, ab, cost, overlap, whens, truncated }`，`cost = D(A+B) − D(A) − D(B)`（时段不重叠时正好是 0；默认采样每个施工时段里的 8 点、17 点，没有就取时段中间那个小时，最多 31 天）；`advise(engine, 方案, { askAdvisor })` 第 ⑦ 步，每个改法都重算、标 `better`（MOCK 顾问 `mockAdvise`）。
 
 - 🔒 只支持同源：网页、`/engine/public/`、`/roads/public/`、`/api/*` 挂在同一个域名下
@@ -156,9 +216,14 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
-| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool }` | api |
-| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`；不合规范 400 `{ "ok": false, "error", "msg" }` | api |
+| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`；`key` 只说有没有，**永远不给值**；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
+| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB（按字节）413 | api |
 | `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
+
+- `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
+- 真调用前还要向全局每日计数（Durable Object 绑定 `BUDGET`）预留 3 次：超了 `LLM_MAX_CALLS_PER_DAY`（`llm.per_day`）、没绑上或出错都不调用，读数回规则并带 `note`（`llm_daily_cap` / `llm_no_budget` / `llm_budget_error`）
+- `llm.cache`：`kv` = 有 KV 绑定 `READINGS`（跨实例）；`cache-api` = Workers 自带的 Cache API（只在自己的域名上生效）；`memory` = 只有每个实例的内存缓存（`*.workers.dev` 上就是这个）
+- `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`，不开自己的 `workers.dev` 网址）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
 
 ## WebSocket 消息（`/ws?room=<CODE>`）
 
@@ -200,6 +265,10 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.5 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`（含每日上限 `budget` / `per_day` / `per_min`，`cache` ∈ `kv / cache-api / memory`）；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |
+| v3.4 | 2026-09-29 | §evaluate `summary.peds`（T17 复审）：`connect()` 不再等 walk / peds（`status().peds = loading`、`be.pedsReady()`、`pending`）；加 `dead_end`、`unmatched` / `unmatched_sides`、`note` / `note_zh`、`sensor.on_closed`；`crossings` 改按「过几条街」数；右侧人行道按并排长度选 | lead |
+| v3.3 | 2026-09-29 | §施工方案加可选的 `closes.footpath`（`left / right / both`）和方案校验（`bad_plan`）；§evaluate 加 `summary.peds`（封人行道的行人绕行，T17）、`status().peds`、`compare` 的 `delta.peds_extra_min`；`connect()` 另取 `walk.json` / `peds.json`，取不到不抛 | lead |
+| v3.2 | 2026-09-29 | §路网数据文件加 `transit.json`；§evaluate：接线层 `run()` 加 `summary.transit`（电车公交受影响的线路、乘客·分钟，T16），`compare()` 加 `delta.transit_pax_min`；只加字段 | lead |
 | v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
