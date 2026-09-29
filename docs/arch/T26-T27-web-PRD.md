@@ -1,13 +1,13 @@
 # T28 + T26 + T27：引擎 extra_min + T20 收尾 + 地图放下整个 CBD（PRD）
 
-> 负责人：@unicornnnnnny（高h）· 三单全归你 · 写于 2026-09-29 23:54，09-30 00:05 改（lead：T28 也给你）
+> 负责人：@unicornnnnnny（高h）· 三单全归你 · 写于 2026-09-29 23:54，09-30 00:05 改（lead：T28 也给你），09-30 00:15 改（AI 面板已合 #76、已部署；第 2、4 节不用再等）
 > 顺序和分支：
-> 1. **T28** `unicornnnnnny/engine/T28-extra-min`（约 1h，第 0 节）：只改 `apps/engine`，不碰 AI 面板，**等 AI 面板合进来的这段时间先做它**
+> 1. **T28** `unicornnnnnny/engine/T28-extra-min`（约 1h，第 0 节）：只改 `apps/engine`，先做它
 > 2. **T26** `unicornnnnnny/web/T26-t20-tail`（约 1.5h，第 2 节）
 > 3. **T27** `unicornnnnnny/web/T27-full-cbd`（阶段 1 约 5h，第 3 节，时间盒 09-30 22:00）
 >
 > 每单从最新的 `origin/main` 开，上一单合了再开下一单；T26、T27 都改 `apps/web`，**不要并行**
-> 合并顺序：**#72（署名，✅ 09-29 已合）→ `lead/ai-panel`（AI 路人面板）→ T26 → T27**；T28 不碰 `apps/web`，随时可以合，但 T27 合并前 T28 必须已在 main。开工前先读第 4 节「和 lead 并行的改动」。另外 #73（T23 接入 AI 方案解读）也已合，改了 `8-compare.js`
+> 合并顺序：**#72（署名，✅ 已合）→ #76（AI 路人面板，✅ 09-30 00:0x 已合并已部署）→ T28 → T26 → T27**；T28 不碰 `apps/web`，随时可以合，但 T27 合并前 T28 必须已在 main。开工前先读第 4 节「和 lead 并行的改动」。另外 #73（T23 接入 AI 方案解读）也已合，改了 `8-compare.js`
 > 依据：lead 原话「高h把我的评审意见都改完了吗」→ 核对结果见第 1 节；「我感觉可以放整个city」「不用你做 给高h写pr就可以」「结合上面的问题 然后汇总 push 上去」「直接把prd给高h吧 让他全部做完」。决定见 `docs/decisions.md` D-0929-2354、D-0930-0005
 > 冻结：功能冻结 10-01 06:00。T27 只合做完的「阶段 1」，到 09-30 22:00 还没绿就不合、走兜底（第 3.4 节），别留半成品
 
@@ -45,21 +45,14 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 逐条证据（文件:行号）：lead 本机 `.claude/agent-out/t20-*.md`（没进 git，要看找 lead）。
 
 **背景变了：大模型已经接上线**（D-0929-2307，#70 读屏、#71 AI 解读）。读屏和 AI 解读现在都是真的 DeepSeek，不再是关键词规则。所以：
-- 下文引用的 918 m、14% → 61%、53% 是 09-29 23:30 规则读屏下的线上数。按 lead 那边的说法，Lonsdale 8 点、屏上加 USE RUSSELL ST，按大模型读数是 −46%，引导方案的排队是 79 m。**截图验收一律以页面当时的数为准**，别把本文的数写死进文案或测试
-- 页面上还写着「读屏 · 规则估算」的地方，由 lead 的 AI 路人面板（第 4 节）改成友好名字，T26 不要动
+- 下文引用的 918 m、14% → 61%、53% 是 09-29 23:30 规则读屏下的线上数。换成大模型读数后（lead 09-29 23:25 用 `connect()` 实测）：Lonsdale 8 点只写 ROADWORK AHEAD 仍是 918 m / 10,493 车·分；加 USE RUSSELL ST 是 538 m / 5,629（−46%）；公交乘客 18,693 → 10,991（−41%）；引导方案 79 m / 937。**截图验收一律以页面当时的数为准**，别把本文的数写死进文案或测试
+- 读屏角标 / 图例已经由 AI 路人面板（#76）改成友好名字（LLM · precomputed / cached / live，Rules · fallback），按这套方案 4 类路人的实际读数汇总（`9-ai.js` 的 `aiPlanSrc()`）。T26 改徽章、图例旁边的字时保留 `aiPlanSrc` / `aiSrcLabel` 这两个调用
 
 ## 2. T26 · T20 收尾（约 1.5h，先做）
 
-每条都有验收。行号是 main `954842a` 上的；AI 面板合进来以后会变，按函数名找。
+每条都有验收。行号是 main `954842a` 上的；AI 面板（#76）合进来以后已经变了，按函数名找。
 
-**开工顺序（按第 4 节）：**
-
-| 什么时候 | 做哪几条 | 为什么 |
-|---|---|---|
-| #72 合了就能做，不用等 AI 面板 | 2.1 顶栏场景名、2.2 回到施工区、2.6 里步骤条那一行（`body.html:10-12`） | 只碰 `body.html` 顶栏和缩放按钮，AI 面板不改这些 |
-| main 上有了 `apps/web/src/js/9-ai.js` 再做 | 2.3 第 1 步 VMS、2.4 图例和取景、2.5 假设两行、2.6 其余两行、2.7 测试 | 这些要改 `6-engine.js` 的徽章 / 图例 / 假设灰字或 `5-app.js` 第 3 步渲染，AI 面板也在改这几处 |
-
-没等到 `9-ai.js` 就先把前一组做完、提交，别碰后一组。
+**开工顺序**：AI 面板已在 main（#76），2.1–2.7 全部可以做，不用再分组等。
 
 ### 2.1 顶栏场景名还写着 La Trobe
 - 现象：1440 宽（演示投影的宽度）下，Lonsdale 方案的顶栏写「场景 Swanston St × La Trobe St · 墨尔本 CBD」
@@ -175,32 +168,31 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
 
 ## 4. 和 lead 并行的改动（先合谁、别动哪里）
 
-### 4.1 lead 正在做「AI 路人面板」
-分支 `lead/ai-panel`（另一个 lead 会话，正在用 Workflow 实现，预计 09-30 00:30 前合进 main）。它会改这些：
+### 4.1 AI 路人面板已经合进 main（#76，09-30 00:0x，已部署）
+改了这些（T26、T27 在这些地方旁边改字可以，别删别挪）：
 
-| 文件 | 改什么 |
+| 文件 | 改了什么 |
 |---|---|
-| `apps/web/src/js/9-ai.js`（新） | 第 3 步「AI road users · what each one read」：4 张路人卡片（屏上文字、看到 / 看懂 / 信任条和区间、屏上建议、一句理由、来源角标 LLM · precomputed / cached / live / Rules · fallback）+ 可展开的「AI call log」+ 下载 JSON |
-| `apps/web/src/js/5-app.js` | 第 3 步渲染的地方加 1–2 行调用，旁边有 `AI panel` 注释 |
-| `apps/web/src/js/6-engine.js` | `reading_src` 的角标和图例改成友好名字 |
-| `apps/web/src/js/8-compare.js` | T23 方案对比卡：每张卡下面挂 AI 解读（`explainOptions`：summary / pros / cons + lean + 固定的「由负责人决定」） |
-| `apps/web/build.py` | 打包顺序加 `9-ai.js` |
-| `apps/engine/public/js/backend.js` | 对外加 `be.aiLog()` |
+| `apps/web/src/js/9-ai.js`（新） | 第 3 步「AI road users · what each one read」：4 张路人卡片 + 可展开的「AI call log」+ 下载 JSON；`aiPlanSrc()` / `aiSrcLabel()` 给读屏角标用 |
+| `apps/web/src/js/5-app.js` | 第 3 步渲染里那一行 `clashMount();aiMount();` |
+| `apps/web/src/js/6-engine.js` | `engBadges(f,s)` 的读屏角标和第 3 步图例改用 `aiPlanSrc` / `aiSrcLabel` |
+| `apps/engine/public/js/backend.js` | `be.aiLog()` / `be.onAiLog()` / `be.readingsOf()` / `be.lastReadings()` |
+
+第 4 步方案卡片下面的 AI 解读是 T23（#73，`8-compare.js`），不是 AI 面板。
 
 ### 4.2 合并顺序
-**#72（你的署名，✅ 已合）→ `lead/ai-panel` → T26 → T27**，每一步都等上一步进了 main 再开下一个分支。T28 只改 `apps/engine`（AI 面板只在 `backend.js` 加 `be.aiLog()`，不碰 `pipeline.js`），不用排队，现在就能开；但要在 T27 之前进 main。
+**#72 ✅ → #76 ✅ → T28 → T26 → T27**，每一步都等上一步进了 main 再开下一个分支。
 
 T26 开工：
 ```bash
 git fetch origin && git switch -c unicornnnnnny/web/T26-t20-tail origin/main
-ls apps/web/src/js/9-ai.js   # 有 → 全部照第 2 节做；没有 → 只做第 2 节表里「不用等 AI 面板」那一组，或者先等
 ```
 T27 开工同理：T26 合完、从最新的 `origin/main` 开 `unicornnnnnny/web/T27-full-cbd`。
 
 ### 4.3 别动哪里
 - **不要重排第 3 步面板的结构，也不要重排第 4 步的方案卡片**（`8-compare.js`）：AI 路人卡片和 AI 解读挂在这两处。改按钮、标题的字可以（例如 2.6 那几行），挪区块、改 DOM 层级不行
-- T27 改地图取景和绘制时，保留 `5-app.js` 里标了 `AI panel` 注释的那一两行挂钩，不要删也不要挪出第 3 步的渲染分支
-- `6-engine.js` 里 `reading_src` 的角标 / 图例文案归 AI 面板，T26、T27 都不改
+- T27 改地图取景和绘制时，保留 `5-app.js` 里 `clashMount();aiMount();` 那一行，不要删也不要挪出第 3 步的渲染分支（`apps/web/tests/test_ai.py` 会查）
+- `6-engine.js` 里读屏角标 / 图例用 `aiPlanSrc` / `aiSrcLabel`，T26、T27 保留这两个调用
 
 ### 4.4 冲突了怎么办
 - `apps/web/public/index.html` **不手改、不手动解冲突**：`git merge origin/main` 以后直接跑 `python3 apps/web/build.py` 重新生成，再 `git add apps/web/public/index.html`
@@ -208,4 +200,4 @@ T27 开工同理：T26 合完、从最新的 `origin/main` 开 `unicornnnnnny/we
 - `src/` 里的冲突按函数看：AI 面板加的调用和你的改动都留；拿不准就停下来找 lead
 
 ### 4.5 部署
-部署人是你（D-0929-1322）。**T26 和 AI 面板都进了 main 以后，一次** `bash scripts/deploy.sh all`，别每合一个部署一次。T27 合完再部署一次。部署完跑 `bash scripts/check.sh --e2e`，把汇总行贴进交接单。
+部署人是你（D-0929-1322）。AI 面板、#72、#73 已由 lead 在 09-30 00:1x 备份部署上线（b4bc2c6）。**T28 和 T26 都进了 main 以后，一次** `bash scripts/deploy.sh all`，别每合一个部署一次。T27 合完再部署一次。部署完跑 `bash scripts/check.sh --e2e`，把汇总行贴进交接单。
