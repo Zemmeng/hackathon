@@ -1,0 +1,13 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --port 8788 --var MOCK:1",
+    "test": "bash test.sh",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.143.0"
+  }
+}

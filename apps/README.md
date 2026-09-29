@@ -14,6 +14,8 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 |---|---|---|---|---|
 | sim | @Zemmeng | 没用 starter（手工建的静态页） | 4174 | — |
 | roads | @louisxie316-dotcom | 没用 starter（数据管线 + 静态 JSON） | — | — |
+| engine | @Zemmeng（暂管，T4 认领后改） | 没用 starter（纯 JS 路网引擎，浏览器和 node 都能跑） | —（`node apps/engine/tools/demo.mjs`） | `/engine/public/js/index.js` |
+| api | @Zemmeng（暂管，T5 认领后改） | 没用 starter（Cloudflare Worker + 共用的 `public/js/`） | 8788 | `/api/*` |
 
 ## 端口约定
 

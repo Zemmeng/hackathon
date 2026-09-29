@@ -33,6 +33,8 @@
 # /apps/<模块>/                 @<负责人>
 /apps/sim/                    @Zemmeng
 /apps/roads/                  @louisxie316-dotcom
+/apps/engine/                 @Zemmeng
+/apps/api/                    @Zemmeng
 # /docs/4-demo.md               @<pitch owner>
 # /docs/pitch-assets/           @<pitch owner>
 # pitch owner 用 <handle>/pitch/T<n>-x 分支写 docs/4-demo.md 与 docs/pitch-assets/

@@ -1,0 +1,5 @@
+# 复制成 .dev.vars（已 gitignore）再填值；wrangler dev 会读它。🔒 只写变量名，值别进仓库、别发群
+MOCK=1
+# LLM_PROVIDER=
+# LLM_MODEL=
+# 大模型 key 的变量名等选定哪家再定（D-0929-1333），例如 ANTHROPIC_API_KEY=

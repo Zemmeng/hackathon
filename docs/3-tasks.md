@@ -31,8 +31,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T0 | 热身：分支 `<handle>/hello/T0-hello`，只新建一张交接单，开 PR（做法见 README ①） | 15m | — |
 | T2 | 给 @unicornnnnnny：**网页面板**（第 1、2、6 步）——地图显示 CBD、在路上选一段施工、摆护栏 / 标志牌 / VMS、写屏上文案、显示结果和前后对比；17:00 前先做到地图 + 选路段 + 文案输入，结果用假数据上色。模块 `apps/web`（lead 今天建好空架子）；看 `docs/2-plan.md` 和 `docs/arch/` | 2h | — |
 | T3 | 给 @louisxie316-dotcom：**路网数据**——CBD 真实路网 + 真实车流整理成 `network.json` / `flows.json` / `signals.json`。**详细要求全在 `apps/roads/PRD.md`**；分支 `louisxie316-dotcom/roads/T3-network`；17:00 前先交最小版 `network.json`（draft PR） | 2h + 2h | — |
-| T4 | **路网计算**（第 4、5 步，创新点）——封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
-| T5 | **大模型和云端**（第 3、5 步，创新点）——4 类路人的画像和提问模板、Cloudflare 接口、缓存、施工清单；17:00 前接口先返回假数据（MOCK）。看 `docs/arch/` 的「Agent 接入架构」 | 2h | — |
+| T4 | **路网计算**（第 4、5 步，创新点）——**骨架已在 `apps/engine`（T7，方格路网上三幕都跑通），接着做：换 T3 真路网、公交电车乘客 / 行人 / 骑车 / 轮椅的影响、和路口放大联动**。原说明：封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
+| T5 | **大模型和云端**（第 3、5 步，创新点）——**骨架已在 `apps/api`（T7，MOCK 全通），接着做：定用哪家大模型和谁的 key（D-0929-1333）→ 实现 `src/llm.js`、绑 KV / D1、`tools/prewarm.mjs` 预热、核实校准锚点**。原说明：4 类路人的画像和提问模板、Cloudflare 接口、缓存、施工清单；17:00 前接口先返回假数据（MOCK）。看 `docs/arch/` 的「Agent 接入架构」 | 2h | — |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -43,6 +43,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
+| T7 | AI 流程基础架构（`docs/arch/4-ai-flow.md`）：`apps/engine` 第 ①②④⑤⑥ 步 + ⑦ 重算，`apps/api` 第 ③⑦ 步 Worker + askPersonas + 规则兜底，全 MOCK；契约 v2 | ✅ | `claude/lead/ai-infra` / draft PR | 09-29 13:50 |
 
 卡住了：
 
