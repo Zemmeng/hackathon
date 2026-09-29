@@ -133,10 +133,10 @@ OUT="$(cat "$TMP" 2>/dev/null)"
 # ⑥ 没有汇总行 = check 没跑完（崩溃不许伪装成全绿）
 SUMMARY="$(printf '%s\n' "$OUT" | grep -E '^=+ *汇总' | head -n 1)"
 if [ -z "$SUMMARY" ]; then
-  { echo "# stop-gate $(date '+%F %H:%M')：check.sh --quick 输出里没有「======== 汇总」行（退出码 $RC），按失败处理"
+  { echo "# stop-gate $(date '+%F %H:%M')：check.sh --quick 输出里没有「======== 汇总」行（退出码 ${RC}），按失败处理"
     printf '%s\n' "$OUT"; } > logs/last-check.txt 2>/dev/null
   {
-    echo "🔒 收尾门禁：scripts/check.sh --quick 的输出里没有「======== 汇总」行（退出码 $RC）—— check 自己没跑完，崩溃不能当全绿。"
+    echo "🔒 收尾门禁：scripts/check.sh --quick 的输出里没有「======== 汇总」行（退出码 ${RC}）—— check 自己没跑完，崩溃不能当全绿。"
     echo "   先让 check 能跑完再结束回合；修不了（比如 check.sh 归 lead 管）就在回复里写明原因，下一次会放行。输出最后几行："
     printf '%s\n' "$OUT" | tail -n 12 | sed 's/^/   | /'
   } >&2

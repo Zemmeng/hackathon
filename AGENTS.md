@@ -37,7 +37,7 @@
 
 ## 4. 子代理和并行
 
-遵守 `CLAUDE.md` 的「Subagent 与额度」节：超过 10 个先问，结果先落盘到 `.claude/agent-out/` 再返回。
+遵守 `CLAUDE.md` 的「Subagent 与额度」节：一律 opus、数量不限（D-0929-1429），结果先落盘到 `.claude/agent-out/` 再返回。
 
 ## 5. Cursor
 

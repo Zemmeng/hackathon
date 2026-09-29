@@ -51,7 +51,7 @@ const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 // ---------------------------------------------------------------- 路名匹配
 
 // 每条路 → 屏上可能出现的写法（按词切好）。同一个不带后缀的写法对应两条路（Flinders St / Flinders Ln）时，这个写法作废
-function roadAliases(roads) {
+export function roadAliases(roads) {
   const byAlias = new Map();
   const add = (alias, road) => {
     const k = alias.join(" ");
@@ -80,7 +80,7 @@ function roadAliases(roads) {
 
 // 一句话切成词和路名：[{ w: "USE" }, { road: "Russell St" }, ...]
 function tokenize(message, aliases) {
-  const toks = message.split(" ").map((t) => t.replace(/[.,:!?]+$/, "")).filter(Boolean);
+  const toks = message.split(" ").map((t) => t.replace(/[.,:!?]+$/, "").replace(/['.]/g, "")).filter(Boolean); // A'BECKETT → ABECKETT
   const items = [];
   for (let i = 0; i < toks.length; ) {
     const hit = aliases.find((a) => a.toks.every((t, j) => toks[i + j] === t));

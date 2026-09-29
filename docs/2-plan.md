@@ -102,7 +102,7 @@
 |---|---|---|---|---|
 | web 网页面板 · T2 | `apps/web/`（待建） | @unicornnnnnny（高he） | 待定 | 待定 |
 | roads 路网数据 · T3 | `apps/roads/` | @louisxie316-dotcom | 待定 | `/roads/public/cbd/` |
-| engine 路网计算 · T4 | `apps/engine/`（#20 在建） | lead 的「AI流程基础架构」会话（T9，D-0929-1500） | 待定 | 待定 |
+| engine 路网计算 · T4 | `apps/engine/`（骨架已建，T9，#20） | lead 的引擎会话（T9，D-0929-1500） | —（node 跑 `tools/demo.mjs`） | `/engine/public/js/` |
 | api 大模型和云端 · T5 | `apps/api/` | @jinmingq | 8788 | 待定 |
 | params 引擎参数 · T12 | `apps/params/`（待建） | @Unzzip | — | `/params/public/params.json` |
 | sim 路口放大 · T6 集成上线 | `apps/sim/` | @Zemmeng（lead） | 4174 | `/sim/public/` |
@@ -111,7 +111,7 @@
 - 线上地址前面要加域名 = `hackathon.conf` 的 `DEMO_URL`（现在还空着，M1 后 lead 填）。部署规则：每个模块的 `public/` 原样挂到 `/<模块>/public/`
 - T6 = lead 管集成、合 PR，另管 sim 路口放大；**部署由 @unicornnnnnny 执行**（DEPLOYER，`D-0929-1322`），lead 是备份部署人
 - sim 的界面文件（`apps/sim/public/` 下 index.html、style.css、js/ui.js）归 @unicornnnnnny 改，引擎、数据、测试归 @Zemmeng（`D-0929-1226`）
-- T4 和 T5 怎么交接：T4 交出「4 类路人各自看到了什么、能走哪几条路、各要多久」，T5 交回「每类人注意到没、看懂没、每条路的概率、一句理由」。字段定稿后写进 `docs/contract.md`
+- T4 和 T5 怎么交接：T4 交出「4 类路人各自看到了什么、能走哪几条路、各要多久」，T5 交回「每类人注意到没、看懂没、每条路的概率、一句理由」。字段已定稿，见 `docs/contract.md` v2「路人 agent」一节（T7）
 
 ## 🔒 里程碑时间盒
 
