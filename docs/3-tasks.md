@@ -59,6 +59,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | ✅ | `claude/lead/ai-infra` / PR #20 ✅；`claude/lead/engine-fixes` / PR #34 ✅（后端接线层 `backend.js`、不走小巷、审查 15 条、契约 v3.1、派 T13） | 09-29 13:50 |
 | T13 | 网页接后端（接手原派给 @unicornnnnnny 的 T13，D-0929-1650）：第 1 步真路网上放封道 / 写 VMS / 选时段、第 3 步路网涟漪 + 每类人理由、第 4 步顾问改法 + 前后对比，数字全由引擎算；然后部署上线 | ✅ | `Zemmeng/web/T13-wiring` / PR #43 | 09-29 16:30 |
 | T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | 🔨 代码已合，等高h 部署 | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
+| T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
 
 卡住了：
 
