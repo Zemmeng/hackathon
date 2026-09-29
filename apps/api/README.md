@@ -187,6 +187,7 @@ node apps/api/tools/precompute.mjs --check                # 校验；然后提�
 | `stockCheck(施工们, 库存, { links })` | 多处施工同几天共用一份库存：哪种设备哪天不够（每种只报缺得最多的那天；撤回的不算） |
 | `buildPack(施工, { inventory, links, impacts, now })` | 执行包：地点（路名、长度、封法）、时间、决定、报价、VMS 排程（每一屏）、标志牌、配置检查、要通知谁。`impacts` = 选定方案的 metrics（`optionFromRun()`），用来决定通知谁、写原因 |
 | `packText(执行包, "zh" \| "en")` | 纯文本，网页的「复制」「打印」用 |
+| `packDoc(执行包, "zh" \| "en")` | 同一份执行包按区块给好、已翻译的字（标题、状态、地点、时间、决定、理由、报价行、VMS 每一屏、标志牌、检查、通知、页脚），金额和件数给数字；网页 T23 用它排成一页文件。措辞和 `packText` 同一张表 |
 
 - **现场设备 → 库存**：写了 `item`（equipment.json 的 id）就用写的；否则 VMS → `vms_a`、箭头板 → `arrow_board`、护栏 → `barrier_water`、标志牌按牌上的字（`RIGHT LANE CLOSED` → `sign_lane_closed_right`，`END ROADWORK`、`DETOUR LEFT`、`FOOTPATH CLOSED` 等）。**对不上的不瞎配**（例 `ROAD CLOSED` 库存里没有），列进 `unmatched`、不算钱
 - **件数**：写了 `qty` 就用；护栏按封闭段总长 ÷ 每节长度向上取整（要给 `links`，不给就标 `length_unknown`，合计给「至少多少」）；其余 1 件。天数按日历天含两头
