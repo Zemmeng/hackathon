@@ -21,6 +21,7 @@ T3 产出，放在 `apps/roads/public/cbd/`，本地和线上都从 `/roads/publ
 | `network.json` | `version, area, bbox[南,西,北,东], generated, sources, assumptions, nodes[], links[]` | 路段有方向；`links[]`：`id, from, to, name, highway, len_m, lanes, speed_kmh, cap_vph, t0_s, tram, bike_lane, osm_way, geometry[[lat,lon]]`；`nodes[]`：`id, lat, lon, osm, signal` |
 | `flows.json` | `version, unit="veh/h", period, days{wd,we}{路段 id: 24 个数}, method{路段 id}, coverage{links, measured, estimated}` | 下标 = 小时；`method` ∈ `detector_map / site_split / street_interp / class_default` |
 | `signals.json` | `version, sites[{site, name, type, lat, lon, node, dist_m}]` | `node` 是 30 米内最近的节点，没有就 `null` |
+| `transit.json` | `version, sources, service_dates{wd,we}, assumptions, routes[], stops[], coverage` | PTV GTFS 电车 / 公交。`routes[]`：`id, mode (tram / bus), short, dirs[{dir, headsign, links[], stops[], trips{wd,we}[24], offnet_m, geometry}]`，`links` 是匹配到的路段 id（按 10 米采样，路口里的短路段可能缺）；`stops[]`：`id, name, lat, lon, mode, road_link, routes[]`。引擎的 `transit.js` 读它（T16） |
 
 - 加字段随时可以；改名、删字段、改单位要开 `contract:` PR，并把文件里的 `version` 加 1
 - 路段 id 从 OSM id 派生，重跑时保持稳定（T2 会用它存用户选的施工路段）
@@ -114,6 +115,29 @@ const s = await be.run(方案);          // 能直接显示的数字：queue_m m
 const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
 ```
 
+**电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
+
+```js
+s.transit = {
+  src: 'gtfs' | null, day: 'wd' | 'we', hour,
+  routes: [{ id, short, mode: 'tram' | 'bus', dir, headsign,
+             trips_h, pax_per_trip, pax_h,          // 这个小时的车次（GTFS）、每趟人数（假设值）、乘客/小时
+             delay_s, pax_min,                      // 每趟多的秒数、乘客·分钟；停掉的（blocked）都是 null
+             diverted, blocked,                     // 公交全封要绕 / 电车全封停（公交绕不过去也算 blocked）
+             stops_closed: [{ id, name }],          // 在全封路段上的站
+             links: [路段 id],                      // 这条线路变慢了或全封的路段
+             detour_links: [路段 id], stops_skipped: [{ id, name }] }],  // 公交绕的路、绕开的站（没绕 = []）
+  trips_h, pax_h, pax_min, blocked_routes, blocked_pax_h,   // 合计；pax_min 不含停掉的
+  assumed: { pax_per_trip: { tram, bus }, period: 'peak' | 'offpeak', range: { tram: [低, 高], bus: [低, 高] }, note },
+}
+c.delta.transit_pax_min   // 后 − 前（负数 = 变好）；任何一边没有公交数据 = null
+```
+
+- 只列「这个方向经过的路段变慢了（> 0.1 秒）或被全封」、这个小时有车次的线路；排序：停掉的在前（按 `pax_h`），其余按 `pax_min` 从大到小
+- 公交：跟车流走固定线路，每趟多的秒数 = 线路上每个路段（这个方案的通行时间 − 同一小时没施工时的通行时间）之和，都用引擎的 `linkTime`（不是 `links[].delay_s`，那是比自由流多的）。有路段全封 → 在封闭段前后 400 米内就近绕（最短路，先只走主干道，不走小巷），多的秒数 = 绕完的全程 − 平时全程
+- 电车：假设 CBD 电车走自己的车道，封部分车道不耽误电车（不列）；全封电车经过的路段 → `blocked`，只报停掉的车次和乘客，不编分钟数
+- 每趟载客人数是**假设值**（D-0929-1536：界面标「假设值」+ 区间）：工作日 7–9、16–18 点高峰电车 60 / 公交 25，其余电车 30 / 公交 12；`assumed` 里给当时用的数和区间
+
 字段表见 `docs/arch/T13-web-wiring-PRD.md` 第 5 节。下面是引擎核心的用法（接线层内部就是这么调的）：
 
 ```js
@@ -131,7 +155,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 - 排队变长 → 引擎按「看得到的排队」自己重算选择（逐次平均 6 轮），不再问大模型
 - 参数：`loadParams()` 读同源的 `/params/public/params.json`（T12），读不到、不合格逐项回退到假设值、不抛错；引擎认哪些字段见 `apps/engine/README.md`「参数」一节；`engine.params` = `{ src: params | default, version, mix, personas, anchors, used: { mix, anchors, persona.<类型>.<项> } 每项来源, ignored, errors, override }`，界面可以标「参数有出处 / 假设值」
 
-**结果**（数字全由引擎算；单位：`*_min` = 这一小时比「没有施工」多出来的车·分钟；每车按 1 人算，公交电车乘客还没建模）：
+**结果**（数字全由引擎算；单位：`*_min` = 这一小时比「没有施工」多出来的车·分钟；每车按 1 人算；公交电车乘客在接线层的 `s.transit`，见上）：
 
 | 字段 | 含义 |
 |---|---|
@@ -200,6 +224,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.2 | 2026-09-29 | §路网数据文件加 `transit.json`；§evaluate：接线层 `run()` 加 `summary.transit`（电车公交受影响的线路、乘客·分钟，T16），`compare()` 加 `delta.transit_pax_min`；只加字段 | lead |
 | v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |

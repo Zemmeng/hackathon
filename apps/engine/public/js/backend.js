@@ -1,21 +1,23 @@
 // backend.js —— 后端接线层（lead 做，D-0929-1540）：网页（T2）只 import 这一个文件，不用自己拼引擎。
-// 一次加载 T3 路网 + 车流、T12 参数、T5 读屏（readSigns / checkSigns），建好引擎；页面调 run / compare / advise / check，
+// 一次加载 T3 路网 + 车流 + 公交电车（transit.json）、T12 参数、T5 读屏（readSigns / checkSigns），建好引擎；页面调 run / compare / advise / check，
 // 拿回能直接显示的数字（summary），引擎原始结果在 .raw。任何一样没加载上都不抛（路网除外）：
-//   参数 → 假设值；T5 读屏 → 引擎自带的关键词规则；checkSigns → 不检查。status() 里写清楚每样用的是什么。
+//   参数 → 假设值；T5 读屏 → 引擎自带的关键词规则；checkSigns → 不检查；公交电车 → 不算（summary.transit = { src: null }）。
+//   status() 里写清楚每样用的是什么。
 // 用法（浏览器，和 /engine/ /roads/ /api/ /params/ 同源）：
 //   const be = await (await import('/engine/public/js/backend.js')).connect();
-//   const s = await be.run(be.demo('lonsdale'));     // s.queue_m、s.mean_delay_s、s.routes、s.by_type、s.flags …
+//   const s = await be.run(be.demo('lonsdale'));     // s.queue_m、s.mean_delay_s、s.routes、s.by_type、s.flags、s.transit（电车公交，T16）…
 //   const c = await be.compare(be.demo('lonsdale', { frames: [['ROADWORK', 'AHEAD']] }), be.demo('lonsdale'));  // 前后对比
 // 引擎核心（index.js 导出的那些）仍然不 import api 模块；只有这个接线层按 URL 动态加载 T5 的文件。
 
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
-  requestsFor, affected, capFactors, windowWhens,
+  requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit,
 } from './index.js';
 
 export const PATHS = {
   network: '/roads/public/cbd/network.json',
   flows: '/roads/public/cbd/flows.json',
+  transit: '/roads/public/cbd/transit.json',
   params: PARAMS_URL,
   reader: '/api/public/js/reader.js',
   check: '/api/public/js/check.js',
@@ -73,7 +75,8 @@ async function getJSON(url, f) {
 }
 
 // 引擎结果 → 页面要的数字。受影响的车 = 各类人的车（by_type），背景车流被拖慢的另算（others_min）
-export function summarize(res, { failed = 0, params = null, signCheck = null } = {}) {
+// transit = transitImpact() 的结果（电车公交，T16）；没给 = 没加载公交数据 → { src: null }
+export function summarize(res, { failed = 0, params = null, signCheck = null, transit = null } = {}) {
   const veh = TYPES.reduce((s, t) => s + (res.by_type[t]?.vehicles || 0), 0);
   const affectedMin = TYPES.reduce((s, t) => s + (res.by_type[t]?.delay_min || 0), 0);
   const approaches = res.approaches.map(a => ({
@@ -107,6 +110,7 @@ export function summarize(res, { failed = 0, params = null, signCheck = null } =
     by_type: Object.fromEntries(TYPES.map(t => [t, { per_capita_min: res.by_type[t]?.per_capita_min ?? 0, vehicles: res.by_type[t]?.vehicles ?? 0, delay_min: res.by_type[t]?.delay_min ?? 0 }])),
     approaches,
     hot: res.hot,
+    transit: transit || { src: null }, // 电车公交受影响的线路、乘客·分钟（transit.js；每趟载客人数是假设值，见 transit.assumed）
     flags: {
       // ok = 数字可以当真（读数都拿到、校准命中、屏上文字合规范）；false 时界面标黄
       ok: !res.missing && !failed && res.calib.ok && !signErrors.length && !(res.blocked_vph > 0),
@@ -123,12 +127,15 @@ export function summarize(res, { failed = 0, params = null, signCheck = null } =
   };
 }
 
-// opts：base（前缀，默认同源）、fetch、importer（动态 import，测试里注入）；也可以直接给 network / flows / params / readSigns / checkSigns
+// opts：base（前缀，默认同源）、fetch、importer（动态 import，测试里注入）；也可以直接给 network / flows / transit / params / readSigns / checkSigns
 export async function connect(opts = {}) {
   const base = opts.base ?? '';
   const f = 'fetch' in opts ? opts.fetch : globalThis.fetch;
   const importer = opts.importer || (u => import(u));
-  const status = { network: 'given', params: null, reader: null, check: null, errors: [], reader_errors: {} };
+  const status = { network: 'given', transit: null, params: null, reader: null, check: null, errors: [], reader_errors: {} };
+  // 0 公交电车（T3 的 transit.json）：和路网一起开始下载；拿不到不抛，只是不算公交电车
+  const transitP = opts.transit ? Promise.resolve(opts.transit) : getJSON(base + PATHS.transit, f);
+  transitP.catch(() => {}); // 先接住，下面再 await（路网先失败抛出时不留未处理的 rejection）
 
   // 1 路网 + 车流：没有就什么都算不了，这一步失败照样抛
   let { network, flows } = opts;
@@ -164,6 +171,13 @@ export async function connect(opts = {}) {
     catch (e) { check = null; status.check = 'none'; status.errors.push(`T5 checkSigns 没加载上，屏上文字不检查：${e?.message || e}`); }
   }
 
+  let transit = null;
+  try {
+    transit = await transitP;
+    if (!isTransit(transit)) throw new Error('transit.json 没有 routes[]');
+    status.transit = opts.transit ? 'given' : 'gtfs';
+  } catch (e) { transit = null; status.transit = 'none'; status.errors.push(`公交电车数据没加载上，不算公交电车：${e?.message || e}`); }
+
   const engine = createEngine({ network, flows, readSigns: reader, params });
   status.params = engine.params.src;
   if (engine.params.errors.length) status.errors.push(...engine.params.errors.map(e => '参数：' + e));
@@ -187,10 +201,16 @@ export async function connect(opts = {}) {
     return out;
   }
 
+  // 电车公交（T16）：算挂了不能拖垮整页，报在 transit.error 里
+  function transitFor(plan, res) {
+    if (!transit) return { src: null };
+    try { return transitImpact(engine.net, engine.flows, transit, plan, res); } catch (e) { return { src: null, error: String(e?.message || e) }; }
+  }
+
   async function run(plan) {
     const prep = await engine.prepare(plan);
     const res = engine.evaluate(plan);
-    return summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan) });
+    return summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan), transit: transitFor(plan, res) });
   }
 
   // 前后对比（第 4 步）：同一时段两份方案，负数 = 变好
@@ -209,6 +229,8 @@ export async function connect(opts = {}) {
         delay_min: d('delay_min'), affected_min: d('affected_min'), mean_delay_s: d('mean_delay_s'),
         queue_m: same('queue_m'), detour_share: same('detour_share'),
         street: am ? am.street : null, main_changed: Boolean(am && b.main != null && b.approaches[b.main] !== bm),
+        // 电车公交乘客·分钟（后 − 前，负数 = 变好）；没加载公交数据 = null。停掉的电车不算分钟，看 before / after 的 transit.blocked_pax_h
+        transit_pax_min: a.transit.src && b.transit.src ? b.transit.pax_min - a.transit.pax_min : null,
       },
     };
   }
