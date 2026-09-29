@@ -107,7 +107,7 @@ Checked 2026-09-29 ~22:05:
 **🟡 待拍板**
 
 - `apps/api` 里两个测试小工具来自赛前模板（第 3 节已如实写）。二选一：(a) 就这样如实写着交；(b) 删 `starters/` 之前让 @jinmingq 开赛后重写 `tests/mini.mjs` 和 `test.sh`，重写后把第 3 节那两条删掉、改回「apps/ 下没有来自模板的文件」。
-- 提交记录里的个人邮箱：去重后 6 个个人邮箱（4 个 gmail、1 个 outlook、1 个学校邮箱），另有 5 个 GitHub noreply 和 1 个 anthropic.com；文档里还有真名。改历史要 force push，D-07 禁止，队里定接不接受。Canvas 表只要队名。
+- ✅ 提交记录里的个人邮箱（6 个）和文档里的真名：全队同意随仓库公开，不改历史（D-0930-0133）。
 - `docs/event/canvas-export.md` 是 Canvas 课程材料的拷贝：确认能公开，否则删。
 
 **🟡 待办**
