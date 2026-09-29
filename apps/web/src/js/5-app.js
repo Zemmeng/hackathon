@@ -34,13 +34,13 @@ function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB)
 /* ---------- view ---------- */
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 function setView(cx,cy,s){V.s=clamp(s,1.1,14);const hw=V.w/2/V.s,hh=V.h/2/V.s,mw=(WORLD.x1-WORLD.x0)/2,mh=(WORLD.y1-WORLD.y0)/2;V.cx=hw>=mw?0:clamp(cx,WORLD.x0+hw,WORLD.x1-hw);V.cy=hh>=mh?0:clamp(cy,WORLD.y0+hh,WORLD.y1-hh);V.ver++;}
-function flyTo(cx,cy,s,d=.9){S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
 const cv=$('#mapCanvas'),ctx=cv.getContext('2d'),base=document.createElement('canvas'),bctx=base.getContext('2d');
 let baseVer=-1,baseKey='';
-function resize(){const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
+function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
@@ -64,6 +64,7 @@ function renderBase(){
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
+  emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
 }
 
@@ -149,13 +150,13 @@ function drawGrid(){
   const dl=pick(MLAT),dn=pick(MLON);ctx.save();ctx.strokeStyle=TK.accent;ctx.globalAlpha=.24;ctx.setLineDash([2,6]);ctx.lineWidth=1;
   ctx.beginPath();for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);ctx.moveTo(0,y);ctx.lineTo(V.w,y);}for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);ctx.moveTo(x,0);ctx.lineTo(x,V.h);}ctx.stroke();
   ctx.setLineDash([]);ctx.globalAlpha=.9;ctx.font=`500 9px ${FONT_MONO}`;ctx.fillStyle=TK.accent;ctx.lineWidth=3;ctx.strokeStyle=TK.light?'rgba(255,255,255,.9)':'rgba(6,9,12,.85)';ctx.textBaseline='top';
-  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<70||y>V.h-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,6,y+3);ctx.fillText(t,6,y+3);}
-  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<20||x>V.w-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,4);ctx.fillText(t,x+4,4);}
+  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<GL.ins.t+70||y>V.h-GL.ins.b-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,GL.ins.l+6,y+3);ctx.fillText(t,GL.ins.l+6,y+3);}
+  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<GL.ins.l+20||x>V.w-GL.ins.r-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,GL.ins.t+4);ctx.fillText(t,x+4,GL.ins.t+4);}
   ctx.restore();
 }
 function drawScale(){
   const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=22,y=V.h-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -183,7 +184,7 @@ function drawReplay(dt){
   S.nodes.forEach((n,k)=>{const px=V.X(n.x),py=V.Y(n.y),on=S.chainHover===k;ctx.save();ctx.fillStyle=k===3?TK.risk:TK.panel;ctx.strokeStyle=n.c;ctx.lineWidth=on?3:2;ctx.beginPath();ctx.arc(px,py,on?13:10,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=k===3?'#fff':n.c;ctx.font=`700 10px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(k+1),px,py+.5);ctx.restore();});
   for(const a of h.a)if(a.tag){drawTag(ctx,V.X(a.x),V.Y(a.y),a.tag==='C-17'?-20:22,a.tag==='C-17'?34:-30,`${a.tag} · ${(a.v*3.6).toFixed(0)} km/h`,colOf(a.ty));}
   drawTag(ctx,V.X(ev.x),V.Y(ev.y),-70,52,`TTC ${ev.ttc.toFixed(2)} s`,TK.risk);
-  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,V.w/2-w/2,V.h-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,V.w/2,V.h-28);ctx.restore();
+  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;const mx=(GL.ins.l+V.w-GL.ins.r)/2,by=V.h-GL.ins.b;rr(ctx,mx-w/2,by-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,mx,by-28);ctx.restore();
 }
 
 /* ---------- frame ---------- */
@@ -226,7 +227,7 @@ function goStep(n){
     S.sim=S.stress;S.event=S.stress.critical;S.playing=false;S.replayT=0;if(S.event)S.nodes=causal(S.event);
     if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
-  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=.5;if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
+  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=visibleMid();if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
   updateSteps();renderPanel();updateSafety();
 }
 function causal(ev){
@@ -253,7 +254,7 @@ function renderAlert(){
   al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div><div><span>${L('SEEDS','复现')}</span><b>${SEEDS[S.wx]}/50</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
   $('#alertBtn').onclick=()=>goStep(3);
 }
-function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;x=clamp(x,14,V.w-al.offsetWidth-14);y=clamp(y,70,V.h-al.offsetHeight-60);al.style.left=x+'px';al.style.top=y+'px';}
+function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;const I=insets();x=clamp(x,I.l+14,V.w-I.r-al.offsetWidth-14);y=clamp(y,I.t+70,V.h-I.b-al.offsetHeight-14);al.style.left=x+'px';al.style.top=y+'px';}
 
 /* ---------- panel ---------- */
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
@@ -322,7 +323,7 @@ function renderPanel(){
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
     ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
     <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
-    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:.5;$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
+    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
@@ -458,7 +459,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -509,7 +510,7 @@ function boot(){
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
-  resize();sizeHist();bindInput();engBindMap();
+  initGlass();resize();sizeHist();bindInput();engBindMap();
   renderWxSwitcher();renderLegend();updateBasemapUI();
   /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
      on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */

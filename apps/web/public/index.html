@@ -327,6 +327,178 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-trs>div{align-items:flex-start}
 .eng-tr .md{min-width:30px;height:20px;padding:0 5px;border-radius:4px;display:inline-grid;place-items:center;font:700 10.5px/1 var(--f-mono);color:#fff;flex:none}
 .eng-tr small{display:block;font:400 10.5px/1.4 var(--f-mono);margin-top:3px;white-space:normal}
+
+/* ============================================================
+   T14 liquid glass (docs/arch/T14-liquid-glass-PRD.md) — appearance only.
+   Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
+   the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
+   comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
+   Text sits on ≥ .72 tint; reduced transparency or no backdrop-filter → solid surfaces.
+   ============================================================ */
+:root,:root[data-theme="dark"]{
+  --bg:#07090B;--raised:rgba(255,255,255,.06);--line:rgba(255,255,255,.10);--line-2:rgba(255,255,255,.22);
+  --fg:#F5F7F8;--fg-2:#AEB7BE;--fg-3:#7D8891;
+  --panel:rgba(13,17,21,.78);--glass:rgba(13,17,21,.76);--glass-line:rgba(255,255,255,.16);
+  --shell:rgba(13,17,21,.76);--shell-line:rgba(255,255,255,.14);--shell-solid:#0F1419;
+  --shadow:0 18px 48px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.10);
+  --hl:rgba(255,255,255,.10);--hl-edge:rgba(255,255,255,.16);
+  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#E7ECEE;--raised:rgba(255,255,255,.62);--line:rgba(17,27,34,.11);--line-2:rgba(17,27,34,.22);
+    --fg:#0F1417;--fg-2:#46535C;--fg-3:#66737C;
+    --panel:rgba(255,255,255,.80);--glass:rgba(255,255,255,.78);--glass-line:rgba(255,255,255,.92);
+    --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
+    --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
+    --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#E7ECEE;--raised:rgba(255,255,255,.62);--line:rgba(17,27,34,.11);--line-2:rgba(17,27,34,.22);
+  --fg:#0F1417;--fg-2:#46535C;--fg-3:#66737C;
+  --panel:rgba(255,255,255,.80);--glass:rgba(255,255,255,.78);--glass-line:rgba(255,255,255,.92);
+  --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
+  --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
+  --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+}
+
+/* glass surfaces: tint + a soft top-left sheen + a lit rim */
+.top,.rail,.panel,.timeline,.panel-open{
+  background:linear-gradient(135deg,var(--hl),transparent 34%),var(--shell);
+  border:1px solid var(--shell-line);
+  -webkit-backdrop-filter:blur(26px) saturate(160%);backdrop-filter:blur(26px) saturate(160%);
+  box-shadow:var(--shadow);
+}
+.glass{
+  background:linear-gradient(135deg,var(--hl),transparent 40%),var(--glass);
+  border:1px solid var(--glass-line);border-radius:16px;
+  -webkit-backdrop-filter:blur(20px) saturate(165%);backdrop-filter:blur(20px) saturate(165%);
+  box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px 0 var(--hl-edge);
+}
+
+/* brand + workflow */
+.brand>svg{width:32px;height:32px;padding:6px;border-radius:50%;background:var(--raised);box-shadow:inset 0 1px 0 var(--hl-edge)}
+.brand-name{font-size:18px;letter-spacing:-.03em}
+.scene{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--raised)}
+.stepper{gap:4px}
+.stepper button{border-radius:999px;padding:9px 12px;transition:background .18s,color .18s}
+.stepper button:hover{background:var(--raised)}
+.stepper button[aria-current="step"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 18px rgba(255,159,10,.24),inset 0 1px 0 rgba(255,255,255,.42)}
+.chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
+
+/* layer rail */
+.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
+.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+
+/* map HUDs */
+.wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
+.wx{padding:4px;gap:3px}
+.wx button,.basemap button{border-radius:999px}
+.wx button{padding:7px 10px}
+.basemap{padding:4px}
+.basemap button{padding:8px 11px}
+.basemap button[aria-pressed="true"]{background:var(--sun);color:var(--on-sun)}
+.zoom{padding:4px;gap:2px}
+.zoom button{width:32px;height:32px;border-radius:50%}
+.legend{border-radius:18px;padding:13px 14px 14px}
+.legend-ramp{border-radius:999px}
+.probe{padding:8px 13px}
+.toast{padding:10px 16px}
+.alert{border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.10),transparent 38%),rgba(40,10,15,.86);color:#F5F7F8}
+.alert .m span{color:#B3A3A6}
+.swipe .knob{background:var(--sun);color:var(--on-sun);border:1px solid rgba(255,255,255,.45)}
+.swipe .tag{border-radius:999px;padding:6px 9px}
+
+/* analysis panel */
+.panel{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.panel h2{font-size:22px;line-height:1.18;letter-spacing:-.025em}
+.pill{border-radius:999px;padding:5px 8px}
+.card,.list,.metric,.agents3 div,.table,.pre,.eng-seg,.eng-opt{border-radius:14px;box-shadow:inset 0 1px 0 var(--hl-edge)}
+.card,.list,.metric,.agents3 div,.table,.pre{background:linear-gradient(135deg,rgba(255,255,255,.06),transparent 50%),var(--raised)}
+.list>div{padding:10px 13px}
+.progress .track,.bars .track,.eng-route .track{border-radius:999px}
+.chips button,.chips span{border-radius:999px;padding:7px 10px}
+.btn{border-radius:14px;box-shadow:0 10px 22px rgba(79,227,193,.16),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.ghost,.btn:disabled{box-shadow:inset 0 1px 0 var(--hl-edge)}
+.chain .c{border-radius:12px}
+.chain .badge{background:var(--shell-solid)}
+.eng-seg{padding:3px}
+.eng-seg button{border-radius:11px}
+.eng-seg button[aria-selected="true"]{background:var(--sun);color:var(--on-sun)}
+.eng-opt[aria-pressed="true"]{border-color:var(--sun);background:var(--sun-tint)}
+.eng-field input{border-radius:10px}
+.eng-vms textarea{border-radius:10px;border-color:#2A2A2A;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.eng-msg{border-radius:10px}
+
+/* compact panel: explanatory copy hides, secondary sections fold behind their heading */
+.panel-tools{display:flex;align-items:center;gap:8px;margin-bottom:-4px}
+.seg-mode{display:inline-flex;gap:2px;padding:3px;border-radius:999px;border:1px solid var(--line);background:var(--raised)}
+.seg-mode button{border:0;background:none;color:var(--fg-2);font:600 10px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:7px 11px;border-radius:999px;cursor:pointer}
+.seg-mode button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+:lang(zh) .seg-mode button{letter-spacing:.02em;text-transform:none}
+.panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
+.panel-hide:hover{color:var(--fg)}
+.panel.compact p.muted{display:none}
+.panel.compact #copyFallback p.muted{display:block}
+.sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
+.sec-head:hover{background:var(--raised)}
+.sec-head::after{content:"";flex:none;width:7px;height:7px;margin:0 4px 3px auto;border-right:1.6px solid var(--fg-3);border-bottom:1.6px solid var(--fg-3);transform:rotate(45deg);transition:transform .18s}
+.sec-head.between::after{margin-left:0}
+.sec-closed>.sec-head::after{transform:rotate(-45deg);margin-bottom:0}
+.sec-closed>:not(.sec-head){display:none!important}
+.panel-open{display:none}
+
+/* ---------- floating layout (desktop) ---------- */
+@media (min-width:821px){
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .map{position:fixed;inset:0;z-index:0}
+  .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
+  .rail{position:fixed;z-index:5;top:var(--safe-t);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
+  .panel-hide{display:grid}
+  .app.panel-min{--safe-r:64px}
+  .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
+  .panel-open:not([hidden]){display:flex;position:fixed;z-index:5;right:12px;top:var(--safe-t);flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:18px;cursor:pointer;color:var(--fg);font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+  .panel-open span{writing-mode:vertical-rl}
+  :lang(zh) .panel-open{letter-spacing:.2em;text-transform:none}
+
+  /* HUDs keep to the part of the map the glass leaves open */
+  .meta{top:calc(var(--safe-t) + 2px);left:var(--safe-l)}
+  .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
+  .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
+  .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 34px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .swipe .tag{top:calc(var(--safe-t) + 60px)}
+}
+/* narrower desktops: fewer HUDs, a slimmer panel */
+@media (min-width:821px) and (max-width:1360px){ .app:not(.panel-min) .meta{display:none} }
+@media (min-width:821px) and (max-width:1180px){ .app{--panel-w:332px;--safe-r:356px} .app.panel-min{--safe-r:64px} .basemap{top:calc(var(--safe-t) + 52px)} }
+@media (min-width:821px) and (max-width:1000px){ .probe{display:none} .scene{display:none} }
+
+/* ---------- phones / narrow: the stacked flow, glass surfaces kept ---------- */
+@media (max-width:820px){
+  .top{border-radius:0 0 20px 20px;border-width:0 0 1px}
+  .timeline,.panel{border-width:1px 0 0;border-radius:0}
+}
+
+/* ---------- fallbacks ---------- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+}
+@media (prefers-reduced-transparency: reduce){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
+}
+@media (prefers-reduced-motion: reduce){
+  .panel,.app.panel-min .panel,.stepper button,.rail button,.sec-head::after{transition:none}
+}
 </style>
 </head>
 <body>
@@ -397,6 +569,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   </main>
 
   <section class="panel" id="panel" aria-live="polite"></section>
+  <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -1443,13 +1616,13 @@ function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB)
 /* ---------- view ---------- */
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 function setView(cx,cy,s){V.s=clamp(s,1.1,14);const hw=V.w/2/V.s,hh=V.h/2/V.s,mw=(WORLD.x1-WORLD.x0)/2,mh=(WORLD.y1-WORLD.y0)/2;V.cx=hw>=mw?0:clamp(cx,WORLD.x0+hw,WORLD.x1-hw);V.cy=hh>=mh?0:clamp(cy,WORLD.y0+hh,WORLD.y1-hh);V.ver++;}
-function flyTo(cx,cy,s,d=.9){S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
 const cv=$('#mapCanvas'),ctx=cv.getContext('2d'),base=document.createElement('canvas'),bctx=base.getContext('2d');
 let baseVer=-1,baseKey='';
-function resize(){const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
+function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
@@ -1473,6 +1646,7 @@ function renderBase(){
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
+  emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
 }
 
@@ -1558,13 +1732,13 @@ function drawGrid(){
   const dl=pick(MLAT),dn=pick(MLON);ctx.save();ctx.strokeStyle=TK.accent;ctx.globalAlpha=.24;ctx.setLineDash([2,6]);ctx.lineWidth=1;
   ctx.beginPath();for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);ctx.moveTo(0,y);ctx.lineTo(V.w,y);}for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);ctx.moveTo(x,0);ctx.lineTo(x,V.h);}ctx.stroke();
   ctx.setLineDash([]);ctx.globalAlpha=.9;ctx.font=`500 9px ${FONT_MONO}`;ctx.fillStyle=TK.accent;ctx.lineWidth=3;ctx.strokeStyle=TK.light?'rgba(255,255,255,.9)':'rgba(6,9,12,.85)';ctx.textBaseline='top';
-  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<70||y>V.h-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,6,y+3);ctx.fillText(t,6,y+3);}
-  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<20||x>V.w-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,4);ctx.fillText(t,x+4,4);}
+  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<GL.ins.t+70||y>V.h-GL.ins.b-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,GL.ins.l+6,y+3);ctx.fillText(t,GL.ins.l+6,y+3);}
+  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<GL.ins.l+20||x>V.w-GL.ins.r-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,GL.ins.t+4);ctx.fillText(t,x+4,GL.ins.t+4);}
   ctx.restore();
 }
 function drawScale(){
   const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=22,y=V.h-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -1592,7 +1766,7 @@ function drawReplay(dt){
   S.nodes.forEach((n,k)=>{const px=V.X(n.x),py=V.Y(n.y),on=S.chainHover===k;ctx.save();ctx.fillStyle=k===3?TK.risk:TK.panel;ctx.strokeStyle=n.c;ctx.lineWidth=on?3:2;ctx.beginPath();ctx.arc(px,py,on?13:10,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=k===3?'#fff':n.c;ctx.font=`700 10px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(k+1),px,py+.5);ctx.restore();});
   for(const a of h.a)if(a.tag){drawTag(ctx,V.X(a.x),V.Y(a.y),a.tag==='C-17'?-20:22,a.tag==='C-17'?34:-30,`${a.tag} · ${(a.v*3.6).toFixed(0)} km/h`,colOf(a.ty));}
   drawTag(ctx,V.X(ev.x),V.Y(ev.y),-70,52,`TTC ${ev.ttc.toFixed(2)} s`,TK.risk);
-  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,V.w/2-w/2,V.h-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,V.w/2,V.h-28);ctx.restore();
+  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;const mx=(GL.ins.l+V.w-GL.ins.r)/2,by=V.h-GL.ins.b;rr(ctx,mx-w/2,by-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,mx,by-28);ctx.restore();
 }
 
 /* ---------- frame ---------- */
@@ -1635,7 +1809,7 @@ function goStep(n){
     S.sim=S.stress;S.event=S.stress.critical;S.playing=false;S.replayT=0;if(S.event)S.nodes=causal(S.event);
     if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
-  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=.5;if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
+  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=visibleMid();if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
   updateSteps();renderPanel();updateSafety();
 }
 function causal(ev){
@@ -1662,7 +1836,7 @@ function renderAlert(){
   al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div><div><span>${L('SEEDS','复现')}</span><b>${SEEDS[S.wx]}/50</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
   $('#alertBtn').onclick=()=>goStep(3);
 }
-function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;x=clamp(x,14,V.w-al.offsetWidth-14);y=clamp(y,70,V.h-al.offsetHeight-60);al.style.left=x+'px';al.style.top=y+'px';}
+function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;const I=insets();x=clamp(x,I.l+14,V.w-I.r-al.offsetWidth-14);y=clamp(y,I.t+70,V.h-I.b-al.offsetHeight-14);al.style.left=x+'px';al.style.top=y+'px';}
 
 /* ---------- panel ---------- */
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
@@ -1731,7 +1905,7 @@ function renderPanel(){
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
     ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
     <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
-    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:.5;$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
+    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
@@ -1867,7 +2041,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -1918,7 +2092,7 @@ function boot(){
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
-  resize();sizeHist();bindInput();engBindMap();
+  initGlass();resize();sizeHist();bindInput();engBindMap();
   renderWxSwitcher();renderLegend();updateBasemapUI();
   /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
      on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
@@ -2424,6 +2598,140 @@ function engBindMap(){
       if(engSetLink(id)){EP.preset='custom';renderPanel();engChanged(0);toast(L(`Work zone moved to ${shortSt(EP.street)||'this road'} ${dirL(EP.dir)}`,`施工区挪到 ${shortSt(EP.street)||'这条路'} ${dirL(EP.dir)}`));}
     },280);
   });
+}
+
+/* ============================================================
+   T14 liquid glass (docs/arch/T14-liquid-glass-PRD.md) — appearance only, no numbers change.
+   · Floating layout (desktop): the map fills the window; top bar, layer rail, analysis panel and timeline float over it.
+     .app carries --safe-l/r/t/b = how much of the map the glass covers; the view, scale bar, graticule labels and the alert
+     keep inside what is left (insets()).
+   · Real refraction on the analysis panel and the top bar, adapted from liquid-glass.js by Deepika Rao
+     (github.com/sven1577/liquid-glass, MIT): a canvas displacement map fed to three staggered feDisplacementMap
+     passes through backdrop-filter:url(). Chromium only; Safari / Firefox / reduced transparency / phones keep the CSS
+     frosted blur, so nothing depends on it.
+   · Compact analysis panel: secondary sections fold behind their heading, explanatory text hides; "Details" shows it all.
+   · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
+   ============================================================ */
+const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function insets(){return GL.ins;}
+/* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
+function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
+
+/* ---------- refraction ---------- */
+const LG_OK=(()=>{const ua=navigator.userAgent;if(/Firefox/.test(ua)||(/Safari/.test(ua)&&!/Chrome|Chromium|Edg/.test(ua)))return false;try{return CSS.supports('backdrop-filter','url(#lg)');}catch(e){return false;}})();
+const SVG_NS='http://www.w3.org/2000/svg';let lgDefs=null,lgUid=0;
+function lgEnsureDefs(){if(lgDefs)return lgDefs;const svg=document.createElementNS(SVG_NS,'svg');svg.setAttribute('width','0');svg.setAttribute('height','0');svg.setAttribute('aria-hidden','true');svg.style.position='absolute';lgDefs=document.createElementNS(SVG_NS,'defs');svg.appendChild(lgDefs);document.body.appendChild(svg);return lgDefs;}
+/* red left→right ramp = x push, blue top→bottom ramp = y push; a blurred mid-grey inset neutralises the interior so only the rim bends */
+function lgMap(w,h,radius,border,mapBlur){
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');
+  const gx=g.createLinearGradient(0,0,w,0);gx.addColorStop(0,'rgb(0,0,0)');gx.addColorStop(1,'rgb(255,0,0)');g.fillStyle=gx;g.fillRect(0,0,w,h);
+  const gy=g.createLinearGradient(0,0,0,h);gy.addColorStop(0,'rgb(0,0,0)');gy.addColorStop(1,'rgb(0,0,255)');g.globalCompositeOperation='difference';g.fillStyle=gy;g.fillRect(0,0,w,h);
+  g.globalCompositeOperation='source-over';const ins=border*Math.min(w,h);g.filter=`blur(${mapBlur}px)`;g.fillStyle='rgba(128,128,128,.93)';
+  rr(g,ins,ins,w-ins*2,h-ins*2,Math.max(radius-ins,2));g.fill();g.filter='none';return cv.toDataURL();
+}
+function lgFilter(id,scales){
+  const f=document.createElementNS(SVG_NS,'filter');for(const[k,v]of[['id',id],['x','0'],['y','0'],['width','100%'],['height','100%'],['color-interpolation-filters','sRGB']])f.setAttribute(k,v);
+  const img=document.createElementNS(SVG_NS,'feImage');for(const[k,v]of[['x','0'],['y','0'],['result','map'],['preserveAspectRatio','none']])img.setAttribute(k,v);f.appendChild(img);
+  const keep=['1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0','0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0','0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0'];
+  for(let i=0;i<3;i++){
+    const d=document.createElementNS(SVG_NS,'feDisplacementMap');for(const[k,v]of[['in','SourceGraphic'],['in2','map'],['scale',scales[i]],['xChannelSelector','R'],['yChannelSelector','B'],['result','d'+i]])d.setAttribute(k,v);f.appendChild(d);
+    const m=document.createElementNS(SVG_NS,'feColorMatrix');for(const[k,v]of[['in','d'+i],['type','matrix'],['values',keep[i]],['result','c'+i]])m.setAttribute(k,v);f.appendChild(m);
+  }
+  const b1=document.createElementNS(SVG_NS,'feBlend');for(const[k,v]of[['in','c0'],['in2','c1'],['mode','screen'],['result','c01']])b1.setAttribute(k,v);f.appendChild(b1);
+  const b2=document.createElementNS(SVG_NS,'feBlend');for(const[k,v]of[['in','c01'],['in2','c2'],['mode','screen']])b2.setAttribute(k,v);f.appendChild(b2);
+  lgEnsureDefs().appendChild(f);return{f,img};
+}
+function liquidGlass(el,opts){
+  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:14,saturate:1.6},opts);
+  const id='lg-'+(++lgUid),parts=lgFilter(id,[o.scale,o.scale+o.chroma,o.scale+2*o.chroma]);let timer=0;
+  const refresh=()=>{const w=el.offsetWidth,h=el.offsetHeight;if(!w||!h)return;const r=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;parts.img.setAttribute('href',lgMap(w,h,r,o.border,o.mapBlur));parts.img.setAttribute('width',w);parts.img.setAttribute('height',h);};
+  refresh();el.style.backdropFilter=`url(#${id}) blur(${o.blur}px) saturate(${o.saturate})`;el.classList.add('lg-on');
+  const ro=new ResizeObserver(()=>{clearTimeout(timer);timer=setTimeout(refresh,120);});ro.observe(el);
+  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.backdropFilter='';el.classList.remove('lg-on');}};
+}
+function applyGlass(){
+  for(const g of GL.fx)g.destroy();GL.fx=[];
+  const desktop=matchMedia('(min-width: 821px)').matches,lowT=matchMedia('(prefers-reduced-transparency: reduce)').matches;
+  if(!LG_OK||!desktop||lowT)return;
+  const P=document.getElementById('panel'),T=document.querySelector('.top');
+  if(P)GL.fx.push(liquidGlass(P,{scale:-84,chroma:5,border:.05,mapBlur:14,blur:16}));
+  if(T)GL.fx.push(liquidGlass(T,{scale:-60,chroma:4,border:.14,mapBlur:9,blur:14}));
+}
+
+/* ---------- compact analysis panel ---------- */
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,.score';
+function compactPanel(){
+  const P=document.getElementById('panel');if(!P)return;
+  if(GL.obs)GL.obs.disconnect();
+  P.classList.toggle('compact',GL.mode==='compact');
+  let tools=P.firstElementChild&&P.firstElementChild.classList.contains('panel-tools')?P.firstElementChild:null;
+  if(!tools){tools=document.createElement('div');tools.className='panel-tools';P.insertBefore(tools,P.firstChild);}
+  tools.innerHTML=`<div class="seg-mode" role="group" aria-label="${L('Panel detail','面板详略')}"><button type="button" data-mode="compact" aria-pressed="${GL.mode==='compact'}">${L('Compact','简洁')}</button><button type="button" data-mode="full" aria-pressed="${GL.mode==='full'}">${L('Details','详细')}</button></div><button type="button" class="panel-hide" aria-label="${L('Hide panel — show the whole map','收起面板，看完整地图')}" title="${L('Hide panel','收起面板')}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/><path d="M11 3v10" opacity=".45"/></svg></button>`;
+  tools.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{GL.mode=b.dataset.mode;GL.open.clear();ls.set('rt-panel',GL.mode);compactPanel();});
+  tools.querySelector('.panel-hide').onclick=()=>setPanelMin(true);
+  const tab=(S.step===3&&typeof EP!=='undefined')?EP.tab3:'';let n=0;
+  for(const sec of[...P.children]){
+    if(sec===tools||!sec.classList.contains('stack'))continue;
+    const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
+    const key=`${S.step}${tab}:${n++}`;
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
+    sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
+    head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
+    const toggle=()=>{GL.open.set(key,sec.classList.contains('sec-closed'));compactPanel();};
+    head.onclick=e=>{if(e.target.closest('button,a,input,textarea,select'))return;toggle();};
+    head.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  }
+  if(GL.obs)GL.obs.observe(P,{childList:true});
+}
+function setPanelMin(on){
+  const app=document.getElementById('app');app.classList.toggle('panel-min',on);ls.set('rt-pmin',on?'1':'0');
+  const b=document.getElementById('panelOpen');if(b)b.hidden=!on;
+  readInsets();if(on){const btn=document.getElementById('panelOpen');if(btn)btn.focus();}
+}
+function initGlass(){
+  GL.mode=ls.get('rt-panel')==='full'?'full':'compact';
+  const P=document.getElementById('panel');
+  GL.obs=new MutationObserver(()=>compactPanel());if(P)GL.obs.observe(P,{childList:true});
+  const b=document.getElementById('panelOpen');if(b)b.onclick=()=>setPanelMin(false);
+  if(ls.get('rt-pmin')==='1'&&matchMedia('(min-width: 821px)').matches)setPanelMin(true);
+  readInsets();applyGlass();
+  let t=0;window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{readInsets();applyGlass();},200);});
+  for(const q of['(prefers-reduced-transparency: reduce)','(min-width: 821px)']){try{matchMedia(q).addEventListener('change',()=>{readInsets();applyGlass();});}catch(e){}}
+}
+
+/* ---------- roads over buildings ---------- */
+function roadPieces(Wd){
+  const out=[],span=Wd.real&&typeof STREET_SPAN!=='undefined'?STREET_SPAN:{};
+  for(const st of Wd.streets){
+    const r=carriage(st),H=st.axis==='h',sp=span[st.id],lim=sp?[sp[0],sp[1]]:[-Infinity,Infinity];
+    const runs=H?[[r.x0,r.x1]]:freeSpans(st,0);
+    for(const[a0,b0]of runs){const a=Math.max(a0,lim[0]),b=Math.min(b0,lim[1]);if(b<=a)continue;out.push(H?{H,x0:a,x1:b,y0:r.y0,y1:r.y1,st}:{H,x0:r.x0,x1:r.x1,y0:a,y1:b,st});}
+  }
+  return out;
+}
+function emphasizeRoads(c,V,Wd,basemap,light){
+  const X=x=>V.X(x),Y=y=>V.Y(y),s=V.s,vec=basemap==='streets';
+  c.save();
+  /* 1. wash roofs back toward the ground tone */
+  c.fillStyle=vec?(light?'rgba(240,243,242,.62)':'rgba(13,18,21,.52)'):(light?'rgba(20,24,28,.34)':'rgba(6,8,10,.5)');
+  c.beginPath();
+  for(const b of Wd.buildings){
+    if(X(b.x1)<-20||X(b.x0)>V.w+20||Y(b.y0)<-20||Y(b.y1)>V.h+20)continue;
+    const P=b.pts?(polyArea(b.pts)>0?b.pts:b.pts.slice().reverse()):[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]];
+    c.moveTo(X(P[0][0]),Y(P[0][1]));for(let i=1;i<P.length;i++)c.lineTo(X(P[i][0]),Y(P[i][1]));c.closePath();
+  }
+  c.fill('nonzero');
+  /* a landmark already inside a washed footprint (real data) would go twice as dark */
+  for(const l of Wd.landmarks||[]){if(Wd.buildings.some(b=>l.x>=b.x0&&l.x<=b.x1&&l.y>=b.y0&&l.y<=b.y1))continue;c.beginPath();c.arc(X(l.x),Y(l.y),l.r*s,0,Math.PI*2);c.fill();}
+  /* 2. lift the carriageways out of building shadow, then edge them */
+  const pcs=roadPieces(Wd);
+  if(!vec){c.globalCompositeOperation='screen';c.fillStyle=light?'rgba(72,80,88,.5)':'rgba(60,68,76,.55)';for(const p of pcs)c.fillRect(X(p.x0),Y(p.y1),(p.x1-p.x0)*s,(p.y1-p.y0)*s);c.globalCompositeOperation='source-over';}
+  c.strokeStyle=vec?(light?'rgba(88,104,110,.9)':'rgba(150,172,184,.6)'):'rgba(238,242,246,.66)';c.lineWidth=clamp(s*.32,1,2.2);c.beginPath();
+  for(const p of pcs){if(p.H){for(const y of[p.y0,p.y1]){c.moveTo(X(p.x0),Y(y));c.lineTo(X(p.x1),Y(y));}}else{for(const x of[p.x0,p.x1]){c.moveTo(X(x),Y(p.y0));c.lineTo(X(x),Y(p.y1));}}}
+  c.stroke();
+  c.restore();
 }
 
 </script>
