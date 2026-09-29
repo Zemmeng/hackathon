@@ -198,5 +198,23 @@ check("T21 第 3 步挂上叠加检查（clashMount）、地图画那处施工�
 raw_title = [x for x in interpolations(CLASH) if "${" not in x and re.search(r"\.(title|name)\b", x) and "esc(" not in x]
 check("T21 反向断言：登记表的标题 / 路名进 HTML 都过 esc()", not raw_title and "esc(o.title)" in CLASH, str(raw_title[:3]))
 
+# 9. T23 方案对比 · 选定 · 导出（src/js/8-compare.js）
+CMP = (SRC / "js" / "8-compare.js").read_text(encoding="utf-8")
+cmp_html = re.sub(r"/\* pure:begin.*?/\* pure:end \*/", "", CMP, flags=re.S)
+cmp_html = "\n".join(ln for ln in cmp_html.splitlines() if "toast(" not in ln)
+cmp_unsafe = unsafe_in(cmp_html)
+check("T23：方案名称、改法、路名进 HTML 模板都过 esc()", not cmp_unsafe, str(cmp_unsafe[:4]))
+cmp_loads = re.findall(r"(?:import|fetch)\('([^']+)'\)", CMP)
+check("T23：只取同源的 /api/public/js/pack.js 和 explain.js", sorted(cmp_loads) == ["/api/public/js/explain.js", "/api/public/js/pack.js"], str(cmp_loads))
+check("T23：改法说明和纯文字执行包用 textContent 写", ".textContent=r?cmpWhat(r):''" in CMP and "pre.textContent=txt" in CMP)
+check("T23：排版版执行包只经 cmpDocHTML（里面每个字符串过 esc()，compare_glue.mjs 反向断言）", CMP.count("innerHTML=doc") == 1 and "doc=cmpDocHTML(" in CMP)
+check("T23 反向断言：用户写的理由不拼进 HTML（只用 .value）", "ta.value=CP.reason" in CMP and not re.search(r"\$\{[^}]*reason", cmp_html))
+check("T23：页面上写明租金是假设值（中英）", "day rates and stock are assumptions" in CMP and "日租价和库存件数是假设值" in CMP)
+check("T23：由人拍板的字样在（不是工具替人选）", "a person decides" in CMP and "由人拍板" in CMP)
+check("T23：挂在第 4 步顾问下面（engPanel4 有 #cmp4，engRender4 调 cmpRender）", 'id="cmp4"' in ENG and "cmpRender();" in ENG)
+check("T23：方案名称（可能是顾问给的 kind）过 esc()", "esc(cmpLabel(r))" in CMP)
+probe_cmp = "`<b>${cmpLabel(r)}</b><i>${r.kind}</i>`"
+check("自检：T23 去掉 esc() 会被抓到", len(unsafe_in(probe_cmp)) >= 1)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

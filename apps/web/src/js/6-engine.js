@@ -342,7 +342,7 @@ function engBind3(){
 }
 
 // Step 4: advisor options (each re-scored by the engine) + before / after for the picked one
-function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div>`:'';}
+function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div><div id="cmp4" class="stack cmp4"></div>`:'';} // cmp4 = T23 compare / choose / export (8-compare.js)
 function eng4HTML(){
   if(!engOn())return engOfflineCard();
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
@@ -384,6 +384,7 @@ function engWindowTxt(w){
     :L(`Savings are vehicle-hours summed over ${w.whens} sampled hours of the works period. The table below is one hour, in vehicle-minutes.`,`节省量是施工期采样的 ${w.whens} 个小时合计（车·时）。下面的对比表只算一小时，单位车·分钟。`);
 }
 function engRender4(){
+  cmpRender(); // T23: follows the advisor (8-compare.js)
   const el=document.getElementById('eng4');if(!el)return;const h=eng4HTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
   const a=EP.adv;
   el.querySelectorAll('[data-optwhy]').forEach(b=>{const o=a&&a.options[+b.dataset.optwhy];b.textContent=o&&o.why||'';});
