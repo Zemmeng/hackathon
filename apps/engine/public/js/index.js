@@ -10,6 +10,6 @@ export { loadParams, applyParams, PARAMS_URL } from './params.js';
 export { makeGrid } from './grid.js';
 export { loadNetwork, shortestPath, linkTime, bearing } from './net.js';
 export { isActive, overlaps, capFactors, shiftWorksite, windowWhens, sampleHours, dayType, FOOTPATH_SIDES, footpathOf, validateWorksite, validatePlan } from './worksite.js';
-export { pedImpact, pedsUnavailable, plannedFootpath, WALK_MPS, CLOSABLE_KINDS, OPPOSITE_M, SENSOR_NEAR_M } from './peds.js';
+export { pedImpact, pedsUnavailable, plannedFootpath, footpathActive, WALK_MPS, CLOSABLE_KINDS, OPPOSITE_M, SENSOR_NEAR_M, OVERLAP_MIN_M, MIN_REACH } from './peds.js';
 export { approaches, affected, NO_DETOUR } from './routes.js';
 export { readSeconds, cleanName } from './cards.js';

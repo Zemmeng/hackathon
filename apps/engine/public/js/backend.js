@@ -3,7 +3,8 @@
 // 拿回能直接显示的数字（summary），引擎原始结果在 .raw。任何一样没加载上都不抛（路网除外）：
 //   参数 → 假设值；T5 读屏 → 引擎自带的关键词规则；checkSigns → 不检查。status() 里写清楚每样用的是什么。
 // T17：另外加载人行道路网 walk.json + 行人流量 peds.json，方案里封了人行道（closes.footpath）就算行人绕行 → summary.peds；
-//   这两个文件拿不到不抛，summary.peds = { src: null, footpath }，status().peds = 'none'。
+//   这两个文件（3.6 MB）在后台取，connect() 不等它们（车的数字不被行人数据拖慢）：status().peds = 'loading' → fetched / given / none；
+//   run() 只有在这个小时真的封了人行道时才等它们（最多 PEDS_WAIT_MS），等不到 / 拿不到都不抛，summary.peds = { src: null, footpath }。
 // 用法（浏览器，和 /engine/ /roads/ /api/ /params/ 同源）：
 //   const be = await (await import('/engine/public/js/backend.js')).connect();
 //   const s = await be.run(be.demo('lonsdale'));     // s.queue_m、s.mean_delay_s、s.routes、s.by_type、s.flags …
@@ -12,8 +13,10 @@
 
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
-  requestsFor, affected, capFactors, windowWhens, validatePlan, pedImpact, pedsUnavailable,
+  requestsFor, affected, capFactors, windowWhens, validatePlan, pedImpact, pedsUnavailable, footpathActive,
 } from './index.js';
+
+export const PEDS_WAIT_MS = 8000; // 封了人行道、行人数据还在路上时 run() 最多等几毫秒（再慢就先给车的数字，summary.peds.src = null、pending = true）
 
 export const PATHS = {
   network: '/roads/public/cbd/network.json',
@@ -153,8 +156,21 @@ export async function connect(opts = {}) {
   const base = opts.base ?? '';
   const f = 'fetch' in opts ? opts.fetch : globalThis.fetch;
   const importer = opts.importer || (u => import(u));
-  const status = { network: 'given', params: null, reader: null, check: null, peds: null, errors: [], reader_errors: {} };
-  const pedsP = loadPeds(opts, base, f); // 和路网一起取，不拖慢 connect
+  const status = { network: 'given', params: null, reader: null, check: null, peds: 'loading', errors: [], reader_errors: {} };
+  // 5 人行道 + 行人（T17）：后台取，connect 不等（不在车的数字的关键路径上）
+  let pd = opts.walk && opts.peds ? { walk: opts.walk, peds: opts.peds, st: 'given' } : { st: 'loading' };
+  status.peds = pd.st;
+  const pedsP = (pd.st === 'given' ? Promise.resolve(pd) : loadPeds(opts, base, f)).then(r => {
+    pd = r; status.peds = r.st;
+    if (r.err) status.errors.push(r.err);
+    return r.st;
+  });
+  const waitMs = Number.isFinite(opts.pedsWaitMs) ? opts.pedsWaitMs : PEDS_WAIT_MS;
+  function waitPeds() {
+    if (pd.st !== 'loading') return Promise.resolve();
+    let tm;
+    return Promise.race([pedsP, new Promise(r => { tm = setTimeout(r, waitMs); })]).finally(() => clearTimeout(tm));
+  }
 
   // 1 路网 + 车流：没有就什么都算不了，这一步失败照样抛
   let { network, flows } = opts;
@@ -194,14 +210,17 @@ export async function connect(opts = {}) {
   status.params = engine.params.src;
   if (engine.params.errors.length) status.errors.push(...engine.params.errors.map(e => '参数：' + e));
 
-  // 5 人行道 + 行人（T17）
-  const pd = await pedsP;
-  status.peds = pd.st;
-  if (pd.err) status.errors.push(pd.err);
-  function pedsOf(plan) {
-    if (!pd.walk) return pedsUnavailable(plan);
-    try { return pedImpact(pd.walk, pd.peds, plan, { net: engine.net }); }
-    catch (e) { return { ...pedsUnavailable(plan), error: String(e?.message || e) }; } // 数据有毛病也不拖垮车的数字
+  // 行人影响（T17）：这个小时没封人行道 → 不用数据，直接全 0（数据还在路上也不等）；封了 → 等数据（最多 waitMs）
+  async function pedsOf(plan) {
+    try {
+      if (pd.st === 'loading') {
+        if (!footpathActive(plan)) return pedImpact(null, null, plan);
+        await waitPeds();
+        if (pd.st === 'loading') return { ...pedsUnavailable(plan), pending: true, error: `人行道 / 行人数据 ${waitMs} 毫秒内没取到，这次先不算行人` };
+      }
+      if (!pd.walk) return pedsUnavailable(plan);
+      return pedImpact(pd.walk, pd.peds, plan, { net: engine.net });
+    } catch (e) { return { ...pedsUnavailable(plan), error: String(e?.message || e) }; } // 数据有毛病也不拖垮车的数字（也不留没人接的 rejected promise）
   }
   const validate = plan => validatePlan(plan);
 
@@ -227,10 +246,11 @@ export async function connect(opts = {}) {
   async function run(plan) {
     const errs = validate(plan);
     if (errs.length) throw planError(errs);
+    const pedsP1 = pedsOf(plan); // 和车的计算一起等
     const prep = await engine.prepare(plan);
     const res = engine.evaluate(plan);
     const s = summarize(res, { failed: prep.failed, params: engine.params, signCheck: checkPlan(plan) });
-    s.peds = pedsOf(plan); // 封人行道的行人绕行（T17）；没封 / 不在施工时段 = 全 0，数据没加载上 = { src: null }
+    s.peds = await pedsP1; // 封人行道的行人绕行（T17）；没封 / 不在施工时段 = 全 0，数据没加载上 = { src: null }
     return s;
   }
 
@@ -284,6 +304,7 @@ export async function connect(opts = {}) {
     engine,
     status: () => JSON.parse(JSON.stringify({ ...status, calib: engine.calib, params_used: engine.params.used })),
     run, compare, advise, check: checkPlan, validate,
+    pedsReady: () => pedsP, // 行人数据取完（不管成没成）→ status().peds：fetched / given / none
     demo: demoPlan, demos: DEMO_NAMES,
   };
 }

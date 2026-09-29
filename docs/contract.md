@@ -150,7 +150,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `calib` | `{ A, B, method: two_point | default, ok, target: { lo, hi }, lo_detour, hi_detour, src, model }`；`ok = false` = 两个目标至少有一个够不着 |
 | `missing` | 还没问到的读数条数 |
 
-**行人（T17，`summary.peds`）**：`backend.js` 的 `connect()` 另外取 `/roads/public/cbd/walk.json` + `peds.json`（也可以 `connect({ walk, peds })` 注入）；取不到、格式不对都不抛：`status().peds = "none"`，`summary.peds = { src: null, footpath }`，`compare` 的 `delta.peds_extra_min = null`。拿到了（`status().peds = fetched | given`）时：
+**行人（T17，`summary.peds`）**：`backend.js` 的 `connect()` 另外在**后台**取 `/roads/public/cbd/walk.json` + `peds.json`（3.6 MB；也可以 `connect({ walk, peds })` 注入）。`connect()` 不等它们：刚连上时 `status().peds = "loading"`，取完变 `fetched / given / none`；`await be.pedsReady()` → 取完后的那个值。`run()` 只有在这个小时真的封了人行道时才等它们，最多 8 秒（`connect({ pedsWaitMs })` 可改）；没封 / 不在施工时段 = 不用数据、直接全 0。取不到、格式不对都不抛：`status().peds = "none"`，`summary.peds = { src: null, footpath }`；等超时 = `{ src: null, footpath, pending: true, error }`（下次 run 数据到了就有）；两种情况 `compare` 的 `delta.peds_extra_min = null`。拿到了时：
 
 | 字段 | 含义 |
 |---|---|
@@ -162,16 +162,19 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `ped_h` | 这一段封掉的人行道里这个小时人最多的那条（人/小时）；两侧都封时两侧加起来 |
 | `detour_m` | 每人多走的米数 = 避开封闭段的最短路 − 平时最短路（两侧按人数加权） |
 | `extra_min` | `ped_h × detour_m ÷ (walk_mps × 60)`，人·分钟 / 小时（和车的 `delay_min` 同口径）；等红灯没算 |
-| `crossings` | 绕行路线上要过几次马路（`kind = crossing` 或 `crossing` 非空；两侧都封时取多的那侧） |
-| `blocked` `blocked_ped_h` | 没路可绕；这些人不算进 `extra_min`，单独报人/小时（和 `blocked_vph` 一样） |
+| `crossings` | 绕行路线上要过几条街（`kind = crossing` 或 `crossing` 非空）：连着的几段过街（安全岛把一条过街切成几段）算一次，除非前后两段是不同名字的街；两侧都封时取多的那侧 |
+| `blocked` `blocked_ped_h` | 没路可绕（两头都连着像样的路网、中间被切断）；这些人不算进 `extra_min`，单独报人/小时（和 `blocked_vph` 一样） |
+| `dead_end` | 封掉的人行道在 `walk.json` 里是死胡同（一头连不到别的人行道，或者只连着 < 60 个节点的小孤岛）：没有穿过去的人，不算绕行、**不算** `blocked`；`note` 写明 |
+| `unmatched` `unmatched_sides[]` | 方案要封的那一侧在 `walk.json` 里一条人行道都找不到（`[{ worksite, side }]`）：这时 `closed = []`、数字是 0，但**不等于**「人行道照常通行」，页面要按 `unmatched` 区分；`note` 写明 |
+| `note` `note_zh` | 上面两种情况的说明；正常时 `null` |
 | `step_free` | 一律 `null`：`walk.json` 没有台阶 / 坡道数据，不判断轮椅能不能走 |
 | `measured` `method` | 封掉的人行道里有没有真计数器实测的（`peds.json` 的 `method = sensor`）；`method` = `ped_h` 取的那条的来源 |
-| `sensor` | 离封闭段 ≤ 40 米（`peds.json assumptions.sensor_m`）最近的真计数器 `{ name, ped_h, id, dist_m }`，没有就 `null` |
+| `sensor` | 真计数器 `{ name, ped_h, id, dist_m, on_closed }`：先认装在封掉的人行道上的（`on_closed = true`）；否则要离封闭段 ≤ 40 米（`peds.json assumptions.sensor_m`）**而且在施工路段中心线的同一侧**（马路对面那条人行道上的不算）；都没有就 `null` |
 | `detour[]` | 绕行路线（`walk.json` link id），一定不经过 `closed[]` |
-| `stretches[]` | 每一段（施工 × 哪一侧 × 行车方向）的明细，字段同上加 `from / to / base_m / path_m / base_crossings` |
+| `stretches[]` | 每一段（施工 × 哪一侧 × 一串首尾相接、方向差 < 60° 的施工路段）的明细，字段同上加 `from / to / base_m / path_m / base_crossings / dead_end` |
 | `assumed` | `{ walk_mps: 1.3, note, note_zh }`：步速是假设值；`note` 写明「数到的人都走完整段（上限）、不含等红灯、不判断无障碍」 |
 
-- 右侧人行道：CBD 的双幅路（OSM 里两个方向是两条线，Lonsdale / La Trobe 都是）右边那条挂在对面那幅路上、记作它的 `left`，引擎按「同名、方向相反、40 米内、落在施工路段长度范围内」去找
+- 右侧人行道：CBD 的双幅路（OSM 里两个方向是两条线，Lonsdale / La Trobe 都是）右边那条挂在对面那幅路上、记作它的 `left`，引擎按「同名、方向相反、40 米内」找对面那幅路，再取它的人行道里「和施工路段并排走了 ≥ min(5 米, 自身长度一半)」的那几条（按并排长度，不按中点；一条人行道只能整条封，所以 `closed_m` 可以比施工路段长）
 - `compare` 的 `delta.peds_extra_min` = 后 − 前（负数 = 变好）
 
 其他：`engine.window(worksites, whens)` 一段时间的总延误；`engine.conflict(a, b, { whens?, hours? })` → `{ a, b, ab, cost, overlap, whens, truncated }`，`cost = D(A+B) − D(A) − D(B)`（时段不重叠时正好是 0；默认采样每个施工时段里的 8 点、17 点，没有就取时段中间那个小时，最多 31 天）；`advise(engine, 方案, { askAdvisor })` 第 ⑦ 步，每个改法都重算、标 `better`（MOCK 顾问 `mockAdvise`）。
@@ -227,6 +230,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.3 | 2026-09-29 | §evaluate `summary.peds`（T17 复审）：`connect()` 不再等 walk / peds（`status().peds = loading`、`be.pedsReady()`、`pending`）；加 `dead_end`、`unmatched` / `unmatched_sides`、`note` / `note_zh`、`sensor.on_closed`；`crossings` 改按「过几条街」数；右侧人行道按并排长度选 | lead |
 | v3.2 | 2026-09-29 | §施工方案加可选的 `closes.footpath`（`left / right / both`）和方案校验（`bad_plan`）；§evaluate 加 `summary.peds`（封人行道的行人绕行，T17）、`status().peds`、`compare` 的 `delta.peds_extra_min`；`connect()` 另取 `walk.json` / `peds.json`，取不到不抛 | lead |
 | v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |

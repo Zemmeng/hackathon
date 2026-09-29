@@ -2,7 +2,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { ok, t, done } from './_t.mjs';
 import { connect, demoPlan, PATHS } from '../public/js/backend.js';
-import { pedImpact, WALK_MPS, validatePlan, validateWorksite, loadNetwork, footpathOf } from '../public/js/index.js';
+import { pedImpact, WALK_MPS, validatePlan, validateWorksite, loadNetwork, footpathOf, MIN_REACH } from '../public/js/index.js';
 
 const APPS = new URL('../../', import.meta.url);
 const file = p => new URL('.' + p, APPS);
@@ -87,7 +87,7 @@ await t('方案校验：footpath 只认 left / right / both', async () => {
 
 await t('backend：summary.peds 和 compare 的 delta.peds_extra_min', async () => {
   const be = await connect({ fetch: fakeFetch, importer: noImporter });
-  ok(be.status().peds === 'fetched', 'connect 从同源 /roads/public/cbd/ 取到 walk.json + peds.json（status.peds = fetched）');
+  ok((await be.pedsReady()) === 'fetched' && be.status().peds === 'fetched', 'connect 从同源 /roads/public/cbd/ 取到 walk.json + peds.json（后台取，pedsReady() → fetched）');
   const open = await be.run(withFp('lonsdale', undefined));
   const shut = await be.run(withFp('lonsdale', 'left'));
   ok(open.peds.src === 'peds' && ZERO(open.peds), '没封人行道：summary.peds 全 0');
@@ -101,6 +101,7 @@ await t('backend：summary.peds 和 compare 的 delta.peds_extra_min', async () 
 
 await t('walk / peds 拿不到：connect 照样能用，summary.peds.src = null', async () => {
   const be = await connect({ fetch: noPedsFetch, importer: noImporter });
+  await be.pedsReady();
   const st = be.status();
   ok(st.peds === 'none' && st.errors.some(e => e.includes('行人')), 'status.peds = none，status.errors 里写了原因');
   const s = await be.run(withFp('lonsdale', 'left'));
@@ -112,7 +113,7 @@ await t('walk / peds 拿不到：connect 照样能用，summary.peds.src = null'
   const bad = await connect({ fetch: fakeFetch, importer: noImporter, walk: { nodes: 'x' }, peds: {} });
   ok(bad.status().peds === 'given' && (await bad.run(withFp('lonsdale', 'left'))).peds.src === null, '注入的 walk 格式不对：run 不崩，summary.peds.src = null');
   const lineNet = await connect({ network, flows: J(PATHS.flows), fetch: null, importer: noImporter });
-  ok(lineNet.status().peds === 'none', '没有 fetch 时也不抛');
+  ok((await lineNet.pedsReady()) === 'none' && lineNet.status().peds === 'none', '没有 fetch 时也不抛');
 });
 
 await t('没路可绕 → blocked，人不算进 extra_min（小图）', async () => {
@@ -132,6 +133,139 @@ await t('没路可绕 → blocked，人不算进 extra_min（小图）', async (
   const r2 = pedImpact(w2, pd, plan);
   ok(!r2.blocked && r2.detour.join() === 'bxc' && r2.detour_m === 112 && r2.extra_min === +((50 * 112) / (WALK_MPS * 60)).toFixed(1), `加一条 200 米的小路：绕行 = 200 − 88 = ${r2.detour_m} 米，${r2.extra_min} 人·分钟`);
   ok(r2.crossings === 0 && r2.sensor === null, '小路不算过马路；附近没有计数器 → sensor = null');
+});
+
+// ---------- 复审修的几处（T17 fix） ----------
+// 施工路段（Lonsdale 西行，两点直线）局部平面：left = +1（行车方向左边 = 南侧路缘），right = −1
+const K = 111320 * Math.cos(-37.81 * Math.PI / 180), KY = 110574;
+const XY = ([lat, lon]) => [lon * K, lat * KY];
+const lonGeo = network.links.find(l => l.id === LON).geometry.map(XY);
+const [A0, B0] = [lonGeo[0], lonGeo[lonGeo.length - 1]];
+const LEN = Math.hypot(B0[0] - A0[0], B0[1] - A0[1]), U = [(B0[0] - A0[0]) / LEN, (B0[1] - A0[1]) / LEN];
+const wgeo = l => (l.geometry?.length >= 2 ? l.geometry : [walk.nodes.find(n => n.id === l.a), walk.nodes.find(n => n.id === l.b)].map(n => [n.lat, n.lon])).map(XY);
+// 一条人行道在施工路段 sign 那一侧、贴着施工路段 [0, 总长] 并排（夹角 < 45°）走了多少米（横向 30 米内）
+function besideFrontage(id, sign) {
+  const g = wgeo(wl.get(id)); let m = 0;
+  for (let i = 0; i + 1 < g.length; i++) {
+    const d = Math.hypot(g[i + 1][0] - g[i][0], g[i + 1][1] - g[i][1]), n = Math.max(1, Math.ceil(d));
+    if (!d || Math.abs(((g[i + 1][0] - g[i][0]) * U[0] + (g[i + 1][1] - g[i][1]) * U[1]) / d) < 0.7) continue; // 横着的（小巷口）不算并排
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n, p = [g[i][0] + t * (g[i + 1][0] - g[i][0]) - A0[0], g[i][1] + t * (g[i + 1][1] - g[i][1]) - A0[1]];
+      const along = p[0] * U[0] + p[1] * U[1], lat = U[0] * p[1] - U[1] * p[0];
+      if (along >= 0 && along <= LEN && Math.abs(lat) <= 30 && Math.sign(lat) === sign) m += d / n;
+    }
+  }
+  return m;
+}
+
+await t('右侧（对面那幅路）按并排长度选，不按中点（复审 P1）', async () => {
+  const R = pedImpact(walk, peds, withFp('lonsdale', 'right'), { net });
+  ok(besideFrontage('wl6167236662_6167344380', -1) >= 15 && R.closed.includes('wl6167236662_6167344380'),
+    `北侧 81.8 米那条人行道贴着施工路段并排 ${besideFrontage('wl6167236662_6167344380', -1).toFixed(1)} 米（中点在施工范围外）→ 封`);
+  ok(!R.closed.includes('wl9756035311_13882913770'), `只擦边 ${besideFrontage('wl9756035311_13882913770', -1).toFixed(1)} 米的 6.2 米碎段不封（反向断言）`);
+  const worst = Math.max(0, ...R.detour.map(id => besideFrontage(id, -1)));
+  ok(R.detour.length > 0 && worst < 5, `封右侧：绕行路线没有一段在北侧贴着施工路段走 ≥ 5 米（最多 ${worst.toFixed(1)} 米，反向断言）`);
+  const L = pedImpact(walk, peds, withFp('lonsdale', 'left'), { net });
+  ok(Math.max(0, ...L.detour.map(id => besideFrontage(id, +1))) < 5, '封左侧：绕行路线不在南侧贴着施工路段走（反向断言）');
+  const B = pedImpact(walk, peds, withFp('lonsdale', 'both'), { net });
+  ok(Math.max(0, ...B.detour.flatMap(id => [besideFrontage(id, 1), besideFrontage(id, -1)])) < 5 && B.extra_min > L.extra_min, `两侧都封：绕行两侧都不贴着施工路段走，${B.extra_min} 人·分钟`);
+  // 网络上：Southbank Blvd 这段以前封右侧一条都找不到，却报 active = true、全 0
+  const sb = pedImpact(walk, peds, { when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'S', links: ['l243097376_6713073579'], closes: { lanes: 1, footpath: 'right' } }] }, { net });
+  ok(sb.closed.includes('wl9141340855_9141340867') && sb.ped_h > 0 && !sb.unmatched, `Southbank Blvd 封右侧：找到对面那条贴着走了大半段的人行道（${sb.ped_h} 人/小时）`);
+});
+
+await t('过马路按「过几条街」数，不按过街段数（复审 P2）', async () => {
+  for (const fp of ['left', 'right']) {
+    const r = pedImpact(walk, peds, withFp('latrobe', fp), { net });
+    const links = r.detour.map(id => wl.get(id));
+    const pieces = links.filter(l => l.kind === 'crossing' || l.crossing != null).length;
+    ok(r.crossings === 4 && pieces === 6, `La Trobe 封${fp === 'left' ? '左' : '右'}侧：绕行过 Swanston、La Trobe、Swanston、La Trobe = ${r.crossings} 次（过街段有 ${pieces} 段：La Trobe 那条被安全岛切成 3 段）`);
+  }
+  const L = pedImpact(walk, peds, withFp('lonsdale', 'left'), { net });
+  ok(L.crossings === 2, `Lonsdale 封左侧：过 Lonsdale 去对面再回来 = ${L.crossings} 次`);
+});
+
+await t('计数器要在封掉的这一侧（复审 P2）', async () => {
+  const lat224 = peds.sensors.find(s => s.name === 'Lat224_T');
+  const R = pedImpact(walk, peds, withFp('latrobe', 'right'), { net });
+  ok(R.closed.includes(lat224.walk_link) && R.sensor?.name === 'Lat224_T' && R.sensor.on_closed === true, `封右侧（北侧）：Lat224_T 就装在封掉的人行道上 → sensor = ${R.sensor?.name}、on_closed`);
+  const L = pedImpact(walk, peds, withFp('latrobe', 'left'), { net });
+  ok(L.sensor?.name !== 'Lat224_T' && (L.sensor === null || !R.closed.includes(peds.sensors.find(s => String(s.id) === String(L.sensor.id))?.walk_link)),
+    `封左侧（南侧）：马路对面的 Lat224_T 不当这段的实测（sensor = ${L.sensor ? L.sensor.name : 'null'}，反向断言）`);
+  const lon = pedImpact(walk, peds, withFp('lonsdale', 'left'), { net });
+  const s = lon.sensor && peds.sensors.find(x => String(x.id) === String(lon.sensor.id));
+  ok(!s || !pedImpact(walk, peds, withFp('lonsdale', 'right'), { net }).closed.includes(s.walk_link), `Lonsdale 封左侧：计数器 ${lon.sensor?.name ?? '无'} 不在北侧人行道上`);
+});
+
+await t('一条直街的几段施工不因方位跨 45° 被拆成两段（复审 P2）', async () => {
+  const plan = { when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'S', links: ['l243097376_6713073579', 'l6713073579_1234672054'], closes: { lanes: 1, footpath: 'left' } }] };
+  const r = pedImpact(walk, peds, plan, { net });
+  const maxV = Math.max(...r.closed.map(id => peds.days.wd[id][8]));
+  ok(r.stretches.length === 1 && r.ped_h === maxV, `Southbank Blvd 两段（312° / 319°）封左侧 = 1 段、${r.ped_h} 人/小时（以前拆成 W / N 两段、人数算两遍）`);
+  const one = pedImpact(walk, peds, { ...plan, worksites: [{ ...plan.worksites[0], links: ['l243097376_6713073579'] }] }, { net });
+  ok(r.ped_h <= 2 * one.ped_h && r.ped_h >= one.ped_h, '两段加起来的人数不超过单段的两倍、不少于单段');
+});
+
+await t('要封的那一侧数据里没有人行道 → unmatched，不是「没影响」（复审 P2，反向断言）', async () => {
+  const at = (id, fp) => pedImpact(walk, peds, { when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'U', links: [id], closes: { lanes: 1, footpath: fp } }] }, { net });
+  for (const [id, fp] of [['no_such_link', 'left'], ['l289602682_1492145829', 'right'], ['l387153095_777795238', 'left']]) {
+    const r = at(id, fp);
+    ok(r.active && r.closed.length === 0 && r.unmatched === true && r.unmatched_sides.length === 1 && r.unmatched_sides[0].side === fp && /no footpath/.test(r.note) && typeof r.note_zh === 'string',
+      `${id} 封${fp}：找不到人行道 → unmatched = true、note 写明（不是没打标记的 0）`);
+  }
+  const L = pedImpact(walk, peds, withFp('lonsdale', 'left'), { net });
+  ok(L.unmatched === false && L.unmatched_sides.length === 0 && L.note === null, '找到了就是 unmatched = false、note = null');
+  const none = pedImpact(walk, peds, withFp('lonsdale', undefined), { net });
+  ok(none.unmatched === false && none.note === null, '没封人行道不算 unmatched');
+  const emp = pedImpact(walk, peds, { when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'E', links: [], closes: { lanes: 1, footpath: 'both' } }] }, { net });
+  ok(emp.unmatched && emp.unmatched_sides.length === 2, 'links 是空的也报 unmatched（两侧各一条）');
+});
+
+await t('死胡同 / 小孤岛不算「没路可绕」（复审 P2，小图）', async () => {
+  // 六边形环 p0…p5（大路网）+ 一头悬空的短人行道 s—p1 + 只连着两个节点的小孤岛 p3—q1—q2
+  const nodes = [...[0, 1, 2, 3, 4, 5].map(i => ({ id: 'p' + i, lat: -37.81 + 0.001 * Math.sin(i * Math.PI / 3), lon: 144.96 + 0.001 * Math.cos(i * Math.PI / 3) })),
+    { id: 's', lat: -37.8095, lon: 144.9606 }, { id: 'q1', lat: -37.8105, lon: 144.9594 }, { id: 'q2', lat: -37.8106, lon: 144.9592 }];
+  const at = id => nodes.find(n => n.id === id);
+  const lk = (id, a, b, extra = {}) => ({ id, a, b, len_m: 100, kind: 'sidewalk', crossing: null, road_link: null, side: null, geometry: [[at(a).lat, at(a).lon], [at(b).lat, at(b).lon]], ...extra });
+  const w = { nodes, links: [
+    ...[0, 1, 2, 3, 4, 5].map(i => lk(`r${i}`, 'p' + i, 'p' + ((i + 1) % 6))),
+    lk('sp1', 's', 'p1', { road_link: 'RS', side: 'left', len_m: 20 }),
+    lk('p3q1', 'p3', 'q1', { road_link: 'RQ', side: 'left', len_m: 30 }), lk('q1q2', 'q1', 'q2', { len_m: 10 }),
+  ] };
+  const pd = { days: { wd: { sp1: Array(24).fill(525), p3q1: Array(24).fill(98), q1q2: Array(24).fill(5) } }, method: {}, sensors: [] };
+  const plan = road => ({ when: { date: '2026-10-06', hour: 8 }, worksites: [{ id: 'X', links: [road], closes: { lanes: 1, footpath: 'left' } }] });
+  const stub = pedImpact(w, pd, plan('RS'));
+  ok(!stub.blocked && stub.dead_end && stub.blocked_ped_h === 0 && stub.extra_min === 0 && stub.ped_h === 525 && /dead end/.test(stub.note),
+    '一头悬空的短人行道（起点只连着它自己）：dead_end，不报 blocked（以前报「525 人/小时无路可绕」）');
+  const pocket = pedImpact(w, pd, plan('RQ'));
+  ok(!pocket.blocked && pocket.dead_end && pocket.extra_min === 0, `另一头是 2 个节点的小孤岛（< min(${MIN_REACH}, 节点数一半)）：dead_end，不报 blocked`);
+  // 真的被切断（两边都是像样的路网）照样 blocked：上面「没路可绕 → blocked」那条小图测试就是（a—b 和 c—d 各占一半）
+});
+
+await t('connect 不等行人数据：车的数字不被 3.6 MB 的 walk / peds 拖慢（复审 P1）', async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const hangFetch = async url => (url.includes('/walk.json') || url.includes('/peds.json') ? (await gate, fakeFetch(url)) : fakeFetch(url));
+  const be = await connect({ fetch: hangFetch, importer: noImporter, pedsWaitMs: 50 });
+  ok(be.status().peds === 'loading', 'walk.json / peds.json 一直没回来，connect 照样好了（status.peds = loading）');
+  const open = await be.run(withFp('lonsdale', undefined));
+  ok(open.peds.src === 'peds' && ZERO(open.peds) && !open.peds.pending && open.queue_m > 0, '这个小时没封人行道：不等数据，summary.peds 直接全 0，车的数字照出');
+  const late = await be.run(withFp('lonsdale', 'left', { hour: 22 }));
+  ok(late.peds.src === 'peds' && ZERO(late.peds), '封了人行道但这个小时不施工：也不等');
+  const t1 = Date.now();
+  const shut = await be.run(withFp('lonsdale', 'left'));
+  const waited = Date.now() - t1;
+  ok(shut.peds.src === null && shut.peds.pending === true && shut.peds.footpath === 'left' && !('extra_min' in shut.peds) && shut.queue_m === open.queue_m && waited < 2000,
+    `封了人行道、数据 50 毫秒内没到：summary.peds = { src: null, pending: true }，不假装 0，车的数字照出（等了 ${waited} 毫秒）`);
+  const c = await be.compare(withFp('lonsdale', undefined), withFp('lonsdale', 'left'));
+  ok(c.delta.peds_extra_min === null, '数据还没到时 compare 的 delta.peds_extra_min = null');
+  release();
+  ok((await be.pedsReady()) === 'fetched' && be.status().peds === 'fetched', '数据到了 → pedsReady() = fetched');
+  const again = await be.run(withFp('lonsdale', 'left'));
+  ok(again.peds.src === 'peds' && again.peds.extra_min > 0 && !again.peds.pending, `之后再算就有行人数字（${again.peds.extra_min} 人·分钟）`);
+  const slow = async url => (url.includes('/walk.json') ? (await new Promise(r => setTimeout(r, 30)), fakeFetch(url)) : fakeFetch(url));
+  const be2 = await connect({ fetch: slow, importer: noImporter });
+  const s2 = await be2.run(withFp('lonsdale', 'left'));
+  ok(s2.peds.src === 'peds' && s2.peds.extra_min === again.peds.extra_min, '数据慢一点（30 毫秒）：封了人行道的 run 会等它（默认最多 8 秒），数字一样');
 });
 
 done();
