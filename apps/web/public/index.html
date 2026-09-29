@@ -342,7 +342,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   --shell:rgba(13,17,21,.76);--shell-line:rgba(255,255,255,.14);--shell-solid:#0F1419;
   --shadow:0 18px 48px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.10);
   --hl:rgba(255,255,255,.10);--hl-edge:rgba(255,255,255,.16);
-  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;
+  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;--sun-ink:#FFB340;
+  --tt-moon:var(--sun);--tt-moon-fg:var(--on-sun);--tt-sun:transparent;--tt-sun-fg:var(--fg-3);
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
@@ -352,7 +353,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
     --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
     --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
     --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+    --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
   }
 }
 :root[data-theme="light"]{
@@ -362,7 +364,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
   --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
   --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+  --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
 }
 
 /* glass surfaces: tint + a soft top-left sheen + a lit rim */
@@ -451,6 +454,20 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .sec-closed>.sec-head::after{transform:rotate(-45deg);margin-bottom:0}
 .sec-closed>:not(.sec-head){display:none!important}
 .panel-open{display:none}
+
+/* one action colour (09-29): every primary / selected control is --sun; teal stays only where it means
+   "better / after repair" (numbers, the v2 tag, OK pills) and on map overlays (AOI, graticule) */
+button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.eng-field input:focus-visible{outline-color:var(--sun)}
+.brand>svg{stroke:var(--sun)}
+.brand>svg circle[fill]{fill:var(--sun)}
+.meta .eyebrow{color:var(--sun-ink)}
+.btn{background:var(--sun);color:var(--on-sun);box-shadow:0 10px 22px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.4)}
+.play{background:var(--sun);color:var(--on-sun);box-shadow:0 8px 20px rgba(255,159,10,.26),inset 0 1px 0 rgba(255,255,255,.45)}
+.chips [aria-pressed="true"],.lang-toggle span.on,.speed button[aria-pressed="true"]{background:var(--sun);border-color:transparent;color:var(--on-sun)}
+.speed{border-radius:999px;padding:3px}
+.speed button{border-radius:999px}
+.progress .track i{background:var(--sun)}
+input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
@@ -1845,7 +1862,7 @@ function renderPanel(){
   const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
@@ -1853,7 +1870,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--accent)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather to stress-test','压力测试天气')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
     <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
@@ -1863,7 +1880,7 @@ function renderPanel(){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
     <div class="stack"><h2>${L('Searching for hidden failures','正在搜索隐藏的失效点')}</h2><p class="muted small">${L(`The red team recombines road users, behaviours and the ${wl.toLowerCase()} scenario to find the combinations that start a chain reaction.`,`红队把道路使用者、行为和「${wl}」情景反复组合，寻找会引发连锁反应的组合。`)}</p></div>
-    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--accent)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
+    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
@@ -1876,7 +1893,7 @@ function renderPanel(){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event,n=SEEDS[S.wx];
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
@@ -1892,7 +1909,7 @@ function renderPanel(){
     const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
     const mn=L(' min',' 分钟');
     const eng=!!BE.api;
-    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--accent)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
+    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
     <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
       <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">
@@ -2391,8 +2408,8 @@ function engHeadline(s){
 }
 function engPanel3(){
   const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
-  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
-  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
   const mix=EP.mix,mixTxt=mix?TYPES4.map(t=>`${Math.round((mix[t]&&mix[t].value||0)*100)}`).join(' / '):'';
@@ -2401,7 +2418,7 @@ function engPanel3(){
     return`<div class="eng-type"><i class="dot" style="background:${TYPE_C[t]}"></i><div class="grow"><b>${L(TYPE_L[t][0],TYPE_L[t][1])}</b> <span class="mono small muted">${fmtN(b.vehicles)} ${L('veh','辆')}${r?` · ${L('mix','占比')} ${Math.round(r[0]*100)}–${Math.round(r[1]*100)}%`:''}</span><small data-why="${t}"></small></div><div class="eng-tv"><b>+${(+(b.per_capita_min||0)).toFixed(1)}</b><span>${L('min each','分钟/人')}</span><span>${pctS(x.detour)} ${L('detour','绕行')}</span></div></div>`;}).join('');
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
-  return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engBadges(f)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
@@ -2442,7 +2459,7 @@ function eng4HTML(){
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
   const a=EP.adv;
   const n=a?a.options.length:0,rule=!a||a.src==='rule';
-  let h=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
+  let h=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
   const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{

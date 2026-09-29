@@ -263,7 +263,7 @@ function renderPanel(){
   const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
@@ -271,7 +271,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--accent)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather to stress-test','压力测试天气')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
     <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
@@ -281,7 +281,7 @@ function renderPanel(){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
     <div class="stack"><h2>${L('Searching for hidden failures','正在搜索隐藏的失效点')}</h2><p class="muted small">${L(`The red team recombines road users, behaviours and the ${wl.toLowerCase()} scenario to find the combinations that start a chain reaction.`,`红队把道路使用者、行为和「${wl}」情景反复组合，寻找会引发连锁反应的组合。`)}</p></div>
-    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--accent)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
+    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
@@ -294,7 +294,7 @@ function renderPanel(){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event,n=SEEDS[S.wx];
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
@@ -310,7 +310,7 @@ function renderPanel(){
     const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
     const mn=L(' min',' 分钟');
     const eng=!!BE.api;
-    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--accent)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
+    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
     <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
       <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">

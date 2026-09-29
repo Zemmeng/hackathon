@@ -89,6 +89,12 @@ check("简洁模式只藏说明文字，不藏数字（.metrics / 输入框 / �
       ".panel.compact p.muted{display:none}" in CSS and ".metrics" in GLASS and "textarea" in GLASS)
 check("复制失败的提示在简洁模式下仍显示", "#copyFallback p.muted{display:block}" in CSS)
 
+# 6b. 统一操作色（09-29 定）：主按钮、播放键、选中态都用 --sun；浅色主题下橙色文字用更深的 --sun-ink（对比度）
+act = CSS[CSS.find("one action colour"):CSS.find("floating layout (desktop)")]
+check("主按钮 / 播放键 / 选中的 chips、倍速、语言都用 --sun",
+      all(re.search(sel + r"[^{]*\{[^}]*background:var\(--sun\)", act) for sel in (r"\.btn", r"\.play", r"\.chips \[aria-pressed")))
+check("浅色主题有更深的橙色文字色 --sun-ink", CSS.count("--sun-ink:#A35A00") == 2)
+
 # 7. 道路比建筑清楚（09-29 需求）：底图重画时压暗屋顶、描路沿
 check("底图重画时调 emphasizeRoads（每次视图变化一次，不是每帧）",
       re.search(r"function renderBase\(\)\{[\s\S]*?emphasizeRoads\(", APP) is not None

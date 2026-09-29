@@ -287,8 +287,8 @@ function engHeadline(s){
 }
 function engPanel3(){
   const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
-  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
-  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
   const mix=EP.mix,mixTxt=mix?TYPES4.map(t=>`${Math.round((mix[t]&&mix[t].value||0)*100)}`).join(' / '):'';
@@ -297,7 +297,7 @@ function engPanel3(){
     return`<div class="eng-type"><i class="dot" style="background:${TYPE_C[t]}"></i><div class="grow"><b>${L(TYPE_L[t][0],TYPE_L[t][1])}</b> <span class="mono small muted">${fmtN(b.vehicles)} ${L('veh','辆')}${r?` · ${L('mix','占比')} ${Math.round(r[0]*100)}–${Math.round(r[1]*100)}%`:''}</span><small data-why="${t}"></small></div><div class="eng-tv"><b>+${(+(b.per_capita_min||0)).toFixed(1)}</b><span>${L('min each','分钟/人')}</span><span>${pctS(x.detour)} ${L('detour','绕行')}</span></div></div>`;}).join('');
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
-  return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engBadges(f)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
@@ -338,7 +338,7 @@ function eng4HTML(){
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
   const a=EP.adv;
   const n=a?a.options.length:0,rule=!a||a.src==='rule';
-  let h=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
+  let h=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
   const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{

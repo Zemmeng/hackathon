@@ -332,7 +332,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   --shell:rgba(13,17,21,.76);--shell-line:rgba(255,255,255,.14);--shell-solid:#0F1419;
   --shadow:0 18px 48px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.10);
   --hl:rgba(255,255,255,.10);--hl-edge:rgba(255,255,255,.16);
-  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;
+  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;--sun-ink:#FFB340;
+  --tt-moon:var(--sun);--tt-moon-fg:var(--on-sun);--tt-sun:transparent;--tt-sun-fg:var(--fg-3);
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]){
@@ -342,7 +343,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
     --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
     --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
     --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+    --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
   }
 }
 :root[data-theme="light"]{
@@ -352,7 +354,8 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   --shell:rgba(250,252,253,.78);--shell-line:rgba(255,255,255,.95);--shell-solid:#FFFFFF;
   --shadow:0 18px 44px rgba(28,40,50,.16),inset 0 1px 0 rgba(255,255,255,.9);
   --hl:rgba(255,255,255,.62);--hl-edge:rgba(255,255,255,.95);
-  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#A35A00;
+  --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
 }
 
 /* glass surfaces: tint + a soft top-left sheen + a lit rim */
@@ -441,6 +444,20 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .sec-closed>.sec-head::after{transform:rotate(-45deg);margin-bottom:0}
 .sec-closed>:not(.sec-head){display:none!important}
 .panel-open{display:none}
+
+/* one action colour (09-29): every primary / selected control is --sun; teal stays only where it means
+   "better / after repair" (numbers, the v2 tag, OK pills) and on map overlays (AOI, graticule) */
+button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.eng-field input:focus-visible{outline-color:var(--sun)}
+.brand>svg{stroke:var(--sun)}
+.brand>svg circle[fill]{fill:var(--sun)}
+.meta .eyebrow{color:var(--sun-ink)}
+.btn{background:var(--sun);color:var(--on-sun);box-shadow:0 10px 22px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.4)}
+.play{background:var(--sun);color:var(--on-sun);box-shadow:0 8px 20px rgba(255,159,10,.26),inset 0 1px 0 rgba(255,255,255,.45)}
+.chips [aria-pressed="true"],.lang-toggle span.on,.speed button[aria-pressed="true"]{background:var(--sun);border-color:transparent;color:var(--on-sun)}
+.speed{border-radius:999px;padding:3px}
+.speed button{border-radius:999px}
+.progress .track i{background:var(--sun)}
+input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
