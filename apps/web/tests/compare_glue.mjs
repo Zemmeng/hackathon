@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -32,6 +32,21 @@ ok(!src.some(x => x.kind === 'shift'), '错开日期不进对比（它按整个�
 ok(src[1].kind === 'text' && src[2].kind === 'move' && src[2].at_m === 450, '跳过没方案的改法（skipped / plan 为空）');
 ok(cmpSources(P, null).length === 1, '顾问没结果时只有 A');
 ok(cmpVms(P) === 'ROADWORK / AHEAD  ▸  USE / RUSSELL ST' && cmpVms({ worksites: [{ equipment: [] }] }) === '', 'VMS 每一帧用 / 连、帧之间 ▸；没有 VMS 给空串');
+
+// 1b be.options()（T22）的结果 → 卡片
+const fake = { days: 5, options: [
+  { id: 'o1', label: 'Cheapest', label_zh: '最省', plan: P, result: { delay_min: 9 }, hire: { total_aud: 100 }, flags: { stock_ok: true } },
+  { id: 'o2', label: 'Standard', label_zh: '标准', plan: P, result: { delay_min: 8 }, hire: { total_aud: 150 }, flags: { stock_ok: false } },
+  { id: 'o3', label: 'Guided', label_zh: '引导', plan: P, result: null, hire: null },
+  { id: 'o4', label: 'x', plan: P, result: {}, hire: {} },
+] };
+const kr = cmpFromOptions(fake);
+ok(kr.length === 3 && kr.map(r => r.id).join('') === 'ABC' && kr[0].tier === 'o1' && kr[0].kind === 'kit', 'options() → 最多 3 张卡，编号 A B C，记下原来的档位');
+ok(kr[0].hire === 100 && kr[0].days === 5 && kr[2].hire === null && kr[2].s === null, '租金和天数照引擎给的；没算出来的是 null');
+ok(kr[1].flags.stock_ok === false && JSON.stringify(kr[2].flags) === '{}', '库存检查的标记带过来');
+ok(cmpFromOptions(null).length === 0, 'options() 没结果 → 没有卡');
+const kit = cmpKit({ worksites: [{ equipment: [{ type: 'vms' }, { type: 'barrier', qty: 22 }, { type: 'sign', qty: 2 }, { type: 'sign' }, { type: 'arrow' }] }] });
+ok(kit.vms === 1 && kit.barrier === 22 && kit.sign === 3 && kit.arrow === 1, '设备按类型数件数（有 qty 按 qty）');
 
 // 2 数字和「最少」标记（纯函数）
 ok(JSON.stringify(cmpNumbers(null)) === '{"car":null,"transit":null,"peds":null}', '没算出来 → 全 null');
@@ -77,6 +92,29 @@ if (!existsSync(packUrl) || !existsSync(exUrl)) {
   ok(/假设值，以 RPM Hire 正式报价为准/.test(zh) && /assumptions; RPM Hire's formal quote applies/.test(en), '反向断言：执行包里写明日租价是假设值');
   ok(/Frame 1:/.test(en) && /Lonsdale Street/.test(en), '执行包有 VMS 排程和路名');
   ok(p.notify.some(n => n.who === 'transit'), '有电车公交乘客受影响 → 通知运营方');
+}
+
+// 4 T22 真的出 3 套方案（按库存配设备、带租金）→ 卡片 → 和 pack.js 报价对得上 → 导出
+if (typeof be.options !== 'function') {
+  ok(false, 'backend.js 有 options()（T22）');
+} else {
+  const res = await be.options(plan, { n: 3 });
+  const kits = cmpFromOptions(res);
+  ok(kits.length === 3 && kits.every(k => k.s && Number.isFinite(k.s.delay_min)), `options() 出 3 套，每套都有引擎算的延误：${kits.map(k => `${k.tier} ${Math.round(k.s.delay_min)}`).join(' / ')}`);
+  ok(kits.every(k => Number.isFinite(k.hire) && k.hire > 0), `每套都有租金：${kits.map(k => 'A$' + k.hire).join(' / ')}`);
+  const kn = kits.map(k => cmpNumbers(k.s));
+  ok(kn.every(n => n.transit !== null && n.peds !== null), 'options() 的结果里电车公交、行人也有数');
+  if (existsSync(packUrl)) {
+    const pack = await import(pathToFileURL(packUrl).href), ex = await import(pathToFileURL(exUrl).href);
+    const inventory = await pack.loadInventory({ fetch: fakeFetch });
+    const net = be.engine.net;
+    const same = kits.every(k => { const ws = k.plan.worksites[0]; const q = pack.quote(ws, inventory, { links: new Map(ws.links.map(id => [id, net.links.get(id)])) }); return q.total_aud === k.hire && q.unmatched.length === 0; });
+    ok(same, '反向断言：T22 的租金和 pack.js 报价逐套一样（同一份库存、同一个日租价，导出不会出现两个数）');
+    const g = kits[2], ws = g.plan.worksites[0];
+    const p = pack.buildPack({ ...ws, title: ws.name, status: 'decided', decision: { option: g.id, by: 'contractor', reason: 'guided detour', at: '2026-09-30T00:00:00.000Z' } }, { inventory, links: new Map(ws.links.map(id => [id, net.links.get(id)])), impacts: ex.optionFromRun(g.id, 'plan', g.s).metrics });
+    const txt = pack.packText(p, 'en');
+    ok(/chose C \(contractor, 2026-09-30\): guided detour/.test(txt) && new RegExp(`Total: A\\$${g.hire.toLocaleString('en-US')}`).test(txt), `选 C（引导档）导出：决定和合计 A$${g.hire} 都在执行包里`);
+  }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

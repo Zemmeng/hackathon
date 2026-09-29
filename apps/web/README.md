@@ -60,7 +60,7 @@ Owner: @unicornnnnnny
 | `src/js/4-sim.js` | 多智能体仿真：IDM 跟驰、信号相位、行人放行、TTC 冲突检测、脚本化的 C-17 / D-42 / Bus 250 事件 |
 | `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑，分几个 task 先建好轮廓、栅格、当前底图的影像，最后 `rebuildWorld(nw, g, imgs)` 在一帧里换掉 `W / G / IMG`（`WX.rebind()` 重建天气栅格）；存下来的天气（如高温）的栅格只在 `start()` 里建一次 |
 | `src/js/6-engine.js` | 接引擎（T13）：连 `backend.js`、第 1 步方案表单、第 3 步路网涟漪、第 4 步顾问 + 前后对比、地图上的施工区 / 排队 / 绕行 / 变慢路段；开头 `pure:begin…pure:end` 是测试要跑的纯函数（坐标换算、选路段、拼方案） |
-| `src/js/8-compare.js` | T23（@jinmingq，D-0929-2011 ④）：第 4 步顾问下面的「方案对比 · 选一套」——现在的方案 + 顾问的改法（最多 3 套）逐套 `run()`，并排比车延误 / 电车公交 / 行人 / 租金，标「最少」；选定 + 施工方 / 市政 + 理由，导出一页执行包（T5 的 `/api/public/js/pack.js`，打印 / 存 PDF / 复制）。开头 `pure:begin…pure:end` 是测试要跑的纯函数 |
+| `src/js/8-compare.js` | T23（@jinmingq，D-0929-2011 ④）：第 4 步顾问下面的「方案对比 · 选一套」——T22 的 `be.options()` 按 RPM 库存配的 3 套（最省 / 标准 / 引导，引擎算好延误、租金、库存检查；拿不到时退回「现在的方案 + 顾问的改法」逐套 `run()`），并排比车延误 / 电车公交 / 行人 / 租金，标「最少」，库存不够、此时段不施工另起一行提示；选定 + 施工方 / 市政 + 理由，导出一页执行包（T5 的 `/api/public/js/pack.js`，打印 / 存 PDF / 复制）。开头 `pure:begin…pure:end` 是测试要跑的纯函数 |
 | `build.py` | 打包成 `public/index.html`（进仓库）和 `out/web-artifact.html`（不进仓库） |
 | `tests/test_web.py` `tests/test_engine.py` `tests/engine_glue.mjs` | 上面「怎么测」的断言 |
 | `tests/test_compare.py` `tests/compare_glue.mjs` | T23：`8-compare.js` 的纯函数（选哪几套、三个数、「最少」）+ 真 `backend.js` 顾问的改法逐套 `run()` + 真 `pack.js` 执行包（选了谁、理由、租金标假设值） |
@@ -73,7 +73,7 @@ Owner: @unicornnnnnny
 
 ## 已知问题
 
-- T23 方案对比：T22（按库存出 3 套方案）做好之前，对比的是「现在的方案 + 顾问的改法」，错开日期那种改法不进对比（它按整个施工期算、不是这一小时）；T22 的方案接在 `8-compare.js` 的 `cmpSources()`。车、电车公交、行人是这一小时的数，租金是整个工期（假设日租价）。理由只存在页面里（没接施工登记表，D-0929-2011 定了冻结前不接）
+- T23 方案对比：对比的是 T22 `be.options()` 的 3 套；它出错（例如库存没加载上）才退回「现在的方案 + 顾问的改法」，错开日期那种改法不进对比（它按整个施工期算、不是这一小时）。车、电车公交、行人是这一小时的数，租金是整个工期（假设日租价）；T22 的租金和 `pack.js` 报价逐套一致（`compare_glue.mjs` 查）。理由只存在页面里（没接施工登记表，D-0929-2011 定了冻结前不接）
 - 冲突数、急刹、TTC、公交、应急通道、安全分仍是微观仿真 / 预设值（引擎不算这些），页面标「模拟结果」；排队、延误、分流、顾问改法是引擎算的
 - 真路网画在页面的理想化方格上：Queen…Exhibition × Bourke…La Trobe 之间误差 ≤ 1.4 m；La Trobe 以北页面把街区画高了（Little La Trobe 真实 55 m 画在 100、A'Beckett 109 m 画在 200），按分段线性拉伸
 - 排队线按「施工起点往上游直线」画（CBD 方格路是直的），超出画面范围的用「→」标出

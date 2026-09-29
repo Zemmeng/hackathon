@@ -1,11 +1,12 @@
 'use strict';
 /* ============================================================
    Compare · choose · export (T23 · D-0929-2011 ④ · #48 steps ④⑦⑧), under the advisor in step 4.
-   Up to 3 plans side by side: the plan in the form + the advisor's alternatives, each re-run by backend.js run() for this
-   hour (car delay, tram & bus riders, pedestrians). Hire cost is /api/public/js/pack.js quote() on the RPM inventory
-   (apps/roads equipment.json, assumed day rates, labelled as such) over the whole works period. A person picks one and
-   writes why; the one-page pack is pack.js buildPack() + packText(), shown as text (textContent) to print or copy.
-   T22's inventory-based options slot in at cmpSources(). Nothing here computes a traffic number itself.
+   Up to 3 plans side by side. Normally they are T22's be.options(): cheapest / standard / guided kits drawn from the RPM
+   inventory, each run by the engine for this hour, with hire and stock checks — every number comes from backend.js.
+   If options() is missing or fails (e.g. no inventory), fall back to the plan in the form + the advisor's alternatives,
+   each re-run by run(), with hire from /api/public/js/pack.js quote() (same inventory, same assumed day rates).
+   A person picks one and writes why; the one-page pack is pack.js buildPack() + packText(), shown with textContent to
+   print or copy. Nothing here computes a traffic number itself.
    ============================================================ */
 
 /* pure:begin — tests/compare_glue.mjs runs this block in node */
@@ -38,6 +39,17 @@ function cmpBest(rows,keys){
   }
   return out;
 }
+// be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
+function cmpFromOptions(res){
+  return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
+    hire:o.hire&&Number.isFinite(o.hire.total_aud)?o.hire.total_aud:null,days:res.days==null?null:res.days,flags:o.flags||{}}));
+}
+// Equipment in a plan by type → { vms, sign, arrow, barrier } counts (qty when the kit gives one)
+function cmpKit(plan){
+  const ws=plan&&plan.worksites&&plan.worksites[0],k={vms:0,sign:0,arrow:0,barrier:0};
+  for(const e of (ws&&ws.equipment)||[])if(e.type in k)k[e.type]+=Number.isInteger(e.qty)&&e.qty>0?e.qty:1;
+  return k;
+}
 // What a plan puts on the VMS, frame by frame (for the card; set with textContent)
 function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
@@ -45,7 +57,7 @@ function cmpVms(plan){
 }
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
 
 // pack.js (quote, pack, text) + explain.js (only optionFromRun: run() summary → the metrics the pack's notice list uses) + inventory
 function cmpLoad(){
@@ -57,42 +69,55 @@ function cmpLoad(){
 }
 // The engine's own link records carry len_m / name / lanes / tram, which is all pack.js reads
 function cmpLinks(ws){const net=engNet(),m=new Map();if(!net||!ws)return m;for(const id of ws.links||[]){const l=net.links.get(id);if(l)m.set(id,l);}return m;}
-function cmpLabel(r){return r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Reword the VMS','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
-function cmpWhat(r){return r.kind==='move'?(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游'):cmpVms(r.plan)||L('No VMS','没有 VMS');} // textContent only
+function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Reword the VMS','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
+function cmpWhat(r){ // textContent only
+  if(r.kind==='move')return(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游');
+  const v=cmpVms(r.plan)||L('No VMS','没有 VMS');if(r.kind!=='kit')return v;
+  const k=cmpKit(r.plan);
+  return v+' · '+[[k.vms,'VMS','VMS'],[k.barrier,'barriers','护栏'],[k.sign,'signs','标志牌'],[k.arrow,'arrow boards','箭头板']].filter(x=>x[0]>0).map(x=>x[0]+' '+L(x[1],x[2])).join(' · ');
+}
 
 async function cmpUpdate(){
-  if(!engOn()||EP.badText||!EP.adv)return;
-  const srcs=cmpSources(planFrom(EP),EP.adv),key=JSON.stringify(srcs.map(x=>x.plan));
+  if(!engOn()||EP.badText)return;
+  const plan=planFrom(EP),kits=typeof BE.api.options==='function';
+  if(!kits&&!EP.adv)return; // fallback path waits for the advisor
+  const key=JSON.stringify(plan)+(kits?'|kits':'|adv|'+JSON.stringify(EP.adv.options.map(o=>o.plan)));
   if(key===CP.key)return;
   CP.key=key;CP.rows=[];CP.pick=null;CP.busy=true;const seq=++CP.seq;
-  const rows=[];
-  for(const x of srcs){let s=null;try{s=await BE.api.run(x.plan);}catch(e){console.warn('compare: run failed',e);}rows.push({...x,s});}
+  let rows=null,src='';
+  if(kits){try{rows=cmpFromOptions(await BE.api.options(plan,{n:CMP_MAX}));src='kits';}catch(e){console.warn('compare: options() failed, using the advisor instead',e);}}
+  if(!rows||!rows.length){
+    if(!EP.adv){if(seq===CP.seq){CP.key='';CP.busy=false;}return;} // retried when the advisor lands (engRender4 → cmpRender)
+    rows=[];src='advisor';
+    for(const x of cmpSources(plan,EP.adv)){let s=null;try{s=await BE.api.run(x.plan);}catch(e){console.warn('compare: run failed',e);}rows.push({...x,s});}
+  }
   await cmpLoad();
-  for(const r of rows){
+  if(src==='advisor')for(const r of rows){
     const ws=r.plan.worksites[0];r.hire=null;r.days=null;
-    if(CP.mod&&CP.inv){try{const q=CP.mod.pack.quote(ws,CP.inv,{links:cmpLinks(ws)});r.hire=q.total_aud;r.days=q.days;r.partial=q.total_aud===null;}catch(e){console.warn('compare: quote failed',e);}}
+    if(CP.mod&&CP.inv){try{const q=CP.mod.pack.quote(ws,CP.inv,{links:cmpLinks(ws)});r.hire=q.total_aud;r.days=q.days;}catch(e){console.warn('compare: quote failed',e);}}
   }
   if(seq!==CP.seq)return;
-  CP.rows=rows;CP.busy=false;cmpRender();
+  CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
 }
 
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
   const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
-  if(!EP.adv)return head+`<div class="card eng-note"><b>${EP.advBusy?L('Waiting for the advisor’s alternatives…','等顾问给出其他方案…'):L('No alternatives to compare yet','还没有可以对比的方案')}</b></div>`;
-  if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${L('Scoring each plan on the real CBD network…','正在真实 CBD 路网上逐套计算…')}</b></div>`;
+  if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
   const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
   const mark=(k,i)=>best[k]&&best[k].includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:'';
   const cell=(k,i,v,unit)=>`<div><span class="eyebrow">${{car:L('Car delay','车延误'),transit:L('Tram & bus','电车公交'),peds:L('On foot','行人'),hire:L('Hire','租金')}[k]}</span><b>${v}</b><small>${unit}</small>${mark(k,i)}</div>`;
   const cards=CP.rows.map((r,i)=>{
-    const n=nums[i],ok=!!r.s,picked=CP.pick===i;
+    const n=nums[i],ok=!!r.s,picked=CP.pick===i,f=r.flags||{};
+    const warn=[f.stock_ok===false?L('Not enough stock for this kit','库存不够配这一套'):'',f.inactive?L('No works this hour — numbers are 0','这个时段不施工 —— 数字是 0'):''].filter(Boolean);
     return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
-      <span class="cmp-what" data-cmpwhat="${i}"></span>
+      <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
       ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
         :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}</div>`;}).join('');
+  const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
   let h=head+`<div class="cmp-cards">${cards}</div>
-    <p class="legend-src">${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
+    <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
   if(CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
       <div class="chips">${[['contractor',L('Contractor','施工方')],['council',L('Council','市政')]].map(([k,t])=>`<button type="button" data-cmpby="${k}" aria-pressed="${CP.by===k}">${t}</button>`).join('')}</div>
