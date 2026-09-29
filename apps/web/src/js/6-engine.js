@@ -323,7 +323,7 @@ function engPeds3(s){
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
   <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
   <div class="metric"><span class="eyebrow">${L('Walk round','绕行')}</span><div class="v" style="color:${p.blocked?'var(--risk)':'var(--works)'}">${p.blocked?L('none','无路'):'+'+fmtN(p.detour_m)}<small>${p.blocked?'':'m'}${p.crossings?` · ${p.crossings} ${L('crossings','次过街')}`:''}</small></div></div></div>
-  <p class="small muted">${L(`City of Melbourne pedestrian counts; ${fmtN(p.extra_min)} extra person-minutes this hour at ${(p.assumed&&p.assumed.walk_mps)||1.3} m/s.`,`墨尔本市行人计数；这一小时共多走 ${fmtN(p.extra_min)} 人·分钟（按每秒 ${(p.assumed&&p.assumed.walk_mps)||1.3} 米）。`)}${sensorTxt?' '+sensorTxt+'.':''} ${L('Step-free access unknown (no steps data).','无障碍情况未知（数据里没有台阶信息）。')}</p></div>`;
+  <p class="small muted">${L(`City of Melbourne pedestrian counts; ${fmtN(p.extra_min)} extra person-minutes this hour at ${(p.assumed&&p.assumed.walk_mps)||1.3} m/s.`,`墨尔本市行人计数；这一小时共多走 ${fmtN(p.extra_min)} 人·分钟（按每秒 ${(p.assumed&&p.assumed.walk_mps)||1.3} 米）。`)}${sensorTxt?' '+sensorTxt+L('.','。'):''} ${L('Step-free access unknown (no steps data).','无障碍情况未知（数据里没有台阶信息）。')}</p></div>`;
 }
 function engBind3(){
   const s=EP.sum;if(!s)return;
@@ -427,7 +427,7 @@ function engPedDraw(s,faint){
 function engTransitDraw(s,faint){
   if(!hasTransit(s))return;const k=clamp(V.s/2.4,.7,1.6);
   ctx.save();ctx.lineCap='round';ctx.setLineDash([7,5]);
-  for(const r of (s.transit.routes||[]).slice(0,8)){ctx.globalAlpha=faint?.5:.9;ctx.strokeStyle=r.blocked?TK.risk:r.mode==='tram'?TK.aTram:TK.aBus;ctx.lineWidth=(r.blocked?3.4:2.4)*k;for(const id of r.links||[]){const P=engGeo(id);if(!P)continue;engLine(P,-2.5);ctx.stroke();}}
+  for(const r of (s.transit.routes||[]).slice(0,8)){ctx.globalAlpha=faint?.5:.9;ctx.strokeStyle=r.blocked?TK.risk:r.mode==='tram'?TK.aTram:TK.aBus;ctx.lineWidth=(r.blocked?3.4:2.4)*k;for(const id of [...(r.links||[]),...(r.detour_links||[])]){const P=engGeo(id);if(!P)continue;engLine(P,-2.5);ctx.stroke();}}
   ctx.restore();
 }
 // Ripple (every link that got slower), the queue, the closed link and the signs. Drawn under the road users.
