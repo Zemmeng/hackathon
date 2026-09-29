@@ -28,6 +28,7 @@ GREEN_FREE = 0.9         # 终点不是信号灯时的折减
 DEFAULT_SPEED = 40       # CBD 常见限速
 MATCH_M = 30             # 信号灯匹配节点的距离上限
 TRAM_M = 12              # 离电车轨道多近算「这条路上有电车」
+SIMPLIFY_DEG = 0.00003   # 折线抽稀容差（约 3 米），network.json 要压到 500 KB 以内
 BIKE_VALUES = {'lane', 'track', 'separate', 'opposite_lane', 'opposite_track'}
 HW_RANK = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential', 'living_street']
 SIGNAL_TYPES = {'INT', 'POS'}  # FLASH PX 是闪黄灯人行横道，不按信号灯折减
@@ -177,7 +178,7 @@ def main():
             'cap_vph': int(lanes * SAT_FLOW * (GREEN_SIGNAL if v in signal_nodes else GREEN_FREE)),
             't0_s': round(t0, 1), 'tram': bool(tram), 'bike_lane': d['bike_len'] >= 0.5 * length,
             'osm_way': int(way) if way is not None else None,
-            'geometry': [[round(y, 5), round(x, 5)] for x, y in geom.coords],
+            'geometry': [[round(y, 5), round(x, 5)] for x, y in geom.simplify(SIMPLIFY_DEG).coords],
         })
 
     out = os.path.join(MOD, 'public', a.area)
