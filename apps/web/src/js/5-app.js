@@ -4,15 +4,6 @@
    ============================================================ */
 const $=s=>document.querySelector(s);
 const ls={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
-const RESULTS={
-  clear:{severe:[6,1],conf:[39,24],noRoute:[1,0],bus:[8,2],emerg:[95,15],car:[43.1,46.0],score:[42,86]},
-  storm:{severe:[9,2],conf:[52,29],noRoute:[1,0],bus:[11,3],emerg:[128,22],car:[58.4,61.9],score:[31,79]},
-  flood:{severe:[7,2],conf:[44,27],noRoute:[3,1],bus:[19,7],emerg:[180,44],car:[96.0,88.5],score:[26,68]},
-  fog:{severe:[12,3],conf:[51,30],noRoute:[1,0],bus:[10,3],emerg:[64,18],car:[61.2,63.0],score:[24,74]},
-  heat:{severe:[4,1],conf:[33,21],noRoute:[2,0],bus:[8,2],emerg:[40,12],car:[44.0,46.3],score:[55,88]},
-  wind:{severe:[8,2],conf:[36,23],noRoute:[1,0],bus:[9,3],emerg:[88,20],car:[47.5,49.2],score:[46,82]}};
-const SEEDS={clear:18,storm:27,flood:22,fog:31,heat:12,wind:24};
-const PROFILE={clear:.55,storm:.9,flood:.75,fog:1,heat:.45,wind:.7};
 const IMPACT={
   clear:['Reference run. Every stress test is compared against it.','基准情景，所有压力测试都与它对比。'],
   storm:['Braking distance +38% · cyclist merge risk ×2.1','制动距离 +38% · 骑行者并道风险 ×2.1'],
@@ -31,9 +22,24 @@ const S={step:1,wx:'clear',basemap:'imagery',layers:{agents:true,weather:true,ri
 const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
+/* The La Trobe × Swanston micro-model (scripted road users, barrier B-12, the 17:00 timeline) is its own scene. It is drawn
+   only where it is the subject: step 2, the junction-replay tab of step 3, a plan that is on La Trobe St, or when the engine
+   is offline. Everywhere else the screen shows one works zone — the engine's (T20 addendum 4). */
+function microOn(){
+  if(S.step===2||(S.step===3&&!(BE.api&&EP.tab3==='net')))return true;
+  if(BE.err&&!BE.api)return true;
+  if(!BE.api)return false; // still connecting: don't flash the other junction first
+  return /la trobe/i.test(EP.street||'');
+}
+function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.contains('no-time')===on){app.classList.toggle('no-time',!on);readInsets();}}
+
 /* ---------- view ---------- */
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
-function setView(cx,cy,s){V.s=clamp(s,1.1,14);const hw=V.w/2/V.s,hh=V.h/2/V.s,mw=(WORLD.x1-WORLD.x0)/2,mh=(WORLD.y1-WORLD.y0)/2;V.cx=hw>=mw?0:clamp(cx,WORLD.x0+hw,WORLD.x1-hw);V.cy=hh>=mh?0:clamp(cy,WORLD.y0+hh,WORLD.y1-hh);V.ver++;}
+/* the view may pan until the map's edge meets the edge of the part the glass leaves open (insets), not the canvas edge —
+   otherwise the east / south end of the map can never come out from under the panels; a map smaller than that part is centred in it */
+function setView(cx,cy,s){V.s=clamp(s,1.1,14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
+  const x0=WORLD.x0+hw-I.l/V.s,x1=WORLD.x1-hw+I.r/V.s,y0=WORLD.y0+hh-I.b/V.s,y1=WORLD.y1-hh+I.t/V.s;
+  V.cx=x0>x1?(x0+x1)/2:clamp(cx,x0,x1);V.cy=y0>y1?(y0+y1)/2:clamp(cy,y0,y1);V.ver++;}
 function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
@@ -194,19 +200,20 @@ function render(dt){
   WX.dim=S.step===3?.35:1;
   if(S.layers.weather)WX.drawGround(ctx,V);
   if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
-  if(S.step===4&&S.simAfter){
+  const micro=microOn();
+  if(S.step===4){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
-  }else if(S.step===3){engDraw('now');drawWorks('before');}
-  else{engDraw('now');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter){drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
+  }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
+  else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   if(S.layers.weather)WX.drawNotes(ctx,V,TK);
-  if(S.step===1&&S.layers.works)planNotes();
-  if(S.step<=2)fogRings(S.sim);
+  if(S.step===1&&S.layers.works&&micro)planNotes();
+  if(S.step<=2&&micro)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
-  if(S.step===4&&S.simAfter&&S.layers.works)drawDeltas();
+  if(S.step===4&&S.simAfter&&S.layers.works&&micro)drawDeltas();
   engLabels();
   if(S.layers.grid)drawGrid();
   drawScale();
@@ -216,7 +223,7 @@ function render(dt){
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
-function activeSims(){return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
+function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
@@ -228,7 +235,7 @@ function goStep(n){
     if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
   if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=visibleMid();if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
-  updateSteps();renderPanel();updateSafety();
+  updateSteps();renderPanel();
 }
 function causal(ev){
   const sn=ev.snaps,f=tag=>sn.map(h=>({t:h.t,a:h.a.find(q=>q.tag===tag)})).filter(o=>o.a);
@@ -251,7 +258,7 @@ function onCritical(){
 }
 function renderAlert(){
   const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;
-  al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div><div><span>${L('SEEDS','复现')}</span><b>${SEEDS[S.wx]}/50</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
+  al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
   $('#alertBtn').onclick=()=>goStep(3);
 }
 function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;const I=insets();x=clamp(x,I.l+14,V.w-I.r-al.offsetWidth-14);y=clamp(y,I.t+70,V.h-I.b-al.offsetHeight-14);al.style.left=x+'px';al.style.top=y+'px';}
@@ -260,44 +267,41 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
+    ${microOn()?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather to stress-test','压力测试天气')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Micro-simulation of the La Trobe × Swanston junction · scripted road users','La Trobe × Swanston 路口微观仿真 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Searching for hidden failures','正在搜索隐藏的失效点')}</h2><p class="muted small">${L(`The red team recombines road users, behaviours and the ${wl.toLowerCase()} scenario to find the combinations that start a chain reaction.`,`红队把道路使用者、行为和「${wl}」情景反复组合，寻找会引发连锁反应的组合。`)}</p></div>
-    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Variations','变体')}</span><span class="eyebrow">${L('22 of 30','22 / 30')}</span></div><div class="list" id="varList"></div></div>
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
-    const ev=S.event,n=SEEDS[S.wx];
+    const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
-    <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
     <div class="stack"><span class="eyebrow">${L('Agents involved','涉及的智能体')}</span><div class="agents3">
       <div><b style="color:var(--a-bike)"><i class="dot" style="background:var(--a-bike)"></i>C-17</b><span>${L('Cyclist','骑行者')}</span><small>${ev&&ev.cv?(ev.cv*3.6).toFixed(0):'19'} km/h ${L('at merge','并道时')}</small></div>
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
@@ -306,50 +310,41 @@ function renderPanel(){
     $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
   }else{
-    const g=R.score[1],C=2*Math.PI*30;
-    const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
-    const mn=L(' min',' 分钟');
-    const eng=!!BE.api;
-    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
-    <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
-      <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">
+    const micro=microOn();
+    P.innerHTML=`${engPanel4()}${micro?`<div class="stack"><div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Junction layout v2 · La Trobe × Swanston','路口方案 v2 · La Trobe × Swanston')}</span><span class="eyebrow">${L('micro-model','微观仿真')}</span></div><div class="stack" style="gap:8px">
       <div class="row"><span class="delta">Δ1</span><span class="small">${L('Shift barrier B-12 8 m west and narrow it by 0.9 m','护栏 B-12 西移 8 m，并收窄 0.9 m')}</span></div>
       <div class="row"><span class="delta">Δ2</span><span class="small">${L('Add a 17 m tapered cycle transition with a give-way line','增设 17 m 渐变自行车过渡段和让行线')}</span></div>
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Before → after · 1 h','修复前 → 修复后 · 1 小时')} · ${wl}</span><span class="eyebrow">${L('simulated','模拟结果')}</span></div><div class="table">
-      ${row(L('Severe conflicts','严重冲突'),R.severe[0],R.severe[1],'var(--accent)')}${row(L('All conflicts','全部冲突'),R.conf[0],R.conf[1],'var(--accent)')}${row(L('Users with no route','无路可走的用户'),R.noRoute[0],R.noRoute[1],'var(--accent)')}${row(L('Bus extra delay','公交额外延误'),R.bus[0]+mn,R.bus[1]+mn,'var(--accent)')}${row(L('Emergency lane blocked','应急通道受阻'),R.emerg[0]+' s',R.emerg[1]+' s','var(--accent)')}${eng?'':row(L('Mean car delay','小汽车平均延误'),R.car[0]+' s',R.car[1]+' s',R.car[1]>R.car[0]?'var(--works)':'var(--accent)')}</div></div>
-    <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
-    ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
-    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
+    <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Conflicts in this run · before vs v2','本次仿真冲突数 · 原方案 vs v2')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span></span></div></div>`:''}
+    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Engine figures are model estimates on real CBD flows, not field-validated. Weather is illustrative.','引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。天气为示意。')}</span><div id="copyFallback"></div></div>`;
     $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
 function copyPlaybook(){
-  const R=RESULTS[S.wx],wl=wxLabel(S.wx),ex=engPlaybook();
-  const txt=L(`RippleTwin incident playbook — La Trobe St westbound cycle-lane closure (layout v2)\nScenario: weekday peak 17:00–18:00 · weather: ${wl}\n\nChanges\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream\n\nSimulated effect (1 h)\nSevere conflicts ${R.severe[0]} → ${R.severe[1]}\nAll conflicts ${R.conf[0]} → ${R.conf[1]}\nUsers with no route ${R.noRoute[0]} → ${R.noRoute[1]}\nBus extra delay ${R.bus[0]} → ${R.bus[1]} min\nEmergency lane blocked ${R.emerg[0]} → ${R.emerg[1]} s\nSafety score ${R.score[0]} → ${R.score[1]}\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — VMS-1 "CYCLISTS MERGING 30 km/h".\nRed: TTC < 1.5 s events — traffic controller holds the cycle transition.\nSensor fault: fall back to amber and request manual confirmation.`+ex[0],
-`RippleTwin 事件处置手册 — La Trobe St 西行自行车道封闭（方案 v2）\n情景：工作日晚高峰 17:00–18:00 · 天气：${wl}\n\n改动\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m\n\n模拟效果（1 小时）\n严重冲突 ${R.severe[0]} → ${R.severe[1]}\n全部冲突 ${R.conf[0]} → ${R.conf[1]}\n无路可走的用户 ${R.noRoute[0]} → ${R.noRoute[1]}\n公交额外延误 ${R.bus[0]} → ${R.bus[1]} 分钟\n应急通道受阻 ${R.emerg[0]} → ${R.emerg[1]} s\n安全分 ${R.score[0]} → ${R.score[1]}\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，VMS-1 显示「前方骑行者并道 限速 30」。\n红色：出现 TTC < 1.5 s 事件，交通指挥员暂停自行车过渡段。\n传感器故障：降级为黄色并要求人工确认。`+ex[1]);
+  const ex=engPlaybook(),micro=microOn(),eng=engOn();
+  const frames=[parseFrame(EP.f1),parseFrame(EP.f2)].filter(f=>f.length).map(f=>f.join(' / ')).join('  ▸  ');
+  const planEn=eng?`${EP.street} ${dirL(EP.dir)} — ${EP.all?'full closure':'one lane closed'}\nWorks ${WORKS_TIME.from} to ${WORKS_TIME.to}, ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · scored at ${engHour(EP.hour)}\nVMS-1 ${EP.vmsAt} m upstream: ${frames||'(blank)'}\nSign S-1 ${EP.signAt} m: ${EP.sign||'(none)'}`:'';
+  const planZh=eng?`${EP.street} ${dirL(EP.dir)} —— ${EP.all?'全封':'封一条道'}\n施工 ${WORKS_TIME.from} 至 ${WORKS_TIME.to}，${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · 按 ${engHour(EP.hour)} 计算\nVMS-1 上游 ${EP.vmsAt} m：${frames||'（空）'}\n标志牌 S-1 ${EP.signAt} m：${EP.sign||'（无）'}`:'';
+  const dEn=micro?`\n\nJunction layout v2 (La Trobe × Swanston micro-model)\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream`:'';
+  const dZh=micro?`\n\n路口方案 v2（La Trobe × Swanston 微观仿真）\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m`:'';
+  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.`,
+`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。`);
   const fb=()=>{$('#copyFallback').innerHTML=`<p class="small muted">${L('Copying is blocked here. Select the text below instead.','此处无法自动复制，请手动选中下面的文字。')}</p><div class="pre">${txt.replace(/</g,'&lt;')}</div>`;};
   try{navigator.clipboard.writeText(txt).then(()=>toast(L('Playbook copied to the clipboard','处置手册已复制到剪贴板')),fb);}catch(e){fb();}
 }
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;toastT=2.6;}
 function updateLive(force){
   const P=$('#panel'),sim=S.sim,set=(k,v)=>{const e=P.querySelector(`[data-live="${k}"]`);if(e&&e.textContent!==String(v))e.textContent=v;};
-  if(S.step===1&&sim){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
+  if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
-    const prog=clamp((sim.t-45)/40,0,1),vr=Math.min(30,22+Math.floor(prog*8));set('var',vr);set('pct',Math.round(vr/30*100)+'%');const pb=$('#pctBar');if(pb)pb.style.width=(vr/30*100)+'%';
-    set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);set('dps',(sim.agents.length*10*(S.playing?S.speed:0)).toLocaleString('en-AU'));
-    const crit=!!sim.critical,wl=wxLabel(S.wx),lst=$('#varList');
-    const rows=[['✓',L('Baseline · dry · all compliant','基准 · 干燥 · 全部守规'),L('PASS','通过'),'var(--accent)'],['✓',L(`Peak hour + ${S.wx==='clear'?'light rain':wl.toLowerCase()}`,`高峰 + ${S.wx==='clear'?'小雨':wl}`),L('PASS','通过'),'var(--accent)'],[crit?'●':'◌',L(`Unfamiliar driver + cyclist merge · ${wl}`,`不熟路司机 + 骑行者并道 · ${wl}`),crit?L('CRITICAL','严重'):L('RUNNING','运行中'),crit?'var(--risk)':'var(--works)'],[sim.stats.noRoute?'●':'○',L('Wheelchair user at the hoarding','围挡处的轮椅使用者'),sim.stats.noRoute?L('FAIL','失败'):L('QUEUED','排队中'),sim.stats.noRoute?'var(--risk)':'var(--fg-3)'],['○',L('Ambulance eastbound','东行救护车'),L('QUEUED','排队中'),'var(--fg-3)']];
-    const html=rows.map(([i,n,s,c],k)=>`<div${k===2&&crit?' style="background:var(--risk-tint)"':''}><b class="mono" style="color:${c};width:12px">${i}</b><span class="grow small">${n}</span><span class="val" style="color:${c};font-weight:700">${s}</span></div>`).join('');
-    if(lst&&lst.dataset.h!==html){lst.innerHTML=html;lst.dataset.h=html;}
-    const lb=$('#stLabel');if(lb){const txt=crit?L(`Stress test · paused · ${wl}`,`压力测试 · 已暂停 · ${wl}`):L(`Stress test · running · ${wl}`,`压力测试 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
+    set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
+    const crit=!!sim.critical,wl=wxLabel(S.wx);
+    const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
   }
   if(S.step===4&&S.simAfter){set('liveB',S.sim.stats.conflicts);set('liveA',S.simAfter.stats.conflicts);}
 }
-function updateSafety(){const R=RESULTS[S.wx],v=S.step===1?null:S.step===4?R.score[1]:R.score[0],el=$('#safetyVal');el.textContent=v==null?'— / 100':`${v} / 100`;el.style.color=v==null?'var(--fg-2)':v<50?'var(--risk)':v<70?'var(--works)':'var(--accent)';}
 function updateSteps(){document.querySelectorAll('#stepper button').forEach(b=>{const n=+b.dataset.step;if(n===S.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.classList.toggle('done',n<S.step);});}
 
 /* ---------- weather & legend ---------- */
@@ -370,7 +365,7 @@ let heatStats=null;
 function legendMetrics(){
   const k=S.wx;
   if(k==='clear')return[[L('Air','气温'),'18 °C'],[L('Road μ','路面摩擦 μ'),'0.80'],[L('Visibility','能见度'),'10 km'],[L('Wind','风速'),'12 km/h']];
-  if(k==='storm'){const d=Math.max(0,WX.maxIn('storm',AOI,10)),R=Math.pow(Math.pow(10,d/10)/200,1/1.6);return[[L('Max over AOI','AOI 最大值'),`${d.toFixed(0)} dBZ`],[L('Rain rate','雨强'),d<15?'—':`${R.toFixed(0)} mm/h`],[L('Road μ','路面摩擦 μ'),'0.45'],[L('Strikes','闪电次数'),String(WX.strikeCount)]];}
+  if(k==='storm'){const d=Math.max(0,WX.maxIn('storm',AOI,10)),R=Math.pow(Math.pow(10,d/10)/200,1/1.6);return[[L('Max over AOI','AOI 最大值'),`${d.toFixed(0)} dBZ`],[L('Rain rate','雨强'),d<15?'—':`${R.toFixed(0)} mm/h`],[L('Road μ','路面摩擦 μ'),'0.45']];}
   if(k==='flood'){const d=Math.max(0,WX.maxIn('flood',AOI,4));return[[L('Max depth AOI','AOI 最大水深'),`${d.toFixed(2)} m`],[L('Wet road','积水路面'),`${(WX.wet.length*4).toLocaleString('en-AU')} m²`],[L('Pits blocked','堵塞排水井'),'4'],[L('No step-free','无障碍中断'),String(S.sim?S.sim.stats.noRoute:0)]];}
   if(k==='fog'){const v=WX.visibility(0,0),vm=Math.min(120,WX.visibility(60,-6));return[[L('At junction','路口处'),`${v.toFixed(0)} m`],[L('VMS-1 legible','VMS-1 可读'),`${vm.toFixed(0)} m`],[L('Headway','车头时距'),'+1.6 s'],[L('Camera conf.','摄像头置信度'),Math.min(.98,.4+v/350).toFixed(2)]];}
   if(k==='heat'){if(!heatStats&&WX.lst){let s=0,n=0,sh=0,fn=0;for(let y=AOI.y0;y<AOI.y1;y+=2)for(let x=AOI.x0;x<AOI.x1;x+=2){const q=G.idx(x,y),c=G.cls[q];if(c===CLS.ROAD){s+=WX.lst[q];n++;}if(c===CLS.FOOT){fn++;if(G.shade[q])sh++;}}heatStats={a:s/n,sh:sh/fn};}const h=heatStats||{a:64,sh:.2};return[[L('Asphalt mean','沥青平均'),`${h.a.toFixed(1)} °C`],[L('Footpath shade','人行道遮阴'),`${(h.sh*100).toFixed(0)} %`],[L('Air','气温'),'44 °C'],['UTCI','46 °C']];}
@@ -378,9 +373,9 @@ function legendMetrics(){
 }
 function renderLegend(){
   const k=S.wx,Lg=LEG[k],col=wxCol(k),el=$('#legend');el.style.setProperty('--wxc',col);el.style.setProperty('--wxc-tint',rgba(col,.16));
-  el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${k==='clear'?L('BASE','基准'):L('LIVE','实时')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
+  el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${L('ILLUSTRATIVE','示意')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
   <div class="legend-body">${Lg.min?`<div class="legend-ramp" style="background:${rampCss(k)}"></div><div class="legend-scale"><span>${Lg.min}</span><span class="u">${Lp(Lg.u)}</span><span>${Lg.max}</span></div>`:''}
-  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)}</p></div>`;
+  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
   $('#legToggle').onclick=()=>{el.classList.toggle('collapsed');ls.set('rt-leg',el.classList.contains('collapsed')?'1':'0');};
   updateLegendLive();
 }
@@ -390,8 +385,8 @@ function renderWxSwitcher(){
   el.querySelectorAll('button').forEach(b=>{b.onclick=()=>setWeather(b.dataset.k);b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=WX_KINDS.indexOf(S.wx)+(e.key==='ArrowRight'?1:-1);setWeather(WX_KINDS[(i+6)%6]);el.querySelector(`[data-k="${S.wx}"]`).focus();e.preventDefault();}};});
 }
 function setWeather(k){
-  S.wx=k;ls.set('rt-wx',k);document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
-  renderWxSwitcher();renderLegend();updateSafety();renderPanel();renderAlert();
+  S.wx=k;document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
+  renderWxSwitcher();renderLegend();renderPanel();renderAlert();
 }
 
 /* ---------- language ---------- */
@@ -439,8 +434,8 @@ function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;documen
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
 function sizeHist(){const r=hc.getBoundingClientRect();hw=r.width;hh=r.height;const d=Math.min(2,devicePixelRatio||1);hc.width=Math.max(1,Math.round(hw*d));hc.height=Math.max(1,Math.round(hh*d));hctx.setTransform(d,0,0,d,0,0);}
 function drawHist(){
-  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,base=PROFILE[S.wx],live=S.sim?S.sim.minute:null,cur=Math.floor(S.clock/60);
-  for(let m=0;m<60;m++){const e=base*(.35+.65*Math.exp(-Math.pow((m-26)/9,2)))+.12*hash2(m,7,S.wx.length);const eh=(bot-top)*Math.min(1,e/1.4);c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-eh,bw-2,eh);
+  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,live=S.sim?S.sim.minute:null;
+  for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
     const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/3);c.fillStyle=v>=2?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
   for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(`17:${String(k*10).padStart(2,'0')}`.replace('17:60','18:00'),x,bot+4);}
@@ -495,7 +490,7 @@ function loop(now){
   if(histT>.2){histT=0;drawHist();}
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
     document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));
-    $('#metaAcq').textContent=`2026-09-29 ${fmtClock(S.clock)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
+    $('#metaAcq').textContent=microOn()?`2026-09-29 ${fmtClock(S.clock)} AEST`:`${WORKS_TIME.from} ${engHour(EP.hour)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
   if(legT>.5){legT=0;updateLegendLive();}
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
@@ -504,7 +499,7 @@ function loop(now){
 /* ---------- boot ---------- */
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
-  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;document.documentElement.dataset.wx=S.wx;
+  document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
