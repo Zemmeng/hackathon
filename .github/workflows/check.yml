@@ -1,7 +1,7 @@
 # check.yml —— CI 跑同一份 scripts/check.sh
 #
 # 用途：绕过本地 hook（--no-verify）的人、不用 AI 的人也逃不掉同一套检查。
-#       PR 和 main 上跑的都是全量检查：[1] 扫全部已跟踪文件，[5] 跑 apps/* 和 starters/* 的全部 test.sh；
+#       PR 和 main 上跑的都是全量检查：[1] 扫全部已跟踪文件，[5] 跑 apps/* 的全部 test.sh；
 #       只有 [3] 分支与越界按「相对 origin/main 的改动」判定（--base origin/main 本来就是默认值，写出来只为看得清）。
 #       失败时把「======== 汇总」节写进 job summary（PR 的 Checks 页一眼能看到）。
 # 触发：pull_request（opened / synchronize / reopened / labeled）；push 到 main。

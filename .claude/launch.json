@@ -2,20 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "starter-worker",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "npx wrangler dev -c starters/web-worker/wrangler.jsonc --port ${PORT:-8787} --var MOCK:1"],
-      "port": 8787,
-      "autoPort": true
-    },
-    {
-      "name": "starter-static",
-      "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-4173} -d starters/web-worker/public"],
-      "port": 4173,
-      "autoPort": true
-    },
-    {
       "name": "sim",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-4174} -d apps/sim/public"],

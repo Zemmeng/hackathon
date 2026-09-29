@@ -6,6 +6,7 @@
 #       [2] 暂存区里有 .env / .dev.vars / settings.local.json / keys.json（及同类）→ 拦
 #       [3] 暂存区里单个文件 > 1MB → 拦（压缩，或放网盘把链接写进 README）；
 #           apps/<模块>/public/ 下的 .json 数据文件放宽到 2MB（和 PRD「每个文件 < 2 MB」一致，D-0929-1430）
+#           docs/pitch-assets/ 下的 .pdf 放宽到 10MB（初筛 / 决赛要交的 PDF，D-0930-0116）
 # 什么时候触发：git commit 时自动触发。前提是启用过 hooks：
 #       git config core.hooksPath .githooks   （bash scripts/setup.sh 会帮你做）
 # 怎么绕过：紧急时 git commit --no-verify。CI 会用 scripts/check.sh 再查一遍，PR 里写明原因。
@@ -19,6 +20,8 @@ cd "$root" || exit 0
 MAX_BYTES=1048576        # 1MB
 MAX_DATA_BYTES=2097152   # 2MB：apps/<模块>/public/ 下的 .json
 DATA_RE='^apps/[^/]+/public/.+\.json$'
+MAX_PDF_BYTES=10485760   # 10MB：docs/pitch-assets/ 下的 .pdf（D-0930-0116）
+PDF_RE='^docs/pitch-assets/.+\.pdf$'
 fail=0
 scan_failed=0
 bad_secret_files=""
@@ -51,6 +54,7 @@ while IFS= read -r -d '' f; do
   size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
   limit=$MAX_BYTES; limit_name=1MB
   if [[ $f =~ $DATA_RE ]]; then limit=$MAX_DATA_BYTES; limit_name=2MB; fi
+  if [[ $f =~ $PDF_RE ]]; then limit=$MAX_PDF_BYTES; limit_name=10MB; fi
   if [ "${size:-0}" -gt "$limit" ] 2>/dev/null; then
     kb=$((size / 1024))
     bad_big_files="$bad_big_files    ${f}（${kb}KB > ${limit_name}）
@@ -67,7 +71,7 @@ else
 fi
 
 if [ -n "$bad_big_files" ]; then
-  echo "[3] 大文件 ❌ 单个文件超过上限（apps/<模块>/public/ 下的 .json 2MB，其余 1MB）："
+  echo "[3] 大文件 ❌ 单个文件超过上限（apps/<模块>/public/ 下的 .json 2MB，docs/pitch-assets/ 下的 .pdf 10MB，其余 1MB）："
   printf '%s' "$bad_big_files"
   fail=1
 else

@@ -1,6 +1,6 @@
 # apps/ —— 各模块的代码放这里
 
-kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.sh` 从 `starters/` 生成模块。
+kickoff 前这个目录只有这份 README。模块全部开赛后手工建（赛前的 `starters/` 已按 D-0929-1311 删掉，`new-app.sh` 随之停用）。
 
 ## 规则
 
@@ -16,7 +16,7 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 | roads | @louisxie316-dotcom | 没用 starter（数据管线 + 静态 JSON） | — | — |
 | web | @unicornnnnnny | 没用 starter（单文件静态页；`src/` 由 `build.py` 拼成 `public/index.html`） | 4175 | — |
 | engine | @Zemmeng（lead 的引擎会话，T9） | 没用 starter（纯 JS 路网引擎，浏览器和 node 都能跑） | —（`node apps/engine/tools/demo.mjs`） | `/engine/public/js/index.js` |
-| api | @jinmingq | 没用 starter（照 web-worker 手工建，去掉 DO） | 8788 | — |
+| api | @jinmingq | 部分：`test.sh`、`tests/mini.mjs`（测试运行器）拷自赛前的 web-worker starter（#22）；业务代码手写 | 8788 | — |
 | params | @Unzzip | 没用 starter（静态 JSON + 出处表） | — | — |
 | site | @unicornnnnnny（部署）· @Zemmeng（代码） | 没用 starter（手写 Worker：各模块 `public/` 挂到 `/<模块>/public/`，`/api/*` 转给 T5） | 8790 | `DEMO_URL`（部署后 lead 填） |
 
@@ -24,16 +24,13 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 
 | 类型 | 从哪起 | 谁分配 |
 |---|---|---|
-| Worker（`wrangler dev`） | 8787 被 `starter-worker` 占用，模块从 **8788** 起 | `new-app.sh` 自动分配，写进 `.claude/launch.json` |
-| Python 服务 | 8000 | `new-app.sh` 自动分配 |
-| 静态页（`python3 -m http.server`） | 4173 被 `starter-static` 占用 | 不自动分配；要单独预览某模块的 `public/` 就照 `starter-static` 那条手动加 |
+| Worker（`wrangler dev`） | **8788** 起（8787 原是 starter-worker，已删） | lead 手工分配，写进 `.claude/launch.json` |
+| Python 服务 | 8000 | lead 手工分配 |
+| 静态页（`python3 -m http.server`） | 4174 起（4173 原是 starter-static，已删） | 要单独预览某模块的 `public/` 就照 `sim` 那条手动加 |
 
-## 生成新模块（只能 lead 在 `lead/*` 分支执行）
+## 加新模块（只能 lead 在 `lead/*` 分支执行）
 
-```bash
-bash scripts/new-app.sh <模块名> web-worker --owner <handle>
-bash scripts/new-app.sh <模块名> py-tool --owner <handle>
-```
+`new-app.sh` 已停用（它只会复制 `starters/`，D-0929-1311 删了）。手工建：`apps/<模块名>/` 放下一节要求的文件 → 登记表加一行 → `.github/CODEOWNERS` 加 `/apps/<模块名>/ @<handle>` → 要本地预览再往 `.claude/launch.json` 加一条。
 
 ## 每个模块必须有
 

@@ -1,7 +1,7 @@
 # 模块之间的接口契约
 
 > 并行开发唯一需要协调的东西。改它 = 改所有调用方：PR 标题以 `contract:` 开头，lead 合并，合并后通知依赖方。优先向后兼容（加字段不删字段）。
-> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.8）。
+> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.11）。
 
 ## 谁调谁
 
@@ -237,7 +237,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `approaches[]` | 每段受影响的方向：`street dir to volume queue_m delay_min share routes[] by_type signs` |
 | `approaches[].routes[]` | `{ id, name, usual_min, now_min, share, flow, truck, turn_m, extra_min }`；`id: "stay"` 是原路，`turn_m` = 在施工起点上游多少米拐出去 |
 | `approaches[].by_type[类型]` | `{ share, detour, extra_min, informed, told[], reading }`：`informed` = 被标志说动的比例，`reading` = T5 给的读数（界面显示 `why`，用 `textContent`） |
-| `links[]` | 每个路段 `{ id, v, cap, delay_s, queue_m }`（流量 veh/h、比平时多的秒数、一小时末排队米数） |
+| `links[]` | 每个路段 `{ id, v, cap, delay_s, queue_m, extra_min }`：流量 veh/h；`delay_s` = 比自由流多的秒数（不是比平时）；`queue_m` = 一小时末排队米数（绝对值，含平时就有的排队）；`extra_min`（T28 #79）= 这一小时比不施工多出的车·分钟，可 < 0，全部路段加起来 = `delay_min`。页面画「施工造成的变慢 / 排队」用 `extra_min`，不要用 `delay_s` 或 `queue_m > 0` |
 | `hot[]` | 多出时间最多的 ≤ 5 个路段 |
 | `blocked_vph` | 全封又无路可绕、卡住的车流（不算进 `delay_min`，界面单独标） |
 | `calib` | `{ A, B, method: two_point | default, ok, target: { lo, hi }, lo_detour, hi_detour, src, model }`；`ok = false` = 两个目标至少有一个够不着 |
@@ -336,6 +336,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.11 | 2026-09-30 | §引擎原始结果 `raw.links` 加 `extra_min`（T28 #79，只加字段）；`delay_s` 的说明改成「比自由流多」（原来误写「比平时多」），并写明 `queue_m` 是绝对值 | lead |
 | v3.10 | 2026-09-29 | §evaluate 加 AI 调用日志（向后兼容，只加方法 / 可选参数）：`be.aiLog()` / `be.onAiLog(fn)` / `be.readingsOf(summary)` / `be.lastReadings()`，`connect({ onAiLog, aiLogMax })`；summary 字段不变 | lead |
 | v3.9 | 2026-09-29 | D-0929-2307（向后兼容，只加字段 / 取值）：`POST /api/explain` 接上大模型，`src` 多了 `llm / kv`，另加可选 `model` / `prompt_v`（`llm / kv` 时）和 `note`（兜底时）；`/api/health` 的 `llm` 加 `explain_v` | lead |
 | v3.8 | 2026-09-29 | T21（D-0929-2011 ②）§evaluate 加 `be.clash(a, b)` / `be.stagger(a, b)`：叠加冲突成本 D(A+B) − D(A) − D(B) 和一键错开，显示字段永远 ≥ 0、`flags.reliable`；只加方法 | lead |

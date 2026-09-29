@@ -139,7 +139,7 @@ T20 在 `docs/3-tasks.md` 你那节还是「🔨 待 review」：review 就是�
    - `tests/test_t20.py:69` 钉死了 `engUp(Math.min(s.queue_m,engWorldReach()))` 这段原文，改完要同步改这条断言
 6. **比例尺**：按 1 m ≈ 0.863 页面单位修正（`5-app.js:165-170`），全城和路口两种缩放下都对
 
-7. **变慢路段改用 `extra_min` 筛**（引擎那侧你在 T28 里已经做了）：`6-engine.js:465-466` 现在按 `(l.v||0)*(l.delay_s||0)/60` 筛，改成按 `l.extra_min`（≥ 2 才画，红 / 黄的阈值照旧）。这样 Flinders / King St 本来就有的排队不会在每个方案里被画成施工涟漪。**T28 没进 main 之前，T27 不合**
+7. **变慢路段改用 `extra_min` 筛**（引擎那侧你在 T28 里已经做了）：`6-engine.js:465-466` 现在按 `(l.v||0)*(l.delay_s||0)/60` 筛，改成按 `l.extra_min`（≥ 2 才画，红 / 黄的阈值照旧）。**同时去掉两处 `queue_m>0`**：筛选条件里的 `!(l.queue_m>0)` 和红色判断 `sev = l.queue_m>0 ? 2 …` 都要换成看 `extra_min`——`queue_m` 是绝对值，Flinders / King St 平时就有约 3,950 m 排队、`extra_min` 为 0，只换 `ex` 不去掉这两处，它们仍会被画红（09-30 审查 #79 实测）；施工路段自己的排队线另外画，不受影响。这样 Flinders / King St 本来就有的排队不会在每个方案里被画成施工涟漪。**T28 没进 main 之前，T27 不合**
 
 **阶段 2（可选，阶段 1 合了还有时间再做）**
 - 全城层上给约 15 条主街写街名（`drawLabels` 现在只画楼名，`2-basemap.js:199` 起）
