@@ -1,7 +1,7 @@
 # 模块之间的接口契约
 
 > 并行开发唯一需要协调的东西。改它 = 改所有调用方：PR 标题以 `contract:` 开头，lead 合并，合并后通知依赖方。优先向后兼容（加字段不删字段）。
-> 版本号：**v3**（每改一次加 1，写进「变更记录」）。
+> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.8）。
 
 ## 谁调谁
 
@@ -11,6 +11,7 @@
 | engine、web | roads | 静态 JSON 文件（随网页一起发布，线上不调接口） | §路网数据文件 |
 | engine | api | 浏览器里的 `readSigns()`（背后是 `POST /api/read`） | §路人读数 |
 | web | engine | 浏览器里的 `createEngine(...).evaluate(方案)`（T9 骨架） | §施工方案、§evaluate |
+| web | api | 施工登记表 `worksites.js`（背后是 `/api/worksites`）、AI 解读 `explain.js`（背后是 `POST /api/explain`）、执行包 `pack.js`（纯函数，不走接口） | §施工方案、§HTTP API |
 
 ## 路网数据文件（roads → engine、web）
 
@@ -90,7 +91,7 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 
 ## 施工方案（web → engine）
 
-一条施工 = 一个对象，web 画出来交给引擎（以后存 `/api/worksites` 也用这个格式）。引擎侧见 `apps/engine/public/js/worksite.js` 开头。
+一条施工 = 一个对象，web 画出来交给引擎。存进登记表 `/api/worksites` 时原样用这个格式，另加登记表字段（见本节末「登记表字段」）。引擎侧见 `apps/engine/public/js/worksite.js` 开头。
 
 ```json
 {
@@ -107,9 +108,51 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 
 - `links` 同方向连着的算一段；双向施工两个方向都列。`closes.lanes` ≥ 车道数 = 全封；没全封时剩下车道的通行能力再 × 0.9
 - `closes.footpath`（T17，可选）∈ `left / right / both`：封哪一侧人行道。相对施工路段的行车方向，和 `walk.json` 的 `side` 同口径（靠左行驶，`left` = 挨着被封车道那边的路缘）；不写 / `null` / `"none"` = 人行道不封。别的值（`"LEFT"`、`"north"`、`1` …）`validatePlan()` 报错，`backend.run / advise` 抛 `code: "bad_plan"`（`.errors` 是每条原因；页面可先调 `be.validate(方案)` → 错误列表）。只影响行人（`summary.peds`），不改车的数字
-- `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
+- `time.hours` = 每天 `[开始, 结束)`；`equipment[].at_m` = 在施工起点上游多少米（负数 = 施工起点下游，如摆在施工段末端的 END ROADWORK；引擎只把 `at_m ≥ 0` 的牌交给读屏，下游的牌只进清单和租金）；`type` ∈ `vms / sign / arrow / barrier`（`barrier` 不进读数请求）；`dir` 可选，只给这个方向的车看
 - 屏上文字（`frames`）：≤ 2 帧 × ≤ 4 行 × ≤ 10 字符、合计 ≤ 8 个词、大写（校验归 T5 / T2）
 - 「什么时候」= `when: { date: "YYYY-MM-DD", hour: 0–23, day?: "wd" | "we" }`；`hour` 是 `flows.json` 的下标
+- `equipment[].item`、`equipment[].qty`（#55，可选）：`item` = `apps/roads` 的 `equipment.json` 条目 id，`qty` = 件数（1–500），给报价和库存检查用（`apps/api/public/js/pack.js` 的 `quote()` / `stockCheck()`）；**引擎不看这两个字段**。不写时按类型和牌上的字自动对到库存条目，对不上的不算钱
+
+登记表字段（#53，只加不改；细节和错误短码见 `apps/api/README.md`「施工登记表」）：
+
+| 字段 | 谁给 | 说明 |
+|---|---|---|
+| `title` | 客户端 | ≤ 80 字，不许有 `< >` 和控制字符 |
+| `kind` | 客户端 | `road / utility / building / event / other`，默认 `other` |
+| `status` | 客户端 | `draft / assessed / decided / exported / withdrawn`，默认 `draft`；`decided` / `exported` 必须有 `decision`；没有删除，要撤就改成 `withdrawn` |
+| `decision` | 客户端（`at` 由服务端盖） | `{ option, by: "contractor" \| "council", reason ≤ 280 字, at }` |
+| `id` `seed` `created` `updated` | 服务端 | 客户端给的不算；白名单以外的字段一律丢掉 |
+
+- `options[]`（D-0929-2011 ③，按库存出的 3 套方案）的形状见下一小节（T22）；登记表现在不存它，只存人选定后的 `decision.option`
+
+### 按库存出方案 `options[]`（T22，v3.7，只加字段）
+
+`be.options(施工 | 方案, { n = 3, when?, worksite? })`（`apps/engine/public/js/backend.js`）→ 一处施工配 3 套方案，每套都用引擎跑同一个小时。`options()` 本身不调大模型（引导那一帧用规则顾问的写法）；每套的读数走 `run()` 同一条读屏链（T5 答案文件 → `/api/read` → 规则），读数一样时结果逐字一样。演示前要把 `options()` 生成的屏上文字（END ROADWORK、FOOTPATH CLOSED、DETOUR AHEAD、引导帧等）预算进 T5 答案文件，否则正式环境会现场问 `/api/read`，数字也可能和规则读数不同。引擎侧见 `apps/engine/README.md`「按库存出方案」。
+
+```json
+{ "worksite": "B-12", "when": { "date": "2026-10-06", "hour": 8 }, "days": 5,
+  "site": { "len_m": 43, "lanes": 2, "close_lanes": 1, "full": false, "footpath": "none" },
+  "inventory": { "src": "fetched", "version": 1, "assumed": true },
+  "options": [{
+    "id": "o1", "label": "Minimum", "label_zh": "最省",
+    "plan": { "when": {}, "worksites": [{ "…": "原施工，equipment 换成这一套；每件带 item + qty" }] },
+    "hire": { "lines": [{ "item": "barrier_water", "name": "…", "qty": 22, "day_rate_aud": 4, "days": 5, "cost_aud": 440 }],
+              "days": 5, "per_day_aud": 103, "total_aud": 515, "unpriced": [], "assumed": true, "note": "…" },
+    "stock": { "ok": true, "short": [], "shared_with": [] },
+    "result": { "queue_m": 918, "delay_min": 10493, "affected_min": 4354, "mean_delay_s": 509, "detour_share": 0.14, "routes": [], "transit": {}, "peds": {} },
+    "flags": { "ok": true, "stock_ok": true, "vms_text_ok": null, "vms_read": null, "guided": false, "inactive": false, "no_faster_detour": false, "assumed": ["hire.day_rate_aud", "stock.qty"] },
+    "vs": null
+  }]
+}
+```
+
+- `id` 固定 `o1` Minimum（护栏 + 静态标志）/ `o2` Standard（+ 箭头板 + VMS「ROADWORK / AHEAD」）/ `o3` Guided（同一块 VMS 加一帧点名引擎算出的最快绕行，另带 `guide: { frames, at_m, why }`）
+- `plan` 是完整的 §施工方案 方案，可以直接交给 `run / compare`；每件设备带 `item`（`equipment.json` 的 id）和 `qty`，和 `equipment[].item / qty` 同口径
+- `hire.assumed` 恒为 `true`：库存件数和日租价是假设值，界面要标「假设值」（D-0929-1536）；天数 = `time.from`–`time.to` 日历天数含两头
+- 每种设备件数 + 同一份方案里时间重叠（`overlaps()`：日期和每天时段都有交集）的其他施工已经带的件数（按它们 `equipment[].item / qty` 数）≤ 库存；不够的只摆剩下的，缺口进 `stock.short[{ equipment, item, need, got, stock, why }]`，`flags.ok = false`；`stock.shared_with` = 共用库存的那些施工 id
+- `flags.vms_read` = VMS 有没有进读数请求（T5 一次最多读离施工最近的 6 块，被挤掉就是 `false`，`flags.guided` 和 `flags.ok` 跟着 `false`）；`flags.inactive` = 这处施工在 `when` 那个小时不施工（数字都是 0，`flags.ok = false`）
+- `vs` = 和 `o1` 比（后 − 前）：`{ id, delay_min, affected_min, queue_m, hire_aud }`；哪套更少堵以引擎结果为准，不保证 `o3` 最好
+- 错误：方案不合格 / 有路段不在路网（哪怕只一条）/ 没 `time` 又没 `when` / `time.from`、`to` 不是真实日期或 `from` 晚于 `to` / `time.hours` 不是 `[开始, 结束)`（0 ≤ 开始 < 结束 ≤ 24）/ `when` 不是 `{ date, hour: 0–23 }` → `code: "bad_plan"`；库存取不到 → `code: "no_inventory"`
 
 ## evaluate（engine → web）
 
@@ -120,6 +163,26 @@ const be = await (await import('/engine/public/js/backend.js')).connect();
 const s = await be.run(方案);          // 能直接显示的数字：queue_m mean_delay_s routes by_type hot flags …；引擎原始结果（下表）在 s.raw
 const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
 ```
+
+**叠加冲突 `be.clash` / `be.stagger`**（T21，v3.8，只加方法；D-0929-2011 ②）：
+
+```js
+const k = await be.clash(a, b, { hours?, when? });   // a、b = §施工方案的一条施工，或整份方案（取 worksites[0]）
+// k = { a, b, ab, cost,                    // 显示用，永远 ≥ 0：D(A) / D(B) / D(A+B) / 冲突成本 D(A+B) − D(A) − D(B)，单位 车·分钟，按采样小时加总
+//       raw: { a, b, ab, cost },           // 引擎原始数（可能 < 0）
+//       whens, hours, truncated, overlap: { from, to, days },
+//       flags: { reliable, negative_delay, substitutes, reading_src, failed } }
+const g = await be.stagger(a, b, { maxDays = 7, hours?, back = false });
+// g = { base: clash(a, b), best: { days, cost, ab, overlap_days, reliable }, tries: [{ days, cost, overlap_days, reliable }],
+//       worksite: 挪好的 b, period: { from, to, whens, truncated, ab_before, ab_after, reliable, failed } }
+```
+
+- 时间窗 = 两处施工**重叠的那几天** × 重叠时段里的早晚高峰（8、17 点；都不在就取时段中间那个小时，和 `advise()` 同一口径）；`opts.hours` 换采样小时，`opts.when` 只算那一个时刻。不重叠 → 全 0、`whens = 0`，不跑引擎。两处施工都要写 `time`（或给 `when`），否则抛错
+- 数由 `engine.conflict()` 算（下文「其他」），接线层不另写算法；同样输入同样结果
+- 🔒 显示字段不出现负数，两种「≈ 0」分开标：`raw.a / raw.b / raw.ab` 有 < 0 的（基线车流本来就超过通行能力的路段，如 Flinders St，#58）→ `flags.negative_delay = true`、`flags.reliable = false`、`cost` 显示 0，页面写「≈ 0 · 这段路的基线车流超出通行能力，结果不可信」；三个 D 都 ≥ 0、只有 `raw.cost` < 0（同一走廊的两处施工互相替代）→ `flags.substitutes = true`、`cost` 显示 0、仍可信，页面写「≈ 0 · 两处施工在同一走廊，叠加不额外增加延误」
+- 读屏有失败（`flags.failed > 0`，和 `compare` / `advise` 同一口径）→ `flags.reliable = false`；a、b 先过 `validate()`，不合格抛 `bad_plan`
+- `stagger` 只挪 `b`：`+1 … +maxDays` 天（`back: true` 时 `+1, −1, +2, −2 …`），碰到第一个「不再重叠」或「冲突成本 0 且可信」就停；`best` 先取可信的尝试，同样可信时取冲突成本最小的（一样时取先试的），页面显示前看 `best.reliable`。`period` 是挪前、挪后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，同一把尺子比；`period.reliable` 要两个总和 ≥ 0、没有读屏失败、`base` 和 `best` 都可信
+- 读数和 `run()` 走同一条读屏链（T5 答案文件 → `/api/read` → 规则）。登记表 3 条预置施工的屏上文字（`ROAD CLOSED` / `USE RUSSELL ST` / `RIGHT LANE CLOSED`）还不在 T5 答案文件里：正式环境 MOCK=0 时第 3 步一打开就会现场问 `/api/read`，数和规则读数算的（测试里 27,783）不一样。演示前要预算进答案文件，或在 pitch 里说明这个数用的是规则读数
 
 **电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
 
@@ -216,9 +279,14 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
-| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`；`key` 只说有没有，**永远不给值**；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
+| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`；`key` 只说有没有，**永远不给值**；`register`（#53）= 登记表的 Durable Object 绑上没有；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
 | `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB（按字节）413 | api |
 | `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
+| `GET /api/worksites?from&to&status` | `from` / `to` 是 `YYYY-MM-DD`，和工期有交集就算 | `{ "ok": true, "register": "do"\|"seed", "n", "worksites": [施工] }`：预置 + 登记的，按开工日期排；DO 没绑或出错时 `register: "seed"`，只回预置的 | api |
+| `POST /api/worksites` | §施工方案 + 登记表字段 | 201 `{ "ok": true, "worksite", "edit_token" }`；`edit_token` **只回这一次**，库里只存 SHA-256，页面自己存（localStorage） | api |
+| `GET /api/worksites/<id>` | — | `{ "ok": true, "worksite" }`；没有 404 | api |
+| `PATCH /api/worksites/<id>` | 请求头 `x-edit-token` + 要改的字段 | `{ "ok": true, "worksite" }`；合并后整份重新校验；token 不对 403 `bad_token`、预置的 403 `locked`、满 200 条 409、全局每天写 500 次 429 | api |
+| `POST /api/explain` | `{ lang?, options: [{ id, label, metrics, per_capita_min?, flags? }] }`（1–5 套，数字从 `optionFromRun()` 转） | `{ "ok": true, "explain": { src, lang, options: [{ id, summary, pros, cons, hardest_hit, risks }], lean, decide } }`；解读里的每个数都要能追溯到请求里的数；不合规范 400，> 8KB 413 | api |
 
 - `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
 - 真调用前还要向全局每日计数（Durable Object 绑定 `BUDGET`）预留 3 次：超了 `LLM_MAX_CALLS_PER_DAY`（`llm.per_day`）、没绑上或出错都不调用，读数回规则并带 `note`（`llm_daily_cap` / `llm_no_budget` / `llm_budget_error`）
@@ -265,6 +333,9 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.8 | 2026-09-29 | T21（D-0929-2011 ②）§evaluate 加 `be.clash(a, b)` / `be.stagger(a, b)`：叠加冲突成本 D(A+B) − D(A) − D(B) 和一键错开，显示字段永远 ≥ 0、`flags.reliable`；只加方法 | lead |
+| v3.7 | 2026-09-29 | T22（D-0929-2011 ③）§施工方案 加「按库存出方案 `options[]`」：`be.options()` 出 `o1 / o2 / o3` 三套方案，每套带引擎结果、租金（`hire.assumed = true`）、库存检查（不超库存）；只加字段。依赖 v3.6（#57）的 `equipment[].item / qty` | lead |
+| v3.6 | 2026-09-29 | T24（D-0929-2011 ⑤，向后兼容，只加字段）：§施工方案加登记表字段（`title / kind / status / decision`，服务端 `id / seed / created / updated`，#53）和可选的 `equipment[].item / qty`（#55，引擎不看）；§HTTP API 加 `/api/worksites` 四个接口（#53）、`POST /api/explain`（#54），`/api/health` 加 `register`；`options[]` 等 T22 | lead |
 | v3.5 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`（含每日上限 `budget` / `per_day` / `per_min`，`cache` ∈ `kv / cache-api / memory`）；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |
 | v3.4 | 2026-09-29 | §evaluate `summary.peds`（T17 复审）：`connect()` 不再等 walk / peds（`status().peds = loading`、`be.pedsReady()`、`pending`）；加 `dead_end`、`unmatched` / `unmatched_sides`、`note` / `note_zh`、`sensor.on_closed`；`crossings` 改按「过几条街」数；右侧人行道按并排长度选 | lead |
 | v3.3 | 2026-09-29 | §施工方案加可选的 `closes.footpath`（`left / right / both`）和方案校验（`bad_plan`）；§evaluate 加 `summary.peds`（封人行道的行人绕行，T17）、`status().peds`、`compare` 的 `delta.peds_extra_min`；`connect()` 另取 `walk.json` / `peds.json`，取不到不抛 | lead |

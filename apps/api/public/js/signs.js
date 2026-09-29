@@ -44,7 +44,8 @@ function signText(x, where) {
 
 export const countWords = (text) => (text ? text.split(" ").length : 0);
 
-function normSign(s, i) {
+// 一块标志 → 规范化后的标志；施工登记表（worksites.js）校验 equipment 的屏上文字也用这一份
+export function normSign(s, i) {
   const at = `signs[${i}]`;
   if (!isObj(s)) throw bad("bad_sign", `${at} 要是对象`);
   const readS = s.read_s;

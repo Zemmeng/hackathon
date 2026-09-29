@@ -15,7 +15,10 @@
 import {
   createEngine, mockReadSigns, mockAdvise, advise as adviseCore, loadParams, PARAMS_URL, TYPES,
   requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit, validatePlan, pedImpact, pedsUnavailable, footpathActive,
+  advisorSummary, sampleHours, overlaps, shiftWorksite,
 } from './index.js';
+import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk, timeErrors, whenErrors, usageOf, sharingWith, vmsRead } from './options.js';
+import { isActive } from './worksite.js';
 
 export const PEDS_WAIT_MS = 8000; // 封了人行道、行人数据还在路上时 run() 最多等几毫秒（再慢就先给车的数字，summary.peds.src = null、pending = true）
 
@@ -25,6 +28,7 @@ export const PATHS = {
   transit: '/roads/public/cbd/transit.json',
   walk: '/roads/public/cbd/walk.json', // T17 人行道路网
   peds: '/roads/public/cbd/peds.json', // T17 每条人行道每小时多少人
+  equipment: '/roads/public/cbd/equipment.json', // T7 RPM Hire 设备库存 + 日租价（假设值）；be.options() 第一次调用时才取（T22）
   params: PARAMS_URL,
   reader: '/api/public/js/reader.js',
   check: '/api/public/js/check.js',
@@ -322,8 +326,195 @@ export async function connect(opts = {}) {
     };
   }
 
+  // 按库存出方案（T22，D-0929-2011 ③）：一处施工 → 最省 / 标准 / 引导 3 套交通管理方案，每套都用引擎跑同一个小时，带租金和库存检查。
+  // 输入：一条施工方案（要给 when，或施工写了 time → 默认开工那天、时段里第一个采样小时），或整份方案 { when, worksites }（配 worksites[0]，
+  // 或 opts.worksite 指定哪一条；别的施工原样留着一起算，时间重叠的施工带走的设备先从库存里扣）。不改输入。
+  // options() 自己不调大模型（引导那一帧用规则顾问 mockAdvise 的写法）；每套的读数走 run() 同一条读屏链（T5 答案文件 → /api/read → 规则），
+  // 读数一样时结果逐字一样。演示前要把 options() 生成的屏上文字预算进 T5 答案文件，否则正式环境会现场问 /api/read。
+  let inventory = opts.equipment || null;
+  let invSrc = inventory ? 'given' : null;
+  async function inventoryOf() {
+    if (!inventory) {
+      try {
+        const inv = await getJSON(base + PATHS.equipment, f);
+        if (!Array.isArray(inv?.items)) throw new Error('equipment.json 没有 items[]');
+        inventory = inv; invSrc = 'fetched';
+      } catch (e) {
+        const err = new Error(`设备库存没加载上，出不了方案：${e?.message || e}`);
+        err.code = 'no_inventory';
+        throw err;
+      }
+    }
+    return inventory;
+  }
+  const brief = s => ({
+    when: s.when, street: s.street, queue_m: s.queue_m, delay_min: s.delay_min, affected_min: s.affected_min, others_min: s.others_min,
+    vehicles: s.vehicles, mean_delay_s: s.mean_delay_s, detour_share: s.detour_share, blocked_vph: s.blocked_vph,
+    routes: s.routes.map(r => ({ id: r.id, name: r.name, share: r.share, extra_min: r.extra_min })),
+    transit: s.transit?.src ? { src: s.transit.src, pax_min: s.transit.pax_min, blocked_pax_h: s.transit.blocked_pax_h } : null,
+    peds: s.peds?.src ? { src: s.peds.src, extra_min: s.peds.extra_min } : null,
+  });
+
+  async function options(input, { n = 3, when, worksite } = {}) {
+    const inv = await inventoryOf();
+    const isPlan = Boolean(input && Array.isArray(input.worksites));
+    const plan0 = clone(isPlan ? input : { when: null, worksites: [input] });
+    const errs = validate(plan0);
+    if (errs.length) throw planError(errs);
+    const idx = worksite != null ? plan0.worksites.findIndex(w => w.id === worksite) : 0;
+    if (idx < 0 || !plan0.worksites[idx]) throw planError([worksite != null ? `方案里没有施工 ${worksite}` : '方案里没有施工']);
+    const ws = plan0.worksites[idx];
+    const tErrs = timeErrors(ws.time, `施工 ${ws.id ?? '?'}`);
+    if (tErrs.length) throw planError(tErrs);
+    if (when) plan0.when = clone(when);
+    if (!plan0.when && ws.time?.from) plan0.when = { date: ws.time.from, hour: sampleHours([ws])[0] };
+    if (!plan0.when) throw planError(['施工没写 time，要给 when（{ date, hour }）']);
+    const wErrs = whenErrors(plan0.when);
+    if (wErrs.length) throw planError(wErrs);
+    const site = siteOf(engine.net, ws);
+    if (site.missing.length) throw planError([`施工 ${ws.id ?? '?'}：路段不在路网里：${site.missing.join(', ')}（长度按 0 算会少算护栏）`]);
+    if (site.lanes == null) throw planError([`施工 ${ws.id ?? '?'}：links 是空的`]);
+    const active = isActive(ws, plan0.when); // false = 这处施工在 when 那个小时不施工，三套的数字都是 0，不能当真
+    const shared = sharingWith(plan0.worksites, ws); // 时间重叠的其他施工：库存共用
+    const used0 = usageOf(shared);
+    const days = daysOf(ws.time);
+    const count = Math.max(1, Math.min(TIERS.length, Math.floor(Number(n)) || TIERS.length));
+    const planWith = equipment => ({ when: clone(plan0.when), worksites: plan0.worksites.map((w, i) => (i === idx ? { ...clone(w), equipment } : clone(w))) });
+
+    const out = [];
+    let guide = null; // 由「最省」那套的引擎结果定：最快的绕行叫什么、省几分钟、VMS 摆在拐口前多远
+    for (const tier of TIERS.slice(0, count)) {
+      const frames = tier.guided && guide?.frames ? guide.frames : [WARN_FRAME];
+      const needs = tierNeeds(tier, ws, site, { vmsAt: guide?.at_m ?? VMS_AT_M, frames });
+      const { equipment, short } = resolveNeeds(needs, inv, used0);
+      const plan = planWith(equipment);
+      const s = await run(plan);
+      if (tier.id === 'o1' && count > 1) {
+        const adv = await mockAdvise(advisorSummary(s.raw, [plan.worksites[idx]]));
+        const sug = (adv?.suggestions || []).find(x => x.kind === 'text' && x.worksite === ws.id);
+        const fr = sug ? guidedFrames(sug.frames?.[0]) : null;
+        guide = { frames: fr, at_m: Number.isFinite(sug?.at_m) ? sug.at_m : VMS_AT_M, why: sug?.why ?? null };
+      }
+      const vms = equipment.find(e => e.type === 'vms');
+      const stock = { ...stockOf(equipment, inv, short, used0), shared_with: shared.map(w => w.id ?? null) };
+      const read = vms ? vmsRead(equipment) : null; // VMS 有没有进读数请求（没被 6 块上限挤掉）
+      const flags = {
+        ok: s.flags.ok && active && stock.ok && (!vms || (vmsTextOk(vms.frames) && read)),
+        stock_ok: stock.ok,
+        vms_text_ok: vms ? vmsTextOk(vms.frames) : null,
+        vms_read: read,
+        guided: Boolean(tier.guided && guide?.frames && vms && read),
+        no_faster_detour: Boolean(tier.guided && !guide?.frames), // 引擎算下来没有哪条绕行更快：引导档的屏上文字和标准档一样
+        sign_errors: s.flags.sign_errors, reading_src: s.flags.reading_src, params: s.flags.params, failed: s.flags.failed, missing: s.flags.missing,
+        inactive: !active, full_closure: site.full, footpath: site.footpath, no_time: !ws.time, missing_links: site.missing,
+        assumed: ['hire.day_rate_aud', 'stock.qty'], // D-0929-1536：租金和库存是假设值，界面标「假设值」
+      };
+      const hire = hireOf(equipment, inv, days), result = brief(s), first = out[0];
+      out.push({
+        id: tier.id, label: tier.label, label_zh: tier.label_zh,
+        plan, hire, stock, result, flags,
+        // 和最省那套比（后 − 前，负数 = 少堵）；引擎算出来一样就是一样，不硬凑差别
+        vs: first ? { id: first.id, delay_min: +(result.delay_min - first.result.delay_min).toFixed(3), affected_min: result.affected_min - first.result.affected_min,
+          queue_m: result.queue_m - first.result.queue_m, hire_aud: hire.total_aud - first.hire.total_aud } : null,
+        ...(tier.guided ? { guide: { frames: guide?.frames ?? null, at_m: guide?.at_m ?? null, why: guide?.why ?? null } } : {}),
+      });
+    }
+    return {
+      worksite: ws.id ?? null, when: clone(plan0.when), days,
+      site: { len_m: site.len_m, lanes: site.lanes, close_lanes: site.close_lanes, full: site.full, footpath: site.footpath },
+      inventory: { src: invSrc, version: inventory.version ?? null, assumed: true }, options: out,
+    };
+  }
+
+  // 叠加冲突（T21，D-0929-2011 ②）：这处施工和同一时段另一处施工叠在一起，比各做各的多堵多少。
+  // 冲突成本 = D(A+B) − D(A) − D(B)，D = 全网总延误（车·分钟），用引擎 engine.conflict() 算，这里不另写一套。
+  // 时间窗 = 两处施工真正重叠的那几天 × 重叠时段里的早晚高峰（8、17 点，没有就取时段中间那个小时；和 advise() 同一口径）。
+  //   只看重叠的时刻：不重叠的时刻只有一处在施工，冲突成本本来就是 0。a / b / ab 因此是「重叠那几天的采样小时」加总，不是整个工期。
+  //   opts.hours 换采样小时；opts.when 只算这一个时刻。a、b 可以是一条施工（§施工方案），也可以是整份方案（取 worksites[0]）。
+  // 显示字段 a / b / ab / cost 永远 ≥ 0，原始数放在 raw。两种「≈ 0」分开标：
+  //   flags.negative_delay：D(A) / D(B) / D(A+B) 有 < 0 的（基线车流本来就超过通行能力的路段，如 Flinders St，见 #58）
+  //     → flags.reliable = false、cost 显示 0，页面写「≈ 0 · 基线车流超出通行能力，结果不可信」
+  //   flags.substitutes：三个 D 都 ≥ 0，只是 D(A+B) < D(A) + D(B)（同一走廊的两处施工互相替代，叠加不额外增加延误）
+  //     → cost 显示 0，仍然可信
+  //   读屏有失败（flags.failed > 0，同 compare / advise 的口径）→ 也 reliable = false。
+  const wsOf = x => (x && Array.isArray(x.worksites) ? x.worksites[0] : x);
+  const dn = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
+  function overlapOf(a, b) {
+    if (!a.time || !b.time || !overlaps(a, b)) return { from: null, to: null, days: 0, hours: null };
+    const from = a.time.from > b.time.from ? a.time.from : b.time.from, to = a.time.to < b.time.to ? a.time.to : b.time.to;
+    const [a0, a1] = a.time.hours || [0, 24], [b0, b1] = b.time.hours || [0, 24];
+    return { from, to, days: dn(to) - dn(from) + 1, hours: [Math.max(a0, b0), Math.min(a1, b1)] };
+  }
+  async function prepPairs(sets, whens) {
+    for (const worksites of sets) await engine.prepare({ when: whens[0], worksites }, { whens });
+  }
+  async function clash(a0, b0, opts = {}) {
+    const a = wsOf(a0), b1 = wsOf(b0);
+    if (!a || !b1) throw new Error('clash(a, b)：a、b 要是一条施工或一份方案');
+    if (!opts.when && (!a.time || !b1.time)) throw new Error('clash(a, b)：两处施工都要写 time（或给 opts.when 只算一个时刻）');
+    const errs = validate({ worksites: [a, b1] }); // 和 run / compare / advise 一样先挡不合格的施工，不悄悄算
+    if (errs.length) throw planError(errs);
+    const b = a.id === b1.id ? { ...b1, id: `${b1.id}-2` } : b1; // 同一个 id 引擎会当成一处施工
+    const ov = overlapOf(a, b);
+    const whens = opts.when ? [opts.when] : ov.days ? windowWhens([{ time: { from: ov.from, to: ov.to, hours: ov.hours } }], opts.hours) : [];
+    const e0 = errCount();
+    let c = { a: 0, b: 0, ab: 0, cost: 0 };
+    if (whens.length) {
+      await prepPairs([[a], [b], [a, b]], whens);
+      c = engine.conflict(a, b, { whens });
+    }
+    const raw = { a: c.a, b: c.b, ab: c.ab, cost: c.cost };
+    const negDelay = [raw.a, raw.b, raw.ab].some(x => x < 0);
+    const substitutes = !negDelay && raw.cost < 0;
+    const failed = errCount() - e0;
+    return {
+      a: Math.max(0, raw.a), b: Math.max(0, raw.b), ab: Math.max(0, raw.ab), cost: negDelay ? 0 : Math.max(0, raw.cost), raw,
+      whens: whens.length, hours: [...new Set(whens.map(w => w.hour))], truncated: Boolean(whens.truncated),
+      overlap: { from: ov.from, to: ov.to, days: ov.days },
+      flags: { reliable: !negDelay && !failed, negative_delay: negDelay, substitutes, reading_src: engine.calib.src, failed },
+    };
+  }
+
+  // 一键错开（T21）：把 b 往后挪 1…maxDays 天（back: true 时每一步再试往前挪同样天数，顺序 +1, −1, +2, −2 …），
+  // 每一步都用 clash() 重算；碰到第一个「不再重叠」或「冲突成本 = 0 且结果可信」就停。同样输入同样结果。
+  // best：可信的尝试排在不可信的前面（不可信的被清成 0，不能冒充「清零了」），同样可信时取冲突成本最小的，一样时取先试的。
+  // best.ab / period：挪之前和挪之后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，
+  //   两个数用同一把尺子比：b 自己的延误只是换了日子，省下的主要就是冲突成本。
+  async function stagger(a0, b0, { maxDays = 7, hours, back = false } = {}) {
+    const a = wsOf(a0), b = wsOf(b0);
+    if (!a?.time || !b?.time) throw new Error('stagger(a, b)：两处施工都要写 time');
+    const base = await clash(a, b, { hours });
+    const order = [];
+    for (let d = 1; d <= maxDays; d++) { order.push(d); if (back) order.push(-d); }
+    const tries = [];
+    let best = null;
+    for (const days of order) {
+      const r = await clash(a, shiftWorksite(b, days), { hours });
+      tries.push({ days, cost: r.cost, overlap_days: r.overlap.days, reliable: r.flags.reliable });
+      const cand = { days, cost: r.cost, overlap_days: r.overlap.days, reliable: r.flags.reliable };
+      if (!best || (cand.reliable && !best.reliable) || (cand.reliable === best.reliable && cand.cost < best.cost)) best = cand;
+      if (!r.overlap.days || (r.cost === 0 && r.flags.reliable)) break;
+    }
+    if (!best) return { base, best: null, tries, period: null };
+    const b2 = shiftWorksite(b, best.days);
+    const W = windowWhens([a, b, b2], hours);
+    const e0 = errCount();
+    await prepPairs([[a, b], [a, b2]], W);
+    const before = engine.window([a, b], W).delay_min, after = engine.window([a, b2], W).delay_min;
+    const failed = errCount() - e0;
+    best.ab = Math.max(0, after);
+    return {
+      base, best, tries, worksite: b2,
+      period: { from: W[0]?.date ?? null, to: W[W.length - 1]?.date ?? null, whens: W.length, truncated: Boolean(W.truncated),
+        ab_before: Math.max(0, before), ab_after: Math.max(0, after),
+        reliable: before >= 0 && after >= 0 && !failed && base.flags.reliable && best.reliable, failed },
+    };
+  }
+
   return {
     engine,
+    options,
+    clash, stagger,
     status: () => JSON.parse(JSON.stringify({ ...status, calib: engine.calib, params_used: engine.params.used })),
     run, compare, advise, check: checkPlan, validate,
     pedsReady: () => pedsP, // 行人数据取完（不管成没成）→ status().peds：fetched / given / none

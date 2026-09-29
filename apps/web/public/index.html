@@ -333,16 +333,16 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
    Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
    the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
    comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
-   Apple-style clear glass (09-29 ask): the tint is light (~.4); --glass-tone dims the map behind it (dark) or lifts it
+   Apple-style clear glass (09-29 ask, lead: clearer still): the tint is light (~.3); --glass-tone dims the map behind it (dark) or lifts it
    (light) so text still clears 4.5:1. Reduced transparency or no backdrop-filter → solid surfaces.
    ============================================================ */
 :root,:root[data-theme="dark"]{
   --bg:#07090B;--raised:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.24);
   --fg:#F7F9FA;--fg-2:#CDD4D9;--fg-3:#B8C1C7;
-  --panel:rgba(22,27,34,.40);--glass:rgba(22,27,34,.38);--glass-line:rgba(255,255,255,.18);
-  --shell:rgba(22,27,34,.40);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
-  --glass-tone:brightness(.5) saturate(1.9);
-  --tone-deep:brightness(.5) saturate(1.9);--shell-deep:rgba(22,27,34,.40);--glass-deep:rgba(22,27,34,.38);--tone-fog:brightness(.33) saturate(1.6);--tone-fog-deep:brightness(.33) saturate(1.6);
+  --panel:rgba(22,27,34,.30);--glass:rgba(22,27,34,.28);--glass-line:rgba(255,255,255,.18);
+  --shell:rgba(22,27,34,.30);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
+  --glass-tone:brightness(.44) saturate(1.9);
+  --tone-deep:brightness(.44) saturate(1.9);--shell-deep:rgba(22,27,34,.30);--glass-deep:rgba(22,27,34,.28);--tone-fog:brightness(.29) saturate(1.6);--tone-fog-deep:brightness(.29) saturate(1.6);
   --shadow:0 20px 50px rgba(0,0,0,.36);
   --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.05),inset 0 26px 40px -34px rgba(255,255,255,.38);
   --hl:rgba(255,255,255,.08);--hl-2:rgba(255,255,255,.05);--hl-edge:rgba(255,255,255,.18);
@@ -353,10 +353,10 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   :root:not([data-theme="dark"]){
     --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
     --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
-    --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
-    --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
-    --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
-    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+    --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+    --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+    --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
     --shadow:0 18px 44px rgba(28,40,50,.14);
     --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
     --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
@@ -367,10 +367,10 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 :root[data-theme="light"]{
   --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
   --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
-  --panel:rgba(255,255,255,.42);--glass:rgba(255,255,255,.44);--glass-line:rgba(255,255,255,.72);
-  --shell:rgba(255,255,255,.40);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
-  --glass-tone:brightness(1.16) contrast(.84) saturate(1.8);
-  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.16) contrast(.84) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+  --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+  --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+  --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
   --shadow:0 18px 44px rgba(28,40,50,.14);
   --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
   --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
@@ -490,6 +490,14 @@ button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.e
 .progress .track i{background:var(--sun)}
 input[type="range"]#vmsAt{accent-color:var(--sun)}
 
+/* T20: assumptions and units, always visible (not .muted: the compact view hides .muted) */
+.eng-assume{margin:0;font:400 11.5px/1.5 var(--f-body);color:var(--fg-2)}
+.eng-assume p{margin:0}
+.eng-assume p+p{margin-top:4px}
+.eng-opt .d small{display:block;margin-top:3px;font:500 9.5px/1 var(--f-mono);color:var(--fg-3);text-align:right}
+/* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
+.app.no-time .timeline{display:none}
+
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
   .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
@@ -499,6 +507,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
   .panel-open:not([hidden]){display:flex;position:fixed;z-index:5;right:12px;top:var(--safe-t);flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:18px;cursor:pointer;color:var(--fg);font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
@@ -537,6 +546,99 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 @media (prefers-reduced-motion: reduce){
   .panel,.app.panel-min .panel,.stepper button,.rail button,.sec-head::after{transition:none}
 }
+
+/* ---------- T23 compare · choose · export (src/js/8-compare.js) ---------- */
+.cmp-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cmp-cards{display:flex;flex-direction:column;gap:8px}
+.cmp-card{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.cmp-card[aria-current="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.cmp-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cmp-hd b{font:600 13px/1.25 var(--f-body)}
+.cmp-what{font:400 10.5px/1.35 var(--f-mono);color:var(--fg-2);overflow-wrap:anywhere}
+.cmp-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.cmp-nums>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cmp-nums b{font:700 14px/1.1 var(--f-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cmp-nums small{font:400 9px/1.2 var(--f-mono);color:var(--fg-3)}
+.cmp-warn{font:600 10px/1.3 var(--f-mono);color:var(--works)}
+.cmp-best{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.cmp-choose textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:54px;border:1px solid var(--line);border-radius:6px;background:var(--raised);color:var(--fg);font:400 12.5px/1.4 var(--f-body);padding:8px 10px}
+.cmp-sheet{position:fixed;inset:0;z-index:40;background:rgba(7,9,11,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.cmp-sheet[hidden]{display:none}
+.cmp-doc{background:#E7ECEE;color:#15191C;width:min(820px,100%);max-height:calc(100vh - 32px);overflow:auto;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:12px;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.cmp-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:2px 4px}
+.cmp-acts{display:flex;gap:8px;flex-wrap:wrap}
+.cmp-doc .btn{width:auto;padding:9px 12px;font-size:12.5px}
+.cmp-doc .btn.ghost{background:#fff;color:#15191C;border-color:#AAB7BF}
+.cmp-doc pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 12px/1.55 var(--f-mono);background:#fff;padding:20px;border-radius:8px}
+/* the execution pack itself: paper-white in both themes, A4 when printed */
+.pack-doc{background:#fff;color:#15191C;font:400 12.5px/1.5 var(--f-body);padding:30px 34px;border-radius:8px}
+.pack-doc h1{font:700 21px/1.25 var(--f-body);margin:0;color:#0D1418}
+.pack-doc h2{font:700 10.5px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:#08775F;margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid #D5DDE1}
+.pd-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font:600 10px/1 var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:#475660;padding-bottom:10px;border-bottom:3px solid #08977F;margin-bottom:16px}
+.pd-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pd-pill{font:700 9.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:3px;background:#E2F5F0;color:#08775F;border:1px solid #9FD9CB}
+.pd-sub{color:#475660;margin:6px 0 14px}
+.pd-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pd-facts>div{border:1px solid #D5DDE1;border-radius:6px;padding:9px 11px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.pd-facts span{font:600 9.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85}
+.pd-facts b{font:600 13px/1.35 var(--f-body);color:#0D1418;overflow-wrap:anywhere}
+.pd-facts small{color:#6C7B85;font-size:10.5px}
+.pd-reason{margin:10px 0 0;padding:9px 13px;border-left:3px solid #08977F;background:#F3F6F7;border-radius:0 6px 6px 0}
+.pd-reason span{display:block;font:600 9.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85;margin-bottom:4px}
+.pd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pd-t{width:100%;border-collapse:collapse;font-size:12px}
+.pd-t th:first-child,.pd-t td:first-child{min-width:8.5em}
+.pd-t th small{display:block;margin-top:2px;font-weight:400;letter-spacing:0;text-transform:none;color:#8A99A3}
+.pd-t th{text-align:left;font:600 9.5px/1.25 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:#6C7B85;padding:6px 8px;border-bottom:1px solid #AAB7BF}
+.pd-t td{padding:7px 8px;border-bottom:1px solid #E3E8EB;vertical-align:top}
+.pd-t .n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pd-t tr.pick td{background:#E9F7F3;font-weight:600}
+.pd-t em{font:700 9px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#08775F;margin-left:4px}
+.pd-t tfoot td{font-weight:700;border-top:2px solid #15191C;border-bottom:0}
+.pd-notify td:first-child{width:38%}
+.pd-note{color:#6C7B85;font-size:10.5px;margin:6px 0 0}
+.pd-over{color:#B87200;font-size:10.5px}
+.pd-vms{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px}
+.pd-vms-meta{display:flex;flex-direction:column;gap:3px;min-width:160px;font-size:11.5px;color:#475660}
+.pd-vms-meta b{color:#0D1418}
+.pd-frames{display:flex;gap:10px;flex-wrap:wrap}
+.pd-frames figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.pd-frames figcaption{font:600 9px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85}
+.pd-led{background:#111417;color:#FFB020;font:700 13px/1.4 var(--f-mono);letter-spacing:.14em;padding:10px 16px;border-radius:6px;min-width:128px;text-align:center;border:3px solid #2B3238;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pd-mono{font-family:var(--f-mono);letter-spacing:.04em}
+.pd-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.pd-checks li::marker{color:#B87200}
+.pd-ok{color:#6C7B85;list-style:none;margin-left:-18px}
+.pd-two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.pd-foot{margin-top:20px;padding-top:10px;border-top:1px solid #D5DDE1;color:#6C7B85;font-size:10.5px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+@media (max-width:560px){.pd-facts,.pd-two{grid-template-columns:1fr}.pack-doc{padding:20px 18px}}
+@media (max-width:420px){.cmp-nums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{
+  @page{size:A4;margin:12mm}
+  body>*:not(#cmpSheet){display:none!important}
+  .cmp-sheet{position:static;display:block;background:none;padding:0}
+  .cmp-doc{background:none;box-shadow:none;border-radius:0;padding:0;max-height:none;width:auto;overflow:visible;color:#000}
+  /* one A4 page: tighter type and spacing than on screen */
+  .pack-doc{padding:0;border-radius:0;font-size:10.5px;line-height:1.4}
+  .pack-doc h1{font-size:18px}
+  .pack-doc h2{margin:12px 0 5px;padding-bottom:4px;font-size:9.5px}
+  .pd-head{margin-bottom:10px;padding-bottom:7px}
+  .pd-sub{margin:4px 0 8px}
+  .pd-facts>div{padding:6px 9px}
+  .pd-facts b{font-size:12px}
+  .pd-reason{margin-top:8px;padding:6px 11px}
+  .pd-t{font-size:10.5px}
+  .pd-t th{padding:4px 6px}
+  .pd-t td{padding:4px 6px}
+  .pd-note{margin-top:4px}
+  .pd-vms{margin-bottom:4px}
+  .pd-led{font-size:11px;padding:6px 12px;min-width:110px}
+  .pd-list{gap:2px}
+  .pd-foot{margin-top:12px;padding-top:6px}
+  .pack-doc section,.pd-vms,.pd-t tr{break-inside:avoid}
+  .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .no-print{display:none!important}
+}
 </style>
 </head>
 <body>
@@ -554,7 +656,6 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
       <button type="button" data-step="4"><span class="n">04</span><span data-zh="修复">Repair</span></button>
     </nav>
     <div class="top-right">
-      <div class="chip" id="safetyChip" title="Safety score for the current layout and weather" data-zh-title="当前方案与天气下的安全分"><span class="eyebrow" data-zh="安全分">Safety</span><b id="safetyVal">— / 100</b></div>
       <button type="button" class="lang-toggle" id="langToggle" aria-label="Switch language: English / 中文" data-zh-aria-label="切换语言：English / 中文"><span data-l="en">EN</span><span data-l="zh">中</span></button>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch between light and dark theme" data-zh-aria-label="切换浅色 / 深色主题">
         <span class="moon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 9.8A5.2 5.2 0 0 1 6.2 3.2a5.2 5.2 0 1 0 6.6 6.6z"/></svg></span>
@@ -600,7 +701,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
       <section class="legend glass" id="legend" aria-label="Weather layer legend" data-zh-aria-label="天气图层图例"></section>
       <div class="probe glass" id="probe"><span><span class="k" data-zh="纬度">LAT</span> <span class="v" id="pLat">—</span></span><span><span class="k" data-zh="经度">LON</span> <span class="v" id="pLon">—</span></span><span id="pVal" class="hl">Move over the map</span></div>
       <div class="alert glass" id="alert" hidden></div>
-      <div class="swipe" id="swipe" hidden><div class="line"></div><span class="tag l" data-zh="修复前 · 方案 v1">BEFORE · LAYOUT v1</span><span class="tag r" data-zh="AI 修复后 · v2">AI-REPAIRED · v2</span><button type="button" class="knob" id="swipeKnob" aria-label="Drag to compare before and after" data-zh-aria-label="拖动以对比修复前后"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></button></div>
+      <div class="swipe" id="swipe" hidden><div class="line"></div><span class="tag l" data-zh="修改前">BEFORE</span><span class="tag r" data-zh="修改后">AFTER</span><button type="button" class="knob" id="swipeKnob" aria-label="Drag to compare before and after" data-zh-aria-label="拖动以对比修复前后"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></button></div>
       <div class="toast glass" id="toast" hidden></div>
       <div class="loading" id="loading">RENDERING ORTHOPHOTO…</div>
     </div>
@@ -1346,7 +1447,7 @@ class Weather{
     for(let n=0;n<40;n++){const x=lerp(x0,x1,Math.random()),y=lerp(y0,y1,Math.random()),v=this.radarAt(x,y);if(v>47&&(!best||v>best.v))best={x,y,v};}
     if(!best)return;
     const bolt=[];for(let b=0;b<4;b++){let a=Math.random()*Math.PI*2,px=best.x,py=best.y;const pts=[[px,py]];const len=b===0?9:5;for(let s=0;s<len;s++){a+=(Math.random()-.5)*1.3;const l=2.5+Math.random()*4;px+=Math.cos(a)*l;py+=Math.sin(a)*l;pts.push([px,py]);}bolt.push(pts);}
-    this.strikes.push({x:best.x,y:best.y,age:0,bolt,kA:(18+Math.random()*44)|0,pol:Math.random()<.85?'−':'+',clock:this.clock});
+    this.strikes.push({x:best.x,y:best.y,age:0,bolt,clock:this.clock});
     this.strikeCount++;if(!this.reduced)this.flash=1;
   }
   /* ---------- drawing ---------- */
@@ -1422,7 +1523,7 @@ class Weather{
         const px=V.X(s.x),py=V.Y(s.y);
         if(s.age<.45){ctx.save();ctx.globalAlpha=1-s.age/.45;ctx.strokeStyle=this.light?'#5B3FD6':'#F3EEFF';ctx.shadowColor='#B9A7FF';ctx.shadowBlur=16;ctx.lineWidth=2;for(const b of s.bolt){ctx.beginPath();b.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.stroke();}ctx.restore();}
         const f=Math.min(1,s.age/.9);ctx.save();ctx.globalAlpha=Math.max(0,1-s.age/12);ctx.strokeStyle=this.light?'#6A4BE0':'#FFE45C';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,6+f*22,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(px-5,py);ctx.lineTo(px+5,py);ctx.moveTo(px,py-5);ctx.lineTo(px,py+5);ctx.stroke();ctx.restore();
-        if(s.age>.3&&s.age<10)drawTag(ctx,px,py,34,-30,`${L('CG','地闪')} ${s.pol}${s.kA} kA · ${s.clock}`,this.light?'#6A4BE0':'#FFE45C',TK);
+        if(s.age>.3&&s.age<10)drawTag(ctx,px,py,34,-30,L('LIGHTNING · ILLUSTRATIVE','闪电 · 示意'),this.light?'#6A4BE0':'#FFE45C',TK);
       }
       const c=this.cells()[0],px=V.X(c[0]),py=V.Y(c[1]);
       if(px>60&&px<V.w-240&&py>90&&py<V.h-120){ctx.save();ctx.strokeStyle=this.light?'rgba(20,30,40,.7)':'rgba(255,255,255,.75)';ctx.setLineDash([5,4]);ctx.lineWidth=1.5;const ex=px+.84*90*V.s,ey=py+.54*90*V.s;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);const a=Math.atan2(ey-py,ex-px);ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-9*Math.cos(a-.4),ey-9*Math.sin(a-.4));ctx.moveTo(ex,ey);ctx.lineTo(ex-9*Math.cos(a+.4),ey-9*Math.sin(a+.4));ctx.stroke();ctx.restore();drawTag(ctx,px,py,-20,-26,L('CELL S-2 → SE 27 km/h','雷暴单体 S-2 → 东南 27 km/h'),col,TK);}
@@ -1624,15 +1725,6 @@ class Sim{
    ============================================================ */
 const $=s=>document.querySelector(s);
 const ls={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
-const RESULTS={
-  clear:{severe:[6,1],conf:[39,24],noRoute:[1,0],bus:[8,2],emerg:[95,15],car:[43.1,46.0],score:[42,86]},
-  storm:{severe:[9,2],conf:[52,29],noRoute:[1,0],bus:[11,3],emerg:[128,22],car:[58.4,61.9],score:[31,79]},
-  flood:{severe:[7,2],conf:[44,27],noRoute:[3,1],bus:[19,7],emerg:[180,44],car:[96.0,88.5],score:[26,68]},
-  fog:{severe:[12,3],conf:[51,30],noRoute:[1,0],bus:[10,3],emerg:[64,18],car:[61.2,63.0],score:[24,74]},
-  heat:{severe:[4,1],conf:[33,21],noRoute:[2,0],bus:[8,2],emerg:[40,12],car:[44.0,46.3],score:[55,88]},
-  wind:{severe:[8,2],conf:[36,23],noRoute:[1,0],bus:[9,3],emerg:[88,20],car:[47.5,49.2],score:[46,82]}};
-const SEEDS={clear:18,storm:27,flood:22,fog:31,heat:12,wind:24};
-const PROFILE={clear:.55,storm:.9,flood:.75,fog:1,heat:.45,wind:.7};
 const IMPACT={
   clear:['Reference run. Every stress test is compared against it.','基准情景，所有压力测试都与它对比。'],
   storm:['Braking distance +38% · cyclist merge risk ×2.1','制动距离 +38% · 骑行者并道风险 ×2.1'],
@@ -1651,9 +1743,24 @@ const S={step:1,wx:'clear',basemap:'imagery',layers:{agents:true,weather:true,ri
 const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
+/* The La Trobe × Swanston micro-model (scripted road users, barrier B-12, the 17:00 timeline) is its own scene. It is drawn
+   only where it is the subject: step 2, the junction-replay tab of step 3, a plan that is on La Trobe St, or when the engine
+   is offline. Everywhere else the screen shows one works zone — the engine's (T20 addendum 4). */
+function microOn(){
+  if(S.step===2||(S.step===3&&!(BE.api&&EP.tab3==='net')))return true;
+  if(BE.err&&!BE.api)return true;
+  if(!BE.api)return false; // still connecting: don't flash the other junction first
+  return /la trobe/i.test(EP.street||'');
+}
+function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.contains('no-time')===on){app.classList.toggle('no-time',!on);readInsets();}}
+
 /* ---------- view ---------- */
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
-function setView(cx,cy,s){V.s=clamp(s,1.1,14);const hw=V.w/2/V.s,hh=V.h/2/V.s,mw=(WORLD.x1-WORLD.x0)/2,mh=(WORLD.y1-WORLD.y0)/2;V.cx=hw>=mw?0:clamp(cx,WORLD.x0+hw,WORLD.x1-hw);V.cy=hh>=mh?0:clamp(cy,WORLD.y0+hh,WORLD.y1-hh);V.ver++;}
+/* the view may pan until the map's edge meets the edge of the part the glass leaves open (insets), not the canvas edge —
+   otherwise the east / south end of the map can never come out from under the panels; a map smaller than that part is centred in it */
+function setView(cx,cy,s){V.s=clamp(s,1.1,14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
+  const x0=WORLD.x0+hw-I.l/V.s,x1=WORLD.x1-hw+I.r/V.s,y0=WORLD.y0+hh-I.b/V.s,y1=WORLD.y1-hh+I.t/V.s;
+  V.cx=x0>x1?(x0+x1)/2:clamp(cx,x0,x1);V.cy=y0>y1?(y0+y1)/2:clamp(cy,y0,y1);V.ver++;}
 function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
@@ -1814,19 +1921,21 @@ function render(dt){
   WX.dim=S.step===3?.35:1;
   if(S.layers.weather)WX.drawGround(ctx,V);
   if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
-  if(S.step===4&&S.simAfter){
+  const micro=microOn();
+  if(S.step===4){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
-  }else if(S.step===3){engDraw('now');drawWorks('before');}
-  else{engDraw('now');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter){drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
+  }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
+  else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
+  clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
   if(S.layers.weather)WX.drawNotes(ctx,V,TK);
-  if(S.step===1&&S.layers.works)planNotes();
-  if(S.step<=2)fogRings(S.sim);
+  if(S.step===1&&S.layers.works&&micro)planNotes();
+  if(S.step<=2&&micro)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
-  if(S.step===4&&S.simAfter&&S.layers.works)drawDeltas();
+  if(S.step===4&&S.simAfter&&S.layers.works&&micro)drawDeltas();
   engLabels();
   if(S.layers.grid)drawGrid();
   drawScale();
@@ -1836,7 +1945,7 @@ function render(dt){
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
-function activeSims(){return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
+function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
@@ -1848,7 +1957,7 @@ function goStep(n){
     if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
   if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=visibleMid();if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
-  updateSteps();renderPanel();updateSafety();
+  updateSteps();renderPanel();
 }
 function causal(ev){
   const sn=ev.snaps,f=tag=>sn.map(h=>({t:h.t,a:h.a.find(q=>q.tag===tag)})).filter(o=>o.a);
@@ -1871,7 +1980,7 @@ function onCritical(){
 }
 function renderAlert(){
   const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;
-  al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div><div><span>${L('SEEDS','复现')}</span><b>${SEEDS[S.wx]}/50</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
+  al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
   $('#alertBtn').onclick=()=>goStep(3);
 }
 function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;const I=insets();x=clamp(x,I.l+14,V.w-I.r-al.offsetWidth-14);y=clamp(y,I.t+70,V.h-I.b-al.offsetHeight-14);al.style.left=x+'px';al.style.top=y+'px';}
@@ -1880,44 +1989,41 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
+    ${microOn()?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather to stress-test','压力测试天气')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Micro-simulation of the La Trobe × Swanston junction · scripted road users','La Trobe × Swanston 路口微观仿真 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Searching for hidden failures','正在搜索隐藏的失效点')}</h2><p class="muted small">${L(`The red team recombines road users, behaviours and the ${wl.toLowerCase()} scenario to find the combinations that start a chain reaction.`,`红队把道路使用者、行为和「${wl}」情景反复组合，寻找会引发连锁反应的组合。`)}</p></div>
-    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Variations','变体')}</span><span class="eyebrow">${L('22 of 30','22 / 30')}</span></div><div class="list" id="varList"></div></div>
     <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
-    P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
+    P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
-    const ev=S.event,n=SEEDS[S.wx];
+    const ev=S.event;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
-    <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
     <div class="stack"><span class="eyebrow">${L('Agents involved','涉及的智能体')}</span><div class="agents3">
       <div><b style="color:var(--a-bike)"><i class="dot" style="background:var(--a-bike)"></i>C-17</b><span>${L('Cyclist','骑行者')}</span><small>${ev&&ev.cv?(ev.cv*3.6).toFixed(0):'19'} km/h ${L('at merge','并道时')}</small></div>
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
@@ -1926,50 +2032,41 @@ function renderPanel(){
     $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
   }else{
-    const g=R.score[1],C=2*Math.PI*30;
-    const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
-    const mn=L(' min',' 分钟');
-    const eng=!!BE.api;
-    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
-    <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
-      <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">
+    const micro=microOn();
+    P.innerHTML=`${engPanel4()}${micro?`<div class="stack"><div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Junction layout v2 · La Trobe × Swanston','路口方案 v2 · La Trobe × Swanston')}</span><span class="eyebrow">${L('micro-model','微观仿真')}</span></div><div class="stack" style="gap:8px">
       <div class="row"><span class="delta">Δ1</span><span class="small">${L('Shift barrier B-12 8 m west and narrow it by 0.9 m','护栏 B-12 西移 8 m，并收窄 0.9 m')}</span></div>
       <div class="row"><span class="delta">Δ2</span><span class="small">${L('Add a 17 m tapered cycle transition with a give-way line','增设 17 m 渐变自行车过渡段和让行线')}</span></div>
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Before → after · 1 h','修复前 → 修复后 · 1 小时')} · ${wl}</span><span class="eyebrow">${L('simulated','模拟结果')}</span></div><div class="table">
-      ${row(L('Severe conflicts','严重冲突'),R.severe[0],R.severe[1],'var(--accent)')}${row(L('All conflicts','全部冲突'),R.conf[0],R.conf[1],'var(--accent)')}${row(L('Users with no route','无路可走的用户'),R.noRoute[0],R.noRoute[1],'var(--accent)')}${row(L('Bus extra delay','公交额外延误'),R.bus[0]+mn,R.bus[1]+mn,'var(--accent)')}${row(L('Emergency lane blocked','应急通道受阻'),R.emerg[0]+' s',R.emerg[1]+' s','var(--accent)')}${eng?'':row(L('Mean car delay','小汽车平均延误'),R.car[0]+' s',R.car[1]+' s',R.car[1]>R.car[0]?'var(--works)':'var(--accent)')}</div></div>
-    <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
-    ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
-    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
+    <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Conflicts in this run · before vs v2','本次仿真冲突数 · 原方案 vs v2')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span></span></div></div>`:''}
+    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Engine figures are model estimates on real CBD flows, not field-validated. Weather is illustrative.','引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。天气为示意。')}</span><div id="copyFallback"></div></div>`;
     $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
 function copyPlaybook(){
-  const R=RESULTS[S.wx],wl=wxLabel(S.wx),ex=engPlaybook();
-  const txt=L(`RippleTwin incident playbook — La Trobe St westbound cycle-lane closure (layout v2)\nScenario: weekday peak 17:00–18:00 · weather: ${wl}\n\nChanges\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream\n\nSimulated effect (1 h)\nSevere conflicts ${R.severe[0]} → ${R.severe[1]}\nAll conflicts ${R.conf[0]} → ${R.conf[1]}\nUsers with no route ${R.noRoute[0]} → ${R.noRoute[1]}\nBus extra delay ${R.bus[0]} → ${R.bus[1]} min\nEmergency lane blocked ${R.emerg[0]} → ${R.emerg[1]} s\nSafety score ${R.score[0]} → ${R.score[1]}\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — VMS-1 "CYCLISTS MERGING 30 km/h".\nRed: TTC < 1.5 s events — traffic controller holds the cycle transition.\nSensor fault: fall back to amber and request manual confirmation.`+ex[0],
-`RippleTwin 事件处置手册 — La Trobe St 西行自行车道封闭（方案 v2）\n情景：工作日晚高峰 17:00–18:00 · 天气：${wl}\n\n改动\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m\n\n模拟效果（1 小时）\n严重冲突 ${R.severe[0]} → ${R.severe[1]}\n全部冲突 ${R.conf[0]} → ${R.conf[1]}\n无路可走的用户 ${R.noRoute[0]} → ${R.noRoute[1]}\n公交额外延误 ${R.bus[0]} → ${R.bus[1]} 分钟\n应急通道受阻 ${R.emerg[0]} → ${R.emerg[1]} s\n安全分 ${R.score[0]} → ${R.score[1]}\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，VMS-1 显示「前方骑行者并道 限速 30」。\n红色：出现 TTC < 1.5 s 事件，交通指挥员暂停自行车过渡段。\n传感器故障：降级为黄色并要求人工确认。`+ex[1]);
+  const ex=engPlaybook(),micro=microOn(),eng=engOn();
+  const frames=[parseFrame(EP.f1),parseFrame(EP.f2)].filter(f=>f.length).map(f=>f.join(' / ')).join('  ▸  ');
+  const planEn=eng?`${EP.street} ${dirL(EP.dir)} — ${EP.all?'full closure':'one lane closed'}\nWorks ${WORKS_TIME.from} to ${WORKS_TIME.to}, ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · scored at ${engHour(EP.hour)}\nVMS-1 ${EP.vmsAt} m upstream: ${frames||'(blank)'}\nSign S-1 ${EP.signAt} m: ${EP.sign||'(none)'}`:'';
+  const planZh=eng?`${EP.street} ${dirL(EP.dir)} —— ${EP.all?'全封':'封一条道'}\n施工 ${WORKS_TIME.from} 至 ${WORKS_TIME.to}，${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · 按 ${engHour(EP.hour)} 计算\nVMS-1 上游 ${EP.vmsAt} m：${frames||'（空）'}\n标志牌 S-1 ${EP.signAt} m：${EP.sign||'（无）'}`:'';
+  const dEn=micro?`\n\nJunction layout v2 (La Trobe × Swanston micro-model)\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream`:'';
+  const dZh=micro?`\n\n路口方案 v2（La Trobe × Swanston 微观仿真）\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m`:'';
+  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.`,
+`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。`);
   const fb=()=>{$('#copyFallback').innerHTML=`<p class="small muted">${L('Copying is blocked here. Select the text below instead.','此处无法自动复制，请手动选中下面的文字。')}</p><div class="pre">${txt.replace(/</g,'&lt;')}</div>`;};
   try{navigator.clipboard.writeText(txt).then(()=>toast(L('Playbook copied to the clipboard','处置手册已复制到剪贴板')),fb);}catch(e){fb();}
 }
 let toastT=0;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;toastT=2.6;}
 function updateLive(force){
   const P=$('#panel'),sim=S.sim,set=(k,v)=>{const e=P.querySelector(`[data-live="${k}"]`);if(e&&e.textContent!==String(v))e.textContent=v;};
-  if(S.step===1&&sim){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
+  if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
-    const prog=clamp((sim.t-45)/40,0,1),vr=Math.min(30,22+Math.floor(prog*8));set('var',vr);set('pct',Math.round(vr/30*100)+'%');const pb=$('#pctBar');if(pb)pb.style.width=(vr/30*100)+'%';
-    set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);set('dps',(sim.agents.length*10*(S.playing?S.speed:0)).toLocaleString('en-AU'));
-    const crit=!!sim.critical,wl=wxLabel(S.wx),lst=$('#varList');
-    const rows=[['✓',L('Baseline · dry · all compliant','基准 · 干燥 · 全部守规'),L('PASS','通过'),'var(--accent)'],['✓',L(`Peak hour + ${S.wx==='clear'?'light rain':wl.toLowerCase()}`,`高峰 + ${S.wx==='clear'?'小雨':wl}`),L('PASS','通过'),'var(--accent)'],[crit?'●':'◌',L(`Unfamiliar driver + cyclist merge · ${wl}`,`不熟路司机 + 骑行者并道 · ${wl}`),crit?L('CRITICAL','严重'):L('RUNNING','运行中'),crit?'var(--risk)':'var(--works)'],[sim.stats.noRoute?'●':'○',L('Wheelchair user at the hoarding','围挡处的轮椅使用者'),sim.stats.noRoute?L('FAIL','失败'):L('QUEUED','排队中'),sim.stats.noRoute?'var(--risk)':'var(--fg-3)'],['○',L('Ambulance eastbound','东行救护车'),L('QUEUED','排队中'),'var(--fg-3)']];
-    const html=rows.map(([i,n,s,c],k)=>`<div${k===2&&crit?' style="background:var(--risk-tint)"':''}><b class="mono" style="color:${c};width:12px">${i}</b><span class="grow small">${n}</span><span class="val" style="color:${c};font-weight:700">${s}</span></div>`).join('');
-    if(lst&&lst.dataset.h!==html){lst.innerHTML=html;lst.dataset.h=html;}
-    const lb=$('#stLabel');if(lb){const txt=crit?L(`Stress test · paused · ${wl}`,`压力测试 · 已暂停 · ${wl}`):L(`Stress test · running · ${wl}`,`压力测试 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
+    set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
+    const crit=!!sim.critical,wl=wxLabel(S.wx);
+    const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
   }
   if(S.step===4&&S.simAfter){set('liveB',S.sim.stats.conflicts);set('liveA',S.simAfter.stats.conflicts);}
 }
-function updateSafety(){const R=RESULTS[S.wx],v=S.step===1?null:S.step===4?R.score[1]:R.score[0],el=$('#safetyVal');el.textContent=v==null?'— / 100':`${v} / 100`;el.style.color=v==null?'var(--fg-2)':v<50?'var(--risk)':v<70?'var(--works)':'var(--accent)';}
 function updateSteps(){document.querySelectorAll('#stepper button').forEach(b=>{const n=+b.dataset.step;if(n===S.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.classList.toggle('done',n<S.step);});}
 
 /* ---------- weather & legend ---------- */
@@ -1990,7 +2087,7 @@ let heatStats=null;
 function legendMetrics(){
   const k=S.wx;
   if(k==='clear')return[[L('Air','气温'),'18 °C'],[L('Road μ','路面摩擦 μ'),'0.80'],[L('Visibility','能见度'),'10 km'],[L('Wind','风速'),'12 km/h']];
-  if(k==='storm'){const d=Math.max(0,WX.maxIn('storm',AOI,10)),R=Math.pow(Math.pow(10,d/10)/200,1/1.6);return[[L('Max over AOI','AOI 最大值'),`${d.toFixed(0)} dBZ`],[L('Rain rate','雨强'),d<15?'—':`${R.toFixed(0)} mm/h`],[L('Road μ','路面摩擦 μ'),'0.45'],[L('Strikes','闪电次数'),String(WX.strikeCount)]];}
+  if(k==='storm'){const d=Math.max(0,WX.maxIn('storm',AOI,10)),R=Math.pow(Math.pow(10,d/10)/200,1/1.6);return[[L('Max over AOI','AOI 最大值'),`${d.toFixed(0)} dBZ`],[L('Rain rate','雨强'),d<15?'—':`${R.toFixed(0)} mm/h`],[L('Road μ','路面摩擦 μ'),'0.45']];}
   if(k==='flood'){const d=Math.max(0,WX.maxIn('flood',AOI,4));return[[L('Max depth AOI','AOI 最大水深'),`${d.toFixed(2)} m`],[L('Wet road','积水路面'),`${(WX.wet.length*4).toLocaleString('en-AU')} m²`],[L('Pits blocked','堵塞排水井'),'4'],[L('No step-free','无障碍中断'),String(S.sim?S.sim.stats.noRoute:0)]];}
   if(k==='fog'){const v=WX.visibility(0,0),vm=Math.min(120,WX.visibility(60,-6));return[[L('At junction','路口处'),`${v.toFixed(0)} m`],[L('VMS-1 legible','VMS-1 可读'),`${vm.toFixed(0)} m`],[L('Headway','车头时距'),'+1.6 s'],[L('Camera conf.','摄像头置信度'),Math.min(.98,.4+v/350).toFixed(2)]];}
   if(k==='heat'){if(!heatStats&&WX.lst){let s=0,n=0,sh=0,fn=0;for(let y=AOI.y0;y<AOI.y1;y+=2)for(let x=AOI.x0;x<AOI.x1;x+=2){const q=G.idx(x,y),c=G.cls[q];if(c===CLS.ROAD){s+=WX.lst[q];n++;}if(c===CLS.FOOT){fn++;if(G.shade[q])sh++;}}heatStats={a:s/n,sh:sh/fn};}const h=heatStats||{a:64,sh:.2};return[[L('Asphalt mean','沥青平均'),`${h.a.toFixed(1)} °C`],[L('Footpath shade','人行道遮阴'),`${(h.sh*100).toFixed(0)} %`],[L('Air','气温'),'44 °C'],['UTCI','46 °C']];}
@@ -1998,9 +2095,9 @@ function legendMetrics(){
 }
 function renderLegend(){
   const k=S.wx,Lg=LEG[k],col=wxCol(k),el=$('#legend');el.style.setProperty('--wxc',col);el.style.setProperty('--wxc-tint',rgba(col,.16));
-  el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${k==='clear'?L('BASE','基准'):L('LIVE','实时')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
+  el.innerHTML=`<div class="legend-head">${icon(k)}<span class="ttl">${Lp(Lg.t)}</span><span class="live">${L('ILLUSTRATIVE','示意')}</span><button type="button" class="legend-toggle" id="legToggle" aria-label="${L('Collapse legend','折叠图例')}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5l3-3 3 3"/></svg></button></div>
   <div class="legend-body">${Lg.min?`<div class="legend-ramp" style="background:${rampCss(k)}"></div><div class="legend-scale"><span>${Lg.min}</span><span class="u">${Lp(Lg.u)}</span><span>${Lg.max}</span></div>`:''}
-  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)}</p></div>`;
+  <dl class="legend-metrics" id="legM"></dl><p class="legend-impact"><b>${L('AGENT IMPACT','对智能体的影响')}</b>${Lp(IMPACT[k])}</p><p class="legend-src">${Lp(Lg.src)} ${L('Illustrative only — weather is not fed into the engine numbers.','仅作示意 —— 天气不参与引擎计算。')}</p></div>`;
   $('#legToggle').onclick=()=>{el.classList.toggle('collapsed');ls.set('rt-leg',el.classList.contains('collapsed')?'1':'0');};
   updateLegendLive();
 }
@@ -2010,8 +2107,8 @@ function renderWxSwitcher(){
   el.querySelectorAll('button').forEach(b=>{b.onclick=()=>setWeather(b.dataset.k);b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=WX_KINDS.indexOf(S.wx)+(e.key==='ArrowRight'?1:-1);setWeather(WX_KINDS[(i+6)%6]);el.querySelector(`[data-k="${S.wx}"]`).focus();e.preventDefault();}};});
 }
 function setWeather(k){
-  S.wx=k;ls.set('rt-wx',k);document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
-  renderWxSwitcher();renderLegend();updateSafety();renderPanel();renderAlert();
+  S.wx=k;document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
+  renderWxSwitcher();renderLegend();renderPanel();renderAlert();
 }
 
 /* ---------- language ---------- */
@@ -2059,8 +2156,8 @@ function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;documen
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
 function sizeHist(){const r=hc.getBoundingClientRect();hw=r.width;hh=r.height;const d=Math.min(2,devicePixelRatio||1);hc.width=Math.max(1,Math.round(hw*d));hc.height=Math.max(1,Math.round(hh*d));hctx.setTransform(d,0,0,d,0,0);}
 function drawHist(){
-  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,base=PROFILE[S.wx],live=S.sim?S.sim.minute:null,cur=Math.floor(S.clock/60);
-  for(let m=0;m<60;m++){const e=base*(.35+.65*Math.exp(-Math.pow((m-26)/9,2)))+.12*hash2(m,7,S.wx.length);const eh=(bot-top)*Math.min(1,e/1.4);c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-eh,bw-2,eh);
+  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,live=S.sim?S.sim.minute:null;
+  for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
     const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/3);c.fillStyle=v>=2?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
   for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(`17:${String(k*10).padStart(2,'0')}`.replace('17:60','18:00'),x,bot+4);}
@@ -2115,7 +2212,7 @@ function loop(now){
   if(histT>.2){histT=0;drawHist();}
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
     document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));
-    $('#metaAcq').textContent=`2026-09-29 ${fmtClock(S.clock)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
+    $('#metaAcq').textContent=microOn()?`2026-09-29 ${fmtClock(S.clock)} AEST`:`${WORKS_TIME.from} ${engHour(EP.hour)} AEST`;const ll=toLL(V.cx,V.cy);$('#metaCentre').textContent=`${ll[0].toFixed(5)}, ${ll[1].toFixed(5)}`;}
   if(legT>.5){legT=0;updateLegendLive();}
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
@@ -2124,7 +2221,7 @@ function loop(now){
 /* ---------- boot ---------- */
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
-  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;document.documentElement.dataset.wx=S.wx;
+  document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
@@ -2212,7 +2309,7 @@ const EP={preset:'lonsdale',link:null,pts:null,street:null,dir:null,lanes:1,lane
 BE.ready=import('/engine/public/js/backend.js')
   .then(m=>m.connect()) // road network + flows + T12 parameters + T5 sign reader + engine, loaded once
   .then(api=>{BE.api=api;console.info('backend ready',api.status());})
-  .catch(e=>{BE.err=e;console.warn('backend not connected, keeping preset numbers',e);})
+  .catch(e=>{BE.err=e;console.warn('backend not connected, no engine numbers',e);})
   .then(engAfterConnect);
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2239,7 +2336,7 @@ function engAfterConnect(){
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
     if(BE.api)engRun();
-  }catch(e){BE.err=BE.err||e;console.warn('engine wiring failed, keeping preset numbers',e);}
+  }catch(e){BE.err=BE.err||e;console.warn('engine wiring failed, no engine numbers',e);}
 }
 // The two demo plans backend.js ships (lonsdale = main demo, 08:00 queue; latrobe = this junction, 17:00, barely queues)
 function engPreset(name,quiet){
@@ -2279,7 +2376,8 @@ async function engRun(){
   if(EP.badText){EP.busy=false;engRenderOut();return;} // PRD §3: text that breaks the sign rules never goes to run()
   EP.busy=true;engRenderOut();
   const plan=planFrom(EP);
-  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);}
+  const first=!EP.sum; // first numbers for this street: frame its queue and detours too (T20 addendum 1)
+  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
   EP.busy=false;engRenderOut();
   if(S.step===3)renderPanel();
@@ -2315,7 +2413,7 @@ function engApply(){
 /* ---------- panel pieces ---------- */
 function engStatusPill(){return BE.api?`<span class="pill ok">${L('Live engine','引擎实时')}</span>`:BE.err?`<span class="pill warn">${L('Engine offline','引擎未连接')}</span>`:`<span class="pill">${L('Connecting…','连接中…')}</span>`;}
 function engOfflineCard(){
-  return BE.err?`<div class="card eng-note warn"><b>${L('Engine offline — showing preset numbers','引擎未连接 —— 显示的是预设数字')}</b><span>${L('Open the page from the site (same address as /engine/ and /roads/) to get engine numbers.','从部署网址打开（和 /engine/、/roads/ 同一个地址）才能拿到引擎的数字。')}</span></div>`
+  return BE.err?`<div class="card eng-note warn"><b>${L('Engine offline — no numbers to show','引擎未连接 —— 暂时没有数字')}</b><span>${L('Open the page from the site (same address as /engine/ and /roads/) to get engine numbers.','从部署网址打开（和 /engine/、/roads/ 同一个地址）才能拿到引擎的数字。')}</span></div>`
     :`<div class="card eng-note"><b>${L('Loading the CBD road network and engine…','正在加载 CBD 路网和引擎…')}</b><span>${L('1,513 road links · real hourly flows · about a second','1513 个路段 · 真实逐时车流 · 大约一秒')}</span></div>`;
 }
 // Where the numbers come from (PRD §5): yellow when they shouldn't be taken at face value
@@ -2338,6 +2436,15 @@ function engMetrics(s){
     <div class="metric"><span class="eyebrow">${L('Extra per vehicle','每车多等')}</span><div class="v" style="color:var(--works)">+${fmtN(s.mean_delay_s)}<small>s · ${fmtN(s.vehicles)} ${L('veh/h','辆/时')}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Detouring','绕行')}</span><div class="v">${pctS(s.detour_share)}<small>${top?esc(shortSt(top.name))+' '+pctS(top.share):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Network delay','全网延误')}</span><div class="v">${fmtN(s.delay_min)}<small>${L('veh·min / h','车·分钟 / 时')}</small></div></div></div>`;
+}
+// T20 addendum 5: what the detour share rests on, and why there is a queue (demand vs capacity past the works)
+function engInformed(s){const a=s.approaches&&s.approaches[s.main];if(!a)return null;let v=0,n=0;for(const t of TYPES4){const k=(s.by_type[t]||{}).vehicles||0,x=a.by_type&&a.by_type[t];if(!x||!k)continue;v+=k*(x.informed||0);n+=k;}return n?v/n:null;}
+function engWhy(s){
+  const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),out=[];
+  // total flow still using the works section (after detours) against what fits past it: the gap is the queue
+  if(l&&l.cap>0&&l.v>0){const st=esc(shortSt(EP.street)),over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
+  out.push(L(`Assumption: detours follow the engine's route-choice model (T12 parameters)${inf!=null?`; about ${pctS(inf)} of drivers read and act on the signs`:''}. Fewer compliant drivers → fewer detours, longer queue.`,`假设：绕行按引擎的路线选择模型（T12 参数）算${inf!=null?`，约 ${pctS(inf)} 的司机读懂并照标志 / 屏走`:''}。照做的人越少，绕行越少、排队越长。`));
+  return`<div class="eng-assume">${out.map(t=>`<p>${t}</p>`).join('')}</div>`;
 }
 const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
 const hasTransit=s=>!!(s&&s.transit&&s.transit.src);
@@ -2366,7 +2473,7 @@ function engOutHTML(){
   if(EP.runErr&&!EP.sum)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   const s=EP.sum;if(!s)return`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`;
   const stale=EP.busy||EP.badText||!!EP.runErr;
-  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engImpacts(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engWhy(s)}${engImpacts(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
 function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
@@ -2393,13 +2500,13 @@ function engPanel1(){
     <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
     <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works-side footpath closed','施工侧人行道封闭')],['both',L('Both footpaths closed','两侧人行道都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
+  <div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>
-    <div id="engCheck" class="stack"></div></div>
-  <div class="stack"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;
+    <div id="engCheck" class="stack"></div></div>`;
 }
 function engBind1(){
   const P=document.getElementById('panel');if(!P||!BE.api)return;
@@ -2441,7 +2548,7 @@ function engPanel3(){
   const f=s.flags;
   return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
-  ${engMetrics(s)}${engBadges(f)}
+  ${engMetrics(s)}${engWhy(s)}${engBadges(f)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
@@ -2474,7 +2581,7 @@ function engBind3(){
 }
 
 // Step 4: advisor options (each re-scored by the engine) + before / after for the picked one
-function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div>`:'';}
+function engPanel4(){return BE.api?`<div id="eng4" class="stack eng4"></div><div id="cmp4" class="stack cmp4"></div>`:'';} // cmp4 = T23 compare / choose / export (8-compare.js)
 function eng4HTML(){
   if(!engOn())return engOfflineCard();
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
@@ -2486,20 +2593,21 @@ function eng4HTML(){
   const opts=a.options.map((o,i)=>{
     const what=o.kind==='text'&&o.frames?o.frames.map(f=>f.join(' / ')).join('  ▸  '):o.kind==='move'?`${esc(o.equipment||'')} → ${fmtN(o.at_m)} m ${L('upstream','上游')}`:o.kind==='shift'?`${o.days>0?'+':''}${fmtN(o.days)} ${L('days','天')}`:'';
     const d=Number(o.delta_min),hrs=Math.round(Math.abs(d)/60),gain=o.better&&Number.isFinite(d)&&a.flags.ok;
-    return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}`}</span></button>`;}).join('');
+    return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}<small>${a.window.single_hour?L('this hour','这一小时'):L('whole works','全施工期')}</small>`}</span></button>`;}).join('');
   if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
-  <p class="legend-src">${L(`Savings are summed over the whole works period (${a.window.whens} sampled hours${a.window.single_hour?', this hour only':''}). Advisor: ${a.src==='rule'?'rules (LLM advisor pending)':esc(a.src)}.`,`节省量按整个施工期加总（采样 ${a.window.whens} 个小时${a.window.single_hour?'，只有这一小时':''}）。顾问：${a.src==='rule'?'规则（大模型顾问待接）':esc(a.src)}。`)}</p>`;
+  <p class="eng-assume">${engWindowTxt(a.window)} ${L(`Advisor: ${a.src==='rule'?'rules (LLM advisor pending)':esc(a.src)}.`,`顾问：${a.src==='rule'?'规则（大模型顾问待接）':esc(a.src)}。`)}</p>`;
   const o=a.options[EP.pick];
   if(o){
     const c=EP.cmp;
-    h+=`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before → after · engine','修改前 → 修改后 · 引擎')} · ${engHour(EP.hour)}</span><span class="eyebrow">${L('1 h','1 小时')}</span></div>`;
+    h+=`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before → after · engine','修改前 → 修改后 · 引擎')}</span><span class="eyebrow">${L(`this hour · ${engHour(EP.hour)}`,`这一小时 · ${engHour(EP.hour)}`)}</span></div>`;
     if(o.kind==='shift')h+=`<div class="card eng-note"><b>${L('A date shift changes which days overlap — see the saving above.','错开日期改变的是哪几天重叠 —— 看上面的节省量。')}</b></div>`;
     else if(!c)h+=`<div class="card eng-note"><b>${EP.cmpBusy?L('Recomputing both plans…','两份方案都在重算…'):L('Comparison unavailable','对比没算出来')}</b></div>`;
     else{
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
       const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better?'var(--accent)':'var(--works)'}">${y}</span></div>`;
-      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min','全网延误 · 车·分钟'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
+      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
+      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} assumes drivers react to the changed sign as the route-choice model (T12 parameters) predicts; if fewer comply, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：司机按路线选择模型（T12 参数）对改后的屏 / 标志做出反应；照做的人少，收益就小。`)}</p>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
@@ -2507,7 +2615,15 @@ function eng4HTML(){
   }
   return h;
 }
+// "−1,580 veh·h" is summed over every sampled hour of the works; the before/after table is one hour in veh·min (T20 addendum 3)
+function engWindowTxt(w){
+  if(!w||w.single_hour)return L('Savings are for this hour only, in vehicle-hours.','节省量只算这一小时，单位车·时。');
+  const days=Math.round((Date.parse(WORKS_TIME.to)-Date.parse(WORKS_TIME.from))/864e5)+1,per=w.whens%days?0:w.whens/days;
+  return per?L(`Savings are vehicle-hours over the whole works period: ${days} days × ${per} sampled hour${per===1?'':'s'} a day = ${w.whens} hours. The table below is one hour, in vehicle-minutes.`,`节省量是整个施工期的合计（车·时）：${days} 天 × 每天采样 ${per} 个小时 = ${w.whens} 小时。下面的对比表只算一小时，单位车·分钟。`)
+    :L(`Savings are vehicle-hours summed over ${w.whens} sampled hours of the works period. The table below is one hour, in vehicle-minutes.`,`节省量是施工期采样的 ${w.whens} 个小时合计（车·时）。下面的对比表只算一小时，单位车·分钟。`);
+}
 function engRender4(){
+  cmpRender(); // T23: follows the advisor (8-compare.js)
   const el=document.getElementById('eng4');if(!el)return;const h=eng4HTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
   const a=EP.adv;
   el.querySelectorAll('[data-optwhy]').forEach(b=>{const o=a&&a.options[+b.dataset.optwhy];b.textContent=o&&o.why||'';});
@@ -2535,13 +2651,18 @@ function engAlts(plan,s){
     EP.alts=(a.alts||[]).map(r=>({id:r.id,name:r.name,polys:r.links.filter(id=>!stay.has(id)).map(engGeo).filter(Boolean)}));
   }catch(e){EP.alts=[];console.warn('detour paths unavailable',e);}
 }
-// Frame the work zone, the La Trobe × Swanston junction and every detour taking ≥ 5 % (clamped to the drawn world)
+// Frame the work zone, its queue and every detour taking ≥ 5 % (clamped to the drawn world), sized to the part of the map the
+// glass leaves open (insets()); flyTo() then centres it there. No other junction is pulled in (T20 addendum 1)
 function engFit(){
-  if(!EP.pts)return null;const xs=[0],ys=[0],add=p=>{xs.push(clamp(p[0],WORLD.x0,WORLD.x1));ys.push(clamp(p[1],WORLD.y0,WORLD.y1));};
-  EP.pts.forEach(add);const sh=new Map(((EP.sum&&EP.sum.routes)||[]).map(r=>[r.id,r.share||0]));
+  if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],WORLD.x0,WORLD.x1));ys.push(clamp(p[1],WORLD.y0,WORLD.y1));};
+  EP.pts.forEach(add);const s=engSumFor('now'),sh=new Map(((s&&s.routes)||[]).map(r=>[r.id,r.share||0]));
+  if(s&&s.queue_m>0)add(engUp(Math.min(s.queue_m,engWorldReach())));
   for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
-  const x0=Math.min(...xs)-50,x1=Math.max(...xs)+50,y0=Math.min(...ys)-40,y1=Math.max(...ys)+50;
-  return[(x0+x1)/2,(y0+y1)/2,clamp(Math.min(V.w/(x1-x0),V.h/(y1-y0)),1.1,3.6)];
+  // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
+  const mob=!matchMedia('(min-width: 821px)').matches,mt=mob?96:0,mb=mob?104:0;
+  const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
+  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),1.1,3.6);
+  return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
 }
 function engFly(d){const f=engFit();if(f)flyTo(f[0],f[1],f[2],d);}
 // A polyline shifted to the left of its direction of travel (traffic keeps left), so the two directions of a street separate
@@ -2585,7 +2706,7 @@ function engDraw(which){
       const sev=l.queue_m>0||ex>=60?2:ex>=10?1:0;
       ctx.globalAlpha=(faint?.5:.9)*(sev?1:.7);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.6)*k;engLine(P,off);ctx.stroke();
     }
-    if(s.queue_m>0){const q=engUp(s.queue_m),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
+    if(s.queue_m>0){const q=engUp(Math.min(s.queue_m,engWorldReach())),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
     if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
   }
   if(s&&S.step!==2){engTransitDraw(s,S.step===1);engPedDraw(s,S.step===1);}
@@ -2611,6 +2732,9 @@ function engLabels(){
     for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
     let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
 }
+// How far upstream stays on the drawn map: a queue longer than that stops at the map's edge (its tag says "→"), instead of
+// running on under the glass panels
+function engWorldReach(){let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>=WORLD.x0&&p[0]<=WORLD.x1&&p[1]>=WORLD.y0&&p[1]<=WORLD.y1)lo=mid;else hi=mid;}return lo;}
 // How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
 function engVisible(){
   const x0=Math.max(WORLD.x0,V.wx(24)),x1=Math.min(WORLD.x1,V.wx(V.w-24)),y0=Math.max(WORLD.y0,V.wy(V.h-24)),y1=Math.min(WORLD.y1,V.wy(70));
@@ -2699,7 +2823,7 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,.score';
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4';
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -2714,7 +2838,7 @@ function compactPanel(){
     if(sec===tools||!sec.classList.contains('stack'))continue;
     const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
     const key=`${S.step}${tab}:${n++}`;
-    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
     const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
     sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
     head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
@@ -2771,6 +2895,289 @@ function emphasizeRoads(c,V,Wd,basemap,light){
   for(const p of pcs){if(p.H){for(const y of[p.y0,p.y1]){c.moveTo(X(p.x0),Y(y));c.lineTo(X(p.x1),Y(y));}}else{for(const x of[p.x0,p.x1]){c.moveTo(X(x),Y(p.y0));c.lineTo(X(x),Y(p.y1));}}}
   c.stroke();
   c.restore();
+}
+
+/* ============================================================
+   T21 · Nearby works · clash check (D-0929-2011 ②).
+   Step 3, network tab: other works in the register (T5 /api/worksites, seed fallback) that overlap this plan
+   in time → be.clash() = D(A+B) − D(A) − D(B) on the real CBD network, and a one-click be.stagger().
+   Every number comes from the engine; nothing here calls an LLM. Text from the register goes through esc().
+   Hooks (one call each): 5-app.js renderPanel() step 3 → clashMount(); draw loop step 3 → clashDraw().
+   ============================================================ */
+const CL={m:null,listP:null,src:null,key:'',seq:0,busy:false,err:null,other:null,more:[],st:null,stBusy:false,stErr:null};
+const CL_MAX=3; // score at most this many overlapping works; the costliest reliable one is shown
+const clDay=s=>Date.UTC(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10))/864e5;
+function clashCur(){return planFrom(EP).worksites[0];}
+function clashLoad(){
+  if(!CL.listP)CL.listP=import('/api/public/js/worksites.js')
+    .then(async m=>{CL.m=m;const r=await m.listWorksites();CL.src=r.src;return r.worksites||[];});
+  return CL.listP;
+}
+// Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
+function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
+async function clashRun(){
+  const seq=++CL.seq;Object.assign(CL,{busy:true,err:null,other:null,more:[],st:null,stBusy:false,stErr:null});clashRender();
+  try{
+    const list=await clashLoad();if(seq!==CL.seq)return;
+    const cur=clashCur(),same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
+    const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
+    for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(seq!==CL.seq)return;scored.push({o,ws,r});}
+    scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
+    CL.other=scored[0]||null;CL.more=scored.slice(1);
+  }catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
+  CL.busy=false;clashRender();
+}
+async function clashStagger(){
+  const x=CL.other,seq=CL.seq;if(!x||CL.stBusy)return;
+  CL.stBusy=true;CL.stErr=null;clashRender();
+  try{const st=await BE.api.stagger(clashCur(),x.ws,{maxDays:clashDays(x.ws)});if(seq!==CL.seq)return;CL.st=st;}
+  catch(e){if(seq!==CL.seq)return;CL.stErr=e;console.warn('stagger failed',e);}
+  CL.stBusy=false;clashRender();
+}
+function clashHTML(){
+  const one=t=>`<p class="small muted">${L('Nearby works','附近施工')} · ${t}</p>`;
+  if(!engOn())return one(L('clash check needs the live engine.','叠加检查要等引擎连上。'));
+  if(EP.badText)return one(L('fix the sign text in step 1 first.','先回第 1 步把屏上文字改合规范。'));
+  if(CL.busy)return one(L('checking the works register for overlaps…','正在查登记表里同期的施工…'));
+  if(CL.err)return one(L('clash check unavailable right now.','叠加检查暂时用不了。'));
+  if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
+  const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
+  const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
+  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
+  const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable&&x.r.cost>0?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
+  // Not reliable: negative delay (baseline over capacity, #58) or failed sign readings — never show a number
+  if(!r.flags.reliable)return`${head}<div class="card eng-note warn"><b>${r.flags.negative_delay?L('≈ 0 · baseline flow on this street exceeds capacity; result not reliable','≈ 0 · 这段路的基线车流超出通行能力，结果不可信'):L(`≈ 0 · ${r.flags.failed} sign reading${r.flags.failed===1?'':'s'} failed; result not reliable`,`≈ 0 · 有 ${r.flags.failed} 条屏上文字没读成，结果不可信`)}</b></div>${more}`;
+  // Same corridor: D(A+B) < D(A) + D(B) with every D ≥ 0 → shown as 0, still reliable
+  const sub=r.flags.substitutes?`<div class="card eng-note"><b>${L('≈ 0 · both works sit on the same corridor; together they add no extra delay','≈ 0 · 两处施工在同一走廊，叠加不额外增加延误')}</b></div>`:'';
+  const m=(lab,v,col)=>`<div class="metric"><span class="eyebrow">${lab}</span><div class="v"${col?` style="color:${col}"`:''}>${v}<small>${U}</small></div></div>`;
+  const metrics=`<div class="metrics">${m(L('This plan alone','本方案单独'),fmtN(r.a))}${m(L('Other works alone','那处施工单独'),fmtN(r.b))}${m(L('Both at once','两处同时'),fmtN(r.ab))}${m(L('Clash cost','叠加冲突'),(r.cost>0?'+':'')+fmtN(r.cost),r.cost>0?'var(--risk)':'var(--accent)')}</div>`;
+  const why=`<p class="small muted">${L(`Clash cost = D(A+B) − D(A) − D(B): network delay that exists only because both run at once. Summed over ${r.whens} sampled hours (${hrs} on each overlapping day), all CBD links.`,`叠加冲突 = D(A+B) − D(A) − D(B)：只因两处同时施工才多出来的全网延误。按 ${r.whens} 个采样小时加总（每个重叠日的 ${hrs}），全部 CBD 路段。`)}</p>
+  <div class="eng-legend"><span><i style="background:var(--a-bike)"></i>${L('Dashed · the other works','虚线 · 那处施工')}</span></div>`;
+  let act='';
+  const st=CL.st,b=st&&st.best;
+  if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
+  else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  return`${head}${metrics}${sub}${why}${act}${more}`;
+}
+function clashRender(){
+  const el=document.getElementById('clashBox');if(!el)return;
+  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
+  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+}
+// Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
+function clashMount(){
+  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
+  const box=document.createElement('div');box.id='clashBox';box.className='stack';
+  const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
+  clashRender();
+}
+// Map: the other works' links, dashed, only while the section is on screen
+function clashDraw(){
+  const x=CL.other;if(!x||S.step!==3||EP.tab3!=='net'||!engOn()||!S.layers.works||!document.getElementById('clashBox'))return;
+  const k=clamp(V.s/2.4,.7,1.6);
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalAlpha=.95;ctx.strokeStyle=TK.aBike||TK.accent;ctx.lineWidth=5*k;ctx.setLineDash([7,6]);
+  for(const id of x.ws.links){const P=engGeo(id);if(P){engLine(P,3.5);ctx.stroke();}}
+  ctx.restore();
+}
+
+/* ============================================================
+   Compare · choose · export (T23 · D-0929-2011 ④ · #48 steps ④⑦⑧), under the advisor in step 4.
+   Up to 3 plans side by side. Normally they are T22's be.options(): cheapest / standard / guided kits drawn from the RPM
+   inventory, each run by the engine for this hour, with hire and stock checks — every number comes from backend.js.
+   If options() is missing or fails (e.g. no inventory), fall back to the plan in the form + the advisor's alternatives,
+   each re-run by run(), with hire from /api/public/js/pack.js quote() (same inventory, same assumed day rates).
+   A person picks one and writes why; the one-page pack is pack.js buildPack() + packText(), shown with textContent to
+   print or copy. Nothing here computes a traffic number itself.
+   ============================================================ */
+
+/* pure:begin — tests/compare_glue.mjs runs this block in node */
+const CMP_MAX=3;
+// Plans to compare: the form's plan first, then advisor alternatives that change this hour (a date shift is judged over
+// the whole works period, so it stays in the advisor list above). Ids A, B, C are what the pack's decision line shows.
+function cmpSources(plan,adv){
+  const out=[{id:'A',kind:'now',plan}];
+  for(const o of (adv&&adv.options)||[]){
+    if(out.length>=CMP_MAX)break;
+    if(!o||!o.plan||o.skipped||o.kind==='shift')continue;
+    out.push({id:String.fromCharCode(65+out.length),kind:o.kind,plan:o.plan,frames:o.frames||null,equipment:o.equipment||null,at_m:o.at_m==null?null:o.at_m});
+  }
+  return out;
+}
+// run() summary → the three traffic numbers on a card (null = the engine has no data for it)
+function cmpNumbers(s){
+  if(!s)return{car:null,transit:null,peds:null};
+  return{car:Number.isFinite(s.delay_min)?s.delay_min:null,
+    transit:s.transit&&s.transit.src&&Number.isFinite(s.transit.pax_min)?s.transit.pax_min:null,
+    peds:s.peds&&s.peds.src&&Number.isFinite(s.peds.extra_min)?s.peds.extra_min:null};
+}
+// Lowest per metric → { key: [row indexes] }. Nothing is marked when fewer than 2 plans have the number or all are equal.
+function cmpBest(rows,keys){
+  const out={};
+  for(const k of keys){
+    const vs=rows.map((r,i)=>[i,r&&r[k]]).filter(([,v])=>Number.isFinite(v));
+    if(vs.length<2)continue;const lo=Math.min(...vs.map(([,v])=>v)),hi=Math.max(...vs.map(([,v])=>v));
+    if(lo===hi)continue;out[k]=vs.filter(([,v])=>v===lo).map(([i])=>i);
+  }
+  return out;
+}
+// be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
+function cmpFromOptions(res){
+  return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
+    hire:o.hire&&Number.isFinite(o.hire.total_aud)?o.hire.total_aud:null,days:res.days==null?null:res.days,flags:o.flags||{}}));
+}
+// Equipment in a plan by type → { vms, sign, arrow, barrier } counts (qty when the kit gives one)
+function cmpKit(plan){
+  const ws=plan&&plan.worksites&&plan.worksites[0],k={vms:0,sign:0,arrow:0,barrier:0};
+  for(const e of (ws&&ws.equipment)||[])if(e.type in k)k[e.type]+=Number.isInteger(e.qty)&&e.qty>0?e.qty:1;
+  return k;
+}
+// What a plan puts on the VMS, frame by frame (for the card; set with textContent)
+function cmpVms(plan){
+  const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
+  return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
+}
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date }
+// (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
+// Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
+function cmpDocHTML(d,x,h){
+  const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v);
+  const ch=(x.rows||[])[x.pick],wp=String(d.when||'').split(' · ');
+  const facts=[[lb.when,esc(wp[0]),esc(wp.slice(1).join(' · '))],[lb.decision,ch?esc(ch.id)+' · '+esc(ch.label):esc(d.decision||'—'),ch?esc(x.by||''):''],
+    [lb.total,d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud),esc(L('assumed day rates','日租价为假设值'))]];
+  const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${r.transit==null?'—':fmt(r.transit)}</td><td class="n">${r.peds==null?'—':fmt(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
+  const eq=d.quote.lines.map(l=>`<tr><td>${esc(l.name||l.item)}${l.over?`<div class="pd-over">${esc(l.over)}</div>`:''}</td><td class="n">${l.qty==null?'?':fmt(l.qty)}</td><td class="n">${l.rate==null?'—':'A$'+fmt(l.rate)+esc(d.quote.per_day)}</td><td class="n">${fmt(l.days)}</td><td class="n">${aud(l.cost)}</td></tr>`).join('');
+  const vms=d.vms.map(v=>`<div class="pd-vms"><div class="pd-vms-meta"><b>${esc(v.id)}</b><span>${esc(v.at)}</span><span>${esc(v.when)}</span></div><div class="pd-frames">${v.frames.map(f=>`<figure><figcaption>${esc(f.label)}</figcaption><div class="pd-led">${f.lines.map(esc).join('<br>')}</div></figure>`).join('')}</div></div>`).join('');
+  const signs=d.signs.map(g=>`<li><b>${esc(g.id)}</b> · ${esc(g.at)}${g.text?` · <span class="pd-mono">${esc(g.text)}</span>`:''}</li>`).join('');
+  const checks=d.checks.length?d.checks.map(k=>`<li>${esc(k)}</li>`).join(''):`<li class="pd-ok">${esc(lb.none)}</li>`;
+  const notify=d.notify.map(n=>`<tr><td><b>${esc(n.who)}</b></td><td>${esc(n.why)}</td></tr>`).join('');
+  return`<article class="pack-doc" lang="${d.lang==='zh'?'zh-CN':'en'}">
+<header class="pd-head"><span>RippleTwin · ${esc(d.head)}</span><span>${esc(x.date||'')}</span></header>
+<div class="pd-title"><h1>${esc(d.title)}</h1>${d.status?`<span class="pd-pill">${esc(d.status.text)}</span>`:''}</div>
+<p class="pd-sub">${esc(d.id||'')} · ${esc(d.where)}</p>
+<div class="pd-facts">${facts.map(([k,v,n])=>`<div><span>${esc(k)}</span><b>${v}</b>${n?`<small>${n}</small>`:''}</div>`).join('')}</div>
+${d.reason?`<blockquote class="pd-reason"><span>${esc(lb.reason)}</span>${esc(d.reason)}</blockquote>`:''}
+${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(L('Car delay','车延误'))}<small>${esc(L('veh·min','车·分钟'))}</small></th><th class="n">${esc(L('Tram & bus','电车公交'))}<small>${esc(L('rider·min','人·分钟'))}</small></th><th class="n">${esc(L('On foot','行人'))}<small>${esc(L('ped·min','人·分钟'))}</small></th><th class="n">${esc(L('Hire','租金'))}<small>${esc(L('works period','整个工期'))}</small></th></tr></thead><tbody>${opts}</tbody></table></div><p class="pd-note">${esc(L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
+<section><h2>${esc(lb.quote)}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(c.item)}</th><th class="n">${esc(c.qty)}</th><th class="n">${esc(c.rate)}</th><th class="n">${esc(c.days)}</th><th class="n">${esc(c.cost)}</th></tr></thead><tbody>${eq}</tbody><tfoot><tr><td colspan="4">${esc(lb.total)}</td><td class="n">${d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud)}</td></tr></tfoot></table></div><p class="pd-note">${esc(d.quote.note)}</p></section>
+<section><h2>${esc(lb.vms)}</h2>${vms||`<p class="pd-note">${esc(lb.none)}</p>`}</section>
+${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></section>`:''}
+<section class="pd-two"><div><h2>${esc(lb.checks)}</h2><ul class="pd-list pd-checks">${checks}</ul></div><div><h2>${esc(lb.notify)}</h2><table class="pd-t pd-notify"><tbody>${notify}</tbody></table></div></section>
+<footer class="pd-foot"><span>${esc(d.foot)}</span><span>RippleTwin</span></footer>
+</article>`;
+}
+/* pure:end */
+
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
+
+// pack.js (quote, pack, text) + explain.js (only optionFromRun: run() summary → the metrics the pack's notice list uses) + inventory
+function cmpLoad(){
+  if(CP.loading)return CP.loading;
+  CP.loading=Promise.all([import('/api/public/js/pack.js'),import('/api/public/js/explain.js')])
+    .then(async([pack,ex])=>{CP.mod={pack,ex};try{CP.inv=await pack.loadInventory();}catch(e){CP.invErr=e;console.warn('equipment inventory not loaded',e);}})
+    .catch(e=>{CP.invErr=e;console.warn('pack module not loaded',e);});
+  return CP.loading;
+}
+// The engine's own link records carry len_m / name / lanes / tram, which is all pack.js reads
+function cmpLinks(ws){const net=engNet(),m=new Map();if(!net||!ws)return m;for(const id of ws.links||[]){const l=net.links.get(id);if(l)m.set(id,l);}return m;}
+function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Reword the VMS','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
+function cmpWhat(r){ // textContent only
+  if(r.kind==='move')return(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游');
+  const v=cmpVms(r.plan)||L('No VMS','没有 VMS');if(r.kind!=='kit')return v;
+  const k=cmpKit(r.plan);
+  return v+' · '+[[k.vms,'VMS','VMS','VMS'],[k.barrier,'barrier','barriers','护栏'],[k.sign,'sign','signs','标志牌'],[k.arrow,'arrow board','arrow boards','箭头板']].filter(x=>x[0]>0).map(x=>x[0]+' '+L(x[0]===1?x[1]:x[2],x[3])).join(' · ');
+}
+
+async function cmpUpdate(){
+  if(!engOn()||EP.badText)return;
+  const plan=planFrom(EP),kits=typeof BE.api.options==='function';
+  if(!kits&&!EP.adv)return; // fallback path waits for the advisor
+  const key=JSON.stringify(plan)+(kits?'|kits':'|adv|'+JSON.stringify(EP.adv.options.map(o=>o.plan)));
+  if(key===CP.key)return;
+  CP.key=key;CP.rows=[];CP.pick=null;CP.busy=true;const seq=++CP.seq;
+  let rows=null,src='';
+  if(kits){try{rows=cmpFromOptions(await BE.api.options(plan,{n:CMP_MAX}));src='kits';}catch(e){console.warn('compare: options() failed, using the advisor instead',e);}}
+  if(!rows||!rows.length){
+    if(!EP.adv){if(seq===CP.seq){CP.key='';CP.busy=false;}return;} // retried when the advisor lands (engRender4 → cmpRender)
+    rows=[];src='advisor';
+    for(const x of cmpSources(plan,EP.adv)){let s=null;try{s=await BE.api.run(x.plan);}catch(e){console.warn('compare: run failed',e);}rows.push({...x,s});}
+  }
+  await cmpLoad();
+  if(src==='advisor')for(const r of rows){
+    const ws=r.plan.worksites[0];r.hire=null;r.days=null;
+    if(CP.mod&&CP.inv){try{const q=CP.mod.pack.quote(ws,CP.inv,{links:cmpLinks(ws)});r.hire=q.total_aud;r.days=q.days;}catch(e){console.warn('compare: quote failed',e);}}
+  }
+  if(seq!==CP.seq)return;
+  CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
+}
+
+function cmpHTML(){
+  if(!engOn()||EP.badText)return'';
+  const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
+  if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
+  if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
+  const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
+  const mark=(k,i)=>best[k]&&best[k].includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:'';
+  const cell=(k,i,v,unit)=>`<div><span class="eyebrow">${{car:L('Car delay','车延误'),transit:L('Tram & bus','电车公交'),peds:L('On foot','行人'),hire:L('Hire','租金')}[k]}</span><b>${v}</b><small>${unit}</small>${mark(k,i)}</div>`;
+  const cards=CP.rows.map((r,i)=>{
+    const n=nums[i],ok=!!r.s,picked=CP.pick===i,f=r.flags||{};
+    const warn=[f.stock_ok===false?L('Not enough stock for this kit','库存不够配这一套'):'',f.inactive?L('No works this hour — numbers are 0','这个时段不施工 —— 数字是 0'):''].filter(Boolean);
+    return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
+      <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
+      ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
+        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}</div>`;}).join('');
+  const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
+  let h=head+`<div class="cmp-cards">${cards}</div>
+    <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
+  if(CP.pick!=null&&CP.rows[CP.pick]){
+    h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
+      <div class="chips">${[['contractor',L('Contractor','施工方')],['council',L('Council','市政')]].map(([k,t])=>`<button type="button" data-cmpby="${k}" aria-pressed="${CP.by===k}">${t}</button>`).join('')}</div>
+      <textarea id="cmpReason" rows="2" maxlength="280" aria-label="${L('Why this plan','为什么选这套')}" placeholder="${L('Why this plan? e.g. shortest queue, trams keep running','为什么选这套？例如排队最短、电车照常运行')}"></textarea>
+      <button type="button" class="btn" id="cmpExport" ${CP.mod&&CP.inv?'':'disabled'}>${L('Export one-page pack →','导出一页执行包 →')}</button>
+      ${CP.invErr?`<p class="small" style="color:var(--risk)">${L('Equipment inventory not loaded — the pack needs it for the equipment list and hire quote.','设备库存没加载上 —— 执行包要用它列设备清单和报价。')}</p>`:''}</div>`;
+  }
+  return h;
+}
+
+function cmpRender(){
+  const el=document.getElementById('cmp4');if(!el)return;
+  cmpUpdate();
+  const h=cmpHTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
+  el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
+  el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
+  el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
+  const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
+  const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
+}
+
+// Chosen plan → pack.js execution pack → a print / copy sheet. Every string goes in with textContent.
+function cmpExport(){
+  const r=CP.rows[CP.pick];if(!r||!r.s||!CP.mod||!CP.inv)return;
+  const ws=r.plan.worksites[0],lang=LANG.cur==='zh'?'zh':'en';let txt='',doc='';
+  try{
+    const impacts=CP.mod.ex.optionFromRun(r.id,'plan',r.s).metrics;
+    const p=CP.mod.pack.buildPack({...ws,title:ws.name,status:'decided',decision:{option:r.id,by:CP.by,reason:CP.reason.trim(),at:new Date().toISOString()}},{inventory:CP.inv,links:cmpLinks(ws),impacts});
+    txt=CP.mod.pack.packText(p,lang);
+    if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
+      const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
+      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
+    }
+  }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
+  let sh=document.getElementById('cmpSheet');
+  if(!sh){sh=document.createElement('div');sh.id='cmpSheet';sh.className='cmp-sheet';sh.setAttribute('role','dialog');sh.setAttribute('aria-modal','true');document.body.appendChild(sh);}
+  sh.innerHTML=`<div class="cmp-doc"><div class="between no-print cmp-bar"><b>${L('Execution pack','执行包')}</b><span class="cmp-acts"><button type="button" class="btn ghost" id="cmpCopy">${L('Copy text','复制文字')}</button><button type="button" class="btn" id="cmpPrint">${L('Print / save PDF','打印 / 存 PDF')}</button><button type="button" class="btn ghost" id="cmpClose">${L('Close','关闭')}</button></span></div><div id="cmpPaper"></div></div>`;
+  const paper=document.getElementById('cmpPaper');
+  if(doc)paper.innerHTML=doc; // cmpDocHTML esc()s every string it is given
+  else{const pre=document.createElement('pre');pre.id='cmpText';pre.textContent=txt;paper.appendChild(pre);}
+  const close=()=>{sh.hidden=true;document.removeEventListener('keydown',esc1);};
+  const esc1=e=>{if(e.key==='Escape')close();};
+  document.addEventListener('keydown',esc1);
+  document.getElementById('cmpClose').onclick=close;
+  sh.onclick=e=>{if(e.target===sh)close();};
+  document.getElementById('cmpPrint').onclick=()=>window.print();
+  document.getElementById('cmpCopy').onclick=()=>{const done=()=>toast(L('Pack copied','已复制执行包'));try{navigator.clipboard.writeText(txt).then(done,()=>toast(L('Copy failed — select the text and copy it','复制失败 —— 请手动选中复制')));}catch(e){toast(L('Copy failed — select the text and copy it','复制失败 —— 请手动选中复制'));}};
+  sh.hidden=false;document.getElementById('cmpClose').focus();
 }
 
 </script>

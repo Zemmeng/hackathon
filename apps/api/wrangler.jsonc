@@ -1,4 +1,4 @@
-// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc；Durable Object 只有一个 LlmBudget，管大模型每日调用上限）
+// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc；两个 Durable Object：LlmBudget 管大模型每日调用上限，WorksiteRegister 存施工登记表）
 // 部署归 DEPLOYER（hackathon.conf），bash scripts/deploy.sh all 先部署这个、再部署 site（site 用服务绑定 API 把 /api/* 转过来）
 // 🔒 key 不写在这里：npx wrangler secret put LLM_API_KEY（在本目录跑）。怎么打开大模型见 README「怎么接大模型」。详见 docs/deploy-cloudflare.md
 {
@@ -21,8 +21,9 @@
   },
 
   "vars": {
-    // 默认不花钱：只有 "0" 且放了 LLM_API_KEY 才真调用大模型；其余情况一律关键词规则（/api/health 的 llm.mode 会写 rules）
-    "MOCK": "1",
+    // 只有 "0" 且放了 LLM_API_KEY 才真调用大模型；其余情况一律关键词规则（/api/health 的 llm.mode 会写 rules）
+    // D-0929-2307：打开大模型（读屏 + AI 解读）。急停不用改这里：npx wrangler secret delete LLM_API_KEY
+    "MOCK": "0",
     // OpenAI 兼容的 POST {LLM_BASE_URL}/chat/completions。换服务商只改这两行 + 换 key：
     //   DeepSeek（默认）   https://api.deepseek.com                              deepseek-flash
     //   百炼（国际站）      https://dashscope-intl.aliyuncs.com/compatible-mode/v1  qwen-plus（或 qwen-flash）
@@ -36,14 +37,21 @@
     "LLM_MAX_CALLS_PER_DAY": "600"
   },
 
-  // 大模型每日调用计数（src/budget.js）。免费版只能用 SQLite 后端 → new_sqlite_classes；类改名只能加新 tag + renamed_classes
+  // BUDGET：大模型每日调用计数（src/budget.js）；REGISTER：施工登记表（src/register.js，提案 #48 第 ⑤ 步）
+  // 免费版只能用 SQLite 后端 → new_sqlite_classes；已部署的 tag 不许改，加类只能加新 tag，类改名只能加新 tag + renamed_classes
   "durable_objects": {
-    "bindings": [{ "name": "BUDGET", "class_name": "LlmBudget" }]
+    "bindings": [
+      { "name": "BUDGET", "class_name": "LlmBudget" },
+      { "name": "REGISTER", "class_name": "WorksiteRegister" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LlmBudget"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["LlmBudget"] },
+    { "tag": "v2", "new_sqlite_classes": ["WorksiteRegister"] }
+  ]
 
   // 推荐：跨访客、跨实例的读数缓存（免费版每天 1000 次写，每日上限 600 次调用最多写 200 条）。
   // 没有它只剩每个实例的内存缓存：网址是 *.workers.dev，Workers 自带的 Cache API 在那里不生效（/api/health 的 llm.cache 会写 memory）
   // 1. 在本目录跑 npx wrangler kv namespace create READINGS  2. 把打印的 id 填进下面，取消注释  3. 重新部署
-  // ,"kv_namespaces": [{ "binding": "READINGS", "id": "<上面打印的 id>" }]
+  ,"kv_namespaces": [{ "binding": "READINGS", "id": "f1729ac78da649198d3e1f5d41e30956" }]
 }

@@ -155,7 +155,7 @@ class Weather{
     for(let n=0;n<40;n++){const x=lerp(x0,x1,Math.random()),y=lerp(y0,y1,Math.random()),v=this.radarAt(x,y);if(v>47&&(!best||v>best.v))best={x,y,v};}
     if(!best)return;
     const bolt=[];for(let b=0;b<4;b++){let a=Math.random()*Math.PI*2,px=best.x,py=best.y;const pts=[[px,py]];const len=b===0?9:5;for(let s=0;s<len;s++){a+=(Math.random()-.5)*1.3;const l=2.5+Math.random()*4;px+=Math.cos(a)*l;py+=Math.sin(a)*l;pts.push([px,py]);}bolt.push(pts);}
-    this.strikes.push({x:best.x,y:best.y,age:0,bolt,kA:(18+Math.random()*44)|0,pol:Math.random()<.85?'−':'+',clock:this.clock});
+    this.strikes.push({x:best.x,y:best.y,age:0,bolt,clock:this.clock});
     this.strikeCount++;if(!this.reduced)this.flash=1;
   }
   /* ---------- drawing ---------- */
@@ -231,7 +231,7 @@ class Weather{
         const px=V.X(s.x),py=V.Y(s.y);
         if(s.age<.45){ctx.save();ctx.globalAlpha=1-s.age/.45;ctx.strokeStyle=this.light?'#5B3FD6':'#F3EEFF';ctx.shadowColor='#B9A7FF';ctx.shadowBlur=16;ctx.lineWidth=2;for(const b of s.bolt){ctx.beginPath();b.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.stroke();}ctx.restore();}
         const f=Math.min(1,s.age/.9);ctx.save();ctx.globalAlpha=Math.max(0,1-s.age/12);ctx.strokeStyle=this.light?'#6A4BE0':'#FFE45C';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,6+f*22,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(px-5,py);ctx.lineTo(px+5,py);ctx.moveTo(px,py-5);ctx.lineTo(px,py+5);ctx.stroke();ctx.restore();
-        if(s.age>.3&&s.age<10)drawTag(ctx,px,py,34,-30,`${L('CG','地闪')} ${s.pol}${s.kA} kA · ${s.clock}`,this.light?'#6A4BE0':'#FFE45C',TK);
+        if(s.age>.3&&s.age<10)drawTag(ctx,px,py,34,-30,L('LIGHTNING · ILLUSTRATIVE','闪电 · 示意'),this.light?'#6A4BE0':'#FFE45C',TK);
       }
       const c=this.cells()[0],px=V.X(c[0]),py=V.Y(c[1]);
       if(px>60&&px<V.w-240&&py>90&&py<V.h-120){ctx.save();ctx.strokeStyle=this.light?'rgba(20,30,40,.7)':'rgba(255,255,255,.75)';ctx.setLineDash([5,4]);ctx.lineWidth=1.5;const ex=px+.84*90*V.s,ey=py+.54*90*V.s;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);const a=Math.atan2(ey-py,ex-px);ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-9*Math.cos(a-.4),ey-9*Math.sin(a-.4));ctx.moveTo(ex,ey);ctx.lineTo(ex-9*Math.cos(a+.4),ey-9*Math.sin(a+.4));ctx.stroke();ctx.restore();drawTag(ctx,px,py,-20,-26,L('CELL S-2 → SE 27 km/h','雷暴单体 S-2 → 东南 27 km/h'),col,TK);}

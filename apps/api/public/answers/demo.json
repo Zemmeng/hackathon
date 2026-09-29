@@ -1,5 +1,5395 @@
 {
   "note": "演示文案提前问好的读数。键 = answerKey(请求)（见 apps/api/README.md）；每条 { req, reading, from }，req 只给人看。由 node apps/api/tools/precompute.mjs --run 生成（默认 dry-run 不花钱），--check 校验",
   "prompt_v": "r2",
-  "answers": {}
+  "answers": {
+    "c857245a77f728fe91802b48ed56f94c586cea4d609a4cf66f3389de458e6ea1": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.93,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "It just warns me of roadwork ahead with no route or timing details, so I'll stay alert but keep going.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:plain"
+    },
+    "c5a8d2d9dea069cbc24290f7e4c3664888147a4fed10d1f16c68eb149118154a": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.93,
+        "understand": 0.96,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "That board is just warning me there's roadwork ahead, but it doesn't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.97
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:plain"
+    },
+    "2008bf5cd61a433d68c191762dee7c6010511115dc818b3dac63e0d51dac2e9b": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.92,
+        "understand": 0.87,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "It warns me of roadwork ahead but does not name any road or suggest a detour.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.85,
+            0.9
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:plain"
+    },
+    "3c7658b4d654d0509ce097916c13390ad68cfca3743253f8db4d82efa93e8c7a": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.9,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.82,
+        "why": "It just says roadwork ahead, so I'll be alert for delays but it doesn't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.8,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:plain"
+    },
+    "b7e45aa4429c7a34a51d176aac0ddbc9c28438af7be4cc4253c96c0c983b8b26": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST",
+                "SAVE 4 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 4,
+        "delay_min": null,
+        "trust": 0.55,
+        "why": "It clearly tells me to use Russell Street to save 4 minutes, but I'm not fully sure the saving will hold up in morning peak traffic.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.5,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:use-russell"
+    },
+    "67249760050ceaae564f7d28c776952754006d1ae1cecaef3ecc80675ae95db3": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST",
+                "SAVE 4 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.93,
+        "understand": 0.97,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 4,
+        "delay_min": null,
+        "trust": 0.77,
+        "why": "It clearly tells me to use Russell Street to save 4 minutes, and as a local who knows these streets I'd give it a fair go.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.7,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:use-russell"
+    },
+    "4f72047ec315826dbe5cde143946c6b0167e7f673ffd26b18d9190565cc122da": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST",
+                "SAVE 4 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.88,
+        "understand": 0.67,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 4,
+        "delay_min": null,
+        "trust": 0.53,
+        "why": "A big electronic sign says to use Russell Street and save 4 minutes, but I don't know where Russell Street is and I'm not sure I can follow it in time.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.5,
+            0.8
+          ],
+          "trust": [
+            0.4,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:use-russell"
+    },
+    "d75b53a087f4613b2a91a6ad5d3bf551bb1754d575c46f51cd518d90351a6dbd": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST",
+                "SAVE 4 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.88,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 4,
+        "delay_min": null,
+        "trust": 0.7,
+        "why": "Another four minutes off my run sounds worth it, so I'd consider turning onto Russell Street.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:use-russell"
+    },
+    "f4b5774549d610c0d346b854c3caa44660854db1d67eb1bf121b852b4c206619": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED",
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.97,
+        "understand": 0.97,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "It says La Trobe is closed so I should use Russell Street instead, but it doesn't tell me how much time it saves me.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:closed-use"
+    },
+    "79d812d45bf076ef4e33ce63d034cf624e3845ff04a0b3d6381fe26b22c9b4d5": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED",
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.93,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use",
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "La Trobe is closed ahead, so I should use Russell Street instead.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:closed-use"
+    },
+    "b34211e0c4c8f252f6106c93e89527906d8574e84994010c0807a4abbabc5834": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED",
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.88,
+        "understand": 0.72,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.6,
+        "why": "The sign says La Trobe is closed and to use Russell Street, but I don't know these streets well and I'm not sure where to turn.",
+        "range": {
+          "notice": [
+            0.8,
+            0.95
+          ],
+          "understand": [
+            0.7,
+            0.75
+          ],
+          "trust": [
+            0.6,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:closed-use"
+    },
+    "578e391fae5163d45a1c5c2053411d424a25d50ad15c015fcd9613938bfd4c7d": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED",
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.9,
+        "understand": 0.93,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "The message board clearly says La Trobe is closed and to use Russell Street, so I'd detour that way despite not knowing exactly how much time it costs.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.8,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:closed-use"
+    },
+    "04e4fd607f8f4228b3e890f7438b730e68c3afd9b158e8bc3bcee012f7053462": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED"
+              ],
+              [
+                "DETOUR VIA",
+                "LONSDALE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.92,
+        "advice": {
+          "Lonsdale Street": "use",
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "The board clearly says La Trobe is closed and to detour via Lonsdale, so I'd head for Lonsdale instead.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.8,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:two-frames"
+    },
+    "6f326e08fe46e8d7d3d724dc72727eb861b6a23ad29f79828f2dbbbe76889e2a": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED"
+              ],
+              [
+                "DETOUR VIA",
+                "LONSDALE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.97,
+        "understand": 0.98,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Lonsdale Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "The board says La Trobe is closed ahead and tells me to detour via Lonsdale, so I'll avoid La Trobe and use Lonsdale.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:two-frames"
+    },
+    "00adc00c2588387fb2db0c3eb163c769da5a4a6c66322ff392fecf5a06d6204f": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED"
+              ],
+              [
+                "DETOUR VIA",
+                "LONSDALE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.9,
+        "understand": 0.68,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Lonsdale Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.75,
+        "why": "The sign says La Trobe is closed and points detour traffic to Lonsdale, so I should avoid La Trobe and use Lonsdale, though as a visitor I'm not fully sure I've",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.6,
+            0.75
+          ],
+          "trust": [
+            0.7,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:two-frames"
+    },
+    "49cb0c90161e7a0293e2ba0d03d90b3a00875adc1ae83419522ee12ff25c4e4e": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "LA TROBE",
+                "CLOSED"
+              ],
+              [
+                "DETOUR VIA",
+                "LONSDALE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.93,
+        "understand": 0.92,
+        "advice": {
+          "Lonsdale Street": "use",
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.82,
+        "why": "The board tells me La Trobe is closed ahead so I should detour via Lonsdale.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.75,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:two-frames"
+    },
+    "e53a5d2415cbc11af0cec8cbc8da35fe22c6bbb2122dd6575bfc4111e57f5385": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "DELAYS",
+                "15 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": 15,
+        "trust": 0.75,
+        "why": "I see the board says there are 15-minute delays, but it doesn't tell me which road or what to do about it.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:delay-only"
+    },
+    "9819068eb06824e192fff47de3f0ba51e719f36e6121d84ccb549755643210c2": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "DELAYS",
+                "15 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.9,
+        "understand": 0.92,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": 15,
+        "trust": 0.67,
+        "why": "It tells me there are 15 minutes of delays ahead but doesn't say where or suggest any detour.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.85,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:delay-only"
+    },
+    "12def5dd05ecdf4686d63666ad24a7c996029f2b7ddd523edb7984918c9ba1f4": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "DELAYS",
+                "15 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.83,
+        "understand": 0.72,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": 15,
+        "trust": 0.62,
+        "why": "I see there are delays of 15 minutes but the sign doesn't tell me which road or which way to go instead.",
+        "range": {
+          "notice": [
+            0.7,
+            0.95
+          ],
+          "understand": [
+            0.6,
+            0.85
+          ],
+          "trust": [
+            0.55,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:delay-only"
+    },
+    "155bcd50d0fb4c2641e4a0d457507ec211dd699317d90fd8ec94459eb82fb015": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "DELAYS",
+                "15 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.9,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": 15,
+        "trust": 0.73,
+        "why": "It tells me there's a 15-minute delay ahead, but it doesn't name any road or suggest a detour.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:delay-only"
+    },
+    "bd28a36b3b70fbb090e16b36327087d93fe2b18d67cc84653744242200aad920": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "AVOID",
+                "LA TROBE",
+                "ALLOW",
+                "10 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.8,
+        "advice": {
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": 10,
+        "delay_min": null,
+        "trust": 0.6,
+        "why": "It says avoid La Trobe and that allowing 10 minutes helps, so I'll stay off La Trobe if I can.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.75,
+            0.85
+          ],
+          "trust": [
+            0.6,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:avoid-allow"
+    },
+    "a939952ed4d34d6e4291aa4bb95ce1f333ab7eb4bb37e65cc291f903b7af97a2": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "AVOID",
+                "LA TROBE",
+                "ALLOW",
+                "10 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.97,
+        "understand": 0.92,
+        "advice": {
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": 10,
+        "delay_min": null,
+        "trust": 0.68,
+        "why": "It's telling me to avoid La Trobe Street because there's a 10-minute delay there.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.65,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:avoid-allow"
+    },
+    "da7a302765845451659bf50fd290e97fdc5e2616118166c628688761928d315d": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "AVOID",
+                "LA TROBE",
+                "ALLOW",
+                "10 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.85,
+        "understand": 0.58,
+        "advice": {
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": null,
+        "delay_min": 10,
+        "trust": 0.48,
+        "why": "I think it says avoid La Trobe Street and allow 10 extra minutes, but I'm not sure if 10 minutes is the saving on a detour or a delay.",
+        "range": {
+          "notice": [
+            0.85,
+            0.85
+          ],
+          "understand": [
+            0.55,
+            0.6
+          ],
+          "trust": [
+            0.4,
+            0.55
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:avoid-allow"
+    },
+    "58690ae40e63653af4227f5a5088fa43b5fa8006d76fa7e1ebcb69fda2556ffa": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "AVOID",
+                "LA TROBE",
+                "ALLOW",
+                "10 MIN"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.95,
+        "understand": 0.88,
+        "advice": {
+          "La Trobe Street": "avoid"
+        },
+        "saving_min": 10,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "The board tells me to steer clear of La Trobe and says allowing the detour will save me about 10 minutes, which matters when I'm behind on CBD drops.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.85,
+            0.9
+          ],
+          "trust": [
+            0.7,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:avoid-allow"
+    },
+    "96a1d78af8fb80b2f2a41cf6ab7f7960122a59144ecd374cf15cd3cb4e9dd80f": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "RD WKS AHD",
+                "USE ALT",
+                "RTE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.88,
+        "understand": 0.72,
+        "advice": {
+          "La Trobe Street": "avoid",
+          "Russell Street": "avoid"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.6,
+        "why": "It says road works ahead and to use an alternative route, but it doesn't name a specific detour or say how much time it saves.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.7,
+            0.75
+          ],
+          "trust": [
+            0.6,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:abbrev"
+    },
+    "ee8b7da6fe4063a24ee1ec26cde305c7a75b6fb1f2b828812f1a024abc2c9d8d": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "RD WKS AHD",
+                "USE ALT",
+                "RTE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.72,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.6,
+        "why": "It tells me there are road works ahead and to use an alternative route, but doesn't name which way or how much time it saves.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.65,
+            0.8
+          ],
+          "trust": [
+            0.6,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:abbrev"
+    },
+    "d8e4d3703a0629a10928a0154166a8672a285908b507b9da7adbbdcdf4db8474": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "RD WKS AHD",
+                "USE ALT",
+                "RTE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.87,
+        "understand": 0.45,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.5,
+        "why": "I can tell roadworks are ahead and I should use an alternative route, but the abbreviations are confusing and the sign does not name any actual road to take.",
+        "range": {
+          "notice": [
+            0.8,
+            0.9
+          ],
+          "understand": [
+            0.4,
+            0.55
+          ],
+          "trust": [
+            0.5,
+            0.5
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:abbrev"
+    },
+    "9fcf7eef2973066f6996267f38e020dc264763e05c6e3ee40cccc8ed6d1df2d1": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "RD WKS AHD",
+                "USE ALT",
+                "RTE"
+              ]
+            ],
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.85,
+        "understand": 0.82,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.6,
+        "why": "It says road works ahead so I should use an alternative route, but it doesn't name which detour to take or how long it saves.",
+        "range": {
+          "notice": [
+            0.85,
+            0.85
+          ],
+          "understand": [
+            0.75,
+            0.9
+          ],
+          "trust": [
+            0.5,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:abbrev"
+    },
+    "3719036b36697650c4cda5af9dc41c7f0f6ad61b2f08c0ec614918a39471acd0": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "ELIZABETH",
+                "ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 3
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.82,
+        "understand": 0.9,
+        "advice": {
+          "Elizabeth Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.58,
+        "why": "A variable message board is telling me to use Elizabeth Street, but it doesn't say how much time it saves or why, so I'd follow it only if it fits with what I a",
+        "range": {
+          "notice": [
+            0.7,
+            0.9
+          ],
+          "understand": [
+            0.85,
+            0.95
+          ],
+          "trust": [
+            0.55,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:vms-plus-sign"
+    },
+    "b9b4111a67cb1d9c113430d72bd4122c22bdd5ad7046050d6cf5ae4f6280e0a2": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "ELIZABETH",
+                "ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 3
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.9,
+        "understand": 0.95,
+        "advice": {
+          "Elizabeth Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "The variable message board tells me to use Elizabeth Street, and the roadwork sign warns the right lane is closed ahead.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:vms-plus-sign"
+    },
+    "dbb62996e9c925f046caa1a147a20d27ecb1bb3cc3d6732ce55775a80adfea7d": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "ELIZABETH",
+                "ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 3
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.9,
+        "understand": 0.67,
+        "advice": {
+          "Elizabeth Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.57,
+        "why": "I catch that the board wants me to use Elizabeth Street, but I'm not sure where that is or whether it helps me, and then the lane closure sign is just extra pre",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.6,
+            0.8
+          ],
+          "trust": [
+            0.5,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:vms-plus-sign"
+    },
+    "6b40411aa1789f7ace3f2c15c5a6c63beefa1eb79185caa4b83506c0db323717": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "ELIZABETH",
+                "ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 3
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Lonsdale Street",
+          "Elizabeth Street",
+          "A'Beckett Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.87,
+        "understand": 0.9,
+        "advice": {
+          "Elizabeth Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "A variable message board is telling me to use Elizabeth Street, but I need to keep an eye out for the right lane closure ahead.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.85,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "fixture:vms-plus-sign"
+    },
+    "e5dcbc82b15c173d2d673ecd23a1e776c806039c2078189c1882878ff6bb23f2": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.95,
+        "understand": 0.96,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.87,
+        "why": "There's roadwork ahead and the right lane is closed, so I need to be ready to merge left, but the signs don't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.97
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "68a79772aad70f5e7ead18a3cba6da8d02b8bc6bc115ac85017530fcbff03f45": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.93,
+        "understand": 0.97,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.9,
+        "why": "It just warns me of roadwork ahead and that the right lane is closed, but it doesn't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.98
+          ],
+          "trust": [
+            0.9,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "27cd5e04263c74767e4d098fb82f331af7f63e26f57459846bebb87b7563ae0c": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.87,
+        "understand": 0.63,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "I understand there is roadwork ahead and the right lane is closed, so I need to watch out and merge left, but the signs don't name any streets or tell me a deto",
+        "range": {
+          "notice": [
+            0.8,
+            0.9
+          ],
+          "understand": [
+            0.55,
+            0.75
+          ],
+          "trust": [
+            0.6,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "25c1e0e894b50986251e2049bb110daebadb4af8f5bfb2f8995abe2dc9110a3d": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.93,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "Roadwork ahead and the right lane is closed, so I'll expect delays and lane changes but the signs don't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "d1a6fcdc50882487a40e9c9884b824029fa3f6ff4f7a32bb4f059c4357f30256": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "The board is telling me to use Russell Street instead, though it doesn't say how much time it saves, and the right lane closure sign is just a heads-up.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "a24b9f98cc70b9b29e6336e995c45aa8f70b758ccd367250c404bc21452fc142": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "The message board tells me to use Russell Street and the roadwork sign says the right lane is closed, so I should head that way.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "fe34874dcff3f85dcb64d30ad60621d44a2b7275d06f10a263385b7735d327be": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.87,
+        "understand": 0.6,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.55,
+        "why": "I see signs pointing me to Russell Street and warning the right lane is closed, but as a visitor I'm not sure where Russell Street is or if it actually helps.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.6,
+            0.6
+          ],
+          "trust": [
+            0.45,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "8e4d34f2fe5a4ea0a3b9b6aa9c1d5a6c854157c734d5fcd38d3e68031f56d7ac": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 9
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Russell Street",
+          "Elizabeth Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.88,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "The board is telling me to use Russell Street, and the signs don't give a time saving or explain the current delay.",
+        "range": {
+          "notice": [
+            0.8,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "9e0804407a5ff534c39114cb40910c36537b27f5a77f894e9b9fa0f3b65eaf70": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.92,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "The board tells me roadwork is ahead and to use Russell Street, and the lane closure sign backs that up, so I'd lean toward taking Russell Street even though I'",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "5a1a1b7df9293e81eda8869829e6cf19a1a67e1654e3c92c3297bc569c9e143c": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.92,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.68,
+        "why": "Roadwork ahead and the right lane is closed, so I should use Russell Street instead.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "035c5d0e299ddb80591b2061ff0ba910b19a25ffe975f0a60ed97dd2c3de7a0d": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.9,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "It tells me there's roadwork ahead and to use Russell Street instead.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.9
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "df350a877c825b42e1bb86730a123611d189a64e8ca17634a43d12f7c13369ba": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.97,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "The signs clearly tell me to use Russell Street because of roadwork ahead and a closed right lane.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.75,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "5125bd6dfaddaa5e6399774a7500e633710254455aa42ab93ee356db292bfbd8": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.87,
+        "why": "The message board clearly tells me to use Russell Street because of roadwork ahead, so I'd believe it and head that way.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "e5beeedf7e0fc34fa0a4af89ad293cb31b7e889ab90f0b5d224b6026a3a871f3": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "It tells me there's roadwork ahead and to use Russell Street instead, so I'd take Russell Street as a detour.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.8,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "3e6b4e968c327ef1cfe5e48867dd5f16aeeefda18e32d2817d517b8a2abaeffc": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.82,
+        "understand": 0.57,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.57,
+        "why": "I catch the roadwork and Russell Street detour messages, but as a visitor who doesn't know these streets or English well, I'm not fully sure where Russell Stree",
+        "range": {
+          "notice": [
+            0.75,
+            0.9
+          ],
+          "understand": [
+            0.55,
+            0.6
+          ],
+          "trust": [
+            0.5,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "d2388638bd8e514041d584a94dc63b1f7f59228a4a1488921e78bc9ace351892": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.83,
+        "understand": 0.6,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.57,
+        "why": "I can read the simple words but I do not know these street names, so I may not know which way Russell Street is or whether to trust the detour.",
+        "range": {
+          "notice": [
+            0.8,
+            0.9
+          ],
+          "understand": [
+            0.6,
+            0.6
+          ],
+          "trust": [
+            0.5,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "76310993d0a2f4dd66db0d4687e538be4a2ee0aed8f2010a4903d03c312f424f": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.92,
+        "understand": 0.67,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.65,
+        "why": "It says roadwork ahead and tells me to use Russell Street, but I'm not sure which street I'm on or where Russell Street is.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.6,
+            0.8
+          ],
+          "trust": [
+            0.5,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "5afdc11bf4daa4d4a988552542d1cb41da989958210c1062fab7f6cd37f24624": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.92,
+        "understand": 0.92,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.68,
+        "why": "The boards warn of roadwork and a closed right lane and tell me to use Russell Street, but they don't say how much time it saves, so I'd switch if it fits my dr",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.65,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "4ba35a8d7e0ce658a8edfaf32839bb15bb9c2a084f87ce57d2dff9c5e849859a": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.95,
+        "understand": 0.9,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "I've got drop-offs to make, so I'll take Russell Street if it gets me past the roadwork and lane closure faster.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.85,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "4d6d5aa7eee37196f7f8cbb4ad09fa993934c828f25c4c8e82faafaf0eb16240": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.9,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.72,
+        "why": "Roadwork ahead, so I should detour onto Russell Street to keep my drop-offs on schedule.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:run"
+    },
+    "73b32d17338f6e7903041eb21644e087530d540be67f03a3834bfbf14b4c5bab": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.98,
+        "understand": 0.98,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.92,
+        "why": "It just warns me of roadwork ahead with the right lane closed, so I'll have to merge left and expect delays, but it doesn't tell me to take any other road.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.85,
+            1
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "0f04660302ef0253890b40fe4fafb62f1fb954a8c5e1aaa8c04edfa9283a7a35": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.96,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.87,
+        "why": "It just warns me there's roadwork ahead and the right lane is closed, so I'll stay in the left lane — the signs don't tell me to use or avoid any of these stree",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.97
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "a062180a5f10914d91fa649047645236e6a7922c359bcfedfe79baf981ee6b7c": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.92,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "It warns me there's roadwork ahead but doesn't name any road or detour, so I just stay alert and keep going.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.8,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "e3be8295259846650081086565a6a8b0e84b31dab6bb7e71fc1032ba02648fc2": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.96,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "These signs warn me of roadwork ahead and a right lane closure, but they don't name any detour road so I'll just stay alert and merge as directed.",
+        "range": {
+          "notice": [
+            0.95,
+            0.98
+          ],
+          "understand": [
+            0.95,
+            0.96
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "d4097f41666837aae9c2968b387e7da6dce51eab0919bdd6f25be43f3597f532": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.97,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.9,
+        "why": "These are standard roadwork warnings telling me roadwork is ahead and the right lane is closed, so I just need to be ready to merge left.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.9,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "497bc9c9ae94f6f0069f3cd87c64e9b569682e1c165729f860b00c34380eef05": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.96,
+        "understand": 0.98,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.92,
+        "why": "It just warns me there's roadwork ahead, but it doesn't name any road or suggest a detour.",
+        "range": {
+          "notice": [
+            0.95,
+            0.99
+          ],
+          "understand": [
+            0.97,
+            0.99
+          ],
+          "trust": [
+            0.9,
+            0.95
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "10dc7b9d0c331565540925ab020bdf416a05d7688af47541ee4e0d6f87facde6": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.88,
+        "understand": 0.68,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.75,
+        "why": "The signs warn me of roadwork ahead and a closed right lane, but they don't name any roads or tell me which way to go.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.55,
+            0.8
+          ],
+          "trust": [
+            0.6,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "01db6b8b6b576f02cf64840dbba9f4931d59d9fb4a7629ef431fb57e5c6751df": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.9,
+        "understand": 0.75,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.75,
+        "why": "It tells me there is roadwork ahead and the right lane is closed, but it does not name any roads or mention any detour.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.7,
+            0.85
+          ],
+          "trust": [
+            0.6,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "78e9093fb8802911cfa2ba7325e655ef95f4d1da0374dbced6bbb19fb6792e41": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.82,
+        "understand": 0.82,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "It warns of roadwork ahead but gives no street names or detour, so I just need to watch for it.",
+        "range": {
+          "notice": [
+            0.7,
+            0.9
+          ],
+          "understand": [
+            0.7,
+            0.95
+          ],
+          "trust": [
+            0.5,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "278739940a861beab5b901a7c6eabe464c17c782908188bc05f31600b3deed49": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.96,
+        "understand": 0.94,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "I'll notice the roadwork warnings and lane closure signs, understand there's work ahead and my right lane is closed, so I should avoid the closed lane and be re",
+        "range": {
+          "notice": [
+            0.95,
+            0.97
+          ],
+          "understand": [
+            0.9,
+            0.98
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "cd3a97c5bb7de1e2ca17eef833083fe0bd4e329b41caa94bea6fc49798af342b": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.97,
+        "understand": 0.97,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "It just warns me of roadworks ahead and a right lane closure, so I know to expect delays but it doesn't tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "2eb2b780b092136d329a4960c3a111ffbb65d00c60a631057d269380e06c713a": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.9,
+        "understand": 0.96,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "It just warns me of roadwork ahead but doesn't name a road or suggest any detour, so I keep going and watch for the works.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.97
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:compare"
+    },
+    "c02bcf8fcd5db2acda98fb018f8e5688dc7baa1a7c7ace3bbd86d4ecdd500eef": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.92,
+        "understand": 0.91,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.63,
+        "why": "The message board tells me to use Russell Street to save 5 minutes, but with the right lane closing and peak-hour traffic I'm only partly convinced it'll really",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.92
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "3e7e57861760796fd701390b1a53c8cba16716432e05dc3597d8aa19e6834bcb": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.9,
+        "understand": 0.92,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.7,
+        "why": "It says using Russell saves me 5 minutes, and I also see the right lane is closed, so I'll try Russell.",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.85,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "aeeaa937332724fb7f03380ef96a56b3c4986954bd32fab9976d8e8e8762151d": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.95,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "I'd probably switch to Russell Street since the sign says it saves 5 minutes, but I'm a bit skeptical because the message only flashed on the board.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.9,
+            1
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "4d2a0a863f2a1db177b005f0ab8e65e25b71d00e860c75a1dd768fc7614a5a80": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.72,
+        "why": "The message board clearly tells me to use Russell Street to save 5 minutes, though I'd wonder if it's still accurate.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.65,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "a40eaebf9cd68cd86e880db632d9beae8c73aca4b4d275cc56661a9b08625a5c": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.93,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "The board tells me to use Russell Street to save 5 minutes, and the roadwork sign says the right lane is closed, so I'd take the hint and head for Russell.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "0533c656b3eb09ed219441907b380cb2a830297f61b7544eaa8da5e69deb9c0f": {
+      "req": {
+        "persona": "local",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.97,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.63,
+        "why": "It clearly tells me to use Russell Street to save 5 minutes, though I'm a bit wary of whether that saving is real.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.9,
+            1
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "c549b20692fd6101bc608093e97c7a19d6d2056d9e258ee3e5b60d035a685237": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.8,
+        "understand": 0.73,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.63,
+        "why": "It tells me to take Russell Street to save 5 minutes, but as a visitor I am not fully sure where that is or whether the times are reliable.",
+        "range": {
+          "notice": [
+            0.7,
+            0.9
+          ],
+          "understand": [
+            0.7,
+            0.75
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "db449173d5043bd48746bf9eb6408fd591199eaa2986619ea6ac7ae3e7873574": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.85,
+        "understand": 0.62,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.52,
+        "why": "I can read that Russell Street may save me 5 minutes, but I do not know which street that is or whether to trust the detour.",
+        "range": {
+          "notice": [
+            0.75,
+            0.9
+          ],
+          "understand": [
+            0.6,
+            0.65
+          ],
+          "trust": [
+            0.5,
+            0.55
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "4327bf97ed9a31f06ab663cb1752613f1b40fcbc766cd23cdc49ab595925d9cb": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.9,
+        "understand": 0.62,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.57,
+        "why": "A visitor with limited English can grasp 'USE RUSSELL' and 'SAVE 5 MIN' but may not know which street is Russell or how to get there.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.55,
+            0.7
+          ],
+          "trust": [
+            0.5,
+            0.6
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "c4eaddbb9d02fa68b624e4607f40232754f0028b9ed81e0c33cfe705f1350ceb": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.92,
+        "understand": 0.9,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.67,
+        "why": "I would notice the variable message sign easily enough and understand it is suggesting Russell Street as a five-minute-saving detour, but as a local courier I w",
+        "range": {
+          "notice": [
+            0.85,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.9
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "1cfd53f64af31a5a23f188df1fa5281c56987a2fe375c932c11d85f6e7e69aa1": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 9
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.92,
+        "understand": 0.94,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.62,
+        "why": "The board says using Russell saves me 5 minutes, and the roadwork sign just warns the right lane is closed, but I am cautious about trusting a detour sign durin",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.98
+          ],
+          "trust": [
+            0.55,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "2ce6801526079581fa182b2f6f72b9804964a5d669e058e97dd6b85995bea4ab": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 40,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "USE",
+                "RUSSELL",
+                "SAVE 5 MIN"
+              ]
+            ],
+            "read_s": 18
+          }
+        ],
+        "roads": [
+          "Lonsdale Street",
+          "Russell Street",
+          "Exhibition Street",
+          "Spring Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.92,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": 5,
+        "delay_min": null,
+        "trust": 0.68,
+        "why": "A 5-minute saving is worth it, but I need to check Russell Street actually works for my next drop-off.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.6,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:lonsdale:advise"
+    },
+    "fd3dbf560c3a8433c575cc8f257384978cc938bbce976186cbf8ef5e0ed63a62": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.88,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "It tells me to get onto Russell Street because there's roadwork ahead, so I'll follow the detour even though it doesn't say how much time it saves.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.85,
+            0.9
+          ],
+          "trust": [
+            0.65,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "8d9f0a10b2870624e8992c4389e52f88030bb85b3128dcc051649d8abdfbf54e": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.93,
+        "understand": 0.93,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.73,
+        "why": "It tells me there's roadwork ahead and suggests I use Russell Street, so I'd consider switching to it if I can.",
+        "range": {
+          "notice": [
+            0.85,
+            1
+          ],
+          "understand": [
+            0.9,
+            1
+          ],
+          "trust": [
+            0.7,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "1c19b51f7b7bb98c44c4548ff6dd12db6405cdaead80c98f52f787069c671e2f": {
+      "req": {
+        "persona": "local",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.94,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.78,
+        "why": "Roadwork ahead and the right lane is closed, so the message board is telling me to use Russell Street instead.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.97
+          ],
+          "trust": [
+            0.75,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "f3828a2725ce0b44812bb1513e34f445153645e76772f8aae20df3e532099a6b": {
+      "req": {
+        "persona": "local",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 1,
+        "understand": 1,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.78,
+        "why": "It tells me there's roadwork ahead and to use Russell Street instead.",
+        "range": {
+          "notice": [
+            1,
+            1
+          ],
+          "understand": [
+            1,
+            1
+          ],
+          "trust": [
+            0.7,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "5b4e0773a0a69433c640a076509ba5f2d0e067375f32ef749c8a0b17f5854cff": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.88,
+        "understand": 0.67,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.63,
+        "why": "The board tells me to use Russell Street for the roadwork ahead, but I'm not sure where Russell Street is.",
+        "range": {
+          "notice": [
+            0.85,
+            0.9
+          ],
+          "understand": [
+            0.55,
+            0.85
+          ],
+          "trust": [
+            0.6,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "b2e435c590bebd0286052cfa0db3e69ebea2f8a7b7d0b630ab177108cae5a065": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.9,
+        "understand": 0.73,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.7,
+        "why": "It tells me roadwork is ahead and to use Russell Street instead, but it doesn't say how much time I save or which way Russell Street is.",
+        "range": {
+          "notice": [
+            0.9,
+            0.9
+          ],
+          "understand": [
+            0.6,
+            0.85
+          ],
+          "trust": [
+            0.7,
+            0.7
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "bb51eabd6f7599912cd6340f3e2007222c775abe87b1d097e5be262346c6dc8f": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.93,
+        "understand": 0.92,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.72,
+        "why": "The message board tells me to use Russell Street to get around roadworks ahead, and the closed right lane backs that up.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.7,
+            0.75
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "1f6b3f3ff608274608407be3e9ac0104a3fc49b6dbf157ad23fd7c1d131ee548": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ],
+              [
+                "USE",
+                "RUSSELL ST"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.95,
+        "understand": 0.95,
+        "advice": {
+          "Russell Street": "use"
+        },
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.78,
+        "why": "Roadworks ahead, so I should turn onto Russell Street to keep my drop-offs on time.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.75,
+            0.8
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:run"
+    },
+    "44b3b3c8a3f8fa9fe713f7bc586c34366479de3309b51c9a18bc36ab0c815a56": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.95,
+        "understand": 0.92,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "It warns me of roadwork ahead and a closed right lane, so I should get out of the right lane, but it doesn't tell me to use or avoid any of these streets.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.9,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.85
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "d58c81e76d270e5e1e16cc4dbc549c5fa5fd3da8eb258931748d105d5021eb3e": {
+      "req": {
+        "persona": "commuter",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "commuter",
+        "notice": 0.95,
+        "understand": 0.96,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.87,
+        "why": "It warns me there's roadwork ahead, but it doesn't tell me to take any particular street or how much time it might cost.",
+        "range": {
+          "notice": [
+            0.95,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.98
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "fbf950fbb51008329a8bfe95432e94af2b0214151c719838ca23a95c8f654ff0": {
+      "req": {
+        "persona": "local",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.97,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.9,
+        "why": "It tells me there's roadwork ahead and the right lane is closed, but nothing about other roads or time savings.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.9,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "54601dc18b59c160003f8947ff6a31752b332a5bad437799522bd362a603a67c": {
+      "req": {
+        "persona": "local",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "local",
+        "notice": 0.95,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "It's a clear roadwork warning, so I'll just be ready for delays ahead.",
+        "range": {
+          "notice": [
+            0.9,
+            1
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "26c550b5781a14582eb98887711981a39d57ccca804cb31a0849fd3136672306": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.87,
+        "understand": 0.75,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.85,
+        "why": "I can tell there is roadwork ahead and the right lane is closed, but the signs don't mention any of these street names so I have no idea which road to use inste",
+        "range": {
+          "notice": [
+            0.8,
+            0.9
+          ],
+          "understand": [
+            0.7,
+            0.85
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "8a7ab8cae0358cfc381026a238a53ce89dfd60fc70b6356fd388d7a058b6ba9a": {
+      "req": {
+        "persona": "tourist",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "tourist",
+        "notice": 0.98,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.87,
+        "why": "The board just warns me there is roadwork ahead, so I should slow down and stay alert, but it does not tell me to use or avoid any particular street.",
+        "range": {
+          "notice": [
+            0.95,
+            1
+          ],
+          "understand": [
+            0.9,
+            1
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "cbde3b41b5731948e9b22d99a73eca6e0f13fbd5555153a33e728a92d658da0f": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          },
+          {
+            "kind": "sign",
+            "text": "RIGHT LANE CLOSED",
+            "read_s": 12
+          },
+          {
+            "kind": "arrow",
+            "text": "",
+            "read_s": 12
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.93,
+        "understand": 0.95,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.88,
+        "why": "I can see the roadwork warnings and that the right lane is closed, so I'll just stay in the open lane and expect delays ahead.",
+        "range": {
+          "notice": [
+            0.9,
+            0.95
+          ],
+          "understand": [
+            0.95,
+            0.95
+          ],
+          "trust": [
+            0.85,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    },
+    "d94cf5665e9f60c2d0984be6653b3ee8134fedc041654b53df544951d8b4773d": {
+      "req": {
+        "persona": "delivery",
+        "kmh": 31,
+        "signs": [
+          {
+            "kind": "vms",
+            "frames": [
+              [
+                "ROADWORK",
+                "AHEAD"
+              ]
+            ],
+            "read_s": 24
+          }
+        ],
+        "roads": [
+          "La Trobe Street",
+          "Exhibition Street",
+          "Swanston Street",
+          "Russell Street"
+        ]
+      },
+      "reading": {
+        "persona": "delivery",
+        "notice": 0.92,
+        "understand": 0.97,
+        "advice": {},
+        "saving_min": null,
+        "delay_min": null,
+        "trust": 0.83,
+        "why": "It warns me of roadwork ahead but gives no route advice, so I just keep going on Swanston Street and expect possible delays.",
+        "range": {
+          "notice": [
+            0.85,
+            1
+          ],
+          "understand": [
+            0.95,
+            1
+          ],
+          "trust": [
+            0.8,
+            0.9
+          ]
+        },
+        "src": "llm",
+        "model": "deepseek-flash",
+        "prompt_v": "r2"
+      },
+      "from": "engine:latrobe:compare"
+    }
+  },
+  "model": "deepseek-flash",
+  "generated": "2026-09-29T13:19:33.299Z"
 }

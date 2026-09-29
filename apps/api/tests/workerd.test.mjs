@@ -68,6 +68,42 @@ if (unstable_dev) {
       const ans = await worker.fetch("/answers/demo.json");
       eq([ans.status, typeof (await ans.json()).answers], [200, "object"], "answers/demo.json 200");
     });
+
+    await sec("施工登记表：workerd 里真的 Durable Object（persist:false，不落盘）", async () => {
+      const h = await (await worker.fetch("/api/health")).json();
+      eq(h.register, true, "wrangler.jsonc 的 REGISTER 绑上了");
+      const ws = {
+        title: "workerd smoke",
+        links: ["l595594354_9756035316"],
+        closes: { lanes: 1 },
+        time: { from: "2026-10-12", to: "2026-10-13", hours: [9, 15] },
+      };
+      const c = await worker.fetch("/api/worksites", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(ws) });
+      const cb = await c.json();
+      eq([c.status, cb.worksite?.seed], [201, false], "POST → 201");
+      const lt = await (await worker.fetch("/api/worksites")).text();
+      const lb = JSON.parse(lt);
+      eq([lb.register, lb.n], ["do", 4], "列表 = 3 条预置 + 1 条新登记");
+      ok(!lt.includes(cb.edit_token), "反向：列表里没有 edit_token");
+      const patch = (token) =>
+        worker.fetch(`/api/worksites/${cb.worksite.id}`, { method: "PATCH", headers: { "content-type": "application/json", "x-edit-token": token }, body: JSON.stringify({ status: "assessed" }) });
+      eq((await patch("0".repeat(32))).status, 403, "token 不对 → 403");
+      const p = await patch(cb.edit_token);
+      eq([p.status, (await p.json()).worksite?.status], [200, "assessed"], "带对 token → 200");
+      const js = await worker.fetch("/js/worksites.js");
+      ok(js.status === 200 && (await js.text()).includes("export async function listWorksites"), "浏览器端 worksites.js 能拿到");
+    });
+
+    await sec("AI 解读 POST /api/explain（规则版）", async () => {
+      const opt = (id, label, delay) => ({ id, label, metrics: { delay_veh_min: delay, queue_m: delay / 10 } });
+      const r = await worker.fetch("/api/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: "zh", options: [opt("a", "只写前方施工", 10000), opt("b", "加一帧 USE RUSSELL ST", 5000)] }) });
+      const b = await r.json();
+      eq([r.status, b.explain?.src, b.explain?.lean?.option], [200, "rule", "b"], "200 · 规则版 · 倾向延误少的那套");
+      const js = await worker.fetch("/js/explain.js");
+      ok(js.status === 200 && (await js.text()).includes("export async function explainOptions"), "浏览器端 explain.js 能拿到");
+      const pk = await worker.fetch("/js/pack.js");
+      ok(pk.status === 200 && (await pk.text()).includes("export function buildPack"), "浏览器端 pack.js（执行包）能拿到");
+    });
   } finally {
     await worker.stop();
   }
