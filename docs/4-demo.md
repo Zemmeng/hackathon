@@ -41,9 +41,9 @@
 | 公交乘客 −40%（15 条线、每小时 1,925 人，18,693 → 11,206 人·分钟） | 同一次 `compare()` 的 `summary.transit`（T17，PTV GTFS）；每班 25 人是假设值 |
 | 封一侧人行道：每小时 185 人多走 176 m、多过 2 次马路 | `run()` 的 `summary.peds`（T18），`closes.footpath: 'left'`；这段人流按同街插值（`method: street_interp`），不是实测 |
 | 顾问改写「USE / RUSSELL / SAVE 9 MIN」后排队 82 m、8 点延误 966 车·分钟 | `advise()` 第一个改法重跑（规则版顾问）；没上页面，口头备用 |
+| 3 套方案 A$515–1,765，引导那套排队 918 → 82 m | `be.options(demoPlan('lonsdale'))`（T22，#59）：o1 最省 A$515 / 918 m，o2 标准 A$1,765 / 918 m，o3 引导 A$1,765 / 82 m；租 5 天，日租价和库存是假设值 |
 | London 实际绕行只有问卷说法的 1/5（Chatterjee 2002） | `apps/params/public/params.json` 里的出处原文 |
 | 1,513 条路段、8 周 SCATS | `network.json` links 数；`flows.json` period 2026-08-01..09-27（用了 56 天） |
-| 29,850 车·分钟冲突成本（A 3,015 + B 500，一起 33,365）；推迟 5 天 → 0 | `node apps/engine/tools/demo.mjs --real` 第二、三幕，5×9 方格 + 假设车流 |
 | < 10 ms 一次 | `demo.mjs --real` 实测 1.4–6.6 ms |
 | 37 个参数里 29 个是假设或低置信；74% 路段车流是估算 | `params.json` confidence none 18 + low 11；`flows.json` coverage estimated 1,127 / 1,513 |
 | 竞品说法 | lead 本机调研 `idea-prior-art.md` `idea-users.md`；不说「首创」 |
