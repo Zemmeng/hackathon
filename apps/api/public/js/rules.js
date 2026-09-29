@@ -54,13 +54,16 @@ function readFactor(signs) {
   return anyVms || best ? best : 1;
 }
 
-// 「USE / VIA」后面紧跟的词 = 某条绕行路线路名的第一个词，才算点名（原路不算）
-function namedRoute(routes, tokens) {
-  for (let i = 0; i < tokens.length - 1; i++) {
-    if (tokens[i] !== 'USE' && tokens[i] !== 'VIA') continue;
-    const next = tokens[i + 1];
-    const hit = routes.find(r => r.id !== 'stay' && normLine(r.name).split(' ')[0] === next);
-    if (hit) return hit;
+// 「USE / VIA」后面紧跟的词 = 某条绕行路线路名的第一个词，才算点名（原路不算）。
+// 屏要在那条路的拐口之前（sign.m ≥ route.turn_m）才算数：摆在拐口之后，司机看到时已经拐不过去了
+function namedRoute(routes, signs) {
+  for (const s of signs) {
+    const tokens = signTokens([s]);
+    for (let i = 0; i < tokens.length - 1; i++) {
+      if (tokens[i] !== 'USE' && tokens[i] !== 'VIA') continue;
+      const hit = routes.find(r => r.id !== 'stay' && normLine(r.name).split(' ')[0] === tokens[i + 1]);
+      if (hit && !(Number.isFinite(hit.turn_m) && Number.isFinite(s.m) && s.m < hit.turn_m)) return hit;
+    }
   }
   return null;
 }
@@ -94,7 +97,7 @@ export function ruleAnswer(type, card) {
   const notice = hasSigns ? p.notice * readFactor(signs) : 0;
   const nonstd = tokens.some(t => NONSTD.has(t));
   const understand = p.understand * (nonstd ? (type === 'tourist' ? 0.45 : 0.9) : 1);
-  const named = namedRoute(routes, tokens);
+  const named = namedRoute(routes, signs);
   const namedOk = named ? allowed(named) : false;
   const n = saveMin(tokens);
   const q = clamp(Number(card.queue_m) || 0, 0, QUEUE_FULL_M) / QUEUE_FULL_M;
@@ -160,16 +163,17 @@ export function adviseRule(summary) {
   const pick = ap => {
     const alts = (ap.routes || []).filter(r => r.id !== 'stay' && Number.isFinite(r.now_min));
     if (!alts.length) return null;
-    return alts.reduce((a, b) => (b.now_min < a.now_min ? b : a));
+    return alts.reduce((a, b) => (b.now_min < a.now_min || (b.now_min === a.now_min && (b.diverge_m ?? 0) < (a.diverge_m ?? 0)) ? b : a));
   };
   const vmsOf = (ws, ap) => (ws.equipment || []).find(e => e.type === 'vms' && (!e.dir || e.dir === ap.dir));
 
-  // 1 改屏上的字：点名最快的绕行路线，能省几分钟就写上
+  // 1 改屏上的字：点名最快的绕行路线，写上能省几分钟。绕行现在并不比原路快（不堵的时候）就不劝人绕
   for (const ap of aps) {
     const ws = wsById.get(ap.worksite), best = pick(ap);
     if (!ws || !best) continue;
     const stay = (ap.routes || []).find(r => r.id === 'stay');
     const save = stay ? Math.round(stay.now_min - best.now_min) : 0;
+    if (stay && !(save >= 1)) continue;
     const frames = [['USE', shortName(best.name), ...saveLines(save)]];
     const vms = vmsOf(ws, ap);
     if (vms && words(vms.frames).join(' ') === words(frames).join(' ')) continue;
@@ -205,12 +209,13 @@ export function adviseRule(summary) {
 }
 
 // 一条建议合不合格（Worker 校验大模型输出、浏览器校验 Worker 回的东西都用它）
+const ID_RE = /^[A-Za-z0-9_-]{1,40}$/; // 和 api 的施工 / 设备 id 规则一致：尖括号之类进不来
 export function checkSuggestion(s) {
   if (!s || typeof s !== 'object') return false;
-  if (typeof s.worksite !== 'string' || !s.worksite) return false;
+  if (typeof s.worksite !== 'string' || !ID_RE.test(s.worksite)) return false;
   if (s.why != null && typeof s.why !== 'string') return false;
-  if (s.kind === 'text') return checkVms(s.frames).ok && (s.equipment === null || typeof s.equipment === 'string');
-  if (s.kind === 'move') return typeof s.equipment === 'string' && Number.isFinite(s.at_m) && s.at_m >= 0 && s.at_m <= 2000;
+  if (s.kind === 'text') return checkVms(s.frames).ok && (s.equipment === null || (typeof s.equipment === 'string' && ID_RE.test(s.equipment)));
+  if (s.kind === 'move') return typeof s.equipment === 'string' && ID_RE.test(s.equipment) && Number.isFinite(s.at_m) && s.at_m >= 0 && s.at_m <= 2000;
   if (s.kind === 'shift') return Number.isInteger(s.days) && s.days !== 0 && Math.abs(s.days) <= 60;
   return false;
 }
@@ -225,4 +230,17 @@ export function validTypeAnswer(a, card) {
     sum += v;
   }
   return Math.abs(sum - 1) < 0.02;
+}
+
+// 送货司机不上禁货车的绕行路线：从任何来源（答案文件、Worker、大模型）拿到的回答都再过一遍，清零后按比例补回
+export function truckSafe(type, a, card) {
+  if (type !== 'delivery' || !a?.share) return a;
+  const banned = (card.routes || []).filter(r => r.truck === false && r.id !== 'stay').map(r => r.id);
+  if (!banned.some(id => a.share[id] > 0)) return a;
+  const share = { ...a.share };
+  for (const id of banned) share[id] = 0;
+  const sum = Object.values(share).reduce((x, y) => x + y, 0);
+  if (!(sum > 0)) return a;
+  for (const k of Object.keys(share)) share[k] = Math.round((share[k] / sum) * 1000) / 1000;
+  return { ...a, share };
 }

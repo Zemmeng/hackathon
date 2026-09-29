@@ -3,7 +3,7 @@
 
 import { loadNetwork, isNet } from './net.js';
 import { shiftWorksite, windowWhens } from './worksite.js';
-import { runScenario, windowDelay, conflictCost } from './pipeline.js';
+import { runScenario, windowDelay, conflictCost, memoAsk } from './pipeline.js';
 
 const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -25,6 +25,7 @@ export function applySuggestion(worksites, s) {
   const ws = list.find(w => w.id === s.worksite);
   if (!ws) return null;
   if (s.kind === 'shift') {
+    if (!ws.time) return null; // 没有时段的施工谈不上错开
     const i = list.indexOf(ws);
     list[i] = shiftWorksite(ws, s.days);
     return list;
@@ -49,28 +50,34 @@ export function applySuggestion(worksites, s) {
   return null;
 }
 
-// whens：比较用的时段（默认 = 全部施工日期 × 早晚高峰）；错开日期的改法只有看整段时间才看得出好处
-export async function advise({ network, flows, when, worksites, ask, askAdvisor, whens, hours = [8, 17] }) {
+// whens：比较用的时段（默认 = 改前改后所有施工从最早开工到最晚完工的每一天 × 各施工时段里的采样小时）。
+// 改前、改后用同一段时间比：错开日期的改法要把挪出去的那几天也算进来，不然好处会被高估
+export async function advise({ network, flows, when, worksites, ask, askAdvisor, whens, hours }) {
   const net = isNet(network) ? network : loadNetwork(network);
-  const W = whens || windowWhens(worksites, hours);
+  ask = memoAsk(ask);
   const before = await runScenario({ network: net, flows, when, worksites, ask });
+  const W0 = whens || windowWhens(worksites, hours);
   const conflicts = [];
   for (let i = 0; i < worksites.length; i++) {
     for (let j = i + 1; j < worksites.length; j++) {
-      const c = await conflictCost({ network: net, flows, a: worksites[i], b: worksites[j], ask, whens: W });
+      const c = await conflictCost({ network: net, flows, a: worksites[i], b: worksites[j], ask, whens: W0 });
       if (c.overlap) conflicts.push({ a: worksites[i].id, b: worksites[j].id, cost_min: c.cost });
     }
   }
   const summary = advisorSummary(before, worksites, conflicts);
   const adv = await askAdvisor(summary);
+  const sugg = (adv.suggestions || []).slice(0, 3).map(s => ({ s, next: applySuggestion(worksites, s) }));
+  const W = whens || windowWhens([worksites, ...sugg.map(x => x.next || [])].flat(), hours);
   const beforeW = await windowDelay({ network: net, flows, worksites, whens: W, ask });
   const options = [];
-  for (const s of (adv.suggestions || []).slice(0, 3)) {
-    const next = applySuggestion(worksites, s);
+  for (const { s, next } of sugg) {
     if (!next) { options.push({ suggestion: s, skipped: 'no_such_worksite_or_equipment' }); continue; }
     const afterW = await windowDelay({ network: net, flows, worksites: next, whens: W, ask });
     const after = await runScenario({ network: net, flows, when, worksites: next, ask });
-    options.push({ suggestion: s, worksites: next, delay_min: afterW.delay_min, delta_min: afterW.delay_min - beforeW.delay_min, result: after });
+    const delta = afterW.delay_min - beforeW.delay_min;
+    // better：引擎重算后真的变好才算；大模型 / 规则的主意变差了照样列出来，界面标「不建议」
+    options.push({ suggestion: s, worksites: next, delay_min: afterW.delay_min, delta_min: delta, better: delta < 0, result: after });
   }
-  return { src: adv.src, summary, whens: W.length, before: { delay_min: beforeW.delay_min, result: before }, options };
+  return { src: adv.src, ...(adv.fallback ? { fallback: adv.fallback } : {}), summary, whens: W.length, truncated: Boolean(W.truncated),
+    before: { delay_min: beforeW.delay_min, result: before }, options };
 }

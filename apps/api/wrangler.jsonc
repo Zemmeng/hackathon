@@ -10,11 +10,12 @@
   "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],   // prompts.md 按文本打进代码
   "vars": {
     "MOCK": "1",                      // 🔒 不是 "0" 就永远不调大模型（D-09）；改成 "0" 前先报次数和花费、经 lead 同意
-    "LLM_DAILY_CAP": "300"            // 每天最多真调用次数（花钱保险丝）
+    "LLM_DAILY_CAP": "300"            // 每天最多真调用次数（花钱保险丝，计数在 D1；"0" = 一次都不调）
     // "LLM_PROVIDER" / "LLM_MODEL"：用哪家大模型定了再填（D-0929-1333）；key 用 wrangler secret put，不写在这里
   }
-  // 问答缓存 + 当天调用计数（不绑就不真调大模型）：npx wrangler kv namespace create PERSONA_KV，把输出的 id 填进来
+  // 问答缓存（不绑就不缓存，每次都问）：npx wrangler kv namespace create PERSONA_KV，把输出的 id 填进来
   // "kv_namespaces": [{ "binding": "PERSONA_KV", "id": "<上面命令输出的 id>" }],
-  // 施工清单（不绑就存在 Worker 实例内存里，重启就丢）：npx wrangler d1 create worksites，再 npx wrangler d1 execute worksites --remote --file schema.sql
+  // 施工清单 + 花钱保险丝的当天计数（🔒 不绑就永远不真调大模型；施工清单存在 Worker 实例内存里，重启就丢）：
+  //   npx wrangler d1 create worksites，再 npx wrangler d1 execute worksites --remote --file schema.sql
   // "d1_databases": [{ "binding": "DB", "database_name": "worksites", "database_id": "<上面命令输出的 id>" }]
 }

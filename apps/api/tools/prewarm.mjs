@@ -12,6 +12,7 @@ import { CARDS } from './demo-cards.mjs';
 import { validateCard } from '../src/app.js';
 import { TYPES, validTypeAnswer } from '../public/js/rules.js';
 import { cardKey } from '../public/js/cardkey.js';
+import { parsePrompts } from '../src/prompts.js';
 
 const RUNS = 3; // 与 src/app.js 一致：每类人问 3 次
 const USD_PER_CALL = 0.02; // Opus 5.5 估算 ［待核］（docs/arch/5-llm-api-detail.pdf 第 4 页）；第一次真调用后用 usage 回填
@@ -39,14 +40,19 @@ for (const x of cards) {
 const calls = cards.length * TYPES.length * RUNS;
 console.log(`要预热 ${cards.length} 张场景卡 × ${TYPES.length} 类人 × 每类 ${RUNS} 次 = ${calls} 次真调用，估算约 ${(calls * USD_PER_CALL).toFixed(2)} 美元 ［待核］`);
 for (const x of cards) console.log(`   · ${x.name}：${x.card.signs.map(s => (s.frames ? s.frames.map(f => f.join(' / ')).join(' | ') : s.text)).join(' ; ')}${x.card.queue_m ? `（排队 ${x.card.queue_m} 米）` : ''}`);
+const promptV = parsePrompts(readFileSync(new URL('../prompts.md', import.meta.url), 'utf8')).version;
+const current = JSON.parse(readFileSync(ANSWERS, 'utf8'));
+if (Object.keys(current.entries || {}).length && current.prompt_v !== promptV) {
+  bad++; console.log(`❌ 答案文件是 ${current.prompt_v} 的，prompts.md 已经是 ${promptV}：旧答案会被继续用，重跑 --run 覆盖`);
+}
 if (bad) process.exit(1);
-if (flag('--check')) { console.log('✅ 全部场景卡通过 api 校验'); process.exit(0); }
+if (flag('--check')) { console.log('✅ 全部场景卡通过 api 校验；答案文件的 prompt_v 和 prompts.md 一致（或还是空的）'); process.exit(0); }
 if (!flag('--run')) { console.log('（dry-run：没有联网、没花钱。真跑：--run --url <Worker 地址>，先报次数和花费、经 lead 同意）'); process.exit(0); }
 
 const url = (val('--url') || '').replace(/\/+$/, '');
 if (!/^https?:\/\//.test(url)) { console.error('❌ --run 要配 --url https://<Worker 地址>'); process.exit(2); }
 const file = JSON.parse(readFileSync(ANSWERS, 'utf8'));
-let wrote = 0, model = file.model || '', promptV = file.prompt_v;
+let wrote = 0, model = file.model || '', runV = file.prompt_v;
 for (const x of cards) {
   const by_type = {};
   for (const type of TYPES) {
@@ -57,12 +63,13 @@ for (const x of cards) {
       process.exit(1);
     }
     if (model && j.model !== model) { console.error(`❌ 模型对不上：答案文件是 ${model}，Worker 回 ${j.model}；换模型要清空答案文件重来`); process.exit(1); }
-    model = j.model; promptV = j.prompt_v;
+    if (j.prompt_v !== file.prompt_v && Object.keys(file.entries).length) { console.log(`提示词已经从 ${file.prompt_v} 换到 ${j.prompt_v}：清掉旧答案`); file.entries = {}; }
+    model = j.model; runV = file.prompt_v = j.prompt_v;
     by_type[type] = j.answer;
   }
-  file.entries[await cardKey(x.card, promptV)] = { name: x.name, by_type };
+  file.entries[await cardKey(x.card, runV)] = { name: x.name, by_type };
   wrote++;
 }
-Object.assign(file, { model, prompt_v: promptV, generated: new Date().toISOString() });
+Object.assign(file, { model, prompt_v: runV, generated: new Date().toISOString() });
 writeFileSync(ANSWERS, JSON.stringify(file, null, 1) + '\n');
-console.log(`✅ 写进 ${wrote} 张卡的答案（${model} / ${promptV}）。记得把实际 usage 和花费记进 docs/3-tasks.md 的额度台账`);
+console.log(`✅ 写进 ${wrote} 张卡的答案（${model} / ${runV}）。记得把实际 usage 和花费记进 docs/3-tasks.md 的额度台账`);

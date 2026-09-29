@@ -6,6 +6,7 @@ import { ok, done } from './_t.mjs';
 import { CARDS } from '../tools/demo-cards.mjs';
 import { TYPES, MIX, ruleAnswer } from '../public/js/rules.js';
 import { cardKey } from '../public/js/cardkey.js';
+import { parsePrompts } from '../src/prompts.js';
 
 const det = a => 1 - (a.share.stay ?? 0);
 const mixDet = A => TYPES.reduce((s, t) => s + MIX[t] * det(A[t]), 0);
@@ -30,6 +31,8 @@ for (const s of SPECS.filter(s => s.rules)) ok(s.check(R), `[规则] ${s.name}`)
 
 // 答案文件（大模型预热的答案）
 const file = JSON.parse(readFileSync(new URL('../public/answers/answers.json', import.meta.url), 'utf8'));
+const promptV = parsePrompts(readFileSync(new URL('../prompts.md', import.meta.url), 'utf8')).version;
+ok(!Object.keys(file.entries || {}).length || file.prompt_v === promptV, `答案文件有内容时 prompt_v 必须和 prompts.md 一致（文件 ${file.prompt_v} / 提示词 ${promptV}）：不一致会继续用旧提示词的答案`);
 const L = {};
 let have = 0;
 for (const [k, c] of Object.entries(CARDS)) {

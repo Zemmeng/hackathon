@@ -51,12 +51,29 @@ export function shiftWorksite(ws, days) {
   return { ...ws, time: { ...t, from: fmt(dayNum(t.from) + days), to: fmt(dayNum(t.to) + days) } };
 }
 
-// 两个施工日期范围的并集里，每天 × 给定小时 → when 列表（算叠加、错开对比用）
-export function windowWhens(worksites, hours = [8, 17]) {
+export const PEAK_HOURS = [8, 17];
+export const MAX_DAYS = 31; // 采样最多看 31 天：浏览器里每个时刻都要跑一遍引擎（和问路人），太长的施工只看开头一个月
+
+// 采样哪几个小时：给了 hours 就用；没给就每个施工取落在自己时段里的早晚高峰（8、17 点），都不在时段里就取时段中间那个小时
+export function sampleHours(worksites, hours) {
+  if (hours && hours.length) return [...hours];
+  const hs = new Set();
+  for (const w of worksites) {
+    const [h0, h1] = w.time?.hours || [0, 24];
+    const pk = PEAK_HOURS.filter(h => h >= h0 && h < h1);
+    (pk.length ? pk : [Math.floor((h0 + h1 - 1) / 2)]).forEach(h => hs.add(h));
+  }
+  return [...hs].sort((a, b) => a - b);
+}
+
+// 从最早开工到最晚完工之间的每一天 × 采样小时 → when 列表（算叠加、错开对比用）。超过 MAX_DAYS 天只取前 MAX_DAYS 天，结果带 truncated
+export function windowWhens(worksites, hours) {
   const ts = worksites.map(w => w.time).filter(Boolean);
-  if (!ts.length) return [];
-  const d0 = Math.min(...ts.map(t => dayNum(t.from))), d1 = Math.max(...ts.map(t => dayNum(t.to)));
   const out = [];
-  for (let d = d0; d <= d1 && out.length < 400; d++) for (const hour of hours) out.push({ date: fmt(d), hour });
+  if (!ts.length) return out;
+  const d0 = Math.min(...ts.map(t => dayNum(t.from))), d1 = Math.max(...ts.map(t => dayNum(t.to)));
+  const hs = sampleHours(worksites, hours);
+  for (let d = d0; d <= Math.min(d1, d0 + MAX_DAYS - 1); d++) for (const hour of hs) out.push({ date: fmt(d), hour });
+  out.truncated = d1 - d0 + 1 > MAX_DAYS;
   return out;
 }

@@ -45,7 +45,7 @@ export function mixDetour(ans) {
 export function makeAnchors(loAns, hiAns) {
   const lo = mixDetour(loAns), hi = mixDetour(hiAns);
   const model = loAns.model === hiAns.model ? loAns.model : 'mixed';
-  const ok = hi - lo >= ANCHORS.minSpread && model !== 'mixed';
+  const ok = hi - lo >= ANCHORS.minSpread && model !== 'mixed' && loAns.src !== 'mixed' && hiAns.src !== 'mixed';
   return {
     method: ok ? 'two_point' : 'ratio',
     lo: { raw: lo, real: ANCHORS.lo.real },
@@ -71,11 +71,22 @@ export function calibrate(ans, anchors, card) {
   for (const t of types) raw[t] = detourOf(ans.by_type[t].share);
   const X = types.reduce((s, t) => s + ans.mix[t] * raw[t], 0);
   const D = hasStay ? clamp(f(X), 0, anchors.cap) : 1;
-  for (const t of types) d[t] = !hasStay ? 1 : X > 0 ? Math.min(1, (raw[t] * D) / X) : D;
+  for (const t of types) d[t] = !hasStay ? 1 : X > 0 ? (raw[t] * D) / X : D;
+  // 有一类被截到 1 时，把截掉的量按比例分给还没到 1 的类型，全体仍然等于 D
+  for (let i = 0; hasStay && i < types.length; i++) {
+    const over = types.reduce((s, t) => s + ans.mix[t] * Math.max(0, d[t] - 1), 0);
+    if (over <= 1e-12) break;
+    for (const t of types) d[t] = Math.min(1, d[t]);
+    const room = types.filter(t => d[t] < 1), w = room.reduce((s, t) => s + ans.mix[t] * d[t], 0);
+    if (!room.length || !(w > 0)) break;
+    for (const t of room) d[t] *= 1 + over / w;
+  }
+  for (const t of types) d[t] = Math.min(1, d[t]);
   const alts = card.routes.filter(r => r.id !== 'stay');
   const by_type = {};
   for (const t of types) {
     const ok = alts.filter(r => !(t === 'delivery' && r.truck === false));
+    if (!ok.length && hasStay) d[t] = 0; // 送货司机没有能走的绕行路线：留在原路
     const pool = ok.length ? ok : alts;
     let w = pool.map(r => ans.by_type[t].share[r.id] || 0);
     if (!(w.reduce((a, b) => a + b, 0) > 0)) w = pool.map(r => 1 / Math.max(0.5, r.usual_min));
@@ -109,5 +120,8 @@ export async function anchorsFor(ask, ans) {
     p.catch(() => m.delete(k)); // 失败了下次重问，不把失败缓存住
     m.set(k, p);
   }
-  return m.get(k);
+  const a = await m.get(k);
+  // 不是纯大模型来源的锚点（有一类退回了规则、两块屏来源不一）不留缓存，下次重问；和回答的模型对不上也重问一次
+  if (!force && (a.src === 'rule' || a.src === 'mixed' || a.model === 'mixed' || (ans?.model && a.model !== ans.model)) && m.get(k)) m.delete(k);
+  return a;
 }

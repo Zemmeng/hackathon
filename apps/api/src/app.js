@@ -4,12 +4,12 @@
 //   POST /api/persona   {type, card}   一类人 × 一张场景卡 → { ok, src: kv|llm|rule, type, answer, model, prompt_v, fallback? }
 //   POST /api/advisor   {summary}      规划顾问 → { ok, src: llm|rule, suggestions[≤3], fallback? }
 //   GET/POST/DELETE /api/worksites     施工清单（绑了 D1 就存 D1，没绑就存在这个 Worker 实例的内存里，persist:false）
-// 🔒 花钱保险丝：MOCK 不是 "0" 就永远不调大模型；没绑 KV（没有可靠的当天计数）也不调；当天调用数到 LLM_DAILY_CAP 就只回规则估算。
+// 🔒 花钱保险丝：MOCK 不是 "0" 就永远不调大模型；没绑 D1（没有原子的当天计数）也不调；当天调用数到 LLM_DAILY_CAP 就只回规则估算。KV 只做问答缓存。
 // 🔒 key 只从 env 读、只在 llm.js 里用；任何响应（包括报错）都不回显 env 的值和异常原文。
 
 import { TYPES, RULE_MODEL, ruleAnswer, adviseRule, checkSuggestion, validTypeAnswer } from '../public/js/rules.js';
 import { checkVms, checkSignText, normFrames, normLine } from '../public/js/vms.js';
-import { cardKey } from '../public/js/cardkey.js';
+import { cardKey, canon, sha256Hex } from '../public/js/cardkey.js';
 import { parsePrompts, renderPersona, renderAdvisor, PERSONA_SCHEMA, ADVISOR_SCHEMA } from './prompts.js';
 import { callModel as realCallModel, providerReady, modelName, LlmError } from './llm.js';
 
@@ -70,7 +70,7 @@ async function readJson(request) {
   try { return JSON.parse(text); } catch { throw new HttpError(400, 'bad_json', '请求体不是合法的 JSON'); }
 }
 
-const isName = s => typeof s === 'string' && NAME_RE.test(s.trim());
+const isName = s => typeof s === 'string' && NAME_RE.test(s) && s === s.trim() && !/\s{2,}/.test(s); // 原样检查：前后空白、换行、连续空白都不许
 const inRange = (x, a, b) => typeof x === 'number' && Number.isFinite(x) && x >= a && x <= b;
 
 // 场景卡合不合规（引擎造的卡都应该过；超规范直接 400）
@@ -108,6 +108,7 @@ export function validateCard(card) {
       if (!isName(r.name) || names.has(normLine(r.name))) bad('bad_route_name', `第 ${i + 1} 条路线的 name 要是不重复的路名`);
       if (!inRange(r.usual_min, 0, 180)) bad('bad_usual_min', `第 ${i + 1} 条路线的 usual_min 要在 0–180 之间`);
       if (r.truck != null && typeof r.truck !== 'boolean') bad('bad_truck', `第 ${i + 1} 条路线的 truck 只能是 true / false`);
+      if (r.turn_m != null && (!inRange(r.turn_m, 0, 3000) || r.id === 'stay')) bad('bad_turn_m', `第 ${i + 1} 条路线的 turn_m 要在 0–3000 米之间，原路不写`);
       ids.add(r.id); names.add(normLine(r.name));
     });
     const alts = routes.filter(r => r && r.id !== 'stay').length;
@@ -143,17 +144,40 @@ export function validateWorksite(ws) {
     if (e.type === 'vms') for (const x of checkVms(e.frames).errors) bad(x.code, `第 ${i + 1} 件设备（屏）：${x.msg}`);
     if (e.type === 'sign' || e.type === 'arrow') for (const x of checkSignText(e.text).errors) bad(x.code, `第 ${i + 1} 件设备：${x.msg}`);
   });
-  return { ok: issues.length === 0, issues };
+  return { ok: issues.length === 0, issues, worksite: issues.length ? null : pickWorksite(ws) };
 }
 
-// ---------- 花钱保险丝：KV 记当天（UTC）真调用次数 ----------
-async function reserve(kv, env, n, now) {
-  const cap = Number.parseInt(env.LLM_DAILY_CAP, 10) || DEFAULT_CAP;
-  const key = 'n:' + now.toISOString().slice(0, 10);
-  const used = Number.parseInt(await kv.get(key), 10) || 0;
-  if (used + n > cap) return false;
-  await kv.put(key, String(used + n), { expirationTtl: 172800 });
-  return true;
+// 只留认识的字段（多余的字段不存、不分发、不进提示词）
+function pickWorksite(ws) {
+  const o = { id: ws.id, links: ws.links.map(String), closes: { lanes: ws.closes.lanes }, time: { from: ws.time.from, to: ws.time.to, hours: [ws.time.hours[0], ws.time.hours[1]] } };
+  if (ws.name != null) o.name = ws.name;
+  o.equipment = (ws.equipment || []).map(e => {
+    const x = { id: e.id, type: e.type, at_m: e.at_m };
+    if (e.dir != null) x.dir = e.dir;
+    if (e.type === 'vms') { x.frames = normFrames(e.frames); if (Number.isFinite(e.char_mm)) x.char_mm = e.char_mm; }
+    if (e.type === 'sign' || e.type === 'arrow') x.text = normLine(e.text);
+    return x;
+  });
+  return o;
+}
+
+// ---------- 花钱保险丝：D1 里一条原子语句记当天（UTC）真调用次数 ----------
+// KV 做不到原子计数（先读再写，并发请求会一起越过上限；同一个键每秒只能写 1 次），所以计数放 D1 的 quota 表：
+// 一条 INSERT … ON CONFLICT DO UPDATE … WHERE n + 本次 ≤ 上限 RETURNING n，没回行 = 超限。并发也不会超。
+// 没绑 D1 就一次都不真调（no_db）；LLM_DAILY_CAP = "0" 就是一次都不调；D1 出错一律当作超限（fuse_error，不花钱，回规则）。
+export function dailyCap(env) {
+  const c = Number.parseInt(env?.LLM_DAILY_CAP, 10);
+  return Number.isInteger(c) && c >= 0 ? c : DEFAULT_CAP;
+}
+const QUOTA_SQL = 'INSERT INTO quota (day, n) SELECT ?1, ?2 WHERE ?2 <= ?3 ON CONFLICT(day) DO UPDATE SET n = n + excluded.n WHERE n + excluded.n <= ?3 RETURNING n';
+async function reserve(env, n, now) {
+  if (!env.DB) return 'no_db';
+  try {
+    const row = await env.DB.prepare(QUOTA_SQL).bind(now.toISOString().slice(0, 10), n, dailyCap(env)).first();
+    return row ? 'ok' : 'cap';
+  } catch {
+    return 'fuse_error';
+  }
 }
 
 function timeout(promise, ms, ctrl) {
@@ -178,7 +202,7 @@ export function parseRun(out, card, type) {
     const v = Number(it?.share);
     if (r && Number.isFinite(v) && v > 0) share[r.id] += v;
   }
-  if (type === 'delivery') for (const r of card.routes) if (r.truck === false) share[r.id] = 0;
+  if (type === 'delivery') for (const r of card.routes) if (r.truck === false && r.id !== 'stay') share[r.id] = 0; // 已经在原路上的车不算「选」禁货车的路
   const sum = Object.values(share).reduce((a, b) => a + b, 0);
   if (!(sum > 0)) return null;
   for (const k of Object.keys(share)) share[k] /= sum;
@@ -238,11 +262,11 @@ async function persona(request, env, deps) {
   }
   if (isMock(env)) return rule('mock');
   if (!providerReady(env)) return rule('no_provider');
-  if (!kv) return rule('no_kv');
-  if (!(await reserve(kv, env, RUNS, deps.now()))) return rule('cap');
+  const fuse = await reserve(env, RUNS, deps.now());
+  if (fuse !== 'ok') return rule(fuse);
   let answer;
   try { answer = await askModel(env, deps, type, card); } catch (e) { return rule(e instanceof LlmError ? e.code : 'llm_error'); }
-  try { await kv.put(key, JSON.stringify({ answer, model, prompt_v: deps.prompts.version, at: deps.now().toISOString() })); } catch { /* 缓存写失败不影响这次回答 */ }
+  if (kv) try { await kv.put(key, JSON.stringify({ answer, model, prompt_v: deps.prompts.version, at: deps.now().toISOString() })); } catch { /* 缓存写失败不影响这次回答 */ }
   return json({ ok: true, src: 'llm', type, answer, model, prompt_v: deps.prompts.version });
 }
 
@@ -255,23 +279,48 @@ function normSuggestion(s) {
   return o;
 }
 
+// 摘要的外形：三个数组、施工 id 合规、日期是字符串（错了回 400，不让规则版在里面抛 500）
+export function validateSummary(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+  for (const k of ['worksites', 'approaches', 'conflicts']) if (s[k] != null && !Array.isArray(s[k])) return false;
+  for (const w of s.worksites || []) {
+    if (!w || !ID_RE.test(String(w.id))) return false;
+    if (w.time != null && (typeof w.time !== 'object' || (w.time.from != null && !DATE_RE.test(String(w.time.from))) || (w.time.to != null && !DATE_RE.test(String(w.time.to))))) return false;
+    if (w.equipment != null && !Array.isArray(w.equipment)) return false;
+  }
+  for (const a of s.approaches || []) if (!a || typeof a !== 'object' || (a.routes != null && !Array.isArray(a.routes))) return false;
+  for (const c of s.conflicts || []) if (!c || typeof c !== 'object') return false;
+  return true;
+}
+
 async function advisor(request, env, deps) {
   const body = await readJson(request);
   const summary = body?.summary;
-  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return fail(400, 'bad_summary', '缺 summary（引擎生成的结果摘要）');
-  const rule = code => json({ ok: true, src: 'rule', suggestions: adviseRule(summary).filter(checkSuggestion), fallback: code });
+  if (!validateSummary(summary)) return fail(400, 'bad_summary', 'summary（引擎生成的结果摘要）格式不对');
+  const ids = new Set((summary.worksites || []).map(w => w.id));
+  const keep = s => checkSuggestion(s) && ids.has(s.worksite); // 只认摘要里有的施工
+  const rule = code => {
+    let sug = [];
+    try { sug = adviseRule(summary).filter(keep).map(s => ({ ...s, why: clean(s.why) })); } catch { /* 摘要里有怪东西：不给建议 */ }
+    return json({ ok: true, src: 'rule', suggestions: sug, fallback: code });
+  };
   if (isMock(env)) return rule('mock');
   if (!providerReady(env)) return rule('no_provider');
   const kv = env.PERSONA_KV;
-  if (!kv) return rule('no_kv');
-  if (!(await reserve(kv, env, 1, deps.now()))) return rule('cap');
+  const model = modelName(env);
+  const key = 'a:' + (await sha256Hex(`${deps.prompts.version}|${model}|${canon(summary)}`));
+  const hit = kv ? await kvJson(kv, key) : null;
+  if (hit && Array.isArray(hit.suggestions) && hit.suggestions.every(keep)) return json({ ok: true, src: 'kv', suggestions: hit.suggestions, model });
+  const fuse = await reserve(env, 1, deps.now());
+  if (fuse !== 'ok') return rule(fuse);
   try {
     const ctrl = new AbortController();
     const req = { ...renderAdvisor(deps.prompts, summary), schema: ADVISOR_SCHEMA, maxTokens: 3000, signal: ctrl.signal };
     const out = await timeout(Promise.resolve().then(() => deps.callModel(env, req)), LLM_TIMEOUT_MS, ctrl);
-    const sug = (out?.json?.suggestions || []).map(normSuggestion).filter(checkSuggestion).slice(0, 3);
+    const sug = (out?.json?.suggestions || []).map(normSuggestion).filter(keep).slice(0, 3);
     if (!sug.length) return rule('llm_empty');
-    return json({ ok: true, src: 'llm', suggestions: sug, model: modelName(env) });
+    if (kv) try { await kv.put(key, JSON.stringify({ suggestions: sug, model, at: deps.now().toISOString() })); } catch { /* 缓存写失败不影响这次回答 */ }
+    return json({ ok: true, src: 'llm', suggestions: sug, model });
   } catch (e) {
     return rule(e instanceof LlmError ? e.code : 'llm_error');
   }
@@ -293,16 +342,19 @@ async function worksites(request, env, deps, url) {
     else deps.mem.delete(id);
     return json({ ok: true, id, persist });
   }
-  const ws = (await readJson(request))?.worksite;
-  const v = validateWorksite(ws);
+  const v = validateWorksite((await readJson(request))?.worksite);
   if (!v.ok) return fail(400, 'bad_worksite', '施工方案不合规', { issues: v.issues });
-  const exists = db ? await db.prepare('SELECT 1 AS x FROM worksites WHERE id = ?1').bind(ws.id).first() : deps.mem.has(ws.id);
-  const count = db ? ((await db.prepare('SELECT COUNT(*) AS n FROM worksites').first())?.n || 0) : deps.mem.size;
-  if (!exists && count >= MAX_WORKSITES) return fail(409, 'too_many', `施工清单最多 ${MAX_WORKSITES} 条`);
+  const ws = v.worksite;
+  const full = () => fail(409, 'too_many', `施工清单最多 ${MAX_WORKSITES} 条`);
   if (db) {
-    await db.prepare('INSERT INTO worksites (id, body, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at')
-      .bind(ws.id, JSON.stringify(ws), deps.now().toISOString()).run();
-  } else deps.mem.set(ws.id, ws);
+    // 一条语句里判断上限：并发 POST 也不会超过 200 条（覆盖已有 id 不算新增）
+    const r = await db.prepare('INSERT INTO worksites (id, body, updated_at) SELECT ?1, ?2, ?3 WHERE (SELECT COUNT(*) FROM worksites) < ?4 OR EXISTS (SELECT 1 FROM worksites WHERE id = ?1) ON CONFLICT(id) DO UPDATE SET body = excluded.body, updated_at = excluded.updated_at')
+      .bind(ws.id, JSON.stringify(ws), deps.now().toISOString(), MAX_WORKSITES).run();
+    if (!(r?.meta?.changes > 0)) return full();
+  } else {
+    if (!deps.mem.has(ws.id) && deps.mem.size >= MAX_WORKSITES) return full();
+    deps.mem.set(ws.id, ws);
+  }
   return json({ ok: true, worksite: ws, persist });
 }
 

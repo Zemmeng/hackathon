@@ -48,7 +48,8 @@ export function renderPersona(P, type, card, order) {
     const r = byId.get(id);
     const tag = r.id === 'stay' ? ' (the usual route, through the roadworks)' : '';
     const truck = r.truck === false ? ' (closed to trucks)' : '';
-    return `- ${r.name}${tag}${truck}: usually ${Math.round(r.usual_min)} min`;
+    const turn = Number.isFinite(r.turn_m) ? `, turn off about ${Math.round(r.turn_m)} m before the works` : '';
+    return `- ${r.name}${tag}${truck}${turn}: usually ${Math.round(r.usual_min)} min`;
   });
   const q = Number(card.queue_m) || 0;
   const user = fill(P.user, {

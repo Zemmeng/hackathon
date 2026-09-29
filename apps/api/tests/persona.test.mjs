@@ -41,6 +41,11 @@ await t('answers file hit', async () => {
   ok(!f.calls.includes(BASE + '/persona'), '答案文件命中时不再问 Worker');
   const again = await askPersonas(refCard([['USE', 'RUSSELL ST', 'SAVE 8 MIN']], { signs: [...card.signs].reverse() }), opts(f));
   ok(again.src === 'file' && f.calls.filter(u => u === ANS).length === 1, '同一场景换个写法（标志顺序反过来）也命中；答案文件只拉一次');
+  _resetAnswers();
+  const bad = { ...entry, by_type: { ...entry.by_type, delivery: { ...llmAnswer, share: { stay: 0.2, r1: 0.1, r2: 0.7 } } } };
+  const g = fake({ file: () => res({ prompt_v: 'p1', model: 'm-test', entries: { [key]: bad } }) });
+  const b = await askPersonas(card, opts(g));
+  ok(b.src === 'file' && b.by_type.delivery.share.r2 === 0 && Math.abs(b.by_type.delivery.share.stay + b.by_type.delivery.share.r1 - 1) < 0.01, '反向：答案文件里送货司机走禁货车的 Elizabeth St → 清零，按比例补回');
 });
 
 await t('worker answers', async () => {
@@ -48,7 +53,7 @@ await t('worker answers', async () => {
   const f = fake({ persona: b => res({ ok: true, src: 'llm', type: b.type, answer: llmAnswer, model: 'm-test', prompt_v: 'p1' }) });
   const a = await askPersonas(card, opts(f));
   ok(a.src === 'llm' && a.model === 'm-test' && f.calls.filter(u => u === BASE + '/persona').length === 4, '答案文件没有 → 按类发 4 个请求，src = llm');
-  const exp = TYPES.reduce((s, x) => s + MIX[x] * llmAnswer.share.r1, 0);
+  const exp = TYPES.reduce((s, x) => s + MIX[x] * (x === 'delivery' ? llmAnswer.share.r1 / 0.9 : llmAnswer.share.r1), 0); // 送货司机那一类的 r2（禁货车）清零后按比例补回
   ok(Math.abs(a.raw.r1 - exp) < 0.002, `raw 是按车流占比加权的平均（r1 = ${a.raw.r1}）`);
 });
 
@@ -84,6 +89,18 @@ await t('network and timeout', async () => {
   ok(noFetch.src === 'rule' && TYPES.every(x => noFetch.by_type[x].fallback === 'no_fetch'), '显式不给 fetch → 不联网，直接规则（no_fetch）');
 });
 
+await t('cardKey', async () => {
+  const k0 = await cardKey(card, 'p1');
+  const rev = { ...card, routes: [...card.routes].reverse() };
+  ok(await cardKey(rev, 'p1') === k0, '缓存键：路线顺序不同 → 同一个键');
+  const noTruck = { ...card, routes: card.routes.map(r => ({ ...r, truck: undefined })) };
+  ok(await cardKey(noTruck, 'p1') !== k0, '缓存键：禁货车标记不同 → 不同的键（不能把能走货车的答案给禁货车的卡）');
+  const slow = { ...card, signs: card.signs.map(s => (s.kind === 'vms' ? { ...s, read_s: 18 } : s)) };
+  ok(await cardKey(slow, 'p1') !== k0 && await cardKey(card, 'p2') !== k0, '缓存键：能读几秒不同、prompt_v 不同 → 不同的键');
+  const turn = { ...card, routes: card.routes.map(r => (r.id === 'r1' ? { ...r, turn_m: 200 } : r)) };
+  ok(await cardKey(turn, 'p1') !== k0, '缓存键：拐口距离不同 → 不同的键');
+});
+
 await t('combine', async () => {
   const bt = Object.fromEntries(TYPES.map(x => [x, { ...ruleAnswer(x, card), src: 'rule' }]));
   const a = combine(bt, card);
@@ -100,6 +117,13 @@ await t('advisor', async () => {
   const good = fake({ advisor: () => res({ ok: true, src: 'llm', suggestions: [{ kind: 'shift', worksite: 'A', days: 2, why: 'x' }] }) });
   const b = await askAdvisor(summary, opts(good));
   ok(b.src === 'llm' && b.suggestions[0].days === 2, 'Worker 回的建议合规 → 照用，src = llm');
+  const html = fake({ advisor: () => new Response('<html>oops</html>', { status: 200 }) });
+  const h = await askAdvisor(summary, opts(html));
+  ok(h.src === 'rule' && h.fallback === 'bad_json', 'Worker 回的不是 JSON → 规则版，fallback = bad_json（不是 network）');
+  const far = { worksites: [{ id: 'A', time: { from: '2026-10-01', to: '2026-12-31' }, equipment: [] }, { id: 'B', time: { from: '2026-10-02', to: '2026-10-03' }, equipment: [] }],
+    approaches: [], conflicts: [{ a: 'A', b: 'B', cost_min: 50 }] };
+  const f2 = await askAdvisor(far, { force: 'rule' });
+  ok(f2.suggestions.every(s => s.kind !== 'shift' || Math.abs(s.days) <= 60), '浏览器端的规则版建议也过 checkSuggestion（推迟 91 天这种不合规的丢掉），和 Worker 一致');
   const c = await askAdvisor(summary, { force: 'rule' });
   ok(c.src === 'rule' && c.suggestions[0].kind === 'text', 'force: rule → 规则版建议');
 });

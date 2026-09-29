@@ -51,6 +51,11 @@ for (const inj of [inject1, inject2]) {
 ok(ruleAnswer('tourist', abbrev).understand <= ruleAnswer('local', abbrev).understand, '反向：游客对非标准缩写（RD WKS AHD）的理解 ≤ 本地人');
 ok(detour(ruleAnswer('tourist', abbrev)) < detour(ruleAnswer('tourist', useRussell)), '游客看到非标准缩写比看到正常写法绕得少');
 
+// 3b. 屏要在绕行路线的拐口之前才算点名（sign.m ≥ turn_m）
+const withTurn = m => ({ ...refCard([['USE', 'RUSSELL ST']]), signs: [{ m, kind: 'vms', read_s: 9, frames: [['USE', 'RUSSELL ST']] }],
+  routes: refCard().routes.map(r => (r.id === 'r1' ? { ...r, turn_m: 200 } : r)) });
+ok(ruleAnswer('commuter', withTurn(300)).share.r1 > ruleAnswer('commuter', withTurn(100)).share.r1, '屏在拐口之前（300 米 ≥ 200 米）才算点名；摆在拐口之后（100 米）看到时已经拐不过去');
+
 // 4. 规划顾问的规则版
 const summary = {
   worksites: [
@@ -67,6 +72,8 @@ const summary = {
 };
 const sug = adviseRule(summary);
 ok(sug.length === 3 && sug.map(s => s.kind).join(',') === 'text,move,shift', `规则顾问给出 3 条：改字 · 挪屏 · 错开（实际 ${sug.map(s => s.kind).join(',')}）`);
+const calm = { ...summary, approaches: [{ ...summary.approaches[0], routes: summary.approaches[0].routes.map(r => (r.id === 'stay' ? { ...r, now_min: 3 } : r)) }] };
+ok(!adviseRule(calm).some(s => s.kind === 'text'), '不堵时（原路 3 分钟比绕行快）不建议改字劝人绕');
 ok(sug.every(checkSuggestion) && checkVms(sug[0].frames).ok, '3 条建议都合格，改后的屏上文字符合 VMS 规范');
 ok(sug[0].frames.flat().join(' ') === 'USE RUSSELL ST SAVE 3 MIN', `改字：点名最快的 Russell St 并写能省 3 分钟（实际 ${sug[0].frames.flat().join(' / ')}）`);
 ok(sug[1].at_m === 300 && sug[2].days === 3 && sug[2].worksite === 'B', `挪屏到岔路口前 300 米、B 推迟 3 天（实际 ${sug[1].at_m} 米、${sug[2].days} 天）`);

@@ -15,13 +15,12 @@ const near = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 function fakeAsk(dPlain = 0.2, dUse = 0.5, model = 'fake') {
   const fn = async card => {
     const text = card.signs.map(s => (s.frames || []).flat().join(' ') + ' ' + (s.text || '')).join(' ');
-    const d = /\bUSE\b/.test(text) ? dUse : dPlain;
+    const d = Math.min(0.95, (/\bUSE\b/.test(text) ? dUse : dPlain) + (card.queue_m > 0 ? 0.3 : 0)); // 看得到排队时多绕 0.3
     const alts = card.routes.filter(r => r.id !== 'stay');
     const by_type = {};
     for (const t of TYPES) {
       const share = {};
       for (const r of card.routes) share[r.id] = r.id === 'stay' ? 1 - d : d / alts.length;
-      if (t === 'delivery') for (const r of alts) if (r.truck === false) { share.stay += share[r.id]; share[r.id] = 0; }
       by_type[t] = { share, notice: 0.9, understand: 0.9, why: 'fake', lo: d, hi: d, src: 'llm' };
     }
     fn.calls++;
@@ -46,7 +45,7 @@ await t('shortest path & BPR', async () => {
   ok(q && q.links.length === 7 && !q.links.includes('L-n0_6-n0_5'), '封掉一段后最短路绕 7 段');
   ok(JSON.stringify(shortestPath(net, 'n0_8', 'n0_3', { banned: new Set(['L-n0_6-n0_5']) })) === JSON.stringify(q), '同价路线选择确定（跑两次一样）');
   ok(linkTime(38, 0, 1800) === 38 && linkTime(38, 900, 1800) < linkTime(38, 1700, 1800), 'BPR：没车等于 t0，车越多越慢');
-  ok(near(linkTime(38, 1000, 800) - linkTime(38, 800, 800), (200 * 3600) / 2000), '超过通行能力：平均每辆多等 (v−c)·T/(2v) 秒');
+  ok(near(linkTime(38, 1000, 800) - linkTime(38, 800, 800), (200 * 3600) / 1600), '超过通行能力（D/D/1）：平均每辆多等 (v−c)·T/(2c) 秒，含小时末排队的清空时间');
   ok(linkTime(38, 10, 0) === Infinity && linkTime(38, 0, 0) === 38, '通行能力 0：有车就走不通，没车照常');
 });
 
@@ -80,12 +79,15 @@ await t('step 2: card', async () => {
   ok(c.routes[0].id === 'stay' && c.routes.length === 4 && c.routes.every(r => typeof r.usual_min === 'number' && !('links' in r)), '路线：原路 + 3 条绕行，只给路名和平时分钟，不给路段');
   const w = wsA([['X']]); w.equipment[0].dir = 'E';
   ok(buildCard(ap, w).signs.length === 1, '朝另一个方向的屏，西行司机看不到');
+  const many = wsA([['X']], { equipment: Array.from({ length: 10 }, (_, i) => ({ id: 's' + i, type: 'sign', at_m: 100 + i * 50, text: 'SIGN ' + i })) });
+  const mc = buildCard(ap, many);
+  ok(mc.signs.length === 6 && mc.signs[5].m === 100 && mc.signs[0].m === 350, '10 件标志只留离施工最近的 6 块（api 最多收 6 块），仍按先远后近');
 });
 
 await t('step 4: calibrate', async () => {
   const ask = fakeAsk(0.2, 0.5);
   const anc = makeAnchors(await ask(anchorCard('lo')), await ask(anchorCard('hi')));
-  const mixOf = d => TYPES.reduce((s, x) => s + MIX[x] * (x === 'delivery' ? d / 2 : d), 0); // 假 ask 里送货司机不上禁货车的 r2
+  const mixOf = d => d; // 假 ask 里各类人表态一样（送货司机也「说」要走禁货车的 r2，靠校准挡住）
   ok(anc.method === 'two_point' && near(anc.lo.raw, mixOf(0.2)) && near(anc.hi.raw, mixOf(0.5)), '锚点：两块标准屏按车流占比加权的表态比例');
   const lo = calibrate(await ask(anchorCard('lo')), anc, anchorCard('lo'));
   const hi = calibrate(await ask(anchorCard('hi')), anc, anchorCard('hi'));
@@ -93,10 +95,16 @@ await t('step 4: calibrate', async () => {
   const big = calibrate(await fakeAsk(0.95, 0.95)(REF_CARD), anc, REF_CARD);
   ok(near(big.detour, 0.35), `表态再高，全体绕行也封顶 35%（实际 ${big.detour.toFixed(3)}）`);
   ok(TYPES.every(t => near(Object.values(hi.by_type[t].share).reduce((a, b) => a + b, 0), 1)) && near(Object.values(hi.share).reduce((a, b) => a + b, 0), 1), '校准后每类人、全体的比例合计都是 1');
-  ok(hi.by_type.delivery.share.r2 === 0, '校准不会把送货司机分到禁货车的路上');
+  ok(hi.by_type.delivery.share.r2 === 0 && hi.by_type.commuter.share.r2 > 0, '反向：表态里送货司机也要走禁货车的 r2，校准后是 0（通勤司机照走）');
+  const onlyBanned = { ...REF_CARD, routes: [REF_CARD.routes[0], { ...REF_CARD.routes[2] }] };
+  ok(calibrate(await ask(onlyBanned), anc, onlyBanned).by_type.delivery.share.stay === 1, '绕行路线全都禁货车：送货司机留在原路');
+  const skew = { ...(await ask(REF_CARD)), mix: { commuter: 0.3, local: 0.7, tourist: 0, delivery: 0 } };
+  skew.by_type = { ...skew.by_type, commuter: { ...skew.by_type.commuter, share: { stay: 0, r1: 0.5, r2: 0.5 } }, local: { ...skew.by_type.local, share: { stay: 0.9, r1: 0.05, r2: 0.05 } } };
+  const sk = calibrate(skew, { ...anc, method: 'two_point', model: 'fake', lo: { raw: 0.1, real: 0.2 }, hi: { raw: 0.2, real: 0.3 }, cap: 0.9 }, REF_CARD);
+  ok(near(sk.detour, 0.47, 1e-9) && sk.by_type.commuter.detour === 1, `有一类被截到 100% 时，截掉的量分给别的类，全体仍达到目标 0.47（实际 ${sk.detour.toFixed(3)}）`);
   const other = calibrate(await fakeAsk(0.2, 0.5, 'other-model')(REF_CARD), anc, REF_CARD);
   ok(other.method === 'ratio' && near(other.detour, mixOf(0.2) * 0.2), '回答和锚点不是同一个模型 → 退回「表态 × 1/5」');
-  ok(hi.by_type.commuter.detour > hi.by_type.delivery.detour, '各类人的相对高低沿用表态（通勤 > 送货）');
+  ok(hi.by_type.commuter.detour >= hi.by_type.delivery.detour, '各类人的相对高低沿用表态');
   const flat = makeAnchors(await fakeAsk(0.3, 0.3)(anchorCard('lo')), await fakeAsk(0.3, 0.3)(anchorCard('hi')));
   ok(flat.method === 'ratio', '两块标准屏表态几乎一样 → 退回比例法');
   const closedCard = { ...REF_CARD, routes: REF_CARD.routes.filter(r => r.id !== 'stay') };
@@ -118,11 +126,43 @@ await t('step 5: evaluate & runScenario', async () => {
   ok(JSON.stringify(r2) === JSON.stringify(r), '同样的输入跑两遍，结果完全一样');
   const off = await runScenario({ network, flows, when: { date: '2026-10-06', hour: 22 }, worksites: [wsA()], ask });
   ok(off.delay_min === 0 && off.approaches.length === 0, '施工时段之外（22 点）：没有影响');
-  const night = await runScenario({ network, flows, when: { date: '2026-10-06', hour: 7 }, worksites: [wsA([['X']], { time: { from: '2026-10-05', to: '2026-10-09', hours: [0, 24] } })], ask });
-  ok(night.approaches[0].rounds === 1 || night.approaches[0].queue_m >= 0, '车少时第一轮看不到排队就不再问第二轮');
+  const night = await runScenario({ network, flows, when: { date: '2026-10-06', hour: 3 }, worksites: [wsA([['X']], { time: { from: '2026-10-05', to: '2026-10-09', hours: [0, 24] } })], ask });
+  ok(night.approaches[0].rounds === 1 && night.approaches[0].queue_m === 0, '凌晨 3 点车少：第一轮看不到排队，不问第二轮');
+  // 第 2 轮：卡上带着排队；分流 = 两轮校准后比例的平均（MSA）；报告的校准数字和分流一致
+  ok(a.rounds === 2 && a.card.queue_m > 0, `第 2 轮的场景卡带着司机看到的排队（${a.card.queue_m} 米）`);
+  const [q1, q2] = a.calib.per_round;
+  ok(q1.queue_m === 0 && q2.queue_m === a.card.queue_m && q2.detour > q1.detour, `看到排队后绕得更多（第 1 轮 ${q1.detour} → 第 2 轮 ${q2.detour}）`);
+  ok(near(1 - a.share.stay, (q1.detour + q2.detour) / 2, 0.002) && near(a.calib.detour, 1 - a.share.stay, 0.002), '分流取两轮平均；calib.detour 和实际分流一致');
+  ok(!isActive(wsA(), { date: '2026-10-06', hour: 19 }) && isActive(wsA(), { date: '2026-10-06', hour: 18 }), '施工时段 [7, 19)：18 点生效、19 点不生效');
+  const ev = evaluate(net, flows, WHEN, [wsA()], []);
+  const x = ev.links.get('L-n0_6-n0_5');
+  ok(near(x.queue_m, ((x.v - x.cap) * 7) / 2, 1e-6), '排队长度按上游整条路的车道数（2）折算');
   let threw = false;
   try { await runScenario({ network, flows, when: WHEN, worksites: [wsA()] }); } catch { threw = true; }
   ok(threw, '没传 ask 直接报错（不偷偷用假数据）');
+});
+
+await t('robustness', async () => {
+  const ask = fakeAsk(0.2, 0.5);
+  const one = await runScenario({ network, flows, when: WHEN, worksites: [wsA([['X']], { closes: { lanes: 2 } })], ask });
+  const two = await runScenario({ network, flows, when: WHEN, worksites: [wsA([['X']]), { ...wsA([['X']]), id: 'A2' }], ask });
+  ok(Math.abs(two.delay_min - one.delay_min) <= 0.05 * one.delay_min && two.delay_min > 0, `同一路段两个施工各封 1 条 ≈ 一个施工封 2 条（${two.delay_min} vs ${one.delay_min}），车不会凭空变多`);
+  const line = { version: 1, nodes: ['a', 'b', 'c', 'd'].map((id, i) => ({ id, lat: -37.81, lon: 144.95 + i * 0.002 })),
+    links: [['a', 'b'], ['b', 'c'], ['c', 'd']].map(([f, t]) => ({ id: f + t, from: f, to: t, name: 'Only Rd', len_m: 200, lanes: 2, speed_kmh: 40, cap_vph: 1800, t0_s: 38 })) };
+  const lineFlows = { days: { wd: { ab: Array(24).fill(1000), bc: Array(24).fill(1000), cd: Array(24).fill(1000) }, we: {} } };
+  const dead = await runScenario({ network: line, flows: lineFlows, when: WHEN, worksites: [{ id: 'X', links: ['bc'], closes: { lanes: 2 }, time: wsA().time, equipment: [] }], ask });
+  ok(dead.delay_min === 0 && dead.blocked_vph === 1000, `全封又无路可绕：车卡住（blocked ${dead.blocked_vph} veh/h），不会凭空消失成负延误（${dead.delay_min}）`);
+  const boom = async card => { throw new Error('offline'); };
+  let crashed = false;
+  try { await runScenario({ network, flows, when: WHEN, worksites: [wsA()], ask: Object.assign(async (c, o) => (o?.force === 'rule' ? fakeAsk()(c) : boom(c)), {}) }); } catch { crashed = true; }
+  ok(!crashed, 'ask 抛错 → 退回规则（force: rule），整个结果不崩');
+  const nightWs = (id, links) => ({ id, links, closes: { lanes: 1 }, time: { from: '2026-10-05', to: '2026-10-09', hours: [20, 24] }, equipment: [] });
+  ok(JSON.stringify(windowWhens([nightWs('N', ['L-n0_6-n0_5'])]).map(w => w.hour).filter((h, i, a) => a.indexOf(h) === i)) === '[21]', '夜间施工（20–24 点）的采样小时取时段中间（21 点），不是固定的 8、17 点');
+  const year = { ...wsA(), time: { from: '2026-10-01', to: '2027-09-30', hours: [7, 19] } };
+  let n = 0;
+  const counting = async (c, o) => { n++; return fakeAsk()(c, o); };
+  const c = await conflictCost({ network, flows, a: year, b: { ...wsB(), time: year.time }, ask: counting });
+  ok(c.truncated && c.whens === 62 && n < 60, `一年的施工：只采样前 31 天 × 2 个小时（truncated），同一张卡只问一次（问了 ${n} 次）`);
 });
 
 await t('step 6: conflict', async () => {

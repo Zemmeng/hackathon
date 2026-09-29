@@ -16,6 +16,7 @@ export function cleanName(s) {
   return t || 'Unnamed road';
 }
 
+export const MAX_SIGNS = 6; // api 的 validateCard 最多收 6 块；施工方案最多 10 件设备，多的只留离施工最近的 6 块
 export const round1 = x => Math.round(x * 10) / 10;
 export const bucket = (x, step) => Math.round((Number(x) || 0) / step) * step;
 
@@ -25,12 +26,16 @@ export function signsFor(ap, ws) {
     .map(e => (e.type === 'vms'
       ? { m: e.at_m, kind: 'vms', read_s: readSeconds(ap.kmh, e.char_mm), frames: e.frames }
       : { m: e.at_m, kind: e.type, text: e.text }))
-    .sort((a, b) => b.m - a.m);
+    .sort((a, b) => b.m - a.m)
+    .slice(-MAX_SIGNS);
 }
 
 export function cardRoutes(ap) {
+  // turn_m：这条绕行在施工起点上游多少米拐出去（司机开到那里看得到路口）；屏摆在拐口之后，看到时已经拐不过去了
   return [ap.stay, ...ap.alts].filter(Boolean).map(r => ({
-    id: r.id, name: cleanName(r.name), usual_min: round1(r.usual_min), ...(r.truck === false ? { truck: false } : {}),
+    id: r.id, name: cleanName(r.name), usual_min: round1(r.usual_min),
+    ...(r.id !== 'stay' && Number.isFinite(r.diverge_m) ? { turn_m: Math.round(r.diverge_m) } : {}),
+    ...(r.truck === false ? { truck: false } : {}),
   }));
 }
 

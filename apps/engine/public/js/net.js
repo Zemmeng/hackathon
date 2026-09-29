@@ -48,9 +48,10 @@ export function headingDot(net, a, b) {
   return ax * bx + ay * by;
 }
 
-// 确定性排队：一小时里到达 v、放行 c，排队线性变长。平均每辆车多等 (v−c)·T/(2v) 秒
+// 确定性排队（D/D/1）：一小时里到达 v、放行 c，排队线性变长；t 时刻到的车要等 (v−c)t/c，
+// 这一小时到达的车平均多等 (v−c)·T/(2c) 秒（含一小时末还没放完的那些车的清空时间）
 export function queueDelayS(v, c, T = PERIOD_S) {
-  return v > c && v > 0 ? ((v - c) * T) / (2 * v) : 0;
+  return v > c && c > 0 ? ((v - c) * T) / (2 * c) : 0;
 }
 export function queueVeh(v, c, T = PERIOD_S) {
   return v > c ? ((v - c) * T) / 3600 : 0;

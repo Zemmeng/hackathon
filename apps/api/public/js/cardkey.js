@@ -1,6 +1,6 @@
 // cardkey.js —— 场景卡规范化 + 缓存键（浏览器、Worker、node 共用；只用 Web Crypto，不用 npm 包）
 // 缓存键 = SHA-256(前缀 | 规范化后的场景卡)。规范化：文字大写、分钟取整、距离按 50 米一档、排队按 100 米一档、
-// 车速按 5 km/h 一档、路线按 id 排序、标志按距离从远到近排序 —— 同一个场景换个写法也能命中缓存。
+// 车速按 5 km/h 一档、拐口距离按 50 米一档、路线按 id 排序、标志按距离从远到近排序 —— 同一个场景换个写法也能命中缓存。
 // 用法：await cardKey(card, 'p1|claude-opus-5-5|commuter') → 64 位十六进制串
 
 const up = s => String(s ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -18,6 +18,7 @@ export function normCard(card) {
   const routes = (Array.isArray(c.routes) ? c.routes : []).map(r => {
     const o = { id: String(r.id), name: up(r.name), usual_min: Math.round(Number(r.usual_min) || 0) };
     if (r.truck === false) o.truck = false;
+    if (r.turn_m != null) o.turn_m = step(r.turn_m, 50);
     return o;
   });
   routes.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
