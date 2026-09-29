@@ -6,9 +6,11 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 ## 现在停在哪（只有 lead 改，写时间）
 
-- 里程碑：M0 完成，M1 未到（09-29 14:00）· 倒计时 46h · main：绿（`check.sh` 全量 `0 ❌`，155 passed）· 冻结：否
+- 里程碑：M0 完成，M1 未到（09-29 14:45）· 倒计时 45h · main：绿（`check.sh` 全量 `0 ❌ 0 ⚠️`）· 冻结：否
 - 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址）
-- 开着的 PR：#9 路网数据 ✅、#12 PRD-2 ✅（都已提醒作者自己合）；#5 赛题材料 ❌ 越界（已留言让作者拆）
+- 已合：#9 路网数据、#15 数据文件上限 2MB、#16 契约 v2 + T5 派人、#17 `docs/llm-apis/`（T8 人人可传卡）
+- 开着的 PR：#14 T7 行人 / 公交 / 设备 ✅（已提醒 louis 自己合）；#12 PRD-2（内容已被 #14 实现，等 jinmingq 合）；#5 赛题材料 ❌ 越界（已留言让作者拆）
+- T2 网页：`unicornnnnnny/web/T2-gis-weather-ui` 已推、还没开 PR；方向按 D-0929-1445 接回计划（见 R5）
 - 下一个集成点：**09-29 17:00**，然后 21:00；整点前把自己的分支 push 上来
 
 ## 风险与 P0（lead 写，`/demo` 的结果也写这）
@@ -17,8 +19,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | R1 | T4 路网计算没人认领（@Unzzip 名下为空）；T5 已派给 @jinmingq（14:30，D-0929-1436） | 高 | lead | T4 17:00 集成点定 |
 | R2 | 初筛 3 页幻灯片 09-30 12:30 截止，还没人负责 | 高 | lead | 17:00 集成点定 |
-| R3 | `apps/web` 空架子还没建，T2 网页面板开不了工；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | 待做 |
-| R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | 已提醒 |
+| R3 | `apps/web` 已由 T2 分支自建（登记表、CODEOWNERS、launch.json 已补）；`starters/` 还没删（D-0929-1311） | 中 | @Zemmeng（T6） | starters 待删 |
+| R4 | `apps/roads/public/cbd/network.json` 511,186 字节，离 check [6] 的 500KB 警告线只差不到 1KB | 低 | @louisxie316-dotcom | ✅ 已解决：数据 JSON 上限 2MB、不再报 500KB（D-0929-1430） |
+| R5 | T2 网页做成「极端天气压力测试」为主线，全是模拟数字，没接 T3 真路网，和 D-0929-1310 的 6 步不一致 | 高 | @unicornnnnnny | D-0929-1445：主路径接回计划，天气留作加分层；17:00 前对齐 |
 
 ## 额度台账（付费 API）
 
