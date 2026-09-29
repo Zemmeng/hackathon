@@ -280,7 +280,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-seg button[aria-selected="true"]{background:var(--tint);color:var(--accent)}
 :lang(zh) .eng-seg button{letter-spacing:.02em;text-transform:none}
 .eng-routes{display:flex;flex-direction:column;gap:8px}
-.eng-route{display:grid;grid-template-columns:minmax(0,1fr) 72px 34px 58px;align-items:center;gap:8px;font-size:12.5px}
+.eng-route{display:grid;grid-template-columns:minmax(0,1fr) 60px 34px 86px;align-items:center;gap:8px;font-size:12.5px}
 .eng-route .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .eng-route.stay .nm{color:var(--works)}
 .eng-route .track{height:4px;border-radius:2px;background:var(--line);overflow:hidden}

@@ -200,10 +200,16 @@ function engOutHTML(){
   return`<div class="eng-out${stale?' stale':''}">${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
 function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
+// T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
+const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
+  too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
+  many_lines:'More than 3 lines per frame is hard to read',long_line:'Lines over 8 characters are hard to read',frames_too_fast:'Not enough time to read both frames at this speed',
+  short_read:'Too many words to read at this speed',odd_abbrev:'Non-standard abbreviation — visitors may not get it',check_threw:'The sign check failed'};
+function checkMsg(code,msg){if(LANG.cur==='zh'||!CHECK_EN[code])return msg||code;const q=/「([^」]*)」/.exec(msg||'');return CHECK_EN[code]+(q?`: “${q[1]}”`:'');}
 function engRenderCheck(){
   const el=document.getElementById('engCheck');if(!el)return;
   const rows=[];
-  for(const c of EP.checks||[]){if(!c.ok&&c.error)rows.push(['err',c.error.msg||c.error.code]);for(const w of c.warnings||[])rows.push(['warn',w.msg||w.code]);}
+  for(const c of EP.checks||[]){if(!c.ok&&c.error)rows.push(['err',checkMsg(c.error.code,c.error.msg)]);for(const w of c.warnings||[])rows.push(['warn',checkMsg(w.code,w.msg)]);}
   const h=rows.map(([k,m])=>`<div class="eng-msg ${k}">${k==='err'?'✕':'!'} ${esc(m)}</div>`).join('');
   if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}
 }
@@ -251,7 +257,8 @@ function engHeadline(s){
   return s.queue_m>0?L(`One lane on ${st} backs up ${fmtN(s.queue_m)} m`,`${st} 封一条道，排队 ${fmtN(s.queue_m)} 米`):L(`One lane on ${st}: no queue this hour`,`${st} 封一条道：这个小时不排队`);
 }
 function engPanel3(){
-  const s=EP.badText?null:EP.sum;
+  const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
@@ -284,7 +291,8 @@ function eng4HTML(){
   if(!engOn())return engOfflineCard();
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
   const a=EP.adv;
-  let h=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${a.options.length} ${L('options','个改法')}`:''}</span></div>`;
+  const n=a?a.options.length:0,rule=!a||a.src==='rule';
+  let h=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
   const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{
@@ -370,7 +378,7 @@ function engDraw(which){
       ctx.globalAlpha=(faint?.5:.9)*(sev?1:.7);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.6)*k;engLine(P,off);ctx.stroke();
     }
     if(s.queue_m>0){const q=engUp(s.queue_m),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
-    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),24,which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
+    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
   }
   ctx.globalAlpha=1;ctx.strokeStyle=TK.works;ctx.lineWidth=9*k;engLine(EP.pts,off);ctx.stroke();
   ctx.strokeStyle=TK.light?'#1b1b1b':'#101010';ctx.lineWidth=2;ctx.setLineDash([4,4]);engLine(EP.pts,off);ctx.stroke();ctx.setLineDash([]);
@@ -383,19 +391,24 @@ function engDraw(which){
 // Tags drawn above the weather layers
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
-  const s=EP.sum,off=engOffset(EP.pts,3.5),mm=off[Math.floor(off.length/2)];
-  drawTag(ctx,V.X(mm[0]),V.Y(mm[1]),-36,54,`W-1 · ${shortSt(EP.street).toUpperCase()} ${EP.dir}B · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
-  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,engVisible()));drawTag(ctx,V.X(q[0]),V.Y(q[1]),24,-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>engVisible()?' →':''}`,TK.risk);}
+  const s=EP.sum,off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
+  drawTag(ctx,mx,my,engDx(mx,36),54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
+  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
   if(S.step===1){
-    if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,engVisible()));drawTag(ctx,V.X(q[0]),V.Y(q[1]),20,46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>engVisible()?' →':''}`,TK.works);}
+    if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}
   }
   if(S.step===3&&s){
     const share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));let k2=0;
     for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
     let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
 }
-// How far upstream stays inside the drawn world (for clamping tags)
-function engVisible(){let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>WORLD.x0&&p[0]<WORLD.x1&&p[1]>WORLD.y0&&p[1]<WORLD.y1)lo=mid;else hi=mid;}return Math.max(0,lo-8);}
+// How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
+function engVisible(){
+  const x0=Math.max(WORLD.x0,V.wx(24)),x1=Math.min(WORLD.x1,V.wx(V.w-24)),y0=Math.max(WORLD.y0,V.wy(V.h-24)),y1=Math.min(WORLD.y1,V.wy(70));
+  let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>x0&&p[0]<x1&&p[1]>y0&&p[1]<y1)lo=mid;else hi=mid;}return Math.max(0,lo-4);
+}
+// Tag offset that keeps the box on screen: point it back toward the middle of the view
+const engDx=(px,d)=>px>V.w*.55?-d:d;
 // Step 1: a click (not a drag) on a street moves the work zone there
 function engBindMap(){
   let down=null;
