@@ -48,6 +48,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T14 | 给 @unicornnnnnny：**网页改「液态玻璃」风格**——只改外观不改功能：地图上浮着的 HUD、右侧面板卡片、按钮 / chips、顶栏、时间轴换成 Apple Liquid Glass 那套（半透明折射、边缘高光、胶囊控件），深浅两套主题；可读性、无障碍退回、帧率有硬要求。**要求全在 `docs/arch/T14-liquid-glass-PRD.md`**；分支 `unicornnnnnny/web/T14-liquid-glass` | 2h | T13（PR #43，已合） |
 | T20 | 给 @unicornnnnnny：**删掉页面上写死的假数 + 天气标示意**（D-0929-2011 ①、D-0929-2012）——#48 B 节 1–3：顶栏安全分和第 4 步结果表（`RESULTS` 查表）、第 2 步假进度和「变体 22/30」清单、「Run AI red team」「250 agents × 30」字样；B4–B5：天气去掉「实时」和随机闪电数、标示意，演示默认晴天、不读 `rt-wx`。分支 `unicornnnnnny/web/T20-no-fake-numbers` **＋补充 5 条（地图对准 Lonsdale、引擎数字别折叠、单位、两个施工同屏、假设亮出来）见 `docs/arch/T20-addendum.md`** | 2h | — |
 | T23 | 给 @jinmingq：**多方案并排对比 + 选定 + 一页导出**（D-0929-2011 ④，#48 第 ④⑦⑧ 步）——3 套方案卡并排（车延误、公交乘客、行人、租金），「选这个」+ 理由，导出一页打印视图（设备清单和报价、VMS 文字）；改的是 `apps/web`，跨模块先在群里说一声并请 lead 打 `cross-module` 标签；数字只用 `backend.js` 给的，不在页面里算 | 2h | T22（方案生成） |
+| T26 | 给 @unicornnnnnny：**T20 收尾**——顶栏场景名还写 La Trobe、「回到施工区」飞回 La Trobe、1440×900 改 VMS 要滚动、375 px 施工标签被图例盖、「53% 照屏走」说错且没标假设值、「绕行 14%→61%」固定标绿、步骤条和几处按钮名不副实。**要求全在 `docs/arch/T26-T27-web-PRD.md` 第 1、2、4 节**；合并顺序 #72 → `lead/ai-panel` → T26；分支 `unicornnnnnny/web/T26-t20-tail` | 1.5h | #72、`lead/ai-panel` |
+| T27 | 给 @unicornnnnnny：**地图放下整个 CBD**（D-0929-2354）——精细窗口不动，外面加一层预渲染的全城路网 + 建筑（Hoddle Grid 外扩约 150 m），放开拖动和缩放，排队线 / 绕行线 / 公交线画全，全 CBD 路段可点。**要求全在 `docs/arch/T26-T27-web-PRD.md` 第 3、4 节**；时间盒 09-30 22:00，没绿就不合、走兜底；分支 `unicornnnnnny/web/T27-full-cbd` | 5h（阶段 1） | T26、T28 |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -69,6 +71,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 | T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
+| T28 | 引擎 `raw.links` 加 `extra_min`（和不施工时比，`apps/engine/public/js/pipeline.js:214` 已算好）——页面的「变慢路段」现在和自由流比，T27 视野一放开，Flinders / King St 本来就有的排队会在每个方案里被画成施工涟漪；加反向断言。T27 合并前要先进 main（`docs/arch/T26-T27-web-PRD.md` 第 3.2 节） | ⬜ | — | — |
 
 卡住了：
 
