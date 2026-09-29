@@ -58,9 +58,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T0 | 热身：验证本机环境、hooks、CI 与仓库权限 | ✅ | `louisxie316-dotcom/hello/T0-hello` / PR #3 | 09-27 14:48 |
 | T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | ✅ | `louisxie316-dotcom/roads/T3-network` / PR #9 | 09-29 13:19 |
-| T3 二期 | 行人、公交、设备库存：`equipment.json` / `transit.json` / `walk.json` + `peds.json`（需求见 @jinmingq 的 `PRD-2.md`、issue #11；等 lead 发任务号后改分支名） | 🔨 | `louisxie316-dotcom/roads/T3-phase2` | 09-29 13:53 |
+| T7 | T3 第二期：设备库存、公交、行人 → `equipment.json` ✅ / `transit.json` ✅ / `walk.json` + `peds.json`（超 1MB，等 lead 放宽，见交接单）（`apps/roads/PRD-2.md`） | 🔨 | `louisxie316-dotcom/roads/T7-equipment` | 09-29 13:53 |
 
-卡住了：
+卡住了：`walk.json` 1.7MB、`peds.json` 1.8MB 超过 pre-commit 的 1MB 上限（PRD 写 2MB），要改 `.githooks/pre-commit` 和 `check.sh [6]`，详见 `handoff/louisxie316-dotcom-T3-0929-1419.md` 第 2 节
 
 
 ## @Unzzip
