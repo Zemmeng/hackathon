@@ -34,7 +34,6 @@ bash scripts/check.sh --quick         # 每步做完都跑；最后一行「====
 bash scripts/check.sh                 # 全量：合 PR 前、lead 集成时
 bash scripts/check.sh --e2e           # 线上冒烟（地址读 hackathon.conf 的 DEMO_URL）
 bash scripts/sync.sh                  # 零 token 对齐实况（lead 每次发言前）
-bash scripts/new-app.sh <名> <starter>    # 仅 lead：从 starter 生成模块
 bash scripts/deploy.sh <模块|all>     # 仅 DEPLOYER；执行前先问
 bash scripts/secret-scan.sh --history # 转 public 前扫全部历史
 ```
@@ -117,12 +116,12 @@ bash scripts/secret-scan.sh --history # 转 public 前扫全部历史
 
 格式：🔒 模式名 | 什么时候用 | 照哪个函数 / 文件做
 
-用 `web-worker` starter 时预置：
-- 🔒 状态带单调递增版本号 `v` | 所有广播 | `starters/web-worker/public/js/shared/logic.js` 的 `reduce()`（`src/room.js` 的 `commit()` 负责落 storage）
-- 🔒 会重建 DOM 的 render 必须有签名守卫 | 任何轮询 / 推送重绘 | `starters/web-worker/public/js/app.js` 的 `render()`
-- 🔒 动效由新旧 state 对比驱动，不解析日志文本 | 前端 | 同上
-- 🔒 隐私数据按用户裁剪后再下发 | 服务端 | `starters/web-worker/public/js/shared/logic.js` 的 `viewFor()`
-- 🔒 改了 CSS/JS 就跑 `bump.sh` 把 `?v=` 加 1 | 每次前端改动 | `starters/web-worker/bump.sh`
+预置的通用模式（赛前的 `starters/` 已按 D-0929-1311 删掉；本项目有实例的指到实例，没有的照原则写）：
+- 🔒 状态带单调递增版本号 `v` | 所有广播 | 本项目暂无广播状态；用到时每次提交 `v + 1`，落 storage 串行化
+- 🔒 会重建 DOM 的 render 必须有签名守卫 | 任何轮询 / 推送重绘 | `apps/web/src/js/6-engine.js` 的 `engRenderOut()`（`dataset.sig` 相同就不重建）
+- 🔒 动效由新旧 state 对比驱动，不解析日志文本 | 前端 | —
+- 🔒 隐私数据按用户裁剪后再下发 | 服务端 | 本项目暂无多用户私有数据；用到时先裁剪再发，配一条反向断言
+- 🔒 改了 CSS/JS 就跑 `bump.sh` 把 `?v=` 加 1 | 每次前端改动 | `apps/sim/bump.sh`（`apps/web` 是 `build.py` 拼出的单文件页）
 - 🔒 LLM prompt 只放在一个文件里 | 用到 LLM 时 | `apps/<m>/prompts.md`
 - 🔒 AI 出图：数量和文字交给程序画，质感交给模型 | 出素材时 | —
 

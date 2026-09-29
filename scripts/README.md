@@ -8,7 +8,7 @@
 | `check.sh` | **唯一的检查 / 测试入口**：[1]–[9] 九项检查，末尾固定「`======== 汇总 X ❌ Y ⚠️`」，写 `logs/last-check.txt`，有 ❌ 退出 1 | 每个人；Stop hook、pre-push、CI 自动调 | 每完成一小步；commit / push 前；收工前 |
 | `secret-scan.sh` | 扫 key / token / 私钥，只输出「文件:行号:模式名」，绝不打印值 | pre-commit、check [1] 自动调；lead 手动跑 `--history` | 每次 commit（自动）；仓库转 public 前（`--history` 必跑） |
 | `sync.sh` | 零 token 实况对齐：各分支最近提交、开着的 PR 和 CI、没落账的交接单、3-tasks 里的 🔨、main 最近 5 条、倒计时 | lead；Codex / 不用 AI 的人 | lead 每次开口前；任何人开工前 |
-| `new-app.sh` | 从 `starters/` 生成 `apps/<名>`：替换 `__NAME__`、分配端口、追加 `.claude/launch.json`、填 Owner，打印 CODEOWNERS 和登记表要加的两行 | 只有 lead（`lead/*` 分支） | kickoff 切模块时；中途加模块时 |
+| `new-app.sh` | **已停用**：原来从 `starters/` 生成模块，`starters/` 按 D-0929-1311 删掉后只打印手工建模块的步骤并退出 1 | — | — |
 | `deploy.sh` | 前置检查（DEPLOYER 本人、工作区干净、在 main 或 tag 上且与 origin 一致、冻结期只从 `demo-*` tag、全量 check 无 ❌）→ 逐个模块部署 → `check --e2e` 冒烟 → 记 `logs/deploy.log`；失败打印回滚命令 | DEPLOYER（不在时 BACKUP_LEAD）；🔒 AI 执行前必须先问人 | M1 部署打通；每个集成点；打 `demo-*` tag 后 |
 | `.githooks/pre-commit` | `secret-scan.sh --staged`；拦暂存区里的 `.env` / `.dev.vars` / `settings.local.json` / `keys.json`；拦单个 >1MB 的文件 | git 自动（`setup.sh` 启用后） | 每次 `git commit` |
 | `.githooks/pre-push` | 目标是 `main` 且没设 `ALLOW_MAIN=1` 就拒绝；跑 `check.sh --quick`（限时 90 秒），有 ❌ 就拒绝并打印汇总节 | git 自动 | 每次 `git push` |
@@ -18,7 +18,7 @@
 
 | 命令 | 参数 | 说明 |
 |---|---|---|
-| `bash scripts/check.sh` | （无） | 全量：扫全部文件，跑 `apps/*` 和 `starters/*` 的全部 `test.sh` |
+| `bash scripts/check.sh` | （无） | 全量：扫全部文件，跑 `apps/*` 的全部 `test.sh` |
 | | `--quick` | 秘密扫描和测试只覆盖相对 base 改动过的文件 / 模块（没有 base 就全跑） |
 | | `--base <ref>` | 对比基准，默认 `origin/main` → `main`；都没有（还没提交 / 没远端）就跳过 diff 类检查并 ⚠️ |
 | | `--e2e [URL]` | 只做线上冒烟：`GET /` 200 且含 `data-smoke`；`/api/health` 含 `"ok":true`；HTML 无 `localhost`；每个请求 ≤3 秒。**不给 URL 就读 `hackathon.conf` 的 `DEMO_URL`**（为空 → ❌）。日常就写 `bash scripts/check.sh --e2e` |
@@ -29,8 +29,6 @@
 | | `--files <路径>…` | 只扫给定文件（`check.sh --quick` 用） |
 | | `--history` | 全部 git 历史里新增过的行，输出「提交号:文件:模式名」 |
 | `bash scripts/sync.sh` | `[小时数]` | 看最近几小时的提交，默认 6 |
-| `bash scripts/new-app.sh <名> <web-worker\|py-tool>` | `--owner <handle>` | 填进模块 README 的 `Owner:` 行（不给就留 `@<填我>`） |
-| | `--port N` | 指定端口（被 `launch.json` 占用就拒绝）；不给就自动取下一个：worker 8787 起、python 8000 起。静态页端口不自动分配 |
 | `bash scripts/deploy.sh` | `<模块>` / `all` | `all` = `hackathon.conf` 的 `DEPLOY_MODULES` |
 | | `--hotfix` | 代码冻结期允许不在 `demo-*` tag 上部署（P0 紧急修复；事后打 tag、写 decisions） |
 | | BACKUP_LEAD | `hack.me` 等于 conf 的 `BACKUP_LEAD` 时也放行，打 ⚠️，`deploy.log` 标「备份部署」 |
@@ -53,7 +51,7 @@
 
 ## 原则
 
-- **幂等**：重复跑不会坏事（setup 不覆盖 `.env`，new-app 目标已存在就拒绝）。
+- **幂等**：重复跑不会坏事（setup 不覆盖 `.env`）。
 - **有进度输出**：`[i/N]` 或 `[N] 名称 ✅/❌/⚠️`，长任务每步都打一行。
 - **失败时打印修法**：❌ 后面写原因和下一条该敲的命令，不只说「失败了」。
 - **文件头写用途 / 用法 / 退出码**：`--help` 就是打印这段头注释。
@@ -65,7 +63,7 @@
 | 变量 | 作用 | 什么时候用 |
 |---|---|---|
 | `ALLOW_MAIN=1` | pre-push 放行直推 main；check [3]「在 main 上有改动」降为 ⚠️ | lead 的小改动：`ALLOW_MAIN=1 git push`（commit 里写原因） |
-| `ALLOW_CROSS=1` | check [3] 越界文件、分支名不合约定降为 ⚠️；new-app.sh 允许不在 `lead/*` 分支上跑 | CI 在 PR 带 `cross-module` 标签时自动设；队员**经 lead 同意**跨模块后，push 前 `ALLOW_CROSS=1 git push`，PR 打 `cross-module` 标签 |
+| `ALLOW_CROSS=1` | check [3] 越界文件、分支名不合约定降为 ⚠️ | CI 在 PR 带 `cross-module` 标签时自动设；队员**经 lead 同意**跨模块后，push 前 `ALLOW_CROSS=1 git push`，PR 打 `cross-module` 标签 |
 | `HACK_NO_GATE=1` | Claude 的 Stop hook 直接放行（逃生开关） | 门禁本身坏了、要先修门禁的时候 |
 | `CHECK_TEST_TIMEOUT=<秒>` | 单个 `test.sh` 限时，默认 120；门禁（Stop hook / pre-push）会传更小的值 | 测试确实慢的模块（先想想能不能拆） |
 | `BRANCH=<名>` / `GITHUB_ACTOR` | check.sh 认的分支名 / `lead/*` 分支核身份用的人（本地用 `git config hack.me`） | CI 设置（PR 的 checkout 是 detached merge commit） |

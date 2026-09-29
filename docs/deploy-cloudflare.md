@@ -27,11 +27,11 @@ npx wrangler whoami        # 看到账号名和 scope 就是登录着的
 
 ## 2. 一个模块的标准配置（`apps/<模块>/wrangler.jsonc`）
 
-`starters/web-worker/wrangler.jsonc` 已经是这个样子（starter 里 `name` 是占位 `web-worker-starter`，`new-app.sh` 复制时会把它改成模块名）：
+下面是通用样例（原在赛前的 `starters/web-worker/`，已按 D-0929-1311 删掉；本项目的实例看 `apps/api/wrangler.jsonc`、`apps/site/wrangler.jsonc`）：
 
 ```jsonc
 {
-  "name": "web-worker-starter",       // Worker 名，也是 workers.dev 链接的前缀；new-app.sh 改成模块名
+  "name": "<模块名>",                 // Worker 名，也是 workers.dev 链接的前缀
   "main": "src/worker.js",
   "compatibility_date": "2026-08-01",
   "workers_dev": true,                // 比赛期间开着拿 demo 链接；赛后想关就改 false
@@ -96,7 +96,7 @@ npx wrangler secret delete <NAME>
 ## 7. Durable Object 的三条规矩（踩过的）
 
 1. **状态每次变更都要 `commit()` 落 storage**，实例随时可能被回收；`v` 单调递增，客户端靠它判断广播新旧
-2. **`fetch()` 里的 await 点会交错执行**，别在两次 await 之间假设状态没变；starter 的 `commit()` 已串行化
+2. **`fetch()` 里的 await 点会交错执行**，别在两次 await 之间假设状态没变；写状态的地方要串行化（一个 `commit()` 排队执行）
 3. **广播前按用户裁剪视图**（`viewFor()`），整份状态广播出去等于把别人的私有字段送人
 
 ## 8. 常见问题
@@ -108,7 +108,7 @@ npx wrangler secret delete <NAME>
 | 改了 DO 类名 deploy 报 migration 错 | 加一条新 `migrations`（`renamed_classes` 或 `deleted_classes`），别改旧 tag |
 | 改了 CSS/JS 线上没变 | 浏览器缓存。`bash bump.sh` 把 `?v=` 加 1 再 deploy |
 | 静态页 404 但文件在 `public/` | 看 `assets.directory` 路径；SPA（前端自己管路由）在 `assets` 里加 `"not_found_handling": "single-page-application"`，未命中的导航请求回退到 `index.html`，`/api/*` 和 `/ws` 仍进 Worker |
-| WebSocket 连不上 | 本地 `ws://`、线上 `wss://`；前端用 `location.protocol` 判断（starter 已处理） |
+| WebSocket 连不上 | 本地 `ws://`、线上 `wss://`；前端用 `location.protocol` 判断 |
 | `.wrangler/` 出现在 `git status` | 已 gitignore；如果被 `git add -f` 过，`git rm -r --cached .wrangler` |
 | 想看线上报错 | `npx wrangler tail` 开着，再复现一次 |
 

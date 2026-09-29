@@ -12,7 +12,7 @@
 - 你在帮队员把这台电脑接进 GitHub 仓库 `Zemmeng/hackathon`。目标：能 clone、`bash scripts/setup.sh` 通过、推一个 T0 热身 PR 并且 CI 绿。
 - 逐步执行第 1–5 节，**每步跑完把命令输出的最后几行贴给人看**；失败就停下来报错，不要猜、不要跳步。
 - 🔒 **不替人输入密码或验证码**。需要浏览器的步骤（第 2、3 节）停下来，把链接和要做的事告诉人，等人说「好了」再继续。
-- 🔒 不要动 `main` 分支；不要改 `.github/` `.claude/` `scripts/` `starters/` 这些基建目录；除了本文档要求的，不要创建别的文件。
+- 🔒 不要动 `main` 分支；不要改 `.github/` `.claude/` `scripts/` 这些基建目录；除了本文档要求的，不要创建别的文件。
 - 接入完成后先读仓库里的 `AGENTS.md`（Codex / Cursor 自动读）或 `CLAUDE.md`（Claude Code），网页版 AI 则复制 `KICKOFF.md` 的 Part B；之后一切规矩以它们为准，本文档只管接入。
 - **EN:** Work step by step through sections 1–5, paste the last lines of every command's output, stop on errors. Never type passwords or one-time codes for the human. Don't touch `main` or the infra folders. After onboarding, read `AGENTS.md` (Codex / Cursor) or `CLAUDE.md` (Claude Code) and follow those.
 

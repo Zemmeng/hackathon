@@ -22,7 +22,6 @@
       "Bash(bash scripts/setup.sh)",
       "Bash(bash scripts/secret-scan.sh*)",
       "Bash(bash apps/*/test.sh)",
-      "Bash(bash starters/*/test.sh)",
       "Bash(node *.mjs)",
       "Bash(npm test*)",
       "Bash(gh pr list*)",
