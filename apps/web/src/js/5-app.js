@@ -76,13 +76,43 @@ function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Mat
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
-function drawTag(c,px,py,dx,dy,text,color,T){
-  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19,ex=px+dx,ey=py+dy,bx=dx<0?ex-w:ex,by=ey-h/2;
-  c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();
-  c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();
-  c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();
-  c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);c.restore();
+// Tag placement (T27): with the whole CBD in view, more tags share less room (375 px: the works tag ran under the zoom buttons
+// and off the screen). While TAGS.on (engLabels), a tag tries its own spot, then mirrored and farther ones, each slid onto the
+// open map, and takes the one that covers the least of the map controls and of the tags already drawn this frame.
+// Other callers draw exactly where they ask.
+const TAGS={on:false,boxes:[],q:[],obst:[],t:0},TAG_TRY=[[1,1],[-1,1],[1,-1],[-1,-1],[1,1.8],[-1,1.8],[1,-1.8],[-1,-1.8]];
+function tagObst(){ // the glass controls over the canvas, in canvas px; re-read at most twice a second
+  const now=performance.now();if(now-TAGS.t<500)return TAGS.obst;TAGS.t=now;const r0=cv.getBoundingClientRect();
+  TAGS.obst=[...document.querySelectorAll('header.top,#rail,#wx,#basemap,.zoom,#legend,#probe,#credits,#panelOpen')].map(e=>e.getBoundingClientRect())
+    .filter(r=>r.width&&r.height).map(r=>[r.left-r0.left,r.top-r0.top,r.width,r.height]);
+  return TAGS.obst;
 }
+function tagSpot(px,py,dx,dy,w,h){
+  const I=GL.ins,x0=I.l+4,x1=V.w-I.r-4,y0=I.t+4,y1=V.h-I.b-4,obs=tagObst();
+  const ov=(a,b)=>Math.max(0,Math.min(a[0]+a[2],b[0]+b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[1]+a[3],b[1]+b[3])-Math.max(a[1],b[1]));
+  let best=null,bs=Infinity;
+  TAG_TRY.forEach(([sx,sy],i)=>{
+    const ddx=dx*sx,ax=ddx<0?px+ddx-w:px+ddx,ay=py+dy*sy-h/2,b=[clamp(ax,x0,Math.max(x0,x1-w)),clamp(ay,y0,Math.max(y0,y1-h)),w,h];
+    let sc=(Math.abs(b[0]-ax)+Math.abs(b[1]-ay))*.5+i*.1;for(const o of obs)sc+=ov(b,o);for(const o of TAGS.boxes)sc+=ov(b,o);
+    if(sc<bs){bs=sc;best=b;}
+  });
+  TAGS.boxes.push(best);return best;
+}
+function drawTag(c,px,py,dx,dy,text,color,T){
+  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19;
+  const[bx,by]=TAGS.on?tagSpot(px,py,dx,dy,w,h):[dx<0?px+dx-w:px+dx,py+dy-h/2];
+  // the leader runs from the point to the nearest side of the box (the side it points from when the box sits where asked)
+  const ex=px<bx?bx:px>bx+w?bx+w:px,ey=ex===px?(py<by?by:by+h):by+h/2,t=[c,px,py,ex,ey,bx,by,w,h,text,color,T];c.restore();
+  if(TAGS.on)TAGS.q.push(t);else{tagInk(t,1);tagInk(t,2);}
+}
+// pass 1 = leader and dot, pass 2 = box and text; tagFlush() inks every leader first so no dot lands on another tag's text
+function tagInk([c,px,py,ex,ey,bx,by,w,h,text,color,T],pass){
+  c.save();
+  if(pass===1){c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();}
+  else{c.font=`500 10px ${FONT_MONO}`;c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);}
+  c.restore();
+}
+function tagFlush(){const q=TAGS.q;TAGS.on=false;TAGS.q=[];for(const p of[1,2])for(const t of q)tagInk(t,p);}
 function colOf(t){return(t==='car'||t==='unf')?TK.aCar:t==='bike'?TK.aBike:t==='ped'?TK.aPed:t==='wc'?TK.aWc:t==='bus'?TK.aBus:TK.aTram;}
 const PAT={};
 function makePatterns(){
@@ -332,7 +362,7 @@ function renderPanel(){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · R-03','影响 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="stack"><span class="eyebrow">${L('Road users involved','涉及的道路使用者')}</span><div class="agents3">

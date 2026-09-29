@@ -88,7 +88,7 @@ function upstreamPath(byTo,link,maxM){
 // Links drawn as this plan's ripple (T27 + T28): ≥ 2 vehicle-minutes over the same hour without the works (extra_min), not the
 // works link itself. sev 2 = red (a queue on it, or ≥ 60), 1 = amber (≥ 10), 0 = faint. Background queues (Flinders / King St
 // every morning) have extra_min ≈ 0 and are left out, however long they are against free flow
-function rippleLinks(links,worksId){const out=[];for(const l of links||[]){const ex=+l.extra_min;if(!(ex>=2)||l.id===worksId)continue;out.push({id:l.id,ex,sev:l.queue_m>0||ex>=60?2:ex>=10?1:0});}return out;}
+function rippleLinks(links,worksId){const out=[];for(const l of links||[]){const ex=+l.extra_min;if(!(ex>=2)||l.id===worksId)continue;out.push({id:l.id,ex,sev:ex>=60?2:ex>=10?1:0});}return out;}
 // Point m metres up the path (clamped to its end), and the path from the works start to that point
 function pathAt(p,m){const{pts,cum}=p;if(!pts.length)return null;if(m<=0)return pts[0];for(let i=1;i<pts.length;i++)if(cum[i]>=m){const t=(m-cum[i-1])/((cum[i]-cum[i-1])||1);return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];}return pts[pts.length-1];}
 function pathSub(p,m){const out=[p.pts[0]];for(let i=1;i<p.pts.length&&p.cum[i]<m;i++)out.push(p.pts[i]);const e=pathAt(p,m);if(e&&out.length&&(e[0]!==out[out.length-1][0]||e[1]!==out[out.length-1][1]))out.push(e);return out;}
@@ -217,7 +217,7 @@ function engBadges(f,s){
   if(f.blocked_vph>0)b.push(`<span class="pill risk">${fmtN(f.blocked_vph)} ${L('veh/h stuck','辆/时 无路可走')}</span>`);
   const rs=aiPlanSrc(s,f); // this plan's persona readings, not the calibration anchors in f.reading_src (9-ai.js)
   b.push(`<span class="pill ${rs.tone}">${L('Sign reading','读屏')} · ${esc(aiSrcLabel(rs.src))}</span>`);
-  b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
+  b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 (trust is assumed)','参数 · T12（信任度是假设值）')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
 // Worst queue anywhere this hour: on the closed street, or (full closure) on the streets the detours pile onto
@@ -330,7 +330,7 @@ function engBind1(){
 // Step 3, network tab: where the queue goes, who is hit and why (why = T5 reading, always set with textContent)
 function engTabs3(){
   if(!BE.api)return'';
-  return`<div class="eng-seg" role="tablist" aria-label="${L('Ripple view','涟漪视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
+  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
 function engHeadline(s){
@@ -341,8 +341,8 @@ function engHeadline(s){
 }
 function engPanel3(){
   const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
-  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
-  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
   const mix=EP.mix,mixTxt=mix?TYPES4.map(t=>`${Math.round((mix[t]&&mix[t].value||0)*100)}`).join(' / '):'';
@@ -351,7 +351,7 @@ function engPanel3(){
     return`<div class="eng-type"><i class="dot" style="background:${TYPE_C[t]}"></i><div class="grow"><b>${L(TYPE_L[t][0],TYPE_L[t][1])}</b> <span class="mono small muted">${fmtN(b.vehicles)} ${L('veh','辆')}${r?` · ${L('mix','占比')} ${Math.round(r[0]*100)}–${Math.round(r[1]*100)}%`:''}</span><small data-why="${t}"></small></div><div class="eng-tv"><b>+${(+(b.per_capita_min||0)).toFixed(1)}</b><span>${L('min each','分钟/人')}</span><span>${pctS(x.detour)} ${L('detour','绕行')}</span></div></div>`;}).join('');
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
-  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
@@ -360,7 +360,7 @@ function engPanel3(){
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
-  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(aiPlanSrc(s,f).src))}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(aiPlanSrc(s,f).src))}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
+  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(aiPlanSrc(s,f).src))}. Behaviour parameters: ${f.params==='params'?'T12 (trust is an assumed value)':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(aiPlanSrc(s,f).src))}。行为参数：${f.params==='params'?'T12（信任度是假设值）':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
 }
 function engTransit3(s){
@@ -456,7 +456,7 @@ function engAlts(plan,s){
     EP.alts=(a.alts||[]).map(r=>({id:r.id,name:r.name,polys:r.links.filter(id=>!stay.has(id)).map(engGeo).filter(Boolean)}));
   }catch(e){EP.alts=[];console.warn('detour paths unavailable',e);}
 }
-// Frame the work zone, its queue and every detour taking ≥ 5 % (clamped to the drawn world), sized to the part of the map the
+// Frame the work zone, its queue and every detour taking ≥ 1 % (clamped to CITY), sized to the part of the map the
 // glass leaves open (insets()); flyTo() then centres it there. No other junction is pulled in (T20 addendum 1)
 function engFit(){
   if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],CITY.x0,CITY.x1));ys.push(clamp(p[1],CITY.y0,CITY.y1));};
@@ -539,6 +539,9 @@ function engDraw(which){
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
   const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
+  // each tag goes clear of the map controls, of the works itself and of the tags before it (5-app.js tagSpot); inked together at the end
+  const wx=off.map(p=>V.X(p[0])),wy=off.map(p=>V.Y(p[1])),wx0=Math.min(...wx)-8,wy0=Math.min(...wy)-8;
+  TAGS.boxes=[[wx0,wy0,Math.max(...wx)+8-wx0,Math.max(...wy)+8-wy0]];TAGS.q=[];TAGS.on=true;
   // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
   drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
   if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis),TK.risk);}
@@ -548,7 +551,8 @@ function engLabels(){
   if(S.step===3&&s){
     const share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));let k2=0;
     for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
-    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
+    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.extra_min>=60?TK.risk:TK.works);}}
+  tagFlush();
 }
 // How far upstream the queue can be drawn: along its street to where the street runs out in the network, and inside CITY.
 // The engine's queue is a point queue on the works link (engine assign.js) — it is drawn back along the street as far as the

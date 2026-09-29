@@ -95,6 +95,15 @@ check("比例尺按 1 m ≈ 0.862 页面单位（K_UPM）", "K_UPM" in ds and "c
 
 # 7 变慢路段按 extra_min（T28）
 check("变慢路段用 extra_min 筛（rippleLinks），不再按 v·delay_s", "rippleLinks(s.raw.links,EP.link)" in ENG and "(l.v||0)*(l.delay_s||0)/60" not in ENG)
+rl = fn(ENG, "rippleLinks")
+check("反向：筛选和红色判断都只看 extra_min，不看 queue_m（Flinders / King St 平时就排队，PRD 3.2 第 7 条 #82）",
+      "queue_m" not in rl and "sev:ex>=60?2:ex>=10?1:0" in rl)
+check("反向：地图上最堵路段的标签也按 extra_min 标红（和底下的线同色），不按 queue_m",
+      "h.extra_min>=60?TK.risk:TK.works" in ENG and "h.queue_m>0?TK.risk" not in ENG)
+dt = fn(APP, "drawTag")
+check("标签避让（375 px 施工标签曾压在缩放按钮下、出屏）：engLabels 期间 drawTag 走 tagSpot，避开玻璃控件、施工段和已画的标签；先画全部引线再画框",
+      "TAGS.on?tagSpot(px,py,dx,dy,w,h)" in dt and "TAGS.boxes=[[wx0,wy0," in fn(ENG, "engLabels") and fn(ENG, "engLabels").rstrip().endswith("tagFlush();") and "if(TAGS.on)TAGS.q.push(t)" in dt
+      and all(x in fn(APP, "tagObst") for x in ["#wx", "#basemap", ".zoom", "#legend", "#rail"]))
 
 # 8 AI 面板的挂钩（PRD 4.3）
 check("第 3 步 AI 面板挂钩还在", "clashMount();aiMount();" in APP and "aiPlanSrc(s,f)" in ENG)

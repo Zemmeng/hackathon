@@ -55,6 +55,8 @@ const L = s.raw.links, rip = new Set(rippleLinks(L, worksId).map(r => r.id));
 const bg = L.filter(l => /^(Flinders|King) Street$/.test((byId.get(l.id) || {}).name || '') && (l.v || 0) * (l.delay_s || 0) / 60 >= 60);
 ok(L.every(l => typeof l.extra_min === 'number'), `raw.links carry extra_min (T28 in the engine) — ${L.length} links`);
 ok(bg.length > 0 && bg.every(l => !rip.has(l.id)), `reverse: the ${bg.length} Flinders / King St links queued against free flow (up to ${Math.round(Math.max(...bg.map(l => l.v * l.delay_s / 60)))} veh·min) are not drawn as this plan's ripple`);
+const R = rippleLinks(L, worksId), red = R.filter(r => r.sev === 2), qd = L.filter(l => l.queue_m > 0 && l.extra_min < 60 && l.id !== worksId);
+ok(red.every(r => r.ex >= 60) && qd.length > 0 && qd.every(l => !red.some(r => r.id === l.id)), `reverse: red = ≥ 60 extra veh·min only (${red.length} links); the ${qd.length} links that queue anyway but gain < 60 are not red`);
 ok(rip.size > 0 && !rip.has(worksId), `the ripple still has ${rip.size} links (≥ 2 extra veh·min), not the works link itself`);
 
 console.log(`${pass} passed, ${fail} failed`);
