@@ -37,6 +37,42 @@
 | 6:30 | 幻灯片 6：收尾 + 链接 / 二维码（队定） | "Before the barriers go out, try the closure on the twin. Change the words, not the street. Thank you." | A | ⭐ |
 | 6:45 | （余量 15 秒） | | | |
 
+## 初筛 3 页（09-30 12:30 截止，草稿 09-29 17:40，21:00 按 T16–T19 上线后的数字更新）
+
+- PDF：`docs/pitch-assets/00-prescreen.pdf`（16:9，3 页，约 410KB）· 源文件 `00-prescreen.html`（浏览器打开就是三页，改字直接改 HTML）
+- 第 1 页右边前后对比 `01-before-*.jpg` / `01-after-*.jpg`：线上页面（液态玻璃版）Lonsdale St 08:00，屏上只写 ROADWORK AHEAD 对比加一帧 USE RUSSELL ST 的面板截图（09-29 20:51，无头 Chrome 切到「详细」后截）
+- 第 3 页嵌的是 `03-architecture-v2.html?lang=en`：在 #42 原图上改了 6 处字，把 AI 框标成「rules today」（D-0929-1718：大模型读屏先不接）；行人电车 T17/T18 已接上，不再标 next。原图 `03-architecture.html` 没动
+- 重新导出（Mac）：`"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --no-pdf-header-footer --virtual-time-budget=5000 --print-to-pdf=docs/pitch-assets/00-prescreen.pdf "file://$PWD/docs/pitch-assets/00-prescreen.html"`；或浏览器打印 → 另存为 PDF → 边距「无」→ 勾「背景图形」
+- 过程：4 个 agent 核实仓库里的数 → 2 版草稿合成 → 事实 / 评委 / 规矩三路挑错 → 定稿（全文在 lead 本机 `.claude/agent-out/prescreen-*.md`，不入库）
+
+### 要全队拍板（提交前）
+
+| # | 事 | 现在页面上 |
+|---|---|---|
+| 1 | 队名 | 三页都是 `[Team name]` 占位；提交只写队名，不写队员姓名 |
+| 2 | 放不放线上链接 + 二维码：网址子域里有队员 handle（zemmmeng），和「只写队名」可能冲突 | 第 2 页 `[demo link + QR — team to confirm]` |
+| 3 | 头条用 Lonsdale −45%（和线上默认场景一致，D-0929-1650）；公交乘客 −40% 作副标题 | 第 1 页绿条、第 2 页 |
+| 4 | 冲突成本 29,850 是方格测试路网上的数；要不要今晚在真 CBD 上重跑 | 第 2 页标了 test grid |
+| 5 | 第 2 页 MVP 照 #48 的「冻结前做 5 件」写：叠加冲突上页面、按库存出 3 套方案带租金、多方案对比 + 选定 + 一页导出；团队看做不做得完 | 第 2 页 MVP 栏 |
+| 6 | 点名 RPM VMS Preview、Mooven、one.network 行不行（只写文字，不用 logo） | 第 1 页 What's different |
+| 7 | 第 3 页用架构图 v2 还是原图 | 用 v2 |
+| 8 | 谁在 09-30 12:30 前交到 Canvas「Pre-screening Submissions」；交前把第 2 页脚注的 Status 时间改成交稿时间 | — |
+
+### 页面上每个数的出处（评委问「数哪来的」照这个答）
+
+| 页面上的说法 | 出处 |
+|---|---|
+| Lonsdale St 延误 −45%（10,493 → 5,746 车·分钟，排队 918 → 548 m） | `backend.js` 的 `connect().compare()`，demo `lonsdale`（1 条车道、8 点、513 辆车），读屏是关键词规则；线上页面同一条路径，截图里的数一致 |
+| 公交乘客 −40%（15 条线、每小时 1,925 人，18,693 → 11,206 人·分钟） | 同一次 `compare()` 的 `summary.transit`（T17，PTV GTFS）；每班 25 人是假设值 |
+| 封一侧人行道：每小时 185 人多走 176 m、多过 2 次马路 | `run()` 的 `summary.peds`（T18），`closes.footpath: 'left'`；这段人流按同街插值（`method: street_interp`），不是实测 |
+| 顾问改写「USE / RUSSELL / SAVE 9 MIN」后排队 82 m、8 点延误 966 车·分钟 | `advise()` 第一个改法重跑（规则版顾问）；没上页面，口头备用 |
+| 3 套方案 A$515–1,765，引导那套排队 918 → 82 m | `be.options(demoPlan('lonsdale'))`（T22，#59）：o1 最省 A$515 / 918 m，o2 标准 A$1,765 / 918 m，o3 引导 A$1,765 / 82 m；租 5 天，日租价和库存是假设值 |
+| London 实际绕行只有问卷说法的 1/5（Chatterjee 2002） | `apps/params/public/params.json` 里的出处原文 |
+| 1,513 条路段、8 周 SCATS | `network.json` links 数；`flows.json` period 2026-08-01..09-27（用了 56 天） |
+| < 10 ms 一次 | `demo.mjs --real` 实测 1.4–6.6 ms |
+| 37 个参数里 29 个是假设或低置信；74% 路段车流是估算 | `params.json` confidence none 18 + low 11；`flows.json` coverage estimated 1,127 / 1,513 |
+| 竞品说法 | lead 本机调研 `idea-prior-art.md` `idea-users.md`；不说「首创」 |
+
 ## 预置数据与重置方法
 
 - 演示账号 / 房间：`<不写凭据，写在哪拿>`

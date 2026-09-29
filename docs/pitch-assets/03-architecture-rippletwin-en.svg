@@ -61,9 +61,9 @@
 <text x="92" y="504" font-family="'Source Serif 4', Charter, Georgia, 'Times New Roman', serif" font-size="36" fill="#0E1A33" font-weight="600">Read the signs</text>
 <text x="92" y="550" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20" fill="#2A3550">Four driver profiles</text>
 <text x="92" y="576" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#687085">commuter · local · tourist · delivery</text>
-<text x="92" y="614" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="20" fill="#2A3550">LLM sign reading</text>
+<text x="92" y="614" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18" fill="#2A3550">LLM reads each sign · rule fallback</text>
 <rect x="92" y="630" width="152" height="32" rx="16.0" fill="#EFEAFD" stroke="#9A82E6" stroke-width="1.5"/>
-<text x="168.0" y="651.76" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#6445C8" font-weight="500" text-anchor="middle">Rule fallback</text>
+<text x="168.0" y="651.76" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#6445C8" font-weight="500" text-anchor="middle">Connected</text>
 <line x1="92" y1="682" x2="378" y2="682" stroke="#D8DDE6" stroke-width="1.5"/>
 <text x="92" y="716" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#0E1A33" font-weight="500">Sign response → route choice</text>
 </g>
@@ -179,7 +179,7 @@
 <circle cx="1512" cy="906" r="6" fill="#0E8F88"/>
 <text x="1528" y="911" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#2A3550">Transit + walking impacts: working</text>
 <circle cx="1512" cy="931" r="6" fill="#0E8F88"/>
-<text x="1528" y="936" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#2A3550">Advisor · 3 kits · export: working</text>
+<text x="1528" y="936" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#2A3550">AI explain · compare · export: working</text>
 </g>
 <g id="footer">
 <line x1="60" y1="972" x2="1860" y2="972" stroke="#C9CFDA" stroke-width="1.5"/>

@@ -68,6 +68,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T21 | 叠加冲突上页面（D-0929-2011 ②）：真 CBD 路网上两处施工的冲突成本 + 一键错开，引擎已有 `conflict()` / `shiftWorksite()`，页面加第二处施工 | ✅ | `lead/t21-clash` | 09-29 22:01 |
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
+| T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
 
 卡住了：
 

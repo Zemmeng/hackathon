@@ -206,8 +206,8 @@ stage_header(x, SY + 46, "01", "INTERPRET")
 text(x, SY + 98, "Read the signs", 36, INK, SERIF, 600)
 text(x, SY + 144, "Four driver profiles", 20, BODY)
 text(x, SY + 170, "commuter · local · tourist · delivery", 15, MUTED)
-text(x, SY + 208, "LLM sign reading", 20, BODY)
-pill(x, SY + 224, 152, 32, "Rule fallback")
+text(x, SY + 208, "LLM reads each sign · rule fallback", 18, BODY)
+pill(x, SY + 224, 152, 32, "Connected")
 line(x, SY + 276, X1 + W1 - P, SY + 276, LINE, 1.5)
 text(x, SY + 310, "Sign response → route choice", 19, INK, weight=500)
 end()
@@ -334,7 +334,7 @@ items = [(True, "Deterministic engine: working"),
          (True, "LLM reading + fallback: working"),
          (True, "CBD clashes + stagger: working"),
          (True, "Transit + walking impacts: working"),
-         (True, "Advisor · 3 kits · export: working")]
+         (True, "AI explain · compare · export: working")]
 for i, (ok, s) in enumerate(items):
     yy = ZY + 62 + i * 25
     if ok:
