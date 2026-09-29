@@ -18,6 +18,7 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 | engine | @Zemmeng（lead 的引擎会话，T9） | 没用 starter（纯 JS 路网引擎，浏览器和 node 都能跑） | —（`node apps/engine/tools/demo.mjs`） | `/engine/public/js/index.js` |
 | api | @jinmingq | 没用 starter（照 web-worker 手工建，去掉 DO） | 8788 | — |
 | params | @Unzzip | 没用 starter（静态 JSON + 出处表） | — | — |
+| site | @unicornnnnnny（部署）· @Zemmeng（代码） | 没用 starter（手写 Worker：各模块 `public/` 挂到 `/<模块>/public/`，`/api/*` 转给 T5） | 8790 | `DEMO_URL`（部署后 lead 填） |
 
 ## 端口约定
 

@@ -7,6 +7,8 @@
 
 一个模块 = 一个 Worker：`public/` 里的静态页由 Worker 的 assets 绑定托管，`/api/*` 和 `/ws` 走 Worker 代码，需要状态就绑一个 Durable Object。`npx wrangler deploy` 一条命令上线，URL 立刻可用。
 
+**本项目实际怎么发：** demo 网址只有一个 Worker `apps/site`，它把每个模块的 `public/` 挂到 `/<模块>/public/`，`/api/*` 经服务绑定转给 T5 的 api Worker。部署人照 `apps/site/README.md` 的「部署」一节做。
+
 ## 1. 账号与登录（lead 本机已经好了）
 
 | 项 | 现状 |
