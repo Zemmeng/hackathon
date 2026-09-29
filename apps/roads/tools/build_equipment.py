@@ -58,14 +58,22 @@ ITEMS = [
      'effect': 'warn', 'applies_to': ['vehicle', 'bike'], 'qty': 30, 'day_rate_aud': 5, 'url': None,
      'note': '模型里不起作用，只为清单完整；effect 占位用 warn'},
     # ---- VMS：effect=message，自由文案 ----
+    # 官网同一页前后不一致（09-29 核对原文）：FAQ 写「12-13 characters per line up to 4 lines of text per screen」，
+    # 文案指南写「Up to 10 characters per line (including any spaces)」「Ideally, 3 lines of text and 8 characters per line」
+    # 「Generally 2 seconds for 1,2 or 3 lines of text. 3 seconds if the screen is flashing」。
+    # 取 10：和 T5 的 readSigns() / /api/read 一致（超了回 400），@jinmingq 在 #14 指出
     {'id': 'vms_a', 'category': 'vms', 'name': 'Variable Message Sign (A class, trailer)',
-     'effect': 'message', 'applies_to': ['vehicle', 'bike'], 'lines': 4, 'chars_per_line': 12,
+     'effect': 'message', 'applies_to': ['vehicle', 'bike'], 'lines': 4, 'chars_per_line': 10,
+     'lines_recommended': 3, 'chars_recommended': 8, 'seconds_per_screen': 2, 'seconds_per_screen_flashing': 3,
      'display_m': [1.04, 1.62], 'power': 'solar + battery',
-     'note': '官网写「每行 12–13 个字符，每屏最多 4 行」；取 12 保守', 'qty': 4, 'day_rate_aud': 150, 'url': RPM + 'variable-message-signs/'},
+     'note': '官网文案指南：每行最多 10 个字符（含空格）、每屏最多 4 行；最好 3 行 × 8 字；每屏停 2 秒（闪烁 3 秒）。同页 FAQ 写 12–13 字，以 10 为准',
+     'qty': 4, 'day_rate_aud': 150, 'url': RPM + 'variable-message-signs/'},
     {'id': 'vms_c', 'category': 'vms', 'name': 'Variable Message Sign (C class, trailer)',
-     'effect': 'message', 'applies_to': ['vehicle', 'bike'], 'lines': 4, 'chars_per_line': 12,
+     'effect': 'message', 'applies_to': ['vehicle', 'bike'], 'lines': 4, 'chars_per_line': 10,
+     'lines_recommended': 3, 'chars_recommended': 8, 'seconds_per_screen': 2, 'seconds_per_screen_flashing': 3,
      'display_m': [1.85, 2.73], 'power': 'solar + battery',
-     'note': '比 A class 字大、看得远，同样 4 行 × 12 字', 'qty': 2, 'day_rate_aud': 200, 'url': RPM + 'variable-message-signs/'},
+     'note': '比 A class 字大、看得远，字数规则同 A class（每行最多 10 字、最好 3 行 × 8 字）',
+     'qty': 2, 'day_rate_aud': 200, 'url': RPM + 'variable-message-signs/'},
     # ---- 箭头板：指示车辆并道方向 ----
     {'id': 'arrow_board', 'category': 'arrow_board', 'name': 'Portable arrow board (trailer)',
      'effect': 'route_vehicles', 'applies_to': ['vehicle'], 'modes': ['left', 'right', 'double'],
