@@ -63,8 +63,8 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
   "why": "Sign says Russell saves 8 min and I'm late",
   "range": { "notice": [0.8, 0.9], "understand": [0.85, 0.95], "trust": [0.6, 0.75] },
   "src": "file",
-  "model": "…",
-  "prompt_v": "r1"
+  "model": "deepseek-flash",
+  "prompt_v": "r2"
 }
 ```
 
@@ -77,7 +77,10 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 | `trust` | 看懂的人里相信这句话的程度，0–1 |
 | `why` | 一句理由（英文，界面显示用 `textContent`） |
 | `range` | 问 3 次的最小到最大；规则兜底时没有这个字段 |
-| `src` | `file / kv / llm / rule` |
+| `src` | `file`（随网页发布的 `demo.json`）/ `kv`（Worker 的缓存：内存、KV 或 Cache API）/ `llm`（刚问的大模型）/ `rule`（关键词规则） |
+| `model` | 大模型名（= Worker 变量 `LLM_MODEL`，例 `deepseek-flash`）；规则读数是 `"rules"` |
+| `prompt_v` | 提示词版本（`apps/api/prompts.md`，例 `r2`）；规则读数是规则版本（例 `k1`） |
+| `note` | 可选，只在 `POST /api/read` 的规则兜底时出现：为什么没用大模型的短码（例 `llm_fallback: 1/3 valid (timeout)`、`llm_rate_limited`）。`readSigns()` 会丢掉它，引擎看不到 |
 
 - 引擎拿读数 + 每类人的参数算各条路的比例（选择模型和两点校准归 T4）；**大模型不回比例**
 - 加字段随时可以；改名、删字段、改取值范围要开 `contract:` PR
@@ -156,8 +159,11 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
-| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool }` | api |
-| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`；不合规范 400 `{ "ok": false, "error", "msg" }` | api |
+| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"none", "prompt_v", "provider" } }`；`key` 只说有没有，**永远不给值**；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
+| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB 413 | api |
+
+- `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
+- `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
 | `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
 
 ## WebSocket 消息（`/ws?room=<CODE>`）
@@ -200,6 +206,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.2 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |
 | v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
