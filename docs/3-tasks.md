@@ -75,9 +75,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
-| | | | | |
+| T12 | 引擎参数找依据：`apps/params/public/params.json` + 出处表 + `test.sh`（`docs/arch/T12-params-PRD.md`）；P0 全交，P1 时间价值/VMS 可读已交，sign_trust 明确 null | 🔨 | `Unzzip/params/T12-evidence` | 09-29 15:20 |
 
-卡住了：
+卡住了：无。#5（Canvas 材料）已按 lead 留言拆完，等 `cross-module` 标签。
 
 
 ## @jinmingq
