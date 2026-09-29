@@ -576,7 +576,7 @@ run_e2e() {
 # --selftest：门禁本身也要被验证
 # =====================================================================
 run_selftest() {
-  local T="$WORK/selftest" i=0 total=12 out rc q
+  local T="$WORK/selftest" i=0 total=17 out rc q v
   mkdir -p "$T"
   say "🧪 check.sh --selftest（临时目录 $T，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
@@ -666,6 +666,33 @@ run_selftest() {
     printf 'curl -H "Authorization: Bearer %s" https://api.example.com\nhf: %s\ngroq: %s\nxai: %s\nreplicate: %s\n' \
       "$FAKE_KEY" "hf_$q" "gsk_$q" "xai-$q" "r8_$q" >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
   run_case "API 卡里贴了 key（Bearer / hf_ / gsk_ / xai- / r8_）→ [1] ❌ 命中 5 处且不回显值" "[1] 秘密扫描 ❌ 命中 5 处" "$T/card-key"
+  FAKE_KEY=""
+
+  # 反向：只写变量名 / 占位的 Bearer 不误报；handle 大小写不同、文件名带点也算自己的卡
+  ( mkrepo "$T/card-case" && gq checkout -q -b Alice/demo/T13-card && mkdir -p docs/llm-apis &&
+    printf 'curl -H "Authorization: Bearer CLOUDFLARE_API_TOKEN"\ncurl -H "Authorization: Bearer YOUR-OPENROUTER-API-KEY"\ncurl -H "Authorization: Bearer $DEEPSEEK_API_KEY"\napi_key: CLOUDFLARE_API_TOKEN\n' \
+      >docs/llm-apis/alice-qwen2.5.md ) >/dev/null 2>&1
+  run_case "API 卡：分支 Alice/ 建 alice-qwen2.5.md，只写变量名的 Bearer → 应全绿" green "$T/card-case"
+
+  ( mkrepo "$T/card-rm" && mkdir -p docs/llm-apis && printf '# bob 的卡\n' >docs/llm-apis/bob-demo.md &&
+    gq add -A && gq commit -qm bob-card && gq checkout -q -b alice/demo/T14-card &&
+    gq rm -q docs/llm-apis/bob-demo.md && gq commit -qm rm ) >/dev/null 2>&1
+  run_case "API 卡：删了别人的 docs/llm-apis/bob-demo.md → [3] ❌" "[3] 分支与越界 ❌ 删了别人的 API 卡" "$T/card-rm"
+
+  ( mkrepo "$T/card-sub" && gq checkout -q -b alice/demo/T15-card && mkdir -p docs/llm-apis/sub &&
+    printf '# 卡\n' >docs/llm-apis/sub/alice-x.md ) >/dev/null 2>&1
+  run_case "API 卡：建子目录 docs/llm-apis/sub/ → [3] ❌" "[3] 分支与越界 ❌ 1 个文件超出模块 demo" "$T/card-sub"
+
+  ( mkrepo "$T/card-cn" && gq checkout -q -b alice/demo/T16-card && mkdir -p docs/llm-apis &&
+    printf '# 卡\n' >"docs/llm-apis/alice-通义.md" ) >/dev/null 2>&1
+  run_case "API 卡：中文文件名 alice-通义.md → [3] ❌" "[3] 分支与越界 ❌ API 卡" "$T/card-cn"
+
+  # 没有固定前缀的 key 写在标签后面（全角冒号、…_SECRET_KEY=），以及 pplx- 和 JWT：各一行
+  v=$(printf 'Ab3%.0s' $(seq 1 11)); FAKE_KEY="$v"
+  ( mkrepo "$T/card-key2" && gq checkout -q -b alice/demo/T17-card && mkdir -p docs/llm-apis &&
+    printf -- '- API Key：%s\nQIANFAN_SECRET_KEY=%s\npplx: %s\njwt: %s\n' "$v" "$v" "pplx-$q" "eyJ$v.eyJ$v.$v" \
+      >docs/llm-apis/alice-demo.md ) >/dev/null 2>&1
+  run_case "API 卡：API Key：… / …_SECRET_KEY= / pplx- / JWT → [1] ❌ 命中 4 处且不回显值" "[1] 秘密扫描 ❌ 命中 4 处" "$T/card-key2"
   FAKE_KEY=""
 
   [ "$i" -eq "$total" ] || item S0 "场景数" err "跑了 $i 个场景，应为 $total"
@@ -843,7 +870,11 @@ check_3() {
       docs/llm-apis/*)
         # API 卡只动自己的：文件名以「本分支 handle-」开头（不区分大小写）；别人的卡不改不删
         case "$(lower "$(basename "$f")")" in
-          "$(lower "$handle")"-?*) ;;
+          "$(lower "$handle")"-?*)
+            # 自己的卡：文件名全 ASCII（D-05），后缀 .md 或 .json（-response.json）
+            if [ -e "$f" ] && ! printf '%s' "$(lower "$(basename "$f")")" | LC_ALL=C grep -Eq '^[a-z0-9._-]+\.(md|json)$'; then
+              add_e "API 卡 ${f} 的文件名只能用小写字母、数字、. _ -，后缀 .md 或 .json（例：docs/llm-apis/${handle}-deepseek.md）"
+            fi ;;
           *)
             if g cat-file -e "$ref:$f" 2>/dev/null; then
               if [ -e "$f" ]; then add_e "改了别人的 API 卡 ${f}（只能改文件名以 ${handle}- 开头的卡）"

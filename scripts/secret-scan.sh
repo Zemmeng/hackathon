@@ -13,11 +13,13 @@
 #
 # 覆盖的模式（改这里就改下面 PATTERNS）：AWS AKIA…、OpenAI 风格 sk-…、Anthropic sk-ant-…、
 #   GitHub gh[pous]_… / github_pat_…、Google AIza…、Slack xox[bpa]-…、PEM 私钥头、火山方舟 ark-…、
-#   Hugging Face hf_…、Groq gsk_…、xAI xai-…、Replicate r8_…、请求头里直接写值的 Bearer <≥20 位>（curl 示例最常见）、
-#   api_key|token|secret|password|passwd 后面用 = 或 : 赋一个 ≥20 位的串，
+#   Hugging Face hf_…、Groq gsk_…、xAI xai-…、Replicate r8_…、Perplexity pplx-…、NVIDIA nvapi-…、Fireworks fw_…、
+#   Together tgp_v1_…、智谱 <32 位十六进制>.<16 位>、JWT eyJ….eyJ….…、请求头里直接写值的 Bearer <≥20 位>（curl 示例最常见）、
+#   api key|secret key|access key|token|secret|password|passwd 或全大写的 …_KEY / …_SK 后面用 = : ：赋一个 ≥20 位的串，
 #   以及 password|passwd|secret 用引号赋一个 ≥12 位的串（${…}、process.env、env. 这类引用不算）。
 # 白名单按「命中的那一段」判断，不按整行（同一行有 <br/>、__CONFIG__ 也照样抓）：
-#   命中的值含 xxx / your_，或被 <…> 整个包住（如 <sk-your-key>），或整段是 __NAME__ 这种占位 → 放行；
+#   命中的值含 xxx / your_ / your-，或被 <…> 整个包住（如 <sk-your-key>），或整段是 __NAME__ 这种占位，
+#   或整段是全大写环境变量名（如 Bearer CLOUDFLARE_API_TOKEN）→ 放行；
 #   *.example 文件整个放行；本文件自身放行。
 set -uo pipefail
 
@@ -66,17 +68,26 @@ PATTERNS = [
     ('xai_key', re.compile(r'(?<![A-Za-z0-9_-])xai-[A-Za-z0-9]{40,}'), 0),
     ('replicate_token', re.compile(r'(?<![A-Za-z0-9_])r8_[A-Za-z0-9]{30,}'), 0),
     # 请求头里直接写的值：Bearer $VAR、Bearer ${…}、Bearer <你的key> 都不算（字符集里没有 $ { <）
+    ('perplexity_key', re.compile(r'(?<![A-Za-z0-9_-])pplx-[A-Za-z0-9]{40,}'), 0),
+    ('nvidia_key', re.compile(r'(?<![A-Za-z0-9_-])nvapi-[A-Za-z0-9_-]{40,}'), 0),
+    ('fireworks_key', re.compile(r'(?<![A-Za-z0-9_])fw_[A-Za-z0-9]{20,}'), 0),
+    ('together_key', re.compile(r'(?<![A-Za-z0-9_])tgp_v1_[A-Za-z0-9_-]{30,}'), 0),
+    ('zhipu_key', re.compile(r'(?<![A-Za-z0-9])[0-9a-f]{32}\.[A-Za-z0-9]{16}(?![A-Za-z0-9])'), 0),
+    ('jwt', re.compile(r'(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'), 0),
     ('bearer_token', re.compile(r'(?i)(?<![A-Za-z0-9_])Bearer\s+([A-Za-z0-9._~+/=-]{20,})'), 1),
-    # 通用赋值：KEY=…、"token": "…"、password: '…'；后面紧跟 ( 的是函数调用，不算
+    # 通用赋值：KEY=…、"token": "…"、password: '…'、API Key：…、QIANFAN_SK=…；后面紧跟 ( 的是函数调用，不算
+    # …_KEY / …_SK 只认大写（message_key: 这类小写字段名不算）
     ('generic_secret_assignment', re.compile(
-        r'(?i)(?:api[_-]?key|secret|token|password|passwd)[\'"]?\s*[:=]\s*[\'"]?'
+        r'(?i)(?:api[_\s-]?key|secret(?:[_-]?(?:access[_-]?)?key)?|access[_-]?key|(?-i:[_-](?:KEY|SK))|token|password|passwd)'
+        r'[\'"]?\s*[:=：]\s*[\'"]?'
         r'([A-Za-z0-9_\-]{20,})(?![A-Za-z0-9_\-]*\()'), 1),
     # 密码类放宽：引号里任意 ≥12 个非空白非引号字符
     ('password_assignment', re.compile(
         r'(?i)(?:password|passwd|secret)[\'"]?\s*[:=]\s*([\'"])([^\s\'"]{12,})\1'), 2),
 ]
 
-PLACEHOLDER_IN_VALUE = re.compile(r'(?i)xxx|your_')
+PLACEHOLDER_IN_VALUE = re.compile(r'(?i)xxx|your[_-]')
+ENV_NAME = re.compile(r'^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$')  # 只写了变量名（CLOUDFLARE_API_TOKEN），不是值
 DUNDER = re.compile(r'^__[A-Z_]+__$')
 REFERENCE = re.compile(r'^\$\{|^\$[A-Z_]|process\.env|^env\.|os\.environ|import\.meta\.env')
 
@@ -95,7 +106,7 @@ def enclosed_in_angle(line, start, end):
 
 def whitelisted_match(line, m, grp):
     value = m.group(grp)
-    if PLACEHOLDER_IN_VALUE.search(value) or DUNDER.match(value) or REFERENCE.search(value):
+    if PLACEHOLDER_IN_VALUE.search(value) or DUNDER.match(value) or REFERENCE.search(value) or ENV_NAME.match(value):
         return True
     return enclosed_in_angle(line, m.start(grp), m.end(grp))
 

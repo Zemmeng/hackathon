@@ -127,7 +127,7 @@ gh pr create --fill                                     # 只动了自己模块�
 | [docs/4-demo.md](docs/4-demo.md) | 演示脚本、pitch、兜底、提交清单 | pitch owner |
 | [docs/decisions.md](docs/decisions.md) | 已定的事，别再推翻 | 所有人追加 |
 | [docs/pitfalls.md](docs/pitfalls.md) | 踩过的坑，别再踩 | 所有人追加 |
-| [docs/llm-apis/](docs/llm-apis/README.md) | 候选大模型 API：谁有 key、多少钱、怎么调 | 每人只建自己的卡 |
+| [docs/llm-apis/](docs/llm-apis/README.md) | 候选大模型 API：谁有 key、多少钱、怎么调 | 每人只动自己的卡 |
 | [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md) | 怎么部署到 Cloudflare、队友怎么拿到部署权限 | lead |
 | [handoff/](handoff/README.md) | 交接单怎么写 | 所有人 |
 | [apps/README.md](apps/README.md) | 模块规则、端口表、模块 README 模板 | lead |

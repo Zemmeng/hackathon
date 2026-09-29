@@ -213,6 +213,7 @@ def sec_branch():
     if ME and m.group(1).lower() != ME.lower():
         lines[0] += ' ⚠️ 分支前缀 @%s 不是你' % m.group(1)
     w = 'apps/%s/** · docs/3-tasks.md（只改自己那节）· decisions/pitfalls（只追加）· handoff/*.md（只新建）' % MODULE
+    w += ' · docs/llm-apis/%s-*（自己的 API 卡，只写变量名）' % m.group(1)
     if MODULE == 'pitch':
         w += ' · docs/4-demo.md · docs/pitch-assets/**'
     lines.append('   可写：' + w)
