@@ -33,6 +33,16 @@ await sec("Durable Object BUDGET：大模型每日上限的全局计数", () => 
   eq(typeof entry.LlmBudget, "function", "入口 src/worker.js 导出了 LlmBudget（workerd 按名字找类）");
 });
 
+await sec("Durable Object REGISTER：施工登记表", () => {
+  const w = parseJsonc(read("wrangler.jsonc"));
+  const b = (w.durable_objects?.bindings || []).find((x) => x.name === "REGISTER");
+  eq(b?.class_name, "WorksiteRegister", "绑定 REGISTER → 类 WorksiteRegister（src/register.js 认 env.REGISTER）");
+  eq((w.migrations || []).map((m) => m.tag), ["v1", "v2"], "migrations 只往后加：v1 → v2");
+  eq(w.migrations[0], { tag: "v1", new_sqlite_classes: ["LlmBudget"] }, "反向：已部署的 v1 一个字没改（改了 deploy 会报 migration 错）");
+  eq(w.migrations[1], { tag: "v2", new_sqlite_classes: ["WorksiteRegister"] }, "v2 用 new_sqlite_classes 加 WorksiteRegister");
+  eq(typeof entry.WorksiteRegister, "function", "入口 src/worker.js 导出了 WorksiteRegister");
+});
+
 await sec("tests/workerd.test.mjs 自给自足：不吃 wrangler.jsonc 的 MOCK、不吃本机 .dev.vars 的 key", () => {
   const t = read("tests/workerd.test.mjs");
   ok(/const OFF = \{ MOCK: "1", LLM_API_KEY: "" \}/.test(t), "默认那个 Worker 用 vars 强制 MOCK=1、key 为空（lead 改 MOCK=0 后门禁照样绿，也不会花钱）");
