@@ -52,7 +52,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T0 | 热身：验证本机环境、hooks、CI 与仓库权限 | ✅ | `louisxie316-dotcom/hello/T0-hello` / PR #3 | 09-27 14:48 |
-| T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | 🔨 | `louisxie316-dotcom/roads/T3-network` / PR #9（draft） | 09-29 13:19 |
+| T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | ✅ | `louisxie316-dotcom/roads/T3-network` / PR #9 | 09-29 13:19 |
 
 卡住了：
 
