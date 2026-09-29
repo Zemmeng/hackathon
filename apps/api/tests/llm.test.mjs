@@ -116,7 +116,7 @@ await sec("GET /api/health 的 llm 字段", async () => {
   const off = (await call("/api/health", {}, { MOCK: "1" })).body;
   eq(
     off.llm,
-    { mode: "rules", model: "deepseek-flash", key: false, cache: "memory", prompt_v: PROMPT.v, provider: "deepseek", budget: false, per_day: 600, per_min: 60 },
+    { mode: "rules", model: "deepseek-flash", key: false, cache: "memory", prompt_v: PROMPT.v, explain_v: PROMPT.explain.v, provider: "deepseek", budget: false, per_day: 600, per_min: 60 },
     "默认：rules · deepseek-flash · 没 key · 只有内存缓存 · 没绑 BUDGET · 每天 600 / 每分钟 60",
   );
   eq((await call("/api/health", {}, ON)).body.llm.budget, true, "绑了 BUDGET → budget true");

@@ -1,7 +1,8 @@
 // AI 解读（T5 · 提案 #48 第 ⑥ 步）：读引擎给每套方案算出的数字，写优缺点、谁最吃亏、风险、倾向哪套和理由。浏览器和 Worker 共用
 // 原则（D-0929-1310「大模型出主意，引擎算数字」）：解读里的每个数字都得来自引擎给的数（allowedNumbers），编出来的句子整句丢掉；
 //   只说「倾向」，不替人拍板：选哪套由负责人决定（decide 那句固定写在响应里）
-// 现在只有规则版（src: "rule"，确定、不花钱）；大模型版以后走同一个请求 / 响应格式，回来的字先过 sanitizeExplain()
+// 规则版（src: "rule"，确定、不花钱）+ 大模型版（D-0929-2307，Worker 的 src/llm.js serverExplain()：src "llm" / 缓存 "kv"），
+//   同一个请求 / 响应格式；大模型回来的字、缓存里的解读一律先过 sanitizeExplain()，拿不到就规则版 + note
 // 🔒 label 不许有 < >（网页用 innerHTML 拼模板）；多余字段丢掉
 
 export const EXPLAIN_LIMITS = { options: 5, label: 60, item: 200, items: 6, max: 1e8 };
@@ -191,7 +192,10 @@ export function ruleExplain(input) {
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-// ---- 外来的解读（以后的大模型、缓存）当不可信数据：字段不对整份作废（回 null，调用方用规则版）；数字追溯不到的句子丢掉 ----
+// ---- 外来的解读（大模型、缓存、接口响应）当不可信数据：字段不对整份作废（回 null，调用方用规则版）；数字追溯不到的句子丢掉 ----
+// 另外只放行三个说明字段（短、只许字母数字和少数标点）：model、prompt_v（大模型版）、note（兜底原因短码，例 llm_fallback: timeout）
+const META = ["model", "prompt_v", "note"];
+const META_RE = /^[A-Za-z0-9 ._:/,()-]{1,120}$/;
 
 const cleanItem = (x, allowed) => {
   if (typeof x !== "string") return null;
@@ -224,7 +228,9 @@ export function sanitizeExplain(raw, input, src) {
     const why = cleanItem(raw.lean.why, allowed);
     if (why) lean = { option: raw.lean.option, why };
   }
-  return { src, lang: req.lang, options, lean, decide: rule.decide };
+  const out = { src, lang: req.lang, options, lean, decide: rule.decide };
+  for (const k of META) if (typeof raw[k] === "string" && META_RE.test(raw[k])) out[k] = raw[k];
+  return out;
 }
 
 // ---- 浏览器端：引擎结果 → 一套方案；POST /api/explain，接口不通就在浏览器里跑规则版 ----
@@ -261,16 +267,18 @@ export function optionFromRun(id, name, s, extra = {}) {
 }
 
 // → 解读；opts: { fetch, apiBase, timeoutMs }。请求不合规范直接抛 ExplainError（调用方的 bug），接口不通就本地规则版（src: "rule"）
+// src 照接口给的（llm / kv / rule），不认识的记 "api"；默认等 25 秒：Worker 那边问大模型最多等 20 秒（EXPLAIN_TIMEOUT_MS），等不到它会自己回规则版
+const API_SRC = ["llm", "kv", "rule"];
 export async function explainOptions(input, opts = {}) {
   const req = normalizeExplainRequest(input);
   const f = opts.fetch || globalThis.fetch;
   if (typeof f === "function") {
     const ctl = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = ctl ? setTimeout(() => ctl.abort(), opts.timeoutMs ?? 8000) : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), opts.timeoutMs ?? 25_000) : null;
     try {
       const r = await f(`${opts.apiBase || ""}/api/explain`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(req), signal: ctl?.signal });
       const b = await r.json().catch(() => null);
-      const clean = r.ok && b?.ok ? sanitizeExplain(b.explain, req, b.explain?.src === "rule" ? "rule" : "api") : null;
+      const clean = r.ok && b?.ok ? sanitizeExplain(b.explain, req, API_SRC.includes(b.explain?.src) ? b.explain.src : "api") : null;
       if (clean) return clean;
     } catch {
       // 断网、超时、site 没绑 api：下面用规则版

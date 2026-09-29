@@ -140,7 +140,9 @@ await sec("浏览器端 explainOptions（假 fetch）", async () => {
   const liar = ruleExplain(REQ);
   liar.options[0].pros = ["Cuts delay by 99%"];
   const cleaned = await explainOptions(REQ, { fetch: reply({ ok: true, explain: { ...liar, src: "llm" } }) });
-  eq([cleaned.src, cleaned.options[0].pros], ["api", []], "反向：接口回来的字也过清洗，编的数丢掉");
+  eq([cleaned.src, cleaned.options[0].pros], ["llm", []], "反向：接口回来的字也过清洗，编的数丢掉（src 照接口给的 llm）");
+  const odd = await explainOptions(REQ, { fetch: reply({ ok: true, explain: { ...ruleExplain(REQ), src: "gpt" } }) });
+  eq(odd.src, "api", "不认识的 src 记成 api");
   let code = null;
   try {
     await explainOptions({ options: [] }, { fetch: reply({}) });

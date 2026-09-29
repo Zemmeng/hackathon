@@ -1,4 +1,5 @@
 // 大模型读屏（T19）：可替换的调用层 + 问 3 次合成 + 服务端缓存。Worker（src/worker.js）和预计算工具（tools/precompute.mjs）共用
+// AI 解读（D-0929-2307）：serverExplain() 复用同一套调用、缓存、限流、熔断、每日上限，只问 1 次，回来的字过 sanitizeExplain()
 // 提示词只在 prompts.md（经 tools/gen-prompt.mjs 生成 src/prompt.js）；怎么问、怎么合成也照 prompts.md 写
 // 任何 OpenAI 兼容的 POST {LLM_BASE_URL}/chat/completions 都能接：DeepSeek（默认）、百炼 DashScope 兼容模式、OpenAI 等
 // 🔒 key 只在发请求那一刻从 env.LLM_API_KEY 读，不进配置对象、不进日志、不进报错消息、不进响应（tests/llm.test.mjs 反向断言）
@@ -8,6 +9,7 @@ import { PROMPT } from "./prompt.js";
 import { takeBudget } from "./budget.js";
 import { canonical, sha256Hex, sanitizeReading } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
+import { normalizeExplainRequest, ruleExplain, sanitizeExplain } from "../public/js/explain.js";
 
 export const DEFAULTS = {
   baseUrl: "https://api.deepseek.com",
@@ -22,6 +24,9 @@ const MEM_MAX = 500; // 实例内存缓存最多几条
 const CACHE_TTL_S = 30 * 24 * 3600; // KV / Cache API 存 30 天：同一句话同一类人的读数不会变（prompt_v、模型都进键）
 const BREAKER_FAILS = 3; // 连续几份读数整份失败（有效的不到 2 次）……
 const BREAKER_MS = 60_000; // ……就这么久不再问大模型，直接规则：key 错了或服务商挂了时，别让每个请求都白等 6 秒
+export const EXPLAIN_CALLS = 1; // 一次解读问几次（不做三次合成）= 向每日计数预留几次
+const EXPLAIN_MAX_TOKENS = 1500; // 3–5 套方案的优缺点、风险、倾向；中文约 600–900 token
+export const EXPLAIN_TIMEOUT_MS = 20_000; // 解读输出长，6 秒不够；LLM_TIMEOUT_MS 更大就用它。浏览器端 explainOptions() 等 25 秒
 
 export class LlmError extends Error {
   // 消息只有固定短码，不带服务商回的内容（可能回显请求头）
@@ -103,6 +108,7 @@ export function llmStatus(env = {}, host = "") {
     key: c.key,
     cache: cacheKind(env, host),
     prompt_v: PROMPT.v,
+    explain_v: PROMPT.explain.v, // AI 解读提示词的版本（prompts.md「AI 解读」）
     provider: c.provider,
     budget: hasBudget(env), // 有没有全局每日计数（没有就算 mode 是 llm 也不会调用）
     per_day: c.maxCallsPerDay,
@@ -185,8 +191,8 @@ export function chatUrl(cfg) {
   return `${cfg.baseUrl}/chat/completions`;
 }
 
-export function requestBody(cfg, messages) {
-  const body = { model: cfg.model, messages, response_format: { type: "json_object" }, max_tokens: MAX_TOKENS, stream: false };
+export function requestBody(cfg, messages, maxTokens = MAX_TOKENS) {
+  const body = { model: cfg.model, messages, response_format: { type: "json_object" }, max_tokens: maxTokens, stream: false };
   if (cfg.provider === "deepseek") body.thinking = { type: "disabled" }; // 不关的话 content 是空串（jinmingq-deepseek.md §5）
   if (cfg.provider === "dashscope") body.enable_thinking = false;
   return body;
@@ -228,7 +234,7 @@ export async function askOnce(env, cfg, messages, opts = {}) {
       f(chatUrl(cfg), {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${str(env.LLM_API_KEY)}` },
-        body: JSON.stringify(requestBody(cfg, messages)),
+        body: JSON.stringify(requestBody(cfg, messages, opts.maxTokens)),
         signal: ctl.signal,
       }),
       timeout,
@@ -353,7 +359,8 @@ function memSet(key, reading) {
 }
 
 // KV（有 READINGS 绑定时）或 Cache API（Workers 自带；*.workers.dev 上不生效，那里 cacheKind 回 memory，不去碰它）
-function store(env, origin) {
+// ns：读数 "read"、解读 "explain"，键前缀分开（KV 里是 read:<哈希> / explain:<哈希>）
+function store(env, origin, ns = "read") {
   let host = "";
   try {
     host = origin ? new URL(origin).hostname : "";
@@ -365,15 +372,15 @@ function store(env, origin) {
     const kv = env.READINGS;
     return {
       get: async (k) => {
-        const t = await kv.get(`read:${k}`);
+        const t = await kv.get(`${ns}:${k}`);
         return t ? JSON.parse(t) : null;
       },
-      put: (k, v) => kv.put(`read:${k}`, JSON.stringify(v), { expirationTtl: CACHE_TTL_S }),
+      put: (k, v) => kv.put(`${ns}:${k}`, JSON.stringify(v), { expirationTtl: CACHE_TTL_S }),
     };
   }
   if (kind === "cache-api") {
     const cache = globalThis.caches.default;
-    const url = (k) => new URL(`/__cache/llm-read/${k}`, origin || "https://hackathon-api.internal").href;
+    const url = (k) => new URL(`/__cache/llm-${ns}/${k}`, origin || "https://hackathon-api.internal").href;
     return {
       get: async (k) => {
         const r = await cache.match(url(k));
@@ -390,6 +397,23 @@ function store(env, origin) {
 }
 
 const fallback = (req, note) => ({ ...ruleReading(req), note: String(note).slice(0, 120) });
+
+// 一次（读数整份 / 解读）失败记一笔；连续 BREAKER_FAILS 次就暂停 BREAKER_MS。读屏和解读同一个服务商、同一把 key，共用一个熔断
+function trip(now) {
+  if (++state.breaker.fails >= BREAKER_FAILS) state.breaker = { fails: 0, until: now + BREAKER_MS };
+}
+
+// 调用前的三道闸（熔断 → 本实例已知今天用完 → 每分钟 → 全局每日预留 n 次）；放行回 null，否则回 note 短码
+async function admit(env, cfg, n, now) {
+  if (now < state.breaker.until) return "llm_paused: recent calls failed";
+  if (now < state.capUntil) return "llm_daily_cap"; // 本实例已知今天用完了：不再每次去问 DO
+  if (!guard(n, cfg.maxCallsPerMin, now)) return "llm_rate_limited";
+  // 全局每日封顶：先预留，拿不到就不调用（没绑 BUDGET / DO 出错也一样，不花没记账的钱）
+  const budget = await takeBudget(env, n, cfg.maxCallsPerDay);
+  if (budget === "over") state.capUntil = (Math.floor(now / 86_400_000) + 1) * 86_400_000; // 到下一个 UTC 0 点
+  if (budget !== "ok") return { over: "llm_daily_cap", no_budget: "llm_no_budget" }[budget] || "llm_budget_error";
+  return null;
+}
 
 // Worker 的读法：内存 → KV / Cache API → 大模型（3 次）→ 存缓存；拿不到就规则 + note。调用方已确认 mode === "llm"
 // opts：{ origin, fetch, timeoutMs, now }（测试注入）
@@ -414,17 +438,12 @@ export async function serverReading(req, env, opts = {}) {
     // 缓存坏了不影响读数
   }
 
-  if (now < state.breaker.until) return fallback(req, "llm_paused: recent calls failed");
-  if (now < state.capUntil) return fallback(req, "llm_daily_cap"); // 本实例已知今天用完了：不再每次去问 DO
-  if (!guard(SAMPLES, cfg.maxCallsPerMin, now)) return fallback(req, "llm_rate_limited");
-  // 全局每日封顶：先预留 3 次，拿不到就不调用（没绑 BUDGET / DO 出错也一样，不花没记账的钱）
-  const budget = await takeBudget(env, SAMPLES, cfg.maxCallsPerDay);
-  if (budget === "over") state.capUntil = (Math.floor(now / 86_400_000) + 1) * 86_400_000; // 到下一个 UTC 0 点
-  if (budget !== "ok") return fallback(req, { over: "llm_daily_cap", no_budget: "llm_no_budget" }[budget] || "llm_budget_error");
+  const shut = await admit(env, cfg, SAMPLES, now); // 一份读数问 3 次 = 预留 3 次
+  if (shut) return fallback(req, shut);
 
   const out = await llmReading(req, env, { ...opts, cfg });
   if (!out.reading) {
-    if (++state.breaker.fails >= BREAKER_FAILS) state.breaker = { fails: 0, until: now + BREAKER_MS };
+    trip(now);
     return fallback(req, `llm_fallback: ${out.valid}/${out.calls} valid (${[...new Set(out.errors)].join(", ")})`);
   }
   state.breaker.fails = 0;
@@ -435,4 +454,87 @@ export async function serverReading(req, env, opts = {}) {
     // 存不进去下次再问
   }
   return out.reading;
+}
+
+// ---------------------------------------------------------------- AI 解读（POST /api/explain，prompts.md「AI 解读」）
+
+// 规范化后的请求 → 消息。user 里只有 normalizeExplainRequest() 的输出（方案 id / label / metrics / per_capita_min / flags）和语言
+export function buildExplainMessages(req) {
+  const E = PROMPT.explain;
+  return [
+    { role: "system", content: E.system },
+    { role: "user", content: fill(E.user, { lang_name: E.langs[req.lang], options_json: JSON.stringify(req.options) }) },
+  ];
+}
+
+// 规范化请求的键顺序是固定的（normalizeExplainRequest 按固定顺序拼），JSON.stringify 就是规范串
+export const explainKey = (req, cfg) => sha256Hex(`explain|${PROMPT.explain.v}|${cfg.model}|${JSON.stringify(req)}`);
+
+const explainFallback = (req, note) => ({ ...ruleExplain(req), note: String(note).slice(0, 120) });
+
+// 清洗后还剩几处模型写的字（换回规则版的 summary、规则版本来就有的风险不算）；0 = 等于没回答
+function authored(clean, rule) {
+  let n = clean.lean ? 1 : 0;
+  clean.options.forEach((o, i) => {
+    const r = rule.options[i];
+    n += (o.summary !== r.summary ? 1 : 0) + o.pros.length + o.cons.length + Math.max(0, o.risks.length - r.risks.length);
+  });
+  return n;
+}
+
+// 缓存里的解读也当不可信数据：再过一遍 sanitizeExplain（谁最吃亏、规则风险照样重算）
+const explainFromCache = (hit, req) => sanitizeExplain(hit, req, "kv");
+
+// Worker 的解读：规则（没开大模型）或 内存 → KV / Cache API → 大模型（1 次）→ 清洗 → 存缓存；拿不到就规则版 + note
+// opts：{ origin, fetch, timeoutMs, now }（测试注入）。请求不合规范抛 ExplainError（路由回 400）
+export async function serverExplain(input, env, opts = {}) {
+  const req = normalizeExplainRequest(input);
+  const cfg = llmConfig(env);
+  if (cfg.mode !== "llm") return ruleExplain(req);
+  const now = opts.now ?? Date.now();
+  const key = await explainKey(req, cfg);
+  const memKey = `explain:${key}`;
+
+  const hot = state.mem.get(memKey);
+  const warm = hot && explainFromCache(hot, req);
+  if (warm) return warm;
+  const st = store(env, opts.origin, "explain");
+  try {
+    const hit = await st.get(key);
+    const r = hit && explainFromCache(hit, req);
+    if (r) {
+      memSet(memKey, hit);
+      return r;
+    }
+  } catch {
+    // 缓存坏了不影响解读
+  }
+
+  const shut = await admit(env, cfg, EXPLAIN_CALLS, now);
+  if (shut) return explainFallback(req, shut);
+
+  let raw;
+  try {
+    const timeoutMs = opts.timeoutMs ?? Math.max(cfg.timeoutMs, EXPLAIN_TIMEOUT_MS);
+    raw = await askOnce(env, cfg, buildExplainMessages(req), { ...opts, timeoutMs, maxTokens: EXPLAIN_MAX_TOKENS });
+  } catch (e) {
+    trip(now);
+    return explainFallback(req, `llm_fallback: ${e instanceof LlmError ? e.code : "error"}`);
+  }
+  // 只取 options / lean：模型自己写的 note、model、hardest_hit、decide 之类一概不认
+  const clean = sanitizeExplain({ options: raw.options, lean: raw.lean }, req, "llm");
+  const why = !clean ? "invalid" : !authored(clean, ruleExplain(req)) ? "empty" : null;
+  if (why) {
+    trip(now);
+    return explainFallback(req, `llm_fallback: ${why}`);
+  }
+  state.breaker.fails = 0;
+  const out = { ...clean, model: cfg.model, prompt_v: PROMPT.explain.v };
+  memSet(memKey, out);
+  try {
+    await st.put(key, out);
+  } catch {
+    // 存不进去下次再问
+  }
+  return out;
 }
