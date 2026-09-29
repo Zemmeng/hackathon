@@ -74,9 +74,26 @@ apps/roads/.venv/bin/python apps/roads/tools/build_walk.py       # → public/cb
 
 `bash apps/roads/test.sh`。`public/cbd/` 下的文件还没生成时只做骨架检查；文件一出现，PRD 第 7 节的校验自动生效。
 
+## 临街建筑 buildings.json（T11，需求见 issue #21）
+
+```bash
+B=https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets
+curl -sS -G "$B/2018-building-footprints/exports/geojson" --data-urlencode "where=in_bbox(geo_point_2d, -37.8235, 144.9480, -37.8060, 144.9760)" -o apps/roads/raw/com_footprints_2018.geojson
+apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次拉 OSM（逐行打印在试哪台服务器），之后只用 raw/ 重算；--refresh 重新拉
+```
+
+结果（09-29）：2508 栋，910 KB；用途 other 1898、office 167、residential 147、retail 114、education 66、public 56、hotel 38、parking 22；2065 栋有 30 m 内的临街路段（每栋最多记 4 条）。
+
+- 来源：OSM `building=*`（轮廓、名字、用途，ODbL）+ City of Melbourne「2018 Building Footprints」（高度，CC BY，5923 块）
+- **高度优先级和 issue #21 写的不同：市政实测 → OSM `height` → OSM 楼层 × 3.2 → 默认 12 m。** 原因：CBD 高楼在 OSM 里外轮廓的 `height` 常只是裙楼、塔楼另画成 `building:part`——Eureka Tower OSM 20 m、市政 298 m（实际约 297 m）；Rialto Towers OSM 20 m、市政 249 m（实际约 251 m）。297 栋两边都有高度的楼，相对差中位数 14%，差 2.5 倍以上的 24 栋基本都是这种裙楼 / 塔楼情况
+- 市政高度 = 代表点落在这栋 OSM 楼里的各部分 `footprint_max_elevation` 最大值 − `structure_min_elevation`（楼顶海拔 − 地面海拔）；市政数据是 2018 年的，之后新建的楼走 OSM 或默认值
+- 高度来源：市政 2108、OSM height 30、OSM 楼层 32、默认 338（非默认 87%）
+- 跨 bbox 边界的楼不要（验收要求所有点在 bbox 内）；只取外轮廓，天井不要；轮廓抽稀约 0.5 m
+- 测试单独放 `tests/test_buildings.py`（不并进 `test_roads.py`，免得和 T7 的 PR #14 冲突）
+
 ## 对外接口
 
-静态文件，格式见 `docs/contract.md`「路网数据文件」一节（和 `PRD.md` 第 5 节一致）。线上和本地都从 `/roads/public/cbd/<文件>` 读。
+静态文件，格式见 `docs/contract.md`「路网数据文件」一节（和 `PRD.md` 第 5 节一致）。线上和本地都从 `/roads/public/cbd/<文件>` 读。`buildings.json` 格式是 issue #21 第 5 节的草案 v1，契约那一行由 lead 加。
 
 ## 外部 API
 
