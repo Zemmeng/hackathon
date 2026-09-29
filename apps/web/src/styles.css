@@ -568,6 +568,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .pd-reason span{display:block;font:600 9.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85;margin-bottom:4px}
 .pd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .pd-t{width:100%;border-collapse:collapse;font-size:12px}
+.pd-t th:first-child,.pd-t td:first-child{min-width:8.5em}
 .pd-t th small{display:block;margin-top:2px;font-weight:400;letter-spacing:0;text-transform:none;color:#8A99A3}
 .pd-t th{text-align:left;font:600 9.5px/1.25 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:#6C7B85;padding:6px 8px;border-bottom:1px solid #AAB7BF}
 .pd-t td{padding:7px 8px;border-bottom:1px solid #E3E8EB;vertical-align:top}
