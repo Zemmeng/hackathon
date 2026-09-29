@@ -498,6 +498,15 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
 .app.no-time .timeline{display:none}
 
+/* data credits (OSM / DataVic / City of Melbourne): bottom-right of the open map on desktop, a footer line on phones */
+.credits{font:400 10.5px/1.45 var(--f-body);color:var(--fg-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
+.credits a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
+.credits a:hover{color:var(--fg)}
+.credits .cr-k{font:600 9.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--fg-3)}
+:lang(zh) .credits .cr-k{letter-spacing:.02em}
+.credits .cr-sep{color:var(--fg-3)}
+.pd-src{margin-top:14px}
+
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
   .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
@@ -520,7 +529,8 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
   .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
   .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 34px)}
-  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .credits{position:fixed;z-index:4;right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 300px);justify-content:flex-end;padding:5px 11px;border-radius:12px}
   .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
   .swipe .tag{top:calc(var(--safe-t) + 60px)}
 }
@@ -531,6 +541,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- phones / narrow: the stacked flow, glass surfaces kept ---------- */
 @media (max-width:820px){
+  /* its own row at the very end: left unplaced it would drop into the timeline's empty row, between the map and the panel */
+  .app{grid-template-rows:auto 66vh auto auto auto;grid-template-areas:"top" "map" "time" "panel" "credits"}
+  .credits{grid-area:credits;padding:12px 16px 20px;border:0;border-radius:0;box-shadow:none;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
   .top{border-radius:0 0 20px 20px;border-width:0 0 1px}
   .timeline,.panel{border-width:1px 0 0;border-radius:0}
 }
@@ -639,6 +652,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .pd-pill,.pd-t tr.pick td,.pd-reason{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .no-print{display:none!important}
 }
+
+.cmp-explain{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
+.cmp-explain small{display:block;opacity:.7}.cmp-explain p{margin:8px 0}.cmp-explain ul{padding-left:18px;margin:6px 0 12px}.cmp-lean{font-size:14px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -709,6 +725,8 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
   <section class="panel" id="panel" aria-live="polite"></section>
   <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
+
+  <div class="credits glass" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -1743,6 +1761,22 @@ const S={step:1,wx:'clear',basemap:'imagery',layers:{agents:true,weather:true,ri
 const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
+/* ---------- data credits ----------
+   The licences ask for attribution: OpenStreetMap (ODbL), DataVic (CC BY 4.0), City of Melbourne (CC BY). One list, the same
+   sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the execution pack and in the playbook
+   (creditLines). The hosts are plain links for people to follow — nothing is fetched from them. */
+const CREDITS=[
+  {href:'https://www.openstreetmap.org/copyright',short:['© OpenStreetMap contributors','© OpenStreetMap contributors'],
+    full:['© OpenStreetMap contributors, ODbL — road and walking network, building outlines','© OpenStreetMap contributors，ODbL 许可 —— 路网、人行网、建筑轮廓']},
+  {href:'https://discover.data.vic.gov.au/dataset/traffic-signal-volume-data',short:['SCATS volumes © State of Victoria (DTP), DataVic CC BY 4.0','SCATS 车流 © 维多利亚州交通与规划部，DataVic CC BY 4.0'],
+    full:['Traffic Signal Volume Data (SCATS) and Victorian traffic signals © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — hourly traffic at signals','交通信号车流数据（SCATS）和维州信号灯站点（Traffic Signal Volume Data、Victorian traffic signals）© 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 路口逐时车流']},
+  {href:'https://discover.data.vic.gov.au/dataset/gtfs-schedule',short:['PTV GTFS, DataVic CC BY 4.0','PTV 时刻表，DataVic CC BY 4.0'],
+    full:['PTV GTFS Schedule © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — tram and bus timetables','PTV GTFS Schedule 时刻表 © 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 电车、公交班次']},
+  {href:'https://data.melbourne.vic.gov.au/',short:['City of Melbourne open data, CC BY','墨尔本市开放数据，CC BY'],
+    full:['City of Melbourne open data, CC BY — Pedestrian Counting System, 2018 Building Footprints, CLUE building information','City of Melbourne 开放数据，CC BY —— 行人计数（Pedestrian Counting System）、2018 建筑轮廓（Building Footprints）、CLUE 建筑信息']}];
+function creditLines(){return CREDITS.map(c=>`${L(c.full[0],c.full[1])} · ${c.href}`);}
+function renderCredits(){const el=$('#credits');if(!el)return;el.innerHTML=`<span class="cr-k">${L('Data','数据')}</span>`+CREDITS.map(c=>`<a href="${c.href}" target="_blank" rel="noopener noreferrer">${L(c.short[0],c.short[1])}</a>`).join('<span class="cr-sep">·</span>');}
+
 /* The La Trobe × Swanston micro-model (scripted road users, barrier B-12, the 17:00 timeline) is its own scene. It is drawn
    only where it is the subject: step 2, the junction-replay tab of step 3, a plan that is on La Trobe St, or when the engine
    is offline. Everywhere else the screen shows one works zone — the engine's (T20 addendum 4). */
@@ -2051,8 +2085,8 @@ function copyPlaybook(){
   const planZh=eng?`${EP.street} ${dirL(EP.dir)} —— ${EP.all?'全封':'封一条道'}\n施工 ${WORKS_TIME.from} 至 ${WORKS_TIME.to}，${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])} · 按 ${engHour(EP.hour)} 计算\nVMS-1 上游 ${EP.vmsAt} m：${frames||'（空）'}\n标志牌 S-1 ${EP.signAt} m：${EP.sign||'（无）'}`:'';
   const dEn=micro?`\n\nJunction layout v2 (La Trobe × Swanston micro-model)\nΔ1 Shift barrier B-12 8 m west and narrow it by 0.9 m\nΔ2 Add a 17 m tapered cycle transition with a give-way line\nΔ3 Keep a 1.8 m step-free footpath corridor\nΔ4 Move VMS-1 80 m further upstream`:'';
   const dZh=micro?`\n\n路口方案 v2（La Trobe × Swanston 微观仿真）\nΔ1 护栏 B-12 西移 8 m，并收窄 0.9 m\nΔ2 增设 17 m 渐变自行车过渡段和让行线\nΔ3 保留 1.8 m 无障碍人行通道\nΔ4 VMS-1 再往上游移 80 m`:'';
-  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.`,
-`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。`);
+  const txt=L(`RippleTwin works playbook\n${planEn||'(engine offline — no plan numbers)'}`+ex[0]+dEn+`\n\nResponse levels\nGreen: queue stable — monitor.\nAmber: queue growing — check the VMS text is readable and the detour signed.\nRed: queue reaches the next junction — traffic controller on site, consider closing later in the day.\nSensor fault: fall back to amber and request manual confirmation.\n\nEngine figures are model estimates on real CBD flows, not field-validated.\n\nData sources\n${creditLines().map(s=>'- '+s).join('\n')}`,
+`RippleTwin 施工处置手册\n${planZh||'（引擎未连接 —— 没有方案数字）'}`+ex[1]+dZh+`\n\n响应等级\n绿色：排队稳定，持续监控。\n黄色：排队增长，检查屏上文字是否看得清、绕行是否有指示。\n红色：排队排到下一个路口，交通指挥员到场，考虑改到当天更晚的时段施工。\n传感器故障：降级为黄色并要求人工确认。\n\n引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。\n\n数据来源\n${creditLines().map(s=>'- '+s).join('\n')}`);
   const fb=()=>{$('#copyFallback').innerHTML=`<p class="small muted">${L('Copying is blocked here. Select the text below instead.','此处无法自动复制，请手动选中下面的文字。')}</p><div class="pre">${txt.replace(/</g,'&lt;')}</div>`;};
   try{navigator.clipboard.writeText(txt).then(()=>toast(L('Playbook copied to the clipboard','处置手册已复制到剪贴板')),fb);}catch(e){fb();}
 }
@@ -2116,7 +2150,7 @@ function setLang(lang){
   LANG.cur=lang==='zh'?'zh':'en';ls.set('rt-lang',LANG.cur);applyLangDom();
   document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   if(S.step===3&&S.event)S.nodes=causal(S.event);
-  renderWxSwitcher();renderLegend();renderPanel();renderAlert();updateBasemapUI();
+  renderWxSwitcher();renderLegend();renderPanel();renderAlert();updateBasemapUI();renderCredits();
   if(!S.mouse)$('#pVal').textContent=L('Move over the map','将鼠标移到地图上');
   $('#play').dataset.i='';probeKey='';baseKey='';
   if(LANG.cur==='zh'&&document.fonts&&document.fonts.load)document.fonts.load('500 10px "Noto Sans SC"','拉筹伯街').then(()=>{baseKey='';},()=>{});
@@ -2228,7 +2262,7 @@ function boot(){
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
   initGlass();resize();sizeHist();bindInput();engBindMap();
-  renderWxSwitcher();renderLegend();updateBasemapUI();
+  renderWxSwitcher();renderLegend();updateBasemapUI();renderCredits();
   /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
      on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
   const start=()=>{if(WX.kind!==S.wx)WX.set(S.wx);if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
@@ -3039,7 +3073,8 @@ function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
   return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
 }
-// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date }
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date, credits }
+// (credits = creditLines(): data attribution the licences ask for, printed above the footer)
 // (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
 // Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
 function cmpDocHTML(d,x,h){
@@ -3064,14 +3099,15 @@ ${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><div c
 <section><h2>${esc(lb.vms)}</h2>${vms||`<p class="pd-note">${esc(lb.none)}</p>`}</section>
 ${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></section>`:''}
 <section class="pd-two"><div><h2>${esc(lb.checks)}</h2><ul class="pd-list pd-checks">${checks}</ul></div><div><h2>${esc(lb.notify)}</h2><table class="pd-t pd-notify"><tbody>${notify}</tbody></table></div></section>
+${(x.credits||[]).length?`<section class="pd-src"><h2>${esc(L('Data sources','数据来源'))}</h2><ul class="pd-list">${x.credits.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></section>`:''}
 <footer class="pd-foot"><span>${esc(d.foot)}</span><span>RippleTwin</span></footer>
 </article>`;
 }
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
 
-// pack.js (quote, pack, text) + explain.js (only optionFromRun: run() summary → the metrics the pack's notice list uses) + inventory
+// Execution pack, AI explanation and inventory; all model text is rendered as textContent.
 function cmpLoad(){
   if(CP.loading)return CP.loading;
   CP.loading=Promise.all([import('/api/public/js/pack.js'),import('/api/public/js/explain.js')])
@@ -3112,6 +3148,45 @@ async function cmpUpdate(){
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
 }
 
+// Independent of scoring: never delay choosing/exporting a plan for AI text.
+function cmpExplainUpdate(){
+  const lang=LANG.cur==='zh'?'zh':'en';
+  const key=CP.key+'|'+lang;
+  if(CP.busy||!CP.rows.length){
+    if(CP.exKey){CP.exKey='';++CP.exSeq;CP.explain=null;CP.exBusy=false;}
+    return;
+  }
+  if(!CP.mod||CP.exKey===key)return;
+  CP.exKey=key;CP.explain=null;CP.exError=false;CP.exBusy=true;
+  const seq=++CP.exSeq;
+  const options=CP.rows.filter(r=>r.s).map(r=>CP.mod.ex.optionFromRun(r.id,cmpLabel(r),r.s,{hire_aud:r.hire,days:r.days}));
+  Promise.resolve().then(()=>CP.mod.ex.explainOptions({lang,options})).then(result=>{
+    if(seq!==CP.exSeq||key!==CP.key+'|'+(LANG.cur==='zh'?'zh':'en'))return;
+    CP.explain=result;
+  }).catch(e=>{if(seq===CP.exSeq)CP.exError=true;console.warn('compare: explanation unavailable',e);})
+    .finally(()=>{if(seq===CP.exSeq){CP.exBusy=false;cmpRender();}});
+}
+function cmpExplainRender(el){
+  const result=CP.explain;
+  el.querySelectorAll('[data-cmpexplain]').forEach(box=>{
+    box.replaceChildren();
+    const r=CP.rows[+box.dataset.cmpexplain];
+    const item=result?.options.find(o=>o.id===r.id);
+    const add=(tag,text)=>{const node=document.createElement(tag);node.textContent=text;box.appendChild(node);};
+    add('b',L('AI explanation','AI 解读'));
+    if(!item){add('p',CP.exBusy?L('Reading these plans…','正在解读这些方案…'):L('Explanation unavailable; you can still choose a plan.','解读暂不可用，仍可选择方案。'));return;}
+    add('small',result.src==='rule'?L('Rule fallback','规则兜底'):result.src==='kv'?L('AI · cached','AI · 缓存'):L('AI interpretation','AI 解读'));
+    add('p',item.summary);
+    for(const [title,items] of [[L('Pros','优点'),item.pros],[L('Cons','缺点'),item.cons]]){
+      add('b',title);const list=document.createElement('ul');
+      for(const text of items.length?items:[L('None listed','未列出')]){const li=document.createElement('li');li.textContent=text;list.appendChild(li);}box.appendChild(list);
+    }
+  });
+  const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
+  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.textContent=row?L('Leaning toward ','倾向 ')+cmpLabel(row)+' · '+result.lean.why:'';}
+  if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
+}
+
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
   const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
@@ -3126,9 +3201,9 @@ function cmpHTML(){
     return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
       <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
       ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
-        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}</div>`;}).join('');
+        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}).join('');
   const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
-  let h=head+`<div class="cmp-cards">${cards}</div>
+  let h=head+`<div class="cmp-cards">${cards}</div><p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
     <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
   if(CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
@@ -3142,8 +3217,8 @@ function cmpHTML(){
 
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
-  cmpUpdate();
-  const h=cmpHTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
+  cmpUpdate();cmpExplainUpdate();
+  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
@@ -3158,10 +3233,10 @@ function cmpExport(){
   try{
     const impacts=CP.mod.ex.optionFromRun(r.id,'plan',r.s).metrics;
     const p=CP.mod.pack.buildPack({...ws,title:ws.name,status:'decided',decision:{option:r.id,by:CP.by,reason:CP.reason.trim(),at:new Date().toISOString()}},{inventory:CP.inv,links:cmpLinks(ws),impacts});
-    txt=CP.mod.pack.packText(p,lang);
+    txt=CP.mod.pack.packText(p,lang)+`\n\n${L('Data sources','数据来源')}\n`+creditLines().map(s=>'- '+s).join('\n');
     if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
       const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
-      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'})},{L,esc,fmt:fmtN});
+      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'}),credits:creditLines()},{L,esc,fmt:fmtN});
     }
   }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
   let sh=document.getElementById('cmpSheet');
