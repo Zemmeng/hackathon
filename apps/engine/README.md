@@ -28,7 +28,7 @@ const result = engine.evaluate(plan);
 | `tests/engine.test.mjs` | 路网、最短路、BPR、施工时段、绕行路线、读数请求、选择模型、两点校准（正好 3% / 20%）、evaluate（确定性、缺读数、全封卡住、同路段两施工不重复算、readSigns 全挂不崩）、冲突成本、顾问 |
 | `tests/params.test.mjs` | 参数入口：合格的数照用、缺的逐项回退、不合格整组回退并报错、`sign_trust` 换算、读不到不抛错、校准目标跟着变；反向断言：塞不进第 5 类人、`__proto__` 不污染、默认值不被改 |
 | `tests/backend.test.mjs` | 接线层：兜底（T5、参数加载不上照样出数；路网取不到要抛）、用仓库里 T5 真的读屏和规范检查、summary 口径（每车延误只算受影响的车）、屏上文字不合规范报错；审查确认的 7 条（全封时封闭路段上的车全部改道、多个施工时 why 和排队取同一段、前后对比按同一段路、不施工时段标出来、没日期的施工顾问按一小时比、顾问报读数失败、没有 crypto.subtle 时退回规则）；反向断言：读屏抛错、全封无路可绕都必须在 `flags` 里报出来 |
-| `tests/peds.test.mjs` | T17 封人行道：主演示 Lonsdale 西行 8 点封左侧 → 人/小时、每人多走几米、多花几人·分钟、过几次马路；左 / 右（双幅路找对面那幅）/ 两侧；校验 `closes.footpath`（`bad_plan`）；没路可绕记 `blocked`（小图）；反向断言：没封 / 不在时段全 0、绕行不经过封闭段、walk / peds 拿不到时 `src = null` 而不是假装 0、封人行道不改车的数字 |
+| `tests/peds.test.mjs` | T17 封人行道：主演示 Lonsdale 西行 8 点封左侧 → 人/小时、每人多走几米、多花几人·分钟、过几次马路；左 / 右（双幅路找对面那幅，按并排长度选）/ 两侧；校验 `closes.footpath`（`bad_plan`）；没路可绕记 `blocked`、死胡同 / 小孤岛记 `dead_end`（小图）；过马路按过几条街数（La Trobe = 4）；计数器要在同一侧；直街不拆段；反向断言：没封 / 不在时段全 0、绕行不经过也不贴着封闭段走、walk / peds 拿不到或还没到时 `src = null` 而不是假装 0、找不到人行道报 `unmatched`、connect 不等行人数据、封人行道不改车的数字 |
 | `tests/e2e.test.mjs` | MOCK 读数跑演示三幕（8 点、17 点）、屏的位置（摆在拐口之后不算）、顾问改法重算；T3 真路网：加载、单次 < 100 毫秒、第一幕方向成立 |
 | `tests/transit.test.mjs` | 电车公交（T16，真 transit.json）：Lonsdale 8 点 15 条公交跟着堵、每趟多的秒数 ≈ 留在 Lonsdale 的车（差 ≤ 25%）、车次 / 人数 / 乘客·分钟口径；La Trobe 全封 30 路电车停；Lonsdale 全封公交就近绕（只走主干道）；路口短路段补缺口；周末 / 平峰；前后对比 delta；transit.json 拿不到、这一块算挂了都照样出数。反向断言：不施工时段全是 0、比的是「没施工」不是自由流（本来就堵的路段不算）、封部分车道不列电车 |
 
@@ -37,9 +37,9 @@ const result = engine.evaluate(plan);
 | 导出 | 用法 |
 |---|---|
 | `createEngine({ network, flows, readSigns, params? })` | → `{ prepare(方案), evaluate(方案, { seed }), window(worksites, whens), conflict(a, b, opts), calib, params }`；`engine.params` 报每项参数用的是 params.json 还是假设值 |
-| `backend.js` 的 `connect()`（**网页只用这个**，D-0929-1540） | 一次装好路网 + 车流 + 公交电车 + 参数 + T5 读屏 + 引擎 → `{ run(方案), compare(前, 后), advise(方案), check(方案), demo(名), status() }`；`run` 回能直接显示的 summary（`queue_m mean_delay_s routes by_type hot flags transit` …，原始结果在 `.raw`）。T5、参数、transit.json 加载不上有兜底，`status()` / `flags` 里报。用法和字段见 `docs/arch/T13-web-wiring-PRD.md`，`summary.transit` 见 `docs/contract.md` §evaluate |
+| `backend.js` 的 `connect()`（**网页只用这个**，D-0929-1540） | 一次装好路网 + 车流 + 公交电车 + 参数 + T5 读屏 + 引擎 → `{ run(方案), compare(前, 后), advise(方案), check(方案), validate(方案), demo(名), status(), pedsReady() }`（行人数据后台取，`pedsReady()` 等它取完）；`run` 回能直接显示的 summary（`queue_m mean_delay_s routes by_type hot flags` …，原始结果在 `.raw`）。T5、参数加载不上有兜底，`status()` / `flags` 里报。用法和字段见 `docs/arch/T13-web-wiring-PRD.md` |
 | `transitImpact(net, flows, transit, 方案, 结果)` | 电车公交受影响多少（T16）→ `summary.transit`：每条受影响线路的车次、每趟多几秒、乘客·分钟、绕行 / 停运；`PAX_PER_TRIP` 每趟人数（假设值）；`routePaths(net, transit)` 每条线路补过缺口的路段序列（测试核对绕行全程用） |
-| `pedImpact(walk, peds, 方案, { net? })`（T17） | 封人行道（`closes.footpath` ∈ `left / right / both`）→ `{ src, footpath, active, day, hour, closed, closed_m, ped_h, detour_m, extra_min, crossings, blocked, blocked_ped_h, step_free: null, measured, method, sensor, detour, stretches, assumed }`；`backend.run` 把它放在 `summary.peds`，字段表见 `docs/contract.md` §evaluate「行人」。`validatePlan(方案)` / `validateWorksite(施工)` → 错误列表 |
+| `pedImpact(walk, peds, 方案, { net? })`（T17） | 封人行道（`closes.footpath` ∈ `left / right / both`）→ `{ src, footpath, active, day, hour, closed, closed_m, ped_h, detour_m, extra_min, crossings, blocked, blocked_ped_h, dead_end, unmatched, unmatched_sides, note, note_zh, step_free: null, measured, method, sensor, detour, stretches, assumed }`（`footpathActive(方案)` = 这个小时有没有在封人行道）；`backend.run` 把它放在 `summary.peds`，字段表见 `docs/contract.md` §evaluate「行人」。`validatePlan(方案)` / `validateWorksite(施工)` → 错误列表 |
 | `loadParams({ url?, fetch? })` / `applyParams(json)` | 读 T12 的 `params.json` → `{ mix, personas, anchors, used }`；读不到、不合格逐项回退到假设值，不抛错 |
 | `advise(engine, 方案, { askAdvisor })` | 第 ⑦ 步：拿 ≤ 3 个改法（改字 · 挪设备 · 错开），每个都重算、标 `better` |
 | `mockReadSigns` / `mockAdvise` | 关键词规则版读数器 / 顾问，T5 和大模型顾问到之前演示、测试用 |
@@ -68,7 +68,7 @@ const result = engine.evaluate(plan);
 
 ## 外部 API
 
-不联网、不要 key。读数从注入的 `readSigns`（T5）拿；路网、车流、公交电车是 T3 的 `/roads/public/cbd/network.json`、`flows.json`、`transit.json`（PTV GTFS，CC BY 4.0）。
+不联网、不要 key。读数从注入的 `readSigns`（T5）拿；路网、车流、公交电车是 T3 的 `/roads/public/cbd/network.json`、`flows.json`、`transit.json`（PTV GTFS，CC BY 4.0）；行人（T17）是 T3 的 `walk.json`、`peds.json`（1.7 MB + 1.8 MB，`connect()` 在后台取、**不等**它们，`run()` 只在这个小时封了人行道时才等，最多 8 秒；取不到不抛）。
 
 ## 电车公交（T16，`public/js/transit.js`）
 
@@ -91,15 +91,19 @@ const result = engine.evaluate(plan);
 
 | 步 | 怎么算 | 假设 |
 |---|---|---|
-| 封哪几段 | `walk.json` 里 `road_link` = 施工路段、`side` 对得上、`kind` 是 `sidewalk / other / path` 的人行道；右侧还要找对面那幅路（同名、方向相反、≤ 40 米、中点落在施工路段长度范围内）挂着的 `left` | 过街（`crossing`）和步行街（`mall`）不封 |
-| 起点、终点 | 每一段（施工 × 哪一侧 × 行车方向）封掉的人行道里离得最远、还连着别处的两个节点 | — |
+| 封哪几段 | `walk.json` 里 `road_link` = 施工路段、`side` 对得上、`kind` 是 `sidewalk / other / path` 的人行道；右侧还要找对面那幅路（同名、方向相反、≤ 40 米）挂着的 `left`，只取和施工路段并排（夹角 < 45°、横向 ≤ 65 米）走了 ≥ min(5 米, 自身长度一半) 的 | 过街（`crossing`）和步行街（`mall`）不封；5 米［假设值］ |
+| 分段 | 施工 × 哪一侧 × 一串首尾相接、方向差 < 60° 的施工路段（直街跨 45° 方位不会被拆成两段、人数不会算两遍） | — |
+| 起点、终点 | 这一段封掉的人行道里离得最远、避开封闭段还能走到 ≥ min(60, 节点数一半) 个节点的两个节点；这样的节点不到 2 个 = 死胡同（`dead_end`，不算绕行，不算 `blocked`） | 60 个节点［假设值：CBD 一个街区四周约 20–40 个］ |
 | 多走几米 | 人行道路网（不分方向）上避开所有封闭段的最短路 − 平时最短路 | 走最短路 |
 | 多少人 | 这一段封掉的人行道里这个小时人最多的那条（`peds.json`），两侧都封加起来 | 数到的人都走完整段（上限） |
 | 多花几分钟 | `ped_h × detour_m ÷ (1.3 m/s × 60)` | 步速 1.3 m/s［假设值］；等红灯没算 |
-| 没路可绕 | `blocked = true`，人数进 `blocked_ped_h`，不算进 `extra_min` | — |
+| 没路可绕 | `blocked = true`，人数进 `blocked_ped_h`，不算进 `extra_min`（全网扫一遍只有 St Kilda Rd 桥两侧都封这 3 处） | — |
+| 过几次马路 | 绕行路线上连着的过街段算一次（安全岛切开的），不同名字的街分开算 | — |
+| 最近的计数器 | 先认装在封掉的人行道上的；否则 ≤ 40 米、而且在施工路段中心线同一侧 | 马路对面的计数器数的是另一拨人 |
+| 找不到人行道 | `unmatched = true` + `note`（全网单侧封约 1/3 的路段会这样：`walk.json` 没画那一侧） | 不等于「人行道照常通行」 |
 | 无障碍 | `step_free` 一律 `null` | `walk.json` 没有台阶 / 坡道数据 |
 
-实测（2026-09-29，真数据）：Lonsdale 西行 8 点封左侧 47 米 → 185 人/小时、每人多走 176 米、过 2 次马路、417 人·分钟；两侧都封 → 370 人/小时、1484 人·分钟。
+实测（2026-09-29 复审修完，真数据）：Lonsdale 西行 8 点封左侧 47 米 → 185 人/小时、每人多走 176 米、过 2 次马路、417 人·分钟；封右侧（对面那幅路的北侧人行道 102 米）→ 185 人/小时、多走 67 米、158 人·分钟；两侧都封 → 370 人/小时、1125 人·分钟。La Trobe 西行 17 点封左 / 右 → 818 人/小时、过 4 次马路、约 1020 / 1070 人·分钟。
 
 ## 结构
 
