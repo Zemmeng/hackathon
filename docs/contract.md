@@ -1,7 +1,7 @@
 # 模块之间的接口契约
 
 > 并行开发唯一需要协调的东西。改它 = 改所有调用方：PR 标题以 `contract:` 开头，lead 合并，合并后通知依赖方。优先向后兼容（加字段不删字段）。
-> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.7）。
+> 版本号：**v3**（每改一次加 1，写进「变更记录」；现在 v3.8）。
 
 ## 谁调谁
 
@@ -164,6 +164,26 @@ const s = await be.run(方案);          // 能直接显示的数字：queue_m m
 const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
 ```
 
+**叠加冲突 `be.clash` / `be.stagger`**（T21，v3.8，只加方法；D-0929-2011 ②）：
+
+```js
+const k = await be.clash(a, b, { hours?, when? });   // a、b = §施工方案的一条施工，或整份方案（取 worksites[0]）
+// k = { a, b, ab, cost,                    // 显示用，永远 ≥ 0：D(A) / D(B) / D(A+B) / 冲突成本 D(A+B) − D(A) − D(B)，单位 车·分钟，按采样小时加总
+//       raw: { a, b, ab, cost },           // 引擎原始数（可能 < 0）
+//       whens, hours, truncated, overlap: { from, to, days },
+//       flags: { reliable, negative_delay, substitutes, reading_src, failed } }
+const g = await be.stagger(a, b, { maxDays = 7, hours?, back = false });
+// g = { base: clash(a, b), best: { days, cost, ab, overlap_days, reliable }, tries: [{ days, cost, overlap_days, reliable }],
+//       worksite: 挪好的 b, period: { from, to, whens, truncated, ab_before, ab_after, reliable, failed } }
+```
+
+- 时间窗 = 两处施工**重叠的那几天** × 重叠时段里的早晚高峰（8、17 点；都不在就取时段中间那个小时，和 `advise()` 同一口径）；`opts.hours` 换采样小时，`opts.when` 只算那一个时刻。不重叠 → 全 0、`whens = 0`，不跑引擎。两处施工都要写 `time`（或给 `when`），否则抛错
+- 数由 `engine.conflict()` 算（下文「其他」），接线层不另写算法；同样输入同样结果
+- 🔒 显示字段不出现负数，两种「≈ 0」分开标：`raw.a / raw.b / raw.ab` 有 < 0 的（基线车流本来就超过通行能力的路段，如 Flinders St，#58）→ `flags.negative_delay = true`、`flags.reliable = false`、`cost` 显示 0，页面写「≈ 0 · 这段路的基线车流超出通行能力，结果不可信」；三个 D 都 ≥ 0、只有 `raw.cost` < 0（同一走廊的两处施工互相替代）→ `flags.substitutes = true`、`cost` 显示 0、仍可信，页面写「≈ 0 · 两处施工在同一走廊，叠加不额外增加延误」
+- 读屏有失败（`flags.failed > 0`，和 `compare` / `advise` 同一口径）→ `flags.reliable = false`；a、b 先过 `validate()`，不合格抛 `bad_plan`
+- `stagger` 只挪 `b`：`+1 … +maxDays` 天（`back: true` 时 `+1, −1, +2, −2 …`），碰到第一个「不再重叠」或「冲突成本 0 且可信」就停；`best` 先取可信的尝试，同样可信时取冲突成本最小的（一样时取先试的），页面显示前看 `best.reliable`。`period` 是挪前、挪后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，同一把尺子比；`period.reliable` 要两个总和 ≥ 0、没有读屏失败、`base` 和 `best` 都可信
+- 读数和 `run()` 走同一条读屏链（T5 答案文件 → `/api/read` → 规则）。登记表 3 条预置施工的屏上文字（`ROAD CLOSED` / `USE RUSSELL ST` / `RIGHT LANE CLOSED`）还不在 T5 答案文件里：正式环境 MOCK=0 时第 3 步一打开就会现场问 `/api/read`，数和规则读数算的（测试里 27,783）不一样。演示前要预算进答案文件，或在 pitch 里说明这个数用的是规则读数
+
 **电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
 
 ```js
@@ -259,16 +279,17 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
-| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`；`key` 只说有没有，**永远不给值**；`register`（#53）= 登记表的 Durable Object 绑上没有；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
+| `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool, "llm": { "mode": "rules"\|"llm", "model", "key": bool, "cache": "kv"\|"cache-api"\|"memory", "prompt_v", "explain_v", "provider", "budget": bool, "per_day": int, "per_min": int } }`（`explain_v` v3.9 加）；`key` 只说有没有，**永远不给值**；`register`（#53）= 登记表的 Durable Object 绑上没有；api 没绑上时 site 自己回 `{ ok, v, mock: true, api: false }` | api |
 | `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`（`src` 是 `llm / kv / rule`）；不合规范 400 `{ "ok": false, "error", "msg" }`；> 8KB（按字节）413 | api |
 | `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
 | `GET /api/worksites?from&to&status` | `from` / `to` 是 `YYYY-MM-DD`，和工期有交集就算 | `{ "ok": true, "register": "do"\|"seed", "n", "worksites": [施工] }`：预置 + 登记的，按开工日期排；DO 没绑或出错时 `register: "seed"`，只回预置的 | api |
 | `POST /api/worksites` | §施工方案 + 登记表字段 | 201 `{ "ok": true, "worksite", "edit_token" }`；`edit_token` **只回这一次**，库里只存 SHA-256，页面自己存（localStorage） | api |
 | `GET /api/worksites/<id>` | — | `{ "ok": true, "worksite" }`；没有 404 | api |
 | `PATCH /api/worksites/<id>` | 请求头 `x-edit-token` + 要改的字段 | `{ "ok": true, "worksite" }`；合并后整份重新校验；token 不对 403 `bad_token`、预置的 403 `locked`、满 200 条 409、全局每天写 500 次 429 | api |
-| `POST /api/explain` | `{ lang?, options: [{ id, label, metrics, per_capita_min?, flags? }] }`（1–5 套，数字从 `optionFromRun()` 转） | `{ "ok": true, "explain": { src, lang, options: [{ id, summary, pros, cons, hardest_hit, risks }], lean, decide } }`；解读里的每个数都要能追溯到请求里的数；不合规范 400，> 8KB 413 | api |
+| `POST /api/explain` | `{ lang?, options: [{ id, label, metrics, per_capita_min?, flags? }] }`（1–5 套，数字从 `optionFromRun()` 转） | `{ "ok": true, "explain": { src, lang, options: [{ id, summary, pros, cons, hardest_hit, risks }], lean, decide, model?, prompt_v?, note? } }`（`src` 是 `llm / kv / rule`；`model` / `prompt_v` 只在 `llm / kv`；`note` 只在大模型兜底成规则时）；解读里的每个数都要能追溯到请求里的数，`hardest_hit` 和规则风险永远按引擎的数算；不合规范 400，> 8KB 413 | api |
 
 - `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
+- `POST /api/explain` 开关同 `/api/read`，每个请求最多 1 次外部调用、预留 1 次（和读屏同一本账），兜底 `note` 另有 `llm_fallback: bad_json / invalid / empty / timeout / http_<码>`
 - 真调用前还要向全局每日计数（Durable Object 绑定 `BUDGET`）预留 3 次：超了 `LLM_MAX_CALLS_PER_DAY`（`llm.per_day`）、没绑上或出错都不调用，读数回规则并带 `note`（`llm_daily_cap` / `llm_no_budget` / `llm_budget_error`）
 - `llm.cache`：`kv` = 有 KV 绑定 `READINGS`（跨实例）；`cache-api` = Workers 自带的 Cache API（只在自己的域名上生效）；`memory` = 只有每个实例的内存缓存（`*.workers.dev` 上就是这个）
 - `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`，不开自己的 `workers.dev` 网址）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
@@ -313,6 +334,8 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.9 | 2026-09-29 | D-0929-2307（向后兼容，只加字段 / 取值）：`POST /api/explain` 接上大模型，`src` 多了 `llm / kv`，另加可选 `model` / `prompt_v`（`llm / kv` 时）和 `note`（兜底时）；`/api/health` 的 `llm` 加 `explain_v` | lead |
+| v3.8 | 2026-09-29 | T21（D-0929-2011 ②）§evaluate 加 `be.clash(a, b)` / `be.stagger(a, b)`：叠加冲突成本 D(A+B) − D(A) − D(B) 和一键错开，显示字段永远 ≥ 0、`flags.reliable`；只加方法 | lead |
 | v3.7 | 2026-09-29 | T22（D-0929-2011 ③）§施工方案 加「按库存出方案 `options[]`」：`be.options()` 出 `o1 / o2 / o3` 三套方案，每套带引擎结果、租金（`hire.assumed = true`）、库存检查（不超库存）；只加字段。依赖 v3.6（#57）的 `equipment[].item / qty` | lead |
 | v3.6 | 2026-09-29 | T24（D-0929-2011 ⑤，向后兼容，只加字段）：§施工方案加登记表字段（`title / kind / status / decision`，服务端 `id / seed / created / updated`，#53）和可选的 `equipment[].item / qty`（#55，引擎不看）；§HTTP API 加 `/api/worksites` 四个接口（#53）、`POST /api/explain`（#54），`/api/health` 加 `register`；`options[]` 等 T22 | lead |
 | v3.5 | 2026-09-29 | T19 大模型接口留好（向后兼容，只加字段）：`/api/health` 加 `llm`（含每日上限 `budget` / `per_day` / `per_min`，`cache` ∈ `kv / cache-api / memory`）；读数说明 `src` / `model` / `prompt_v`，加可选 `note`；site 服务绑定 `API` → `hackathon-api` | lead |

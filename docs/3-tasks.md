@@ -7,7 +7,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 ## 现在停在哪（只有 lead 改，写时间）
 
 - 里程碑：M0 完成，M1 未到（09-29 15:48）· 倒计时 44h · main：绿（`check.sh` 全量 `0 ❌`，8 个模块 728 passed）· 冻结：否
-- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `b1ef637`（#47 液态玻璃、#50 玻璃再调透、#49 Windows 测试修复）· 09-29 20:52 由 @unicornnnnnny 部署 api + site；线上冒烟 `check.sh --e2e` 0 ❌；`/api/health` = `llm.mode rules`（没放 key）
+- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `7e035d9`（#60 T20：删写死的假数 + 天气标示意 + 模拟评委 5 条）· 09-29 22:13 由 @unicornnnnnny 部署；线上冒烟 0 ❌；`/api/health` = `llm.mode rules`（没放 key）
 - main 上已有：T3/T7 路网 + 行人 / 公交 / 设备、T11 临街建筑、T9 引擎（契约 v3）、T5 读屏规则版、T12 有出处的参数、`docs/llm-apis/` 百炼卡
 - **没有开着的 PR**；最大缺口是 T2 网页还没把这些串起来（R5）
 - 交接：`handoff/Zemmeng-T6-0929-1548.md`（17:00 集成点的待办和要拍板的事）
@@ -29,7 +29,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | 时间 | 谁 | 服务 | 花了多少 | 干了什么 |
 |---|---|---|---|---|
-| | | | | |
+| 09-29 23:18 | @Zemmeng | DeepSeek `deepseek-flash` | 约 ¥0.54（估算：92 条请求 × 3 = 276 次调用，含 2 条试水） | 预先算演示读数 `apps/api/tools/precompute.mjs --run` → `apps/api/public/answers/demo.json`（D-0929-2307） |
 
 ## 未认领（lead 维护；任务号全局唯一，每个 ≤ 2 小时）
 
@@ -57,7 +57,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
-| T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
+| T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff`；初筛架构图 `claude/lead/arch-v2` / PR #42 ✅（`docs/pitch-assets/03-architecture*`；要按 D-0929-1718 / 2011 改，见 `handoff/Zemmeng-T6-0929-2255.md`） | 09-29 13:05 |
 | T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | ✅ | `claude/lead/ai-infra` / PR #20 ✅；`claude/lead/engine-fixes` / PR #34 ✅（后端接线层 `backend.js`、不走小巷、审查 15 条、契约 v3.1、派 T13） | 09-29 13:50 |
 | T13 | 网页接后端（接手原派给 @unicornnnnnny 的 T13，D-0929-1650）：第 1 步真路网上放封道 / 写 VMS / 选时段、第 3 步路网涟漪 + 每类人理由、第 4 步顾问改法 + 前后对比，数字全由引擎算；然后部署上线 | ✅ | `Zemmeng/web/T13-wiring` / PR #43 | 09-29 16:30 |
 | T16 | 地图画真实建筑：`buildings.json`（OSM + 墨尔本市轮廓 + 2024 普查）换掉随机楼块，取不到时退回合成的 | ✅ | `lead/integrate-t16-19`（合并 `Zemmeng/web/T15-buildings`（合并时改名 T16；T15 已被初筛幻灯片会话占用）） | 09-29 17:36 |
@@ -65,7 +65,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T18 | 行人受的影响：方案加 `closes.footpath`，引擎按行人计数和人行道网络算绕行距离、多过几次马路；页面第 1 步加人行道开关 | ✅ | `lead/integrate-t16-19`（合并 `lead/t17-peds` + `Zemmeng/web/T17-impacts-ui`） | 09-29 17:36 |
 | T19 | 大模型接口留好：api Worker 接 OpenAI 兼容接口（默认 DeepSeek）+ 缓存 + 失败回规则 + 预算演示答案脚本，部署并绑到 site；默认 MOCK=1 不花钱，lead 之后只放 key | ✅ | `lead/integrate-t16-19`（合并 `lead/t19-llm-ready`） | 09-29 17:37 |
 | T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | ✅ 已上线（`DEMO_URL`，lead 备份部署） | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
-| T21 | 叠加冲突上页面（D-0929-2011 ②）：真 CBD 路网上两处施工的冲突成本 + 一键错开，引擎已有 `conflict()` / `shiftWorksite()`，页面加第二处施工 | ⬜ | — | — |
+| T21 | 叠加冲突上页面（D-0929-2011 ②）：真 CBD 路网上两处施工的冲突成本 + 一键错开，引擎已有 `conflict()` / `shiftWorksite()`，页面加第二处施工 | ✅ | `lead/t21-clash` | 09-29 22:01 |
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 | T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
@@ -101,7 +101,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）。已合 #22 #26 #29；DeepSeek 卡 #37；大模型接口由 lead 在 T19 留好，演示先用规则（D-0929-1718 / 1830） | ✅ | #22 #26 #29 #37 | 09-29 14:40 |
 | T5 | 施工登记表（提案 #48 第 ⑤ 步，只做后端）：`/api/worksites` GET / POST、`/api/worksites/<id>` GET / PATCH，Durable Object `WorksiteRegister`，改要凭 `edit_token`；预置 3 条演示施工（含一条和 Lonsdale 叠加的）；浏览器端 `public/js/worksites.js` 等网页来接（D-0929-2011：页面接入不排在冻结前） | ✅ | #53 | 09-29 20:20 |
 | T5 | AI 解读（提案 #48 第 ⑥ 步，只做后端）：`POST /api/explain` 规则版 + 数字追溯（解读里的数只能来自引擎）+ 浏览器端 `explainOptions()` / `optionFromRun()`；大模型版后续（D-0929-2011：页面接入不排在冻结前） | ✅ | #54 | 09-29 20:55 |
-| T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它 | ✅ | #55 | 09-29 21:10 |
+| T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它；`packDoc()` 给网页排版、负数 `at_m` = 施工起点下游 | ✅ | #55 #66 | 09-29 21:10 |
+| T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js`；导出排成一页 A4（中 / 英）；09-29 22:50 线上验过 | ✅ | #61 | 09-29 21:55 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 
 卡住了：
@@ -112,7 +113,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T2 | 网页面板（`apps/web`）：GIS 地图 + 六种极端天气 + 四步红队流程 + 中英切换；交接单 `handoff/unicornnnnnny-T2-0929-1440.md` | ✅ 已合（#19） | `unicornnnnnny/web/T2-gis-weather-ui` | 09-29 14:40 |
-| T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | ✅ 已合 #47、已上线 e84aec5；按 lead 意见再调透（底色 0.30）🔨 待 review | `unicornnnnnny/web/T14-more-clear` | 09-29 17:30 |
+| T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | ✅ 已合 #47、#50，已上线 b1ef637 | `unicornnnnnny/web/T14-liquid-glass` | 09-29 17:30 |
+| T20 | 删掉页面上写死的假数（安全分、查表的修复前后对比、复现种子、第 2 步假进度 / 变体、「AI 红队」字样）+ 天气标示意、默认晴天 + 评委 5 条（地图对准 Lonsdale、引擎数字不折叠、单位、一个施工一个时间、假设亮出来）；交接单 `handoff/unicornnnnnny-T20-0929-2201.md` | 🔨 待 review | `unicornnnnnny/web/T20-no-fake-numbers` | 09-29 21:40 |
 
 卡住了：
 

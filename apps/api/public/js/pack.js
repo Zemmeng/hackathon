@@ -197,7 +197,7 @@ const T = {
     vmsLine: (v) => `${v.id} · 施工起点上游 ${v.at_m} 米 · ${v.from} 至 ${v.to} ${`每天 ${pad(v.hours[0])}–${pad(v.hours[1])}`}`,
     frame: (i, f) => `  第 ${i + 1} 屏：${f.join(" / ")}`,
     signs: "标志牌和箭头板",
-    signLine: (s) => `${s.id} · 上游 ${s.at_m} 米 · ${s.type === "arrow" ? "箭头板" : "标志牌"}${s.text ? `：${s.text}` : ""}`,
+    signLine: (s) => `${s.id} · ${s.at_m < 0 ? `施工起点下游 ${-s.at_m} 米` : `上游 ${s.at_m} 米`} · ${s.type === "arrow" ? "箭头板" : "标志牌"}${s.text ? `：${s.text}` : ""}`,
     checks: "检查",
     check: {
       no_barrier: () => "封了车道，但清单里没有护栏",
@@ -219,6 +219,17 @@ const T = {
     },
     none: "无",
     foot2: "数字来自仿真引擎，不是实测；租金是假设值。",
+    vmsAt: (m) => `施工起点上游 ${m} 米`,
+    frameN: (i) => `第 ${i + 1} 屏`,
+    signAt: (s) => `${s.at_m < 0 ? `施工起点下游 ${-s.at_m} 米` : `上游 ${s.at_m} 米`} · ${s.type === "arrow" ? "箭头板" : "标志牌"}`,
+    cols: { item: "设备", qty: "数量", rate: "日租价", days: "天数", cost: "金额" },
+    perDay: "/天",
+    quoteHead: "设备清单和报价",
+    quoteNote: "日租价和库存件数是假设值，以 RPM Hire 正式报价为准。",
+    totalLbl: "合计",
+    atLeast: "至少",
+    overStock: (l) => `超库存（库存 ${l.stock}）`,
+    reasonLbl: "理由",
   },
   en: {
     head: "Worksite execution pack",
@@ -241,7 +252,7 @@ const T = {
     vmsLine: (v) => `${v.id} · ${v.at_m} m before the works · ${v.from} to ${v.to} daily ${pad(v.hours[0])}–${pad(v.hours[1])}`,
     frame: (i, f) => `  Frame ${i + 1}: ${f.join(" / ")}`,
     signs: "Signs and arrow boards",
-    signLine: (s) => `${s.id} · ${s.at_m} m before · ${s.type === "arrow" ? "arrow board" : "sign"}${s.text ? `: ${s.text}` : ""}`,
+    signLine: (s) => `${s.id} · ${s.at_m < 0 ? `${-s.at_m} m after the start of the works` : `${s.at_m} m before`} · ${s.type === "arrow" ? "arrow board" : "sign"}${s.text ? `: ${s.text}` : ""}`,
     checks: "Checks",
     check: {
       no_barrier: () => "Lanes are closed but no barriers are listed",
@@ -263,8 +274,51 @@ const T = {
     },
     none: "none",
     foot2: "Figures come from the simulation engine, not field measurements; hire rates are assumptions.",
+    vmsAt: (m) => `${m} m before the works`,
+    frameN: (i) => `Frame ${i + 1}`,
+    signAt: (s) => `${s.at_m < 0 ? `${-s.at_m} m after the start of the works` : `${s.at_m} m before`} · ${s.type === "arrow" ? "arrow board" : "sign"}`,
+    cols: { item: "Item", qty: "Qty", rate: "Day rate", days: "Days", cost: "Cost" },
+    perDay: "/day",
+    quoteHead: "Equipment and hire quote",
+    quoteNote: "Day rates and stock are assumptions; RPM Hire's formal quote applies.",
+    totalLbl: "Total",
+    atLeast: "at least",
+    overStock: (l) => `over stock (${l.stock} in stock)`,
+    reasonLbl: "Reason",
   },
 };
+
+// 执行包 → 按区块给好、已经翻译好的字（网页排成一页文件用；措辞和 packText 同一张表）。金额、件数给数字，由页面格式化
+export function packDoc(p, lang = "en") {
+  const t = T[lang] || T.en;
+  const place = [p.where.streets.join(", "), t.seg(p.where.links.length, p.where.length_m), t.lanes(p.where.closes.lanes), t.foot[p.where.closes.footpath ?? "null"]].filter(Boolean);
+  return {
+    lang: T[lang] ? lang : "en",
+    head: t.head,
+    id: p.id,
+    title: p.title || p.id || "",
+    status: p.status ? { key: p.status, text: t.st[p.status] || p.status } : null,
+    labels: { status: t.status, where: t.where, when: t.when, decision: t.decision, reason: t.reasonLbl, quote: t.quoteHead, vms: t.vms, signs: t.signs, checks: t.checks, notify: t.notify, total: t.totalLbl, cols: t.cols, none: t.none },
+    where: place.join(" · "),
+    when: `${t.span(p.when.from, p.when.to, p.when.days)} · ${t.daily(p.when.hours)}`,
+    decision: p.decision ? t.decided({ ...p.decision, reason: "" }).replace(/[：:]\s*$/, "") : null,
+    reason: p.decision && p.decision.reason ? p.decision.reason : "",
+    quote: {
+      note: t.quoteNote,
+      per_day: t.perDay,
+      lines: p.quote.lines.map((l) => ({ name: l.name, item: l.item, qty: l.unknown ? null : l.qty, rate: l.day_rate_aud, days: l.days, cost: l.cost_aud, over: l.over_stock ? t.overStock(l) : null })),
+      total_aud: p.quote.total_aud,
+      partial_aud: p.quote.partial_total_aud,
+      at_least: t.atLeast,
+    },
+    vms: p.vms.map((v) => ({ id: v.id, at: t.vmsAt(v.at_m), when: `${t.span(v.from, v.to, p.when.days)} · ${t.daily(v.hours)}`, frames: v.frames.map((f, i) => ({ label: t.frameN(i), lines: [...f] })) })),
+    signs: p.signs.map((s) => ({ id: s.id, at: t.signAt(s), text: s.text || "" })),
+    checks: p.checks.map((c) => (t.check[c.code] || (() => c.code))(c)),
+    notify: p.notify.map((n) => ({ who: t.who[n.who], why: (t.why[n.why.code] || (() => ""))(n.why) })),
+    foot: t.foot2,
+    generated: p.generated,
+  };
+}
 
 export function packText(p, lang = "en") {
   const t = T[lang] || T.en;

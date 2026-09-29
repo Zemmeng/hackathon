@@ -12,7 +12,7 @@ export const WS_LIMITS = {
   links: 20,
   equipment: 30,
   lanes: 8,
-  atM: 2000, // 设备离施工起点最多多少米（和引擎顾问的 at_m 上限一样）
+  atM: 2000, // 设备离施工起点最多多少米（和引擎顾问的 at_m 上限一样）；负数 = 施工起点下游（契约 §施工方案，例 END ROADWORK）
   spanDays: 366,
   entries: 200, // 登记表最多存几条（不含预置的演示施工）
   writesPerDay: 500, // 全局每天最多写几次（UTC 0 点清零）：公开接口，防有人刷满 Durable Object
@@ -120,8 +120,8 @@ function normEquipment(list) {
     if (ids.has(e.id)) throw bad("bad_equipment", `${at}.id「${e.id}」重复了`);
     ids.add(e.id);
     oneOf(e.type, EQUIP_TYPES, "bad_equipment", `${at}.type`);
-    if (typeof e.at_m !== "number" || !Number.isFinite(e.at_m) || e.at_m < 0 || e.at_m > WS_LIMITS.atM) {
-      throw bad("bad_equipment", `${at}.at_m 要是 0–${WS_LIMITS.atM} 米（在施工起点上游多远）`);
+    if (typeof e.at_m !== "number" || !Number.isFinite(e.at_m) || Math.abs(e.at_m) > WS_LIMITS.atM) {
+      throw bad("bad_equipment", `${at}.at_m 要是 −${WS_LIMITS.atM}–${WS_LIMITS.atM} 米（在施工起点上游多远；负数 = 下游，例 END ROADWORK）`);
     }
     const out = { id: e.id, type: e.type, at_m: Math.round(e.at_m) };
     if (e.type === "vms") out.frames = signOf({ kind: "vms", frames: e.frames }, at).frames;

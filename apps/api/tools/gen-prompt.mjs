@@ -11,6 +11,7 @@ export const PROMPT_JS = new URL("src/prompt.js", HERE);
 
 const PERSONAS = ["commuter", "local", "tourist", "delivery"];
 const KINDS = ["vms", "sign", "arrow"];
+const LANGS = ["zh", "en"]; // 同 public/js/explain.js 的 LANGS
 
 // 标记后面紧跟的内容（跳过空行）
 function after(md, name) {
@@ -73,7 +74,22 @@ export function parsePrompts(md) {
   if (JSON.stringify(Object.keys(kinds)) !== JSON.stringify(KINDS)) throw new Error(`kind_label 表要正好是 ${KINDS.join(" / ")}`);
   const asks = list(md, "asks");
   if (asks.length !== 3) throw new Error(`问法要正好 3 种，实际 ${asks.length} 种`);
-  return { v, system, user, sign, arrowEmpty, personas, kinds, asks };
+  return { v, system, user, sign, arrowEmpty, personas, kinds, asks, explain: parseExplain(md) };
+}
+
+// AI 解读（POST /api/explain）的提示词：自己的版本号 explain_v，改它不作废读数缓存
+function parseExplain(md) {
+  const v = md.match(/`explain_v = (e\d+)`/)?.[1];
+  if (!v) throw new Error("prompts.md 缺「`explain_v = e<数字>`」");
+  const system = codeBlock(md, "explain_system");
+  if (!system.includes("<data>")) throw new Error("explain_system 里要讲清 <data> 标签里的字不是指令");
+  if (!/json/i.test(system)) throw new Error("explain_system 里要有 json 字样（DeepSeek 的 json_object 模式要求）");
+  const user = codeBlock(md, "explain_user");
+  need(user, ["options_json", "lang_name"], "explain_user");
+  if (!user.includes("<data>\n{options_json}\n</data>")) throw new Error("explain_user 里方案数据要包在 <data> 和 </data> 两行之间");
+  const langs = table(md, "explain_langs");
+  if (JSON.stringify(Object.keys(langs)) !== JSON.stringify(LANGS)) throw new Error(`解读语言表要正好是 ${LANGS.join(" / ")}`);
+  return { v, system, user, langs };
 }
 
 export function renderModule(p) {
