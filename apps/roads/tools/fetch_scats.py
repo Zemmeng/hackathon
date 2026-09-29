@@ -53,7 +53,8 @@ def resources(pkg):
 
 def remote_zip(url):
     f = HTTPRange(url)
-    return zipfile.ZipFile(io.BufferedReader(f, buffer_size=1 << 16)), f
+    # 缓冲要大：每次 readinto 都是一次 HTTPS Range 请求，64 KB 时一天要几十次往返（约 2 分钟 / 天）
+    return zipfile.ZipFile(io.BufferedReader(f, buffer_size=4 << 20)), f
 
 
 def sites_csv(out):
