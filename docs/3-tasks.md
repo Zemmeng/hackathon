@@ -76,7 +76,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
-| | | | | |
+| T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）；17:00 规则版 + test.sh 绿 + draft PR | 🔨 | `jinmingq/api/T5-reader` | 09-29 14:40 |
 
 卡住了：
 
