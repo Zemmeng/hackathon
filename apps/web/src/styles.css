@@ -480,6 +480,14 @@ button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.e
 .progress .track i{background:var(--sun)}
 input[type="range"]#vmsAt{accent-color:var(--sun)}
 
+/* T20: assumptions and units, always visible (not .muted: the compact view hides .muted) */
+.eng-assume{margin:0;font:400 11.5px/1.5 var(--f-body);color:var(--fg-2)}
+.eng-assume p{margin:0}
+.eng-assume p+p{margin-top:4px}
+.eng-opt .d small{display:block;margin-top:3px;font:500 9.5px/1 var(--f-mono);color:var(--fg-3);text-align:right}
+/* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
+.app.no-time .timeline{display:none}
+
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
   .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
@@ -489,6 +497,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
   .panel-open:not([hidden]){display:flex;position:fixed;z-index:5;right:12px;top:var(--safe-t);flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:18px;cursor:pointer;color:var(--fg);font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
