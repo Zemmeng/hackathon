@@ -1,7 +1,6 @@
 // 后端接线层 backend.js：路网 + 车流 + 参数 + T5 读屏 → 页面要的数字。
 // 用仓库里的真文件（T3 路网、T5 reader.js / check.js、T12 params.json 有就用）；按 URL 取文件的地方注入假的 fetch / importer，不联网
 import { readFileSync, existsSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { ok, t, done } from './_t.mjs';
 import { connect, demoPlan, summarize, PATHS, DEMO_NAMES } from '../public/js/backend.js';
 const clone = x => JSON.parse(JSON.stringify(x));
@@ -11,7 +10,7 @@ const file = p => new URL('.' + p, APPS); // '/roads/public/…' → apps/roads/
 const has = p => existsSync(file(p));
 if (!has(PATHS.network)) { ok(false, '找不到 apps/roads/public/cbd/network.json'); done(); }
 const fakeFetch = async url => (existsSync(file(url)) ? { ok: true, status: 200, json: async () => JSON.parse(readFileSync(file(url), 'utf8')) } : { ok: false, status: 404 });
-const repoImporter = async url => { if (!existsSync(file(url))) throw new Error('404 ' + url); return import(pathToFileURL(file(url).pathname).href); };
+const repoImporter = async url => { if (!existsSync(file(url))) throw new Error('404 ' + url); return import(file(url).href); };
 const noImporter = async url => { throw new Error('404 ' + url); };
 const T5 = has(PATHS.reader) && has(PATHS.check);
 

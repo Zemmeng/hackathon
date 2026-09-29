@@ -5,7 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from '../build.mjs';
 
@@ -24,7 +24,7 @@ const gitEnv = () => { const e = { ...process.env }; for (const k of REPO_ENV) d
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, env: gitEnv(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 const throwsMsg = (fn) => { try { fn(); return ''; } catch (e) { return String(e && e.message) || '?'; } };
 // 产物里某个模块下的全部文件（相对 public/）
-const walk = (d, base = d) => existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(d, e.name), base) : [join(d, e.name).slice(base.length + 1)]) : [];
+const walk = (d, base = d) => existsSync(d) ? readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(d, e.name), base) : [join(d, e.name).slice(base.length + 1).split(sep).join('/')]) : [];
 
 try {
   // ---- 1. 临时 git 仓库里的假 apps/：web 有首页、roads 只有数据、site 自己的 public 不该拷、没有 public 的模块跳过 ----
@@ -76,9 +76,9 @@ try {
 
   // ---- 2. 符号链接模块：apps/zz → 仓库外的目录，即使链接本身被提交了也跳过，并打印一行 ----
   put(join(TMP, 'outside/public/leak.txt'), '仓库外的文件');
-  symlinkSync(join(TMP, 'outside'), join(apps, 'zz'));
+  symlinkSync(join(TMP, 'outside'), join(apps, 'zz'), 'junction');
   put(join(apps, 'yy/src/x.js'), 'export {}');
-  symlinkSync(join(TMP, 'outside/public'), join(apps, 'yy/public'));
+  symlinkSync(join(TMP, 'outside/public'), join(apps, 'yy/public'), 'junction');
   git(repo, 'add', '--', 'apps/zz', 'apps/yy/public', 'apps/yy/src/x.js');
   const logs = [];
   const out3 = join(TMP, 'out3');
