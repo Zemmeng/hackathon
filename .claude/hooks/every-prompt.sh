@@ -11,7 +11,7 @@
 #   2 当前分支 · 模块
 #   3 RULES 块压成一行 —— 运行时从 CONTRIBUTING.md 的 <!-- RULES:BEGIN -->…<!-- RULES:END --> 读，
 #     每条取第一句。规则只有一个出处，这里不抄正文；CONTRIBUTING.md 不存在就跳过这行。
-#   4 固定：🔒 subagent 用 opus；>10 个或任何 Workflow 先问
+#   4 固定：🔒 subagent 用 opus、禁 fable；数量不限（D-0929-1429）
 #   5 仅异常时：在 main 上且有改动 / 落后 origin/main >20 个提交 / 冻结期只修 P0
 #
 # subagent 模型：settings.json 的 env.CLAUDE_CODE_SUBAGENT_MODEL=opus 只是第一层（不同版本未必生效，赛前实测）；
@@ -31,7 +31,7 @@ ROOT="${CLAUDE_PROJECT_DIR:-}"
 if [ -z "$ROOT" ] || [ ! -d "$ROOT" ]; then
   ROOT="$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)"
 fi
-SUBAGENT_LINE='🔒 subagent 用 opus；>10 个或任何 Workflow 先问'
+SUBAGENT_LINE='🔒 subagent 用 opus、禁 fable；数量不限，求快（D-0929-1429）'
 
 fallback() {
   printf '%s\n' "⏰ 现在 $(date '+%Y-%m-%d %H:%M')（本机时间；⚠️ every-prompt.sh 生成失败，倒计时看 hackathon.conf）"
