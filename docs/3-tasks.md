@@ -6,9 +6,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 ## 现在停在哪（只有 lead 改，写时间）
 
-- 里程碑：`<M?>` · 倒计时：`<>` · main：`<绿 / 红>` · 冻结：`<否 / 🧊 / 🔒>`
-- 线上版本：`<tag 或 commit · 部署时间>`
-- 下一个集成点：`<时间>`
+- 里程碑：M0 选题完成，架构已定（09-29 13:10）· 倒计时：到 10-01 12:00 · main：绿 · 冻结：否
+- 线上版本：还没有（目标 09-29 21:00 前有一个 Cloudflare 网址）
+- 下一个集成点：**09-29 17:00**，然后 21:00；整点前把自己的分支 push 上来
 
 ## 风险与 P0（lead 写，`/demo` 的结果也写这）
 
@@ -29,7 +29,10 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 预计 | 依赖 |
 |---|---|---|---|
 | T0 | 热身：分支 `<handle>/hello/T0-hello`，只新建一张交接单，开 PR（做法见 README ①） | 15m | — |
-| T2 | 给 @unicornnnnnny：sim 前端界面打磨（只动 `apps/sim/public/` 的 index.html / style.css / js/ui.js；分支 `unicornnnnnny/sim/T2-ui`；引擎接口见 `apps/sim/README.md`「对外接口」，改完跑 `bash apps/sim/bump.sh`） | 2h | T1 |
+| T2 | 给 @unicornnnnnny：**网页面板**（第 1、2、6 步）——地图显示 CBD、在路上选一段施工、摆护栏 / 标志牌 / VMS、写屏上文案、显示结果和前后对比；17:00 前先做到地图 + 选路段 + 文案输入，结果用假数据上色。模块 `apps/web`（lead 今天建好空架子）；看 `docs/2-plan.md` 和 `docs/arch/` | 2h | — |
+| T3 | 给 @louisxie316-dotcom：**路网数据**——CBD 真实路网 + 真实车流整理成 `network.json` / `flows.json` / `signals.json`。**详细要求全在 `apps/roads/PRD.md`**；分支 `louisxie316-dotcom/roads/T3-network`；17:00 前先交最小版 `network.json`（draft PR） | 2h + 2h | — |
+| T4 | **路网计算**（第 4、5 步，创新点）——封一段路后车往哪绕、堵多久；多个施工叠加的冲突成本。17:00 前先在 5×5 小方格路网上跑通「封一段 → 重新分车 → 算延误」。看 `docs/arch/` 的「Agent 接入架构」第 2 页 | 2h | T3（先用小方格，不用等） |
+| T5 | **大模型和云端**（第 3、5 步，创新点）——4 类路人的画像和提问模板、Cloudflare 接口、缓存、施工清单；17:00 前接口先返回假数据（MOCK）。看 `docs/arch/` 的「Agent 接入架构」 | 2h | — |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -38,7 +41,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
-| T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | 🔨 | `lead/sim-demo` | 09-29 11:31 |
+| T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
+| T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
 
 卡住了：
 

@@ -13,6 +13,7 @@ kickoff 前这个目录只有这份 README。赛题公布后 lead 用 `new-app.s
 | 模块 | 负责人 | 来自哪个 starter | 本地端口 | 线上地址 |
 |---|---|---|---|---|
 | sim | @Zemmeng | 没用 starter（手工建的静态页） | 4174 | — |
+| roads | @louisxie316-dotcom | 没用 starter（数据管线 + 静态 JSON） | — | — |
 
 ## 端口约定
 
