@@ -69,6 +69,9 @@ check("aiRender 按状态画：不是 ok 就只写一行和面板一致的说明
       "aiHTML(rd,st)" in body("aiRender", AI) and "if(st&&st!=='ok')" in body("aiHTML", AI))
 check("中英：面板标题和日志标题两边都有", "L('AI road users · what each one read','AI 路人 · 各自读到了什么')" in AI and "L(`AI call log (${n})`,`AI 调用日志（${n}）`)" in AI)
 
+GLASS = (HERE.parent / "src" / "js" / "7-glass.js").read_text(encoding="utf-8")
+check("简洁模式下 AI 路人面板默认展开（SEC_KEEP 含 #aiBox）", "#aiBox" in re.search(r"const SEC_KEEP='([^']*)'", GLASS).group(1))
+
 node = shutil.which("node")
 if not node:
     check("找到 node（纯函数断言要用 node 跑）", False)
