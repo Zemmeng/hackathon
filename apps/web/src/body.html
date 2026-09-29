@@ -1,0 +1,79 @@
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="var(--accent)" aria-hidden="true"><circle cx="13" cy="13" r="3" fill="var(--accent)" stroke="none"/><circle cx="13" cy="13" r="7" stroke-opacity=".7" stroke-width="1.5"/><circle cx="13" cy="13" r="11.4" stroke-opacity=".35" stroke-width="1.5"/></svg>
+      <span class="brand-name">RippleTwin</span>
+    </div>
+    <div class="scene"><span class="eyebrow" data-zh="场景">Scene</span><span class="scene-name" data-zh="Swanston St × La Trobe St · 墨尔本 CBD">Swanston St × La Trobe St · Melbourne CBD</span></div>
+    <nav class="stepper" id="stepper" aria-label="Workflow" data-zh-aria-label="工作流程">
+      <button type="button" data-step="1"><span class="n">01</span><span data-zh="方案">Plan</span></button>
+      <button type="button" data-step="2"><span class="n">02</span><span data-zh="压力测试">Stress test</span></button>
+      <button type="button" data-step="3"><span class="n">03</span><span data-zh="涟漪追踪">Ripple trace</span></button>
+      <button type="button" data-step="4"><span class="n">04</span><span data-zh="修复">Repair</span></button>
+    </nav>
+    <div class="top-right">
+      <div class="chip" id="safetyChip" title="Safety score for the current layout and weather" data-zh-title="当前方案与天气下的安全分"><span class="eyebrow" data-zh="安全分">Safety</span><b id="safetyVal">— / 100</b></div>
+      <button type="button" class="lang-toggle" id="langToggle" aria-label="Switch language: English / 中文" data-zh-aria-label="切换语言：English / 中文"><span data-l="en">EN</span><span data-l="zh">中</span></button>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch between light and dark theme" data-zh-aria-label="切换浅色 / 深色主题">
+        <span class="moon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 9.8A5.2 5.2 0 0 1 6.2 3.2a5.2 5.2 0 1 0 6.6 6.6z"/></svg></span>
+        <span class="sun"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"/></svg></span>
+      </button>
+    </div>
+  </header>
+
+  <aside class="rail" id="rail" aria-label="Map layers" data-zh-aria-label="地图图层">
+    <button type="button" data-layer="agents" data-tip="Road users" data-zh-data-tip="道路使用者" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="7" r="2.5"/><circle cx="14" cy="7" r="2.5"/><path d="M2 17c0-3 2-5 4-5s4 2 4 5M10 17c0-3 2-5 4-5s4 2 4 5"/></svg></button>
+    <button type="button" data-layer="weather" data-tip="Weather layer" data-zh-data-tip="天气图层" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5.5 13.5a3.6 3.6 0 0 1 .3-7.2A5 5 0 0 1 15.4 7a3.3 3.3 0 0 1-.4 6.5z"/><path d="M7 16l-1 2M11 16l-1 2M15 16l-1 2"/></svg></button>
+    <button type="button" data-layer="risk" data-tip="Conflict risk raster" data-zh-data-tip="冲突风险栅格" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="2"/><circle cx="10" cy="10" r="5"/><circle cx="10" cy="10" r="8"/></svg></button>
+    <button type="button" data-layer="works" data-tip="Roadworks plan" data-zh-data-tip="施工方案" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M10 2.5l7.5 14.5h-15z"/><path d="M6.4 12.5h7.2"/></svg></button>
+    <span class="sep"></span>
+    <button type="button" data-layer="grid" data-tip="Graticule" data-zh-data-tip="经纬网" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"><path d="M2 7h16M2 13h16M7 2v16M13 2v16"/></svg></button>
+    <button type="button" data-layer="labels" data-tip="Labels" data-zh-data-tip="注记" aria-pressed="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 5h12M10 5v11M7 16h6"/></svg></button>
+  </aside>
+
+  <main class="map" id="map">
+    <canvas id="mapCanvas" aria-label="Map of Swanston St and La Trobe St with simulated road users and weather layers" data-zh-aria-label="Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层"></canvas>
+    <div class="hud">
+      <div class="meta glass" id="meta">
+        <span class="eyebrow"><span data-zh="场景">Scene</span> RT-0929-03 · <span id="metaMode">Ortho</span></span>
+        <dl>
+          <dt data-zh="采集">ACQ</dt><dd id="metaAcq">2026-09-29 17:00:00 AEST</dd>
+          <dt data-zh="分辨率">GSD</dt><dd id="metaGsd">0.25 m/px · EPSG:7855</dd>
+          <dt data-zh="太阳">SUN</dt><dd data-zh="方位 292° · 高度 34°">AZ 292° · EL 34°</dd>
+          <dt data-zh="中心">CENTRE</dt><dd id="metaCentre">-37.80990, 144.96500</dd>
+        </dl>
+      </div>
+      <div class="wx glass" id="wx" role="radiogroup" aria-label="Weather scenario" data-zh-aria-label="天气情景"></div>
+      <div class="basemap glass" id="basemap" aria-label="Basemap" data-zh-aria-label="底图">
+        <button type="button" data-bm="imagery" data-zh="影像">Imagery</button>
+        <button type="button" data-bm="nir" data-zh="近红外">NIR</button>
+        <button type="button" data-bm="streets" data-zh="街道">Streets</button>
+      </div>
+      <div class="zoom glass">
+        <button type="button" id="zoomIn" aria-label="Zoom in" data-zh-aria-label="放大">+</button>
+        <button type="button" id="zoomOut" aria-label="Zoom out" data-zh-aria-label="缩小">−</button>
+        <button type="button" id="zoomHome" aria-label="Back to the work zone" data-zh-aria-label="回到施工区"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/><path d="M8 1v3M8 12v3M1 8h3M12 8h3"/></svg></button>
+      </div>
+      <section class="legend glass" id="legend" aria-label="Weather layer legend" data-zh-aria-label="天气图层图例"></section>
+      <div class="probe glass" id="probe"><span><span class="k" data-zh="纬度">LAT</span> <span class="v" id="pLat">—</span></span><span><span class="k" data-zh="经度">LON</span> <span class="v" id="pLon">—</span></span><span id="pVal" class="hl">Move over the map</span></div>
+      <div class="alert glass" id="alert" hidden></div>
+      <div class="swipe" id="swipe" hidden><div class="line"></div><span class="tag l" data-zh="修复前 · 方案 v1">BEFORE · LAYOUT v1</span><span class="tag r" data-zh="AI 修复后 · v2">AI-REPAIRED · v2</span><button type="button" class="knob" id="swipeKnob" aria-label="Drag to compare before and after" data-zh-aria-label="拖动以对比修复前后"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></button></div>
+      <div class="toast glass" id="toast" hidden></div>
+      <div class="loading" id="loading">RENDERING ORTHOPHOTO…</div>
+    </div>
+  </main>
+
+  <section class="panel" id="panel" aria-live="polite"></section>
+
+  <footer class="timeline">
+    <button type="button" class="play" id="play" aria-label="Play simulation"></button>
+    <div class="clock"><b id="clock">17:00:00</b><span class="eyebrow" id="clockSub" data-zh="仿真 · 1 小时窗口">Sim · 1 h window</span></div>
+    <div class="speed" id="speed" aria-label="Simulation speed" data-zh-aria-label="仿真速度">
+      <button type="button" data-speed="1">1×</button>
+      <button type="button" data-speed="2">2×</button>
+      <button type="button" data-speed="4">4×</button>
+      <button type="button" data-speed="8">8×</button>
+    </div>
+    <div class="hist"><canvas id="hist" aria-label="Conflicts per minute, 17:00 to 18:00. Click to jump." data-zh-aria-label="17:00–18:00 每分钟冲突数，点击可跳转"></canvas></div>
+  </footer>
+</div>

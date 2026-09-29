@@ -89,7 +89,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
-| | | | | |
+| T2 | 网页面板（`apps/web`）：GIS 地图 + 六种极端天气 + 四步红队流程 + 中英切换；交接单 `handoff/unicornnnnnny-T2-0929-1440.md` | 🔨 待 review | `unicornnnnnny/web/T2-gis-weather-ui` | 09-29 14:40 |
 
 卡住了：
 
