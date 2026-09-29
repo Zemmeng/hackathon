@@ -28,11 +28,11 @@ for f in tests/test_*.py; do
     echo "❌ $f 超时（>${LIMIT}s）"; F=$((F + 1))
   elif ! printf '%s\n' "$last" | grep -Eq '^[0-9]+ passed, [0-9]+ failed$'; then
     # 崩溃不许伪装成绿：没有计数行一律记 1 个失败
-    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 $code）"; F=$((F + 1)); tail -n 20 "$OUT" | sed 's/^/   /'
+    echo "❌ $f 缺少「N passed, M failed」计数行（退出码 ${code}）"; F=$((F + 1)); tail -n 20 "$OUT" | sed 's/^/   /'
   else
     p=${last%% passed*}; q=${last##*, }; q=${q%% failed}
     P=$((P + p)); F=$((F + q))
-    if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f $last，但退出码是 $code"; F=$((F + 1))
+    if [ "$code" -ne 0 ] && [ "$q" -eq 0 ]; then echo "❌ $f ${last}，但退出码是 $code"; F=$((F + 1))
     elif [ "$q" -gt 0 ]; then echo "❌ $f $last"; grep '^❌' "$OUT" | sed 's/^/   /'
     else echo "✅ $f $last"; fi
   fi
