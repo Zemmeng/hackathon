@@ -3,21 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RippleTwin 系统架构 v2</title>
-<!-- 源文件：改下面 script 里的文字和坐标，浏览器打开就是图；导出 PDF = 打印成 A4 横向，边距选「无」。
-     导出的 6-architecture-v2.pdf / .png 和本文件放一起。依据：D-0929-1310 · 1435 · 1540 · 1536 · 1445，contract v3.1 -->
+<title>RippleTwin 系统架构</title>
+<!-- 产品架构图（给评审看，放初筛 3 页 PDF 第 3 页）。源文件：改下面 script 里的文字和坐标，浏览器打开就是图。
+     中文版打开本文件，英文版加 ?lang=en。导出 = 打印成 A4 横向、边距「无」；导出的 -zh / -en 的 .pdf .png 放在旁边。 -->
 <style>
   @page { size: A4 landscape; margin: 0; }
   html, body { margin: 0; padding: 0; background: #fff; }
   svg { display: block; width: 100%; height: auto; }
   @media print { svg { width: 297mm; height: 210mm; } }
-  text { font-family: "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "WenQuanYi Zen Hei", sans-serif; }
-  text.mono { font-family: "SF Mono", Menlo, Consolas, "WenQuanYi Zen Hei Mono", monospace; }
+  text { font-family: "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, "WenQuanYi Zen Hei", sans-serif; }
 </style>
 </head>
 <body>
 <svg id="d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1131"></svg>
 <script>
+const EN = new URLSearchParams(location.search).get('lang') === 'en';
+const t = (en, zh) => (EN ? en : zh);
+document.documentElement.lang = EN ? 'en' : 'zh-CN';
+document.title = t('RippleTwin system architecture', 'RippleTwin 系统架构');
+
 const C = {
   orange: { stroke: '#E0852B', fill: '#FFF5EA', ink: '#A55810' },
   green:  { stroke: '#2E9A5A', fill: '#EDF8F1', ink: '#1E6E3F' },
@@ -26,7 +30,7 @@ const C = {
   red:    { stroke: '#D14343', fill: '#FDEFEF', ink: '#A12C2C' },
   grey:   { stroke: '#8B919A', fill: '#F6F7F9', ink: '#454B54' },
 };
-const INK = '#1F2328', MUTED = '#5F6670';
+const INK = '#1F2328', MUTED = '#565D67';
 const NS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('d');
 
@@ -37,200 +41,163 @@ function el(tag, attrs, parent = svg) {
   return e;
 }
 function text(x, y, s, o = {}) {
-  const t = el('text', { x, y, 'font-size': o.size || 13, fill: o.color || INK,
+  const e = el('text', { x, y, 'font-size': o.size || 16, fill: o.color || INK,
     'font-weight': o.weight || 400, 'text-anchor': o.anchor || 'start' });
-  if (o.mono) t.setAttribute('class', 'mono');
-  t.textContent = s;
-  return t;
+  e.textContent = s;
+  return e;
 }
-const width = (s, size, weight = 400) => { const t = text(0, -99, s, { size, weight }); const w = t.getComputedTextLength(); t.remove(); return w; };
+const width = (s, size, weight = 400) => { const e = text(0, -99, s, { size, weight }); const w = e.getComputedTextLength(); e.remove(); return w; };
 
-// 右上角的小标签，压在边框上；多个从右往左排
-function tags(xr, y, list) {
-  for (const [s, kind] of list.slice().reverse()) {
-    const w = width(s, 11, 700) + 14;
-    el('rect', { x: xr - w, y: y - 10, width: w, height: 20, rx: 5, fill: C[kind].stroke });
-    text(xr - w / 2, y + 4, s, { size: 11, weight: 700, color: '#fff', anchor: 'middle' });
-    xr -= w + 5;
-  }
+function badge(xr, y, s, kind) {
+  const w = width(s, 14, 700) + 16;
+  el('rect', { x: xr - w, y: y - 12, width: w, height: 24, rx: 6, fill: C[kind].stroke });
+  text(xr - w / 2, y + 5, s, { size: 14, weight: 700, color: '#fff', anchor: 'middle' });
 }
 function box(b) {
   const c = C[b.kind];
-  el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.rx ?? 10, fill: b.fill || c.fill,
-    stroke: b.stroke || c.stroke, 'stroke-width': b.sw || 2, ...(b.dashed ? { 'stroke-dasharray': '7 5' } : {}) });
-  const px = b.x + (b.px || 14);
-  let y = b.y + (b.ty || 26);
-  if (b.title) { text(px, y, b.title, { size: b.ts || 16, weight: 700, color: b.titleColor || INK }); y += b.gap || 22; }
-  for (const s of b.sub || []) { text(px, y, s, { size: b.ss || 13, color: MUTED }); y += b.lh || 18.5; }
-  for (const s of b.mono || []) { text(px, y + 1, s, { size: 12, color: c.ink, mono: true }); y += 17; }
-  if (b.tags) tags(b.x + b.w - 10, b.y, b.tags);
-}
-// 关卡：红框，第一行「关卡」加粗
-function gate(g) {
-  el('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 8, fill: C.red.fill, stroke: C.red.stroke, 'stroke-width': 1.8 });
-  const t = text(g.x + 12, g.y + 18, '', { size: 12.5 });
-  const a = el('tspan', { 'font-weight': 700, fill: C.red.ink }, t); a.textContent = g.head + '  ';
-  const b = el('tspan', { fill: INK }, t); b.textContent = g.l1;
-  text(g.x + 12, g.y + 35, g.l2, { size: 12, color: MUTED });
+  el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, rx: b.rx ?? 12, fill: b.fill || c.fill,
+    stroke: c.stroke, 'stroke-width': b.sw || 2.5 });
+  const px = b.x + (b.px || 16);
+  let y = b.y + (b.ty || 34);
+  if (b.title) { text(px, y, b.title, { size: b.ts || 21, weight: 700 }); y += b.gap || 28; }
+  for (const s of b.sub || []) { text(px, y, s, { size: b.ss || 16, color: MUTED }); y += b.lh || 22; }
+  if (b.ai) badge(b.x + b.w - 12, b.y, 'AI', 'purple');
 }
 
 const defs = el('defs', {});
 for (const k of Object.keys(C)) {
-  const m = el('marker', { id: 'm-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 9, markerHeight: 9,
+  const m = el('marker', { id: 'm-' + k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 12, markerHeight: 12,
     markerUnits: 'userSpaceOnUse', orient: 'auto-start-reverse' }, defs);
   el('path', { d: 'M0,0 L10,5 L0,10 z', fill: C[k].stroke }, m);
 }
 function arrow(pts, o = {}) {
   const k = o.kind || 'grey';
   el('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: C[k].stroke,
-    'stroke-width': o.sw || 1.8, 'stroke-linejoin': 'round', 'marker-end': o.noHead ? '' : `url(#m-${k})`,
-    ...(o.dashed ? { 'stroke-dasharray': '6 4' } : {}) });
+    'stroke-width': o.sw || 2.2, 'stroke-linejoin': 'round', ...(o.noHead ? {} : { 'marker-end': `url(#m-${k})` }),
+    ...(o.dashed ? { 'stroke-dasharray': '8 6' } : {}) });
 }
 
 // ───────── 标题 ─────────
-text(40, 62, 'RippleTwin 系统架构 v2', { size: 34, weight: 700 });
-text(40, 96, 'RPM Hire 第 5 题：在真路网上画一个施工方案 → 4 类路人各自怎么走 → 哪里堵、堵多久、和别的施工撞不撞 · 大模型出主意，引擎算数字', { size: 16, color: MUTED });
-text(1560, 56, '2026-09-29 16:10', { size: 15, weight: 700, color: MUTED, anchor: 'end' });
-text(1560, 78, '对应 contract v3.1 · main 49f24b8', { size: 13, color: MUTED, anchor: 'end' });
-text(40, 128, '输入材料', { size: 13, weight: 700, color: C.orange.ink });
+text(40, 70, t('RippleTwin — System Architecture', 'RippleTwin 系统架构'), { size: 40, weight: 700 });
+text(40, 110, t('Test a roadwork plan on Melbourne’s real streets — see how every road user reacts before the cones go out.',
+                '在墨尔本真实路网上试摆施工方案：摆设备之前，先看到各类路人会怎么走、哪里会堵'), { size: 20, color: MUTED });
 
-// ───────── 左列：输入材料 ─────────
-const L = { x: 40, w: 262 };
-box({ ...L, y: 140, h: 104, kind: 'orange', title: '公开路网 + 车流',
-  sub: ['OSM 路网 · SCATS 8 周实测车流', 'SCATS 站点对到路口'], mono: ['network · flows.json → 后端'], tags: [['T3 louis', 'orange']] });
-box({ ...L, y: 254, h: 104, kind: 'purple', title: '文献与统计 → 参数',
-  sub: ['ABS · VISTA · Erke 2007 · ATAP', '每个数带出处、区间、置信度'], mono: ['params.json → 后端'], tags: [['T12 Unzzip · 新', 'purple']] });
-box({ ...L, y: 368, h: 112, kind: 'orange', title: '行人 · 电车公交 · 建筑',
-  sub: ['CoM 行人计数器 · PTV GTFS', 'CoM 建筑轮廓（地图画真楼）'], mono: ['walk · peds · transit', 'buildings.json → 网页'], tags: [['T7 T11 louis', 'orange']] });
-box({ ...L, y: 490, h: 104, kind: 'orange', title: 'RPM Hire 设备库存',
-  sub: ['产品页：护栏 · 标志牌 · VMS', '（每行 10 字符）· 箭头板'], mono: ['equipment.json → 网页'], tags: [['T7 louis', 'orange']] });
-box({ ...L, y: 690, h: 120, kind: 'orange', title: '用户',
-  sub: ['RPM 施工规划员 / 评委：', '打开一个网址，在地图上', '画施工、写屏上的字，', '看结果、照建议改'] });
-
-arrow([[302, 192], [368, 192]], { kind: 'orange' });
-arrow([[302, 306], [368, 306]], { kind: 'purple' });
-arrow([[302, 424], [336, 424], [336, 676], [368, 676]], { kind: 'orange' });
-arrow([[302, 542], [336, 542]], { kind: 'orange', noHead: true });
-arrow([[302, 750], [388, 750]], { kind: 'orange' });
-
-// ───────── 中间：浏览器里的后端（状态都在这） ─────────
-const H = { x: 370, y: 140, w: 650, h: 438 };
-box({ ...H, kind: 'green', sw: 3, rx: 14 });
-text(390, 172, '浏览器里的后端 · backend.js', { size: 21, weight: 700, color: C.green.ink });
-text(390, 197, '网页只接这一个：connect() → run / compare / advise / check', { size: 13.5, color: INK });
-text(390, 216, '一次装好约 1 秒；哪样没加载上都不抛（路网除外），status() 写清每样用的是什么', { size: 13, color: MUTED });
-tags(H.x + H.w - 12, H.y, [['T9 lead · D-0929-1540', 'green']]);
-
-const col = [390, 599, 808], cw = 192;
-text(390, 242, '装进来的三样', { size: 12.5, weight: 700, color: C.green.ink });
-const sub1 = { y: 250, h: 124, w: cw, kind: 'green', fill: '#fff', sw: 1.5, ts: 15, ty: 24, px: 12, gap: 21, ss: 12.5, lh: 18 };
-box({ ...sub1, x: col[0], title: '路网 · 车流',
-  sub: ['CBD 路段 · 车道 · 通行能力', '每小时每段多少车'], mono: ['/roads/public/cbd/'], tags: [['T3', 'orange']] });
-box({ ...sub1, x: col[1], title: '参数',
-  sub: ['4 类人占比 · 校准 · 信屏', '逐项校验，缺的回退假设值', '页面标「假设值」+ 区间'], tags: [['T12 · 新', 'purple']] });
-box({ ...sub1, x: col[2], title: '读屏 readSigns',
-  sub: ['只问「字 + 人」：看到没 ·', '看懂没 · 叫走哪条 · 信不信', '答案文件 → 接口 → 规则'], tags: [['T5 jinmingq', 'grey'], ['AI', 'purple']] });
-
-text(390, 396, '引擎 createEngine：prepare → evaluate(方案)，同样输入同样结果，可以反复跑几百遍', { size: 12.5, weight: 700, color: C.green.ink });
-const sub2 = { ...sub1, y: 414, h: 152 };
-box({ ...sub2, x: col[0], title: '选择模型',
-  sub: ['读数 + 每类人参数 →', '各条路走多少人', '赶时间 · 熟路 · 信屏 ·', '怕堵 · 能不能走货车路', '两点校准 3% / 20%'], tags: [['T9', 'green']] });
-box({ ...sub2, x: col[1], title: '分流 · 排队',
-  sub: ['BPR 延误 + D/D/1 排队', '全网总行程时间', '排队变长 → 回头重算比例', '（不再问大模型）'], tags: [['T9', 'green']] });
-box({ ...sub2, x: col[2], title: '冲突 · 顾问',
-  sub: ['A、B 分别算，再一起算', '多出来的 = 冲突成本', '顾问 ≤ 3 个改法：改字 ·', '挪设备 · 错开日期', '每个都重算、标 better'], tags: [['T9', 'green'], ['AI', 'purple']] });
-arrow([[col[0] + cw, 489], [col[1] - 2, 489]], { kind: 'green', sw: 1.5 });
-arrow([[col[1] + cw, 489], [col[2] - 2, 489]], { kind: 'green', sw: 1.5 });
-
-// ───────── 右列：云端 ─────────
-const R = { x: 1110, y: 140, w: 450, h: 450 };
-el('rect', { ...{ x: R.x, y: R.y, width: R.w, height: R.h }, rx: 14, fill: '#FAFAFB', stroke: C.grey.stroke, 'stroke-width': 1.5, 'stroke-dasharray': '7 5' });
-text(1128, 168, '云端 · Cloudflare', { size: 16, weight: 700, color: C.grey.ink });
-text(1128, 188, '只有这里碰 key；免费版每次只给 10 毫秒，所以不在这里算', { size: 12.5, color: MUTED });
-const Rb = { x: 1128, w: 414 };
-box({ ...Rb, y: 206, h: 84, kind: 'purple', dashed: true, title: '大模型（还没定用哪家）',
-  sub: ['候选：DeepSeek 卡（jinmingq 实测能用，', '10 条演示文案约 ¥0.2，要关思考模式）'], tags: [['llm-apis · 新', 'purple']] });
-arrow([[1160, 364], [1160, 292]], { kind: 'purple', dashed: true });
-gate({ x: 1182, y: 304, w: 360, h: 46, head: '关卡', l1: 'key 只放 Cloudflare（wrangler secret put）', l2: '默认 MOCK=1 不花钱；每句话每类人问 3 次给区间' });
-box({ ...Rb, y: 364, h: 100, kind: 'grey', title: '读屏接口 · apps/api Worker',
-  sub: ['POST /api/read：先查 KV 缓存，再问大模型', '现在一律用关键词规则回答（大模型没定）', '不合规范回 400 + 短码（SignError）'], tags: [['T5 jinmingq', 'grey']] });
-box({ ...Rb, y: 476, h: 104, kind: 'purple', dashed: true, title: '同源外壳 · apps/site（还没上线）',
-  sub: ['一个 Worker = 整个 demo 网址，挂 /<模块>/public/', '/api/* 转给 T5；build 只拷 git 已跟踪的文件', '部署人 unicornnnnnny · 目标 M1 21:00'], tags: [['T10 · 新', 'purple']] });
-
-arrow([[1000, 322], [1066, 322], [1066, 414], [1126, 414]], { kind: 'grey' });
-text(1066, 298, 'POST', { size: 11, color: MUTED, anchor: 'middle', mono: true });
-text(1066, 311, '/api/read', { size: 11, color: MUTED, anchor: 'middle', mono: true });
-arrow([[1335, 580], [1335, 650]], { kind: 'purple', dashed: true });
-text(1323, 612, '打开网址', { size: 12.5, color: MUTED, anchor: 'end' });
-text(1323, 630, '页面、后端 JS、数据同源加载', { size: 12.5, color: MUTED, anchor: 'end' });
-
-// ───────── 后端 ↔ 网页之间的两道关卡 ─────────
-arrow([[560, 652], [560, 580]], { kind: 'blue' });
-gate({ x: 400, y: 594, w: 330, h: 44, head: '方案 ↑ 关卡', l1: 'checkSigns', l2: '≤ 2 帧 × 4 行 × 每行 10 字符，不合规不交给 run' });
-arrow([[880, 580], [880, 650]], { kind: 'green' });
-gate({ x: 742, y: 594, w: 350, h: 44, head: 'summary ↓ 关卡', l1: 'flags（数字从哪来）', l2: 'ok=false 标黄 · rule 标「估算」· default 标「假设值」' });
-
-// ───────── 下方：网页主流程（蓝） ─────────
-const W = { x: 370, y: 652, w: 1190, h: 208 };
-el('rect', { x: W.x, y: W.y, width: W.w, height: W.h, rx: 14, fill: '#F8FBFF', stroke: C.blue.stroke, 'stroke-width': 1.5 });
-text(390, 679, '网页 RippleTwin · apps/web 主流程（6 步，D-0929-1310）', { size: 15, weight: 700, color: C.blue.ink });
-tags(W.x + W.w - 12, W.y, [['T2 / T13 unicornnnnnny · 接线中', 'purple']]);
-const steps = [
-  ['① 打开网页', ['同一个网址', '约 1 秒装好后端', '（connect）']],
-  ['② 画施工', ['选路段 · 摆护栏 /', '标志牌 / VMS / 箭头板', '写屏上的字']],
-  ['③ 问各类路人', ['通勤 · 本地 · 游客 ·', '送货各读一遍屏', '（readSigns）'], [['AI', 'purple']]],
-  ['④ 算影响', ['各条路分流 · 排队米数', '每类人多几分钟', '（run → summary）']],
-  ['⑤ 查叠加冲突', ['附近同时段的施工', 'A、B 一起算，', '多出来的 = 冲突成本']],
-  ['⑥ 给建议对比', ['前后对比（compare）', '≤ 3 个改法（advise）', '改字 · 挪设备 · 错开日期'], [['AI', 'purple']]],
+// ───────── 左：真实数据（橙） ─────────
+text(40, 158, t('Real data', '真实数据'), { size: 18, weight: 700, color: C.orange.ink });
+const inputs = [
+  [t('Street network', '真实路网'), t('OpenStreetMap · Melbourne CBD', 'OpenStreetMap · 墨尔本 CBD')],
+  [t('Traffic counts', '真实车流'), t('SCATS detectors · 8 weeks', 'SCATS 路口检测器 · 8 周')],
+  [t('Pedestrians & trams', '行人与电车'), t('City sensors · PTV timetable', '市政行人计数 · PTV 时刻表')],
+  [t('RPM Hire equipment', 'RPM Hire 设备'), t('Barriers · signs · VMS · arrows', '护栏 · 标志牌 · VMS · 箭头板')],
+  [t('Research evidence', '研究文献'), t('Traveller mix · trust in signs', '路人构成 · 信不信屏')],
 ];
-steps.forEach(([title, sub, tg], i) => {
-  const x = 390 + i * 195;
-  box({ x, y: 694, w: 175, h: 100, kind: 'blue', title, sub, tags: tg, ts: 15, ty: 25, px: 12, gap: 22, ss: 12.5, lh: 18 });
-  if (i < steps.length - 1) arrow([[x + 175, 744], [x + 193, 744]], { kind: 'blue' });
+inputs.forEach(([title, sub], i) => {
+  const y = 172 + i * 92;
+  box({ x: 40, y, w: 290, h: 80, kind: 'orange', title, sub: [sub], ty: 32, gap: 26 });
+  arrow([[330, y + 40], [355, y + 40]], { kind: 'orange', noHead: true });
 });
-arrow([[1452, 794], [1452, 818], [672, 818], [672, 797]], { kind: 'blue', dashed: true });
-text(1062, 844, '照建议改方案，再跑一遍（每改一次调一次 run，不每帧调）', { size: 12.5, color: C.blue.ink, anchor: 'middle' });
+arrow([[355, 212], [355, 580]], { kind: 'orange', noHead: true });
+arrow([[355, 396], [378, 396]], { kind: 'orange' });
 
-// ───────── 最下一排 ─────────
-box({ x: 40, y: 880, w: 500, h: 158, kind: 'grey', title: '原则（已定，别再推翻）', lh: 20,
-  sub: ['· 大模型只读懂屏上的字；比例、分钟、排队全由引擎算（D-0929-1435）',
-        '· 全在打开网页的浏览器里算，同样输入同样结果（D-0929-1310）',
-        '· 低置信参数在页面标「假设值」+ 区间（D-0929-1536）',
-        '· 天气是第二层压力测试，引擎不管天气（D-0929-1445）',
-        '· 冲突 / 急刹 / TTC 来自路口仿真，页面标「模拟结果」'] });
-box({ x: 560, y: 880, w: 500, h: 158, kind: 'red', title: '提交门禁（人和 AI 一样守）', lh: 20,
-  sub: ['· pre-commit：扫 key · 数据 JSON ≤ 2MB · 其余 ≤ 1MB',
-        '· check.sh [1]–[9]：秘密 · 越界 · README + test.sh 全绿',
-        '· pre-push 拦直推 main · CI 再跑一遍 · Stop hook 跑 --quick',
-        '· 只写自己模块 + 公共区；改契约走 contract: PR',
-        '· 只有部署人 deploy；push、开 PR、合并每次先问'] });
-box({ x: 1080, y: 880, w: 480, h: 158, kind: 'grey', title: '路口仿真 · apps/sim + 天气压力测试', lh: 20, tags: [['T1 lead', 'grey']],
-  sub: ['· Swanston / La Trobe 路口放大：车 · 自行车 · 电车 · 行人',
-        '· 冲突、急刹、TTC、公交、应急通道、安全分',
-        '  → 页面标「模拟结果」（引擎不算这些）',
-        '· 6 种极端天气：网页预设，第二层加分项（D-0929-1445）'] });
-arrow([[1320, 880], [1320, 862]], { kind: 'grey' });
+box({ x: 40, y: 730, w: 290, h: 110, kind: 'orange', title: t('RPM Hire planner', 'RPM 施工规划员'),
+  sub: [t('Opens one web link —', '打开一个网址就能用'), t('nothing to install', '不用安装')] });
+arrow([[330, 790], [398, 790]], { kind: 'orange' });
 
-// ───────── 图例 + 待定 ─────────
+// ───────── 中：数字孪生引擎（绿） ─────────
+const H = { x: 380, y: 140, w: 700, h: 490 };
+el('rect', { x: H.x, y: H.y, width: H.w, height: H.h, rx: 16, fill: C.green.fill, stroke: C.green.stroke, 'stroke-width': 3.5 });
+text(402, 182, t('Digital-twin engine', '数字孪生引擎'), { size: 28, weight: 700, color: C.green.ink });
+text(402, 214, t('Runs in the browser · same plan, same result · re-run hundreds of times',
+                 '在浏览器里运行 · 同样的方案同样的结果 · 可以反复试几百次'), { size: 17, color: MUTED });
+const cells = [
+  [t('Traveller types', '4 类路人'), [t('commuter · local ·', '通勤 · 本地 ·'), t('tourist · delivery', '游客 · 送货')]],
+  [t('Detour finder', '找绕行路线'), [t('who is affected,', '谁受影响'), t('up to 3 detours', '最多 3 条绕行')]],
+  [t('Route choice', '路线选择'), [t('who follows the sign,', '谁照屏上说的走'), t('who stays put', '谁留在原路')]],
+  [t('Traffic & queues', '分流与排队'), [t('delay and queue', '每条路的'), t('on every street', '延误和排队长度')]],
+  [t('Clash check', '施工叠加'), [t('other works nearby', '附近同时段的'), t('at the same time', '其他施工撞不撞')]],
+  [t('What-if compare', '改前改后对比'), [t('every fix is', '每个改法'), t('re-simulated', '都重新算一遍')]],
+];
+cells.forEach(([title, sub], i) => {
+  const x = 402 + (i % 3) * 223, y = 240 + Math.floor(i / 3) * 190;
+  box({ x, y, w: 210, h: 170, kind: 'green', fill: '#fff', sw: 2, title, sub, ty: 44, gap: 38, lh: 24, ts: 20 });
+});
+
+// ───────── 右：AI 智能体（紫） ─────────
+text(1140, 158, t('AI agents', 'AI 智能体'), { size: 18, weight: 700, color: C.purple.ink });
+box({ x: 1140, y: 172, w: 420, h: 170, kind: 'purple', title: t('AI road users', 'AI 路人'), ts: 22, ty: 40, gap: 34, lh: 25,
+  sub: [t('Reads the VMS as each traveller:', '以每类路人的身份读屏上的字：'),
+        t('seen? understood? trusted?', '看到没 · 看懂没 · 信不信'),
+        t('which way does it say to go?', '叫我走哪条')] });
+box({ x: 1140, y: 382, w: 420, h: 150, kind: 'purple', title: t('AI planning advisor', 'AI 规划顾问'), ts: 22, ty: 40, gap: 34, lh: 25,
+  sub: [t('Suggests up to 3 fixes:', '给出最多 3 个改法：'),
+        t('reword · move a sign · reschedule', '改字 · 挪设备 · 错开日期')] });
+const mid = 1110;
+arrow([[1082, 240], [1138, 240]], { kind: 'purple' });
+text(mid, 230, t('sign text', '屏上的字'), { size: 14, color: C.purple.ink, anchor: 'middle' });
+arrow([[1138, 282], [1082, 282]], { kind: 'purple' });
+text(mid, 302, t('readings', '读数'), { size: 14, color: C.purple.ink, anchor: 'middle' });
+arrow([[1082, 436], [1138, 436]], { kind: 'purple' });
+text(mid, 426, t('plan', '方案'), { size: 14, color: C.purple.ink, anchor: 'middle' });
+arrow([[1138, 478], [1082, 478]], { kind: 'purple' });
+text(mid, 498, t('fixes', '改法'), { size: 14, color: C.purple.ink, anchor: 'middle' });
+text(1140, 570, t('AI interprets — the engine does the maths', 'AI 出主意，引擎算数字'), { size: 18, weight: 700, color: C.purple.ink });
+
+// ───────── 下：规划员流程（蓝） ─────────
+const W = { x: 380, y: 690, w: 1180, h: 222 };
+el('rect', { x: W.x, y: W.y, width: W.w, height: W.h, rx: 16, fill: '#F8FBFF', stroke: C.blue.stroke, 'stroke-width': 2 });
+text(402, 724, t('How a planner uses it', '规划员怎么用'), { size: 20, weight: 700, color: C.blue.ink });
+const steps = [
+  [t('① Plan the works', '① 画施工'), [t('street, barriers,', '选路段 · 摆设备'), t('signs, VMS text', '写屏上的字')]],
+  [t('② Signs are read', '② 路人读屏'), [t('each traveller type', '4 类路人'), t('reads the signs', '各读一遍')], true],
+  [t('③ Simulate', '③ 算影响'), [t('detours, queues,', '分流 · 排队'), t('delay per person', '每人多花几分钟')]],
+  [t('④ Check clashes', '④ 查冲突'), [t('overlapping works', '附近施工叠加'), t('nearby', '多出来的代价')]],
+  [t('⑤ Compare & fix', '⑤ 对比改进'), [t('before vs after,', '改前改后对比'), t('AI-suggested fixes', 'AI 给改法')], true],
+];
+steps.forEach(([title, sub, ai], i) => {
+  const x = 400 + i * 234;
+  box({ x, y: 742, w: 206, h: 112, kind: 'blue', title, sub, ai, ts: 20, ty: 34, gap: 28, lh: 22 });
+  if (i < steps.length - 1) arrow([[x + 206, 798], [x + 232, 798]], { kind: 'blue' });
+});
+arrow([[1439, 854], [1439, 876], [503, 876], [503, 857]], { kind: 'blue', dashed: true });
+text(971, 902, t('Adjust the plan and run again', '改方案，再跑一遍'), { size: 17, weight: 700, color: C.blue.ink, anchor: 'middle' });
+
+// 引擎 ↔ 流程：上行的方案过关卡，下行的是结果
+arrow([[503, 690], [503, 632]], { kind: 'blue' });
+{
+  const head = t('VMS check', '屏上文字检查'), rest = t('≤ 2 frames × 4 lines × 10 chars', '≤ 2 帧 × 4 行 × 每行 10 字符');
+  const w = width(head, 16, 700) + width(rest, 16) + 40;
+  el('rect', { x: 420, y: 644, width: w, height: 34, rx: 8, fill: C.red.fill, stroke: C.red.stroke, 'stroke-width': 2 });
+  text(436, 667, head, { size: 16, weight: 700, color: C.red.ink });
+  text(436 + width(head, 16, 700) + 10, 667, rest, { size: 16, color: INK });
+}
+arrow([[971, 632], [971, 688]], { kind: 'green' });
+text(988, 667, t('Results: where it jams · for how long · who is hit hardest', '结果：哪里堵 · 堵多久 · 哪类人最受影响'),
+  { size: 17, weight: 700, color: C.green.ink });
+
+// ───────── 最下：原则（灰）+ 关卡（红） ─────────
+box({ x: 40, y: 940, w: 745, h: 126, kind: 'grey', title: t('Design principles', '设计原则'), ts: 20, ty: 34, gap: 29, lh: 25,
+  sub: [t('• AI only interprets the signs; every number comes from the engine', '• AI 只读懂屏上的字，所有数字都由引擎算'),
+        t('• Same plan, same result — plans can be compared fairly', '• 同样的方案同样的结果，方案之间能公平比较'),
+        t('• Every number shows its source, or is marked “assumed”', '• 每个数都标出处，没出处的标「假设值」')] });
+box({ x: 815, y: 940, w: 745, h: 126, kind: 'red', title: t('Built-in safeguards', '内置关卡'), ts: 20, ty: 34, gap: 29, lh: 25,
+  sub: [t('• Sign text checked against VMS limits before simulating', '• 屏上的字先按 VMS 规格检查，再进仿真'),
+        t('• AI answers cached; rule-based fallback if the AI is down', '• AI 回答有缓存，AI 连不上就用规则兜底'),
+        t('• API keys stay on the server, never in the browser', '• API 密钥只放在服务器上，不进浏览器')] });
+
+// ───────── 图例 ─────────
 let lx = 40;
 const legend = [
-  ['orange', '输入材料'], ['green', '浏览器里的后端（数据 + 引擎都装在这）'], ['blue', '主流程'],
-  ['purple', 'v1 之后新加'], ['red', '关卡 / 门禁'], ['grey', '其他模块 / 服务'],
+  ['orange', t('Real data', '真实数据')], ['green', t('Simulation engine', '仿真引擎')], ['purple', t('AI agents', 'AI 智能体')],
+  ['blue', t('Planner workflow', '规划员流程')], ['red', t('Safeguards', '关卡')],
 ];
 for (const [k, s] of legend) {
-  el('rect', { x: lx, y: 1062, width: 22, height: 14, rx: 4, fill: C[k].fill, stroke: C[k].stroke, 'stroke-width': 2 });
-  text(lx + 30, 1074, s, { size: 13, color: INK });
-  lx += 30 + width(s, 13) + 26;
+  el('rect', { x: lx, y: 1095, width: 26, height: 16, rx: 4, fill: C[k].fill, stroke: C[k].stroke, 'stroke-width': 2.5 });
+  text(lx + 34, 1109, s, { size: 16 });
+  lx += 34 + width(s, 16) + 30;
 }
-el('rect', { x: lx, y: 1062, width: 22, height: 14, rx: 4, fill: '#fff', stroke: C.grey.stroke, 'stroke-width': 2, 'stroke-dasharray': '4 3' });
-text(lx + 30, 1074, '虚线 = 还没接通 / 待定', { size: 13 });
-lx += 30 + width('虚线 = 还没接通 / 待定', 13) + 26;
-tags(lx + width('AI', 11, 700) + 14, 1069, [['AI', 'purple']]);
-text(lx + width('AI', 11, 700) + 22, 1074, '= 这一步问大模型', { size: 13 });
-
-text(40, 1106, '待定', { size: 13, weight: 700, color: C.red.ink });
-text(78, 1106, '用哪家大模型 · 线上网址（M1 目标 21:00）· 初筛 3 页幻灯片谁做（09-30 12:30 截止）', { size: 13, color: INK });
-text(1560, 1106, 'FEIT Hackathon Festival 2026 · 第 5 题 · 源文件 docs/arch/6-architecture-v2.html', { size: 12, color: MUTED, anchor: 'end' });
+arrow([[lx, 1103], [lx + 36, 1103]], { kind: 'blue', dashed: true });
+text(lx + 46, 1109, t('Loops back', '回头再算'), { size: 16 });
+text(1560, 1109, t('FEIT Hackathon 2026 · Challenge 5 · RPM Hire', 'FEIT Hackathon 2026 · 第 5 题 · RPM Hire'), { size: 15, color: MUTED, anchor: 'end' });
 </script>
 </body>
 </html>
