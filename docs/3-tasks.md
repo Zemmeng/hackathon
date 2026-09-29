@@ -46,6 +46,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T12 | 给 @Unzzip：**引擎参数找依据**——4 类路人占比、校准锚点（3% / 20% / 1/5）、信不信屏、时间价值、屏上文字可读距离，每个数带出处和置信度，交 `apps/params/public/params.json`。**要求全在 `docs/arch/T12-params-PRD.md`**；分支 `Unzzip/params/T12-evidence`；先把 #5 拆完或关掉；17:00 交有出处的 P0 一半 | 2h | — |
 | T13 | ~~给 @unicornnnnnny：**网页接后端**——RippleTwin 第 1、3、4 步的数字从预设换成引擎真算的；后端 lead 已接好，页面只调 `backend.js` 的 `connect()` → `run / compare / advise / check`（D-0929-1540）。**要求全在 `docs/arch/T13-web-wiring-PRD.md`**；分支 `unicornnnnnny/web/T13-wiring`；先做第 3 步排队 + 分流和第 4 步「只改一行字」的前后对比~~ → lead 已做完（PR #43，D-0929-1650），高h 不用做 | — | — |
 | T14 | 给 @unicornnnnnny：**网页改「液态玻璃」风格**——只改外观不改功能：地图上浮着的 HUD、右侧面板卡片、按钮 / chips、顶栏、时间轴换成 Apple Liquid Glass 那套（半透明折射、边缘高光、胶囊控件），深浅两套主题；可读性、无障碍退回、帧率有硬要求。**要求全在 `docs/arch/T14-liquid-glass-PRD.md`**；分支 `unicornnnnnny/web/T14-liquid-glass` | 2h | T13（PR #43，已合） |
+| T20 | 给 @unicornnnnnny：**删掉页面上写死的假数 + 天气标示意**（D-0929-2011 ①、D-0929-2012）——#48 B 节 1–3：顶栏安全分和第 4 步结果表（`RESULTS` 查表）、第 2 步假进度和「变体 22/30」清单、「Run AI red team」「250 agents × 30」字样；B4–B5：天气去掉「实时」和随机闪电数、标示意，演示默认晴天、不读 `rt-wx`。分支 `unicornnnnnny/web/T20-no-fake-numbers` | 2h | — |
+| T23 | 给 @jinmingq：**多方案并排对比 + 选定 + 一页导出**（D-0929-2011 ④，#48 第 ④⑦⑧ 步）——3 套方案卡并排（车延误、公交乘客、行人、租金），「选这个」+ 理由，导出一页打印视图（设备清单和报价、VMS 文字）；改的是 `apps/web`，跨模块先在群里说一声并请 lead 打 `cross-module` 标签；数字只用 `backend.js` 给的，不在页面里算 | 2h | T22（方案生成） |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -63,6 +65,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T18 | 行人受的影响：方案加 `closes.footpath`，引擎按行人计数和人行道网络算绕行距离、多过几次马路；页面第 1 步加人行道开关 | ✅ | `lead/integrate-t16-19`（合并 `lead/t17-peds` + `Zemmeng/web/T17-impacts-ui`） | 09-29 17:36 |
 | T19 | 大模型接口留好：api Worker 接 OpenAI 兼容接口（默认 DeepSeek）+ 缓存 + 失败回规则 + 预算演示答案脚本，部署并绑到 site；默认 MOCK=1 不花钱，lead 之后只放 key | ✅ | `lead/integrate-t16-19`（合并 `lead/t19-llm-ready`） | 09-29 17:37 |
 | T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | ✅ 已上线（`DEMO_URL`，lead 备份部署） | `claude/lead/deploy-site` / PR #35 ✅（高危已修：只拷 git 已跟踪的文件）；部署归 @unicornnnnnny，网址回来后 lead 填 `DEMO_URL` | 09-29 15:00 |
+| T21 | 叠加冲突上页面（D-0929-2011 ②）：真 CBD 路网上两处施工的冲突成本 + 一键错开，引擎已有 `conflict()` / `shiftWorksite()`，页面加第二处施工 | ⬜ | — | — |
+| T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ⬜ | — | — |
+| T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 只加字段 `kind` `status` `options[]` `decision`；§HTTP API 补 #53 `/api/worksites`、#54 `/api/explain` | ⬜ | — | — |
 
 卡住了：
 
