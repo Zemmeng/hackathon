@@ -21,7 +21,9 @@ const IMPACT={
   heat:['Pedestrians detour to shade · crossing compliance −22%','行人绕行寻找阴影 · 按信号过街比例 −22%'],
   wind:['Water barrier may slide 0.4 m · cyclist lateral drift 0.6 m','注水护栏可能滑移 0.4 m · 骑行者横向偏移 0.6 m']};
 
-const W=buildWorld(),G=buildGrids(W),WX=new Weather(W,G);
+/* W / G start as the synthetic city (drawn at once, and the fallback when buildings.json can't be fetched);
+   loadBuildings() swaps in the real footprints once they arrive → rebuildWorld() */
+let W=buildWorld(),G=buildGrids(W);const WX=new Weather(W,G);
 const TK={};
 function readTokens(){const cs=getComputedStyle(document.documentElement);for(const k of['bg','panel','raised','line','line-2','fg','fg-2','fg-3','accent','on-accent','works','risk','delta','glass','glass-line','tint','tint-line','works-tint','risk-tint','a-car','a-bike','a-ped','a-wc','a-bus','a-tram','map-mode'])TK[k.replace(/-(\w)/g,(m,c)=>c.toUpperCase())]=cs.getPropertyValue('--'+k).trim();TK.light=TK.mapMode==='light';}
 
@@ -407,7 +409,22 @@ function applyTheme(){
   readTokens();WX.setTheme(TK.light);makePatterns();S.basemap=TK.light?'streets':'imagery';baseKey='';
   updateBasemapUI();renderWxSwitcher();renderLegend();if(S.step===3&&S.event){S.nodes=causal(S.event);renderPanel();}
 }
-function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';}
+/* ---------- real buildings (T15) ---------- */
+function rebuildWorld(nw){
+  const g=buildGrids(nw);W=nw;G=g;WX.rebind(W,G);
+  for(const k of Object.keys(IMG))delete IMG[k];
+  baseKey='';probeKey='';heatStats=null;updateBasemapUI();
+}
+/* same-origin data from T3 (apps/roads). Fails on file://, the web-only static server or offline → the synthetic city stays */
+function loadBuildings(){
+  return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(d=>{
+    const nw=d?buildWorldReal(d,geoToWorld):null;
+    if(!nw||nw.buildings.length<REAL_MIN)return false;
+    rebuildWorld(nw);console.info('buildings: real footprints',nw.count);return true;
+  }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
+}
+function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
+  const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
 
 /* ---------- histogram ---------- */
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
@@ -487,6 +504,8 @@ function boot(){
   resize();sizeHist();bindInput();engBindMap();
   WX.set(S.wx);renderWxSwitcher();renderLegend();updateBasemapUI();
   const start=()=>{if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
-  if(S.basemap==='streets')start();else setTimeout(start,40);
+  /* wait up to 1.2 s for the real footprints so the first frame is already the real city; slower → start synthetic, swap on arrival */
+  let go=false;const once=()=>{if(go)return;go=true;if(S.basemap==='streets')start();else setTimeout(start,40);};
+  loadBuildings().then(once);setTimeout(once,1200);
 }
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(boot,boot);

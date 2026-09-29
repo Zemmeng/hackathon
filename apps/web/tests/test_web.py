@@ -107,6 +107,23 @@ check("自检：嵌在 L() 里的未转义路名会被抓到", unsafe_in(probe) 
 app_js = (SRC / "js" / "5-app.js").read_text(encoding="utf-8")
 check("第 1 步标题里的路名过 esc()", "esc(shortSt(EP.street)" in app_js and not unsafe_in(app_js[app_js.find("S.step===1"):app_js.find("S.step===2")]))
 
+# 3d. 真建筑（T15）：先同步画程序生成的城市（兜底），异步取 buildings.json，拿不到 / 太少就留着兜底，页面不会空白
+WORLD_JS = (SRC / "js" / "1-world.js").read_text(encoding="utf-8")
+no_comments = lambda t: re.sub(r"/\*.*?\*/|//[^\n]*", "", t, flags=re.S)  # noqa: E731
+check("兜底城市先同步建好：let W=buildWorld(),G=buildGrids(W)", "let W=buildWorld(),G=buildGrids(W);" in app_js and "function buildWorld(){" in WORLD_JS)
+lb = re.search(r"function loadBuildings\(\)\{.*?\n\}\n", app_js, re.S)
+lb_src = lb.group(0) if lb else ""
+check("loadBuildings 取同源的 /roads/public/cbd/buildings.json", "fetch('/roads/public/cbd/buildings.json')" in lb_src)
+check("取不到 / 坏数据 / 不够 REAL_MIN 栋 → 不换世界（catch + REAL_MIN）",
+      ".catch(" in lb_src and "nw.buildings.length<REAL_MIN)return false" in lb_src and "r.ok?r.json():null" in lb_src)
+check("geoToWorld 只在 loadBuildings 的异步回调里用（1-world.js 顶层不碰它）",
+      "geoToWorld" not in no_comments(WORLD_JS) and no_comments(app_js).count("geoToWorld") == no_comments(lb_src).count("geoToWorld") == 1)
+check("rebuildWorld 清掉影像缓存、底图签名和高温统计", re.search(r"function rebuildWorld\(nw\)\{[^}]*?WX\.rebind\(W,G\);\s*for\(const k of Object\.keys\(IMG\)\)delete IMG\[k\];\s*baseKey='';probeKey='';heatStats=null;", app_js) is not None)
+check("启动最多等 1.2 s 真建筑，超时先画兜底城市", "loadBuildings().then(once);setTimeout(once,1200);" in app_js)
+# 反向断言（注入）：数据里的楼名只画在 canvas 上，不进 HTML
+BASE_JS = (SRC / "js" / "2-basemap.js").read_text(encoding="utf-8")
+check("反向：楼名只用 fillText 画，1-world / 2-basemap 里没有 innerHTML", "innerHTML" not in WORLD_JS + BASE_JS and "c.fillText(t,px,py)" in BASE_JS)
+
 # 4. 反向断言（秘密）：源码里没有 key / token 形状的字符串
 check("源码里没有 key / token", not re.search(r"(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9])", JS + BODY, re.I))
 

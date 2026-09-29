@@ -6,6 +6,7 @@ Owner: @unicornnnnnny
 - **主路径（T13 起接引擎）**：在 CBD 真路网上放封道、写 VMS / 标志牌文字、选时段 → 引擎（`apps/engine` 的 `backend.js`）现算排队、分流、每类人的延误和理由 → 规则顾问给改法、引擎重算前后对比。第 1、3、4 步的这些数字都是引擎算的
 - **第二层**：La Trobe × Swanston 路口的微观仿真 + 六种天气（晴 / 雷暴 / 内涝 / 浓雾 / 高温 / 大风）压力测试、冲突因果链、护栏改法的滑动对比。冲突数、安全分等仍是模拟 / 预设值，页面标「模拟结果」
 - 引擎连不上（双击打开、只起了本模块的静态服务器、离线）时页面照常能用，显示预设数字并注明「引擎未连接」
+- **地图上的楼是真的（T15）**：`/roads/public/cbd/buildings.json`（OSM + 墨尔本市政 2018 楼宇轮廓，约 395 栋落在画面里）换到页面方格上画，影像 / 近红外 / 矢量三种底图、楼影、高温和大风图层都按真轮廓算，大楼标真名；取不到这个文件时退回程序生成的随机街区，页面不会空白
 
 ## 怎么跑
 
@@ -22,10 +23,11 @@ Owner: @unicornnnnnny
 
 ## 怎么测
 
-`bash apps/web/test.sh` —— 不开浏览器，两个文件：
+`bash apps/web/test.sh` —— 不开浏览器，三个文件：
 
 - `tests/test_engine.py`（调 `node tests/engine_glue.mjs`，要 node ≥ 18）：`6-engine.js` 里 `pure:begin…pure:end` 那段纯函数——真路网坐标换到页面方格（主干路口误差 ≤ 3 m）、点街选路段（靠左行驶，点哪侧选哪个方向）、拼方案（契约 §施工方案，空 VMS 不发）——再把页面拼的方案交给真的 `backend.js` 跑：默认方案排队 > 0、加一帧 USE / RUSSELL ST 排队变短、超长的行被 check 拦下、全封、非施工时段、顾问给出更好的改法
-- `tests/test_web.py`：静态断言：打包产物与源码一致、体积 < 2MB、`import()` / `fetch()` 只用同源固定路径（`/engine/ /roads/ /params/ /api/`）、外部地址只有 Google Fonts、引擎连不上走 `BE.err` 并保留预设数字、T5 / 顾问的 `why` 只用 `textContent`、路名和报错进 HTML 前过 `esc()`、没有 key、四步和六种天气配置齐全、修复方案在每种天气下都比原方案好、方案 v2 的几何和文案对得上（护栏西移 8 m 等）、中英文案成对。最后一行 `N passed, M failed`。
+- `tests/test_world.py`（调 `node tests/world_real.mjs`，要 node ≥ 18）：真建筑——U 形楼被街切成两块不留连桥、压进人行道的楼切到街边、整块在路面上的丢掉；真数据落进画面 > 150 栋、La Trobe × Swanston 路口和 8 条街上没有楼也没有屋顶格（反向断言）、人行道有楼影、楼后有风影、影子朝东南；州立图书馆 / Melbourne Central 用真名注记且落在楼上、不出「BUILDING 8」这种编号名、Melbourne Central 外框不按 211 m 画；坏数据不抛错一栋不画、程序生成的城市照旧
+- `tests/test_web.py`：静态断言：打包产物与源码一致、体积 < 2MB、`import()` / `fetch()` 只用同源固定路径（`/engine/ /roads/ /params/ /api/`）、外部地址只有 Google Fonts、引擎连不上走 `BE.err` 并保留预设数字、T5 / 顾问的 `why` 只用 `textContent`、路名和报错进 HTML 前过 `esc()`、没有 key、四步和六种天气配置齐全、修复方案在每种天气下都比原方案好、方案 v2 的几何和文案对得上（护栏西移 8 m 等）、中英文案成对、兜底城市先同步建好再异步取 `buildings.json`（`catch` + `REAL_MIN`，最多等 1.2 s）、`geoToWorld` 只在异步回调里用、楼名只画在 canvas 上不进 HTML。最后一行 `N passed, M failed`。
 
 浏览器里人工验过：桌面 1440×900 和手机 375px、深 / 浅主题、中 / 英、六种天气、四步流程（第 2 步 C-17 × D-42 严重冲突会自动触发，TTC 约 0.6 s）。
 
@@ -38,12 +40,13 @@ Owner: @unicornnnnnny
 | `/engine/public/js/backend.js` | `import()` 后 `connect()` → `run / compare / advise / check / demo`；它自己再取 `/roads/public/cbd/network.json`、`flows.json`、`/params/public/params.json`，并加载 T5 的 `/api/public/js/reader.js`、`check.js` |
 | `/engine/public/js/index.js` | 只用 `affected()` + `capFactors()` 取绕行路线经过的路段，画在地图上（和 `run()` 内部是同一个函数） |
 | `/params/public/params.json` | 只读路人占比的区间和置信度，结果旁标「假设值」+ 区间（D-0929-1536） |
+| `/roads/public/cbd/buildings.json` | T15：启动时 `fetch` 一次，`buildings[].footprint`（`[lat, lon]` 环）用 `geoToWorld` 换到页面方格，`height_m` 当楼高，`use` 定屋顶色调，`name` 做注记；左上角「建筑」一栏显示画出的栋数和出处（OSM · 墨尔本市政，ODbL / CC BY 要求署名）。失败 / 少于 `REAL_MIN`（50）栋 → 留着程序生成的城市 |
 
 页面拼的方案：施工 id `W-1`，一个路段、`closes.lanes` = 1 或该路段车道数、工期 2026-10-05 → 10-09 每天 7–19 点，设备 VMS-1 / S-1 / A-1 / B-1。T5 读屏会 `POST /api/read`：api Worker 没接上时 site 回 503，读屏自动退回关键词规则（`flags.reading_src = 'rule'`，页面标「读屏 · 规则估算」）。
 
 ## 外部 API
 
-无（只有同源的上面几个文件）。字体来自 Google Fonts（Inter / JetBrains Mono / Space Grotesk / Noto Sans SC），加载不到时回退系统字体。
+无（只有同源的上面几个文件）。`buildings.json` 实测结构（2026-09-29）：顶层 `{version, area, bbox, generated, sources[3], assumptions, buildings[2508]}`，每栋 `{id, name|null, use, height_m, levels, height_src: com|default|osm_levels|osm_height, footprint: [[lat, lon], …], frontage}`；`assumptions.default_height_m` = 12 是没有高度时的缺省。字体来自 Google Fonts（Inter / JetBrains Mono / Space Grotesk / Noto Sans SC），加载不到时回退系统字体。
 
 ## 结构
 
@@ -51,11 +54,11 @@ Owner: @unicornnnnnny
 |---|---|
 | `src/head.html` `src/body.html` `src/styles.css` | 页面骨架、深浅两套颜色 token；静态文案的中文写在 `data-zh` 属性里 |
 | `src/js/0-i18n.js` | `L(英, 中)` 取当前语言的文案 |
-| `src/js/1-world.js` | 路口一带的世界模型（米，x 向东 y 向北）：街道、建筑、地标，2 m 地表分类 / 阴影 / 风影栅格 |
-| `src/js/2-basemap.js` | 底图：正射影像（RGB / 近红外假彩色）预渲染，矢量街道图分浅色 / 深色 |
+| `src/js/1-world.js` | 路口一带的世界模型（米，x 向东 y 向北）：街道、建筑、地标，2 m 地表分类 / 阴影 / 风影栅格。`buildWorld()` 是程序生成的兜底城市（矩形楼）；`buildWorldReal(data, geoToWorld)` 把真轮廓换成多边形楼（`pts` + 包围盒 + 楼内标注点 `cx, cy`），`clipStreets()` 切掉压在街上的部分；`buildGrids()` 对多边形用扫描线栅格化、沿太阳 / 风向扫出楼影和风影 |
+| `src/js/2-basemap.js` | 底图：正射影像（RGB / 近红外假彩色）预渲染，矢量街道图分浅色 / 深色。真楼按用途 + 高度着色（`roofRgb` / `vecRgb`），楼影是轮廓沿太阳方向拉伸后的并集（`extrudePath`）；楼名注记按面积排、互相压住的跳过 |
 | `src/js/3-weather.js` | 天气图层：雷达 dBZ、SAR 淹没深度、雾、地表温度、风场；等值线、粒子流、闪电、鼠标取值 |
 | `src/js/4-sim.js` | 多智能体仿真：IDM 跟驰、信号相位、行人放行、TTC 冲突检测、脚本化的 C-17 / D-42 / Bus 250 事件 |
-| `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换 |
+| `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑、`rebuildWorld()` 换掉 `W / G` 并清影像缓存（`WX.rebind()` 重建天气栅格） |
 | `src/js/6-engine.js` | 接引擎（T13）：连 `backend.js`、第 1 步方案表单、第 3 步路网涟漪、第 4 步顾问 + 前后对比、地图上的施工区 / 排队 / 绕行 / 变慢路段；开头 `pure:begin…pure:end` 是测试要跑的纯函数（坐标换算、选路段、拼方案） |
 | `build.py` | 打包成 `public/index.html`（进仓库）和 `out/web-artifact.html`（不进仓库） |
 | `tests/test_web.py` `tests/test_engine.py` `tests/engine_glue.mjs` | 上面「怎么测」的断言 |
@@ -74,3 +77,7 @@ Owner: @unicornnnnnny
 - 读屏现在是关键词规则（大模型读屏待 T5 接），参数里路人占比等是 T12 的低置信假设值，页面都标出来了
 - 路口几何是简化的正交网格，不是测绘数据；道路方向按澳洲靠左行驶（西行车流在 La Trobe St 南侧）
 - 手机上隐藏了鼠标取值条，图例默认折叠
+- 真建筑（T15）：La Trobe 以北页面把街区拉高了，楼跟着拉长，Little La Trobe / A'Beckett 两边会空出几米到十几米的地；页面方格上没有的小巷和院子画成平铺地面（地表分类算「空地」）
+- 真建筑的屋顶反照率、屋顶设备、「历史建筑」归类（按名字里有 Library Victoria / Church / Cathedral / Gaol / Watch House）都是假设值，数据里没有；高温图层的「冷屋顶」标注因此只是示意
+- 数据里有 4 个「外框」把一整片楼圈起来（如 Melbourne Central 外框带着 211 m 塔楼的高度）：里面的楼占外框 ≥ 30% 时外框改用里面楼高的中位数，塔楼本身不动
+- 州立图书馆的穹顶、Melbourne Central 的玻璃锥和制弹塔仍是页面手摆的位置，只在落进对应真楼时保留；门前草坪按原样保留（楼画在上面）

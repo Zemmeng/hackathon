@@ -89,6 +89,11 @@ function freeSpans(s,pad){
   const out=[];let cur=lo;for(const[a,b]of others){if(a>cur)out.push([cur,a]);cur=Math.max(cur,b);}if(cur<hi)out.push([cur,hi]);return out;
 }
 
+/* hand-placed pieces shared by the synthetic city and the real one (T15 keeps them when they sit inside the matching real footprint) */
+const SLV_LAWN={x0:15,y0:-95,x1:58,y1:-15,kind:'lawn'},SLV_PATHS=[[[15,-15],[58,-56]],[[15,-95],[58,-56]],[[15,-56],[58,-56]]];
+const SYN_LANDMARKS={dome:{kind:'dome',x:130,y:-56,r:17,h:36,name:'La Trobe Reading Room'},cone:{kind:'cone',x:-86,y:-54,r:25,h:42,name:'Melbourne Central cone'},shot:{kind:'shot',x:-86,y:-54,r:4.6,h:50,name:"Coop's Shot Tower"}};
+const LANDMARK_HOST={dome:'State Library Victoria',cone:'Melbourne Central',shot:'Melbourne Central'};
+
 function buildWorld(){
   const R=rng(20260929);
   const W={streets:STREETS,buildings:[],trees:[],parks:[],plazas:[],lanes:[],platforms:[],landmarks:[],paths:[]};
@@ -113,21 +118,21 @@ function buildWorld(){
     const b={x0:xb[i]+xw[i]/2,x1:xb[i+1]-xw[i+1]/2,y0:yb[j]+yw[j]/2,y1:yb[j+1]-yw[j+1]/2};
     if(b.x1<=b.x0||b.y1<=b.y0)continue;
     if(near(b.x0,15)&&near(b.y1,-15)){ /* State Library Victoria */
-      W.parks.push({x0:15,y0:-95,x1:58,y1:-15,kind:'lawn'});
-      W.paths.push([[15,-15],[58,-56]],[[15,-95],[58,-56]],[[15,-56],[58,-56]]);
+      W.parks.push({...SLV_LAWN});
+      W.paths.push(...SLV_PATHS.map(p=>p.map(q=>q.slice())));
       W.buildings.push({x0:60,y0:-82,x1:100,y1:-27,h:24,kind:'heritage',tone:.7,albedo:.34,seed:11});
       W.buildings.push({x0:100,y0:-40,x1:183.5,y1:-16.5,h:22,kind:'heritage',tone:.6,albedo:.34,seed:12});
       W.buildings.push({x0:100,y0:-93.5,x1:183.5,y1:-72,h:20,kind:'heritage',tone:.6,albedo:.34,seed:13});
       W.buildings.push({x0:160,y0:-72,x1:183.5,y1:-40,h:22,kind:'heritage',tone:.6,albedo:.34,seed:14});
       W.plazas.push({x0:100,y0:-72,x1:160,y1:-40});
-      W.landmarks.push({kind:'dome',x:130,y:-56,r:17,h:36,name:'La Trobe Reading Room'});
+      W.landmarks.push({...SYN_LANDMARKS.dome});
       continue;
     }
     if(near(b.x1,-15)&&near(b.y1,-15)){ /* Melbourne Central */
       W.buildings.push({x0:-183.5,y0:-94,x1:-17,y1:-16.5,h:26,kind:'mall',tone:.5,albedo:.45,seed:21});
       W.buildings.push({x0:-181,y0:-92,x1:-142,y1:-54,h:211,kind:'tower',tone:.15,albedo:.18,seed:22});
-      W.landmarks.push({kind:'cone',x:-86,y:-54,r:25,h:42,name:'Melbourne Central cone'});
-      W.landmarks.push({kind:'shot',x:-86,y:-54,r:4.6,h:50,name:"Coop's Shot Tower"});
+      W.landmarks.push({...SYN_LANDMARKS.cone});
+      W.landmarks.push({...SYN_LANDMARKS.shot});
       continue;
     }
     if(near(b.x0,15)&&near(b.y0,15)){ /* RMIT courtyard */
@@ -139,6 +144,111 @@ function buildWorld(){
   }
   W.platforms.push({x0:-7.6,x1:-3.9,y0:-78,y1:-38},{x0:3.9,x1:7.6,y0:-78,y1:-38});
   W.busStop={x0:-104,x1:-86,y0:-14.4,y1:-12.8};
+  return W;
+}
+
+/* ============================================================
+   Real buildings (T15): /roads/public/cbd/buildings.json (OSM + City of Melbourne 2018 footprints) → polygons on the page grid.
+   No DOM here: tests/world_real.mjs runs this file in node. buildWorld() above stays as the fallback city (file://, offline,
+   the web-only static server). toWorld = geoToWorld from 6-engine.js, passed in because it only exists once the whole page script ran.
+   ============================================================ */
+const REAL_MIN=50; /* fewer usable footprints than this → keep the synthetic city */
+function polyArea(P){let a=0;for(let i=0,n=P.length;i<n;i++){const p=P[i],q=P[(i+1)%n];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
+function inPoly(P,x,y){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;}
+function bboxOf(P){let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;for(const p of P){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}return{x0,x1,y0,y1};}
+/* Part of a simple polygon on one side of the line p[ax] = c (keep >= c when sg = 1, <= c when sg = -1), as separate rings:
+   an L / U shape cut by a street comes back as two pieces, never joined by a zero-width sliver along the cut. */
+function clipSide(P,ax,c,sg){
+  const n=P.length,F=P.map(p=>{const v=(p[ax]-c)*sg;return v===0?1e-9:v;});
+  let s=-1;for(let i=0;i<n;i++)if(F[i]<0){s=i;break;}
+  if(s<0)return[P];if(F.every(v=>v<0))return[];
+  const cut=(a,b,fa,fb)=>{const t=fa/(fa-fb),p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];p[ax]=c;return p;};
+  const ch=[];let cur=null;
+  for(let k=0;k<n;k++){const i=(s+k)%n,j=(i+1)%n,fa=F[i],fb=F[j];
+    if(fa<0&&fb>0){const X=cut(P[i],P[j],fa,fb);cur={pts:[X,P[j]],a:X};}
+    else if(fa>0&&fb>0)cur.pts.push(P[j]);
+    else if(fa>0&&fb<0){const X=cut(P[i],P[j],fa,fb);cur.pts.push(X);cur.b=X;ch.push(cur);cur=null;}}
+  /* along the cut line the polygon's inside is the intervals between sorted crossings (1st–2nd, 3rd–4th …): each joins an exit to an entry */
+  const X=[];ch.forEach((q,i)=>{X.push({t:q.a[1-ax],i,e:1},{t:q.b[1-ax],i,e:0});});X.sort((u,v)=>u.t-v.t);
+  const next=new Array(ch.length).fill(-1);
+  for(let k=0;k+1<X.length;k+=2){const u=X[k],v=X[k+1];if(u.e===v.e)return ch.map(q=>q.pts);next[(u.e?v:u).i]=(u.e?u:v).i;}
+  const used=new Array(ch.length).fill(false),out=[];
+  for(let i=0;i<ch.length;i++){if(used[i])continue;const ring=[];let k=i;while(k>=0&&!used[k]){used[k]=true;ring.push(...ch[k].pts);k=next[k];}if(ring.length>=3)out.push(ring);}
+  return out;
+}
+/* cut away every part that lies on a page street (carriageway + footpath), so roads, tram stops and footpaths stay clear */
+function clipStreets(P){
+  let parts=[P];
+  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,lo=ax?r.y0:r.x0,hi=ax?r.y1:r.x1,out=[];
+    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));}
+    parts=out;}
+  return parts.filter(q=>Math.abs(polyArea(q))>=4);
+}
+/* a point well inside the polygon (for labels and probes): the centroid when it is inside, else the deepest of a 7 × 7 sample */
+function innerPt(P,b){
+  const n=P.length;let a=0,cx=0,cy=0;for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n],cr=p[0]*q[1]-q[0]*p[1];a+=cr;cx+=(p[0]+q[0])*cr;cy+=(p[1]+q[1])*cr;}
+  const depth=(x,y)=>{let m=Infinity;for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],L2=dx*dx+dy*dy||1e-9;let t=((x-p[0])*dx+(y-p[1])*dy)/L2;t=t<0?0:t>1?1:t;const d=Math.hypot(p[0]+t*dx-x,p[1]+t*dy-y);if(d<m)m=d;}return m;};
+  let best=null,bd=-1;
+  if(a){cx/=3*a;cy/=3*a;if(inPoly(P,cx,cy)){best=[cx,cy];bd=depth(cx,cy);}}
+  for(let j=1;j<8;j++)for(let i=1;i<8;i++){const x=b.x0+(b.x1-b.x0)*i/8,y=b.y0+(b.y1-b.y0)*j/8;if(!inPoly(P,x,y))continue;const d=depth(x,y);if(d>bd*1.15){bd=d;best=[x,y];}}
+  return best||[P[0][0],P[0][1]];
+}
+function strHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+/* the data has no roof material or heritage flag: heritage = well-known heritage names (assumed); towers from the real height */
+const HERITAGE_RE=/Library Victoria|Church|Cathedral|Gaol|Watch House/i;
+function realKind(name,use,h,area){if(name&&HERITAGE_RE.test(name))return'heritage';if(h>=60)return'tower';if(use==='retail'&&area>=2500)return'mall';return'roof';}
+const NAME_ZH={'State Library Victoria':'维多利亚州立图书馆','Melbourne Central':'墨尔本中央购物中心','Melbourne Central office tower':'墨尔本中央办公塔楼','Emporium':'Emporium 购物中心','The Strand Melbourne':'The Strand 购物中心','RMIT Swanston Academic Building':'RMIT 斯旺斯顿教学楼','Old Melbourne Gaol':'老墨尔本监狱',"St Francis' Church":'圣方济各教堂','State Library Station':'州立图书馆站','QV Residential':'QV 公寓','Storey Hall':'斯托里礼堂','Former City Watch House':'旧城市看守所','Golden Square Car Park':'Golden Square 停车场','Wesley Uniting Church':'卫斯理联合教会','Aurora Melbourne Central':'Aurora 墨尔本中央公寓'};
+const GENERIC_NAME=/^(building|block)\s+[\w.-]+$/i; /* RMIT's "Building 8" etc. — the campus gets one RMIT label instead */
+function blockRects(){
+  const vs=STREETS.filter(s=>s.axis==='v').sort((a,b)=>a.c-b.c),hs=STREETS.filter(s=>s.axis==='h').sort((a,b)=>a.c-b.c);
+  const xb=[WORLD.x0-60,...vs.map(s=>s.c),WORLD.x1+60],xw=[0,...vs.map(s=>s.w),0],yb=[WORLD.y0-60,...hs.map(s=>s.c),WORLD.y1+60],yw=[0,...hs.map(s=>s.w),0],out=[];
+  for(let i=0;i<xb.length-1;i++)for(let j=0;j<yb.length-1;j++){const b={x0:xb[i]+xw[i]/2,x1:xb[i+1]-xw[i+1]/2,y0:yb[j]+yw[j]/2,y1:yb[j+1]-yw[j+1]/2};if(b.x1>b.x0&&b.y1>b.y0)out.push(b);}
+  return out;
+}
+function buildWorldReal(data,toWorld){
+  const W={streets:STREETS,buildings:[],trees:[],parks:[],plazas:[],lanes:[],platforms:[],landmarks:[],paths:[],lots:blockRects(),labels:[],real:true,sources:[],count:0};
+  const list=data&&Array.isArray(data.buildings)?data.buildings:[],dh=+(data&&data.assumptions&&data.assumptions.default_height_m)||12;
+  if(data&&Array.isArray(data.sources))W.sources=data.sources.map(String);
+  const raw=[];
+  for(const b of list){
+    const fp=b&&b.footprint;if(!Array.isArray(fp)||fp.length<3)continue;
+    const P=[];for(const q of fp){const p=Array.isArray(q)?toWorld(+q[0],+q[1]):null;if(!p||!isFinite(p[0])||!isFinite(p[1]))break;P.push([p[0],p[1]]);}
+    if(P.length!==fp.length)continue;
+    const bb=bboxOf(P);if(bb.x1<WORLD.x0||bb.x0>WORLD.x1||bb.y1<WORLD.y0||bb.y0>WORLD.y1)continue;
+    const area=Math.abs(polyArea(P));if(area<4)continue;
+    raw.push({b,P,bb,area,h:+b.height_m>0&&isFinite(+b.height_m)?+b.height_m:dh,pt:innerPt(P,bb),name:typeof b.name==='string'?b.name.replace(/\s+/g,' ').trim():''});
+  }
+  /* an outline drawn round a whole complex carries its tallest part's height (Melbourne Central's outline is 211 m because the
+     office tower sits inside it): when parts cover ≥ 30% of an outline, the outline takes the parts' median height */
+  for(const A of raw){let ia=0;const hs=[];
+    for(const C of raw){if(C===A||C.area>=A.area)continue;const p=C.pt;if(p[0]<A.bb.x0||p[0]>A.bb.x1||p[1]<A.bb.y0||p[1]>A.bb.y1||!inPoly(A.P,p[0],p[1]))continue;ia+=C.area;hs.push(C.h);}
+    if(hs.length&&ia>=.3*A.area){hs.sort((a,b)=>a-b);A.h2=Math.min(A.h,hs[hs.length>>1]);}}
+  raw.sort((a,b)=>b.area-a.area); /* outlines first, the parts inside them drawn on top */
+  for(const r of raw){
+    const id=String(r.b.id||''),seed=strHash(id||r.name||String(r.area)),R=rng(seed),h=r.h2!=null?r.h2:r.h,use=String(r.b.use||'other'),kind=realKind(r.name,use,h,r.area);
+    const tone=R(),albedo=kind==='heritage'?.34:.12+R()*.45; /* albedo: assumed (no roof material in the data) */
+    let n=0;
+    for(const P of clipStreets(r.P)){const bb=bboxOf(P),pt=innerPt(P,bb);n++;
+      W.buildings.push({pts:P,x0:bb.x0,y0:bb.y0,x1:bb.x1,y1:bb.y1,cx:pt[0],cy:pt[1],area:Math.abs(polyArea(P)),h,kind,use,name:r.name,id,tone,albedo,seed,solar:false});}
+    if(n)W.count++;
+  }
+  W.parks.push({...SLV_LAWN});W.paths.push(...SLV_PATHS.map(p=>p.map(q=>q.slice())));
+  W.platforms.push({x0:-7.6,x1:-3.9,y0:-78,y1:-38},{x0:3.9,x1:7.6,y0:-78,y1:-38});
+  W.busStop={x0:-104,x1:-86,y0:-14.4,y1:-12.8};
+  const inside=(name,x,y)=>W.buildings.some(b=>b.name===name&&x>=b.x0&&x<=b.x1&&y>=b.y0&&y<=b.y1&&inPoly(b.pts,x,y));
+  for(const k of Object.keys(SYN_LANDMARKS)){const l=SYN_LANDMARKS[k];if(inside(LANDMARK_HOST[k],l.x,l.y))W.landmarks.push({...l});}
+  /* labels: real names of the big named buildings (pieces of one name merged), plus the RMIT campus and Coop's Shot Tower */
+  const groups=new Map();
+  for(const b of W.buildings){
+    if(!b.name||GENERIC_NAME.test(b.name)||b.name.length>34)continue;
+    if(b.cx<WORLD.x0+12||b.cx>WORLD.x1-12||b.cy<WORLD.y0+8||b.cy>WORLD.y1-8)continue;
+    const g=groups.get(b.name)||{name:b.name,area:0,h:0,best:null};g.area+=b.area;g.h=Math.max(g.h,b.h);if(!g.best||b.area>g.best.area)g.best=b;groups.set(b.name,g);}
+  for(const g of groups.values()){
+    if(g.area<1100&&!(g.h>=120&&g.area>=400))continue;
+    W.labels.push({x:g.best.cx,y:g.best.cy,t:g.name.toUpperCase(),zh:NAME_ZH[g.name]||g.name,min:g.area>=8000?1.8:g.area>=2500?2.6:3.6,pri:g.area,name:g.name});}
+  W.labels.push({x:90,y:62,t:'RMIT UNIVERSITY',zh:'皇家墨尔本理工大学',min:1.8,pri:5000});
+  if(W.landmarks.some(l=>l.kind==='shot'))W.labels.push({x:-86,y:-66,t:"COOP'S SHOT TOWER",zh:'库普制弹塔',min:5,pri:100});
+  W.labels.sort((a,b)=>b.pri-a.pri);
   return W;
 }
 
@@ -157,7 +267,13 @@ function buildGrids(W){
   for(const p of W.plazas)fill(p,CLS.PLAZA);
   for(const l of W.lanes)fill(l,CLS.LANE);
   for(const p of W.parks)fill(p,CLS.LAWN);
-  for(const b of W.buildings)fill(b,b.kind==='heritage'?CLS.HERITAGE:CLS.ROOF,b.albedo,b.h);
+  /* polygon footprints (real buildings): scanline, a cell belongs to the polygon when its centre is inside (even-odd) */
+  const scan=(P,f)=>{const q=rng2(bboxOf(P)),xs=[];
+    for(let j=q.j0;j<=q.j1;j++){const y=WORLD.y1-(j+.5)*CELL;xs.length=0;
+      for(let i=0,k=P.length-1;i<P.length;k=i++){const a=P[i],b=P[k];if((a[1]>y)!==(b[1]>y))xs.push(a[0]+(y-a[1])*(b[0]-a[0])/(b[1]-a[1]));}
+      xs.sort((u,v)=>u-v);
+      for(let m=0;m+1<xs.length;m+=2){const i0=Math.max(q.i0,Math.ceil((xs[m]-WORLD.x0)/CELL-.5)),i1=Math.min(q.i1,Math.floor((xs[m+1]-WORLD.x0)/CELL-.5));for(let i=i0;i<=i1;i++)f(j*NX+i);}}};
+  for(const b of W.buildings){const v=b.kind==='heritage'?CLS.HERITAGE:CLS.ROOF;if(b.pts)scan(b.pts,k=>{cls[k]=v;alb[k]=b.albedo;hgt[k]=b.h;});else fill(b,v,b.albedo,b.h);}
   for(const l of W.landmarks){if(l.kind==='dome')disc(l.x,l.y,l.r,CLS.DOME,.3,l.h);else if(l.kind==='cone')disc(l.x,l.y,l.r,CLS.GLASS,.4,l.h);else disc(l.x,l.y,l.r,CLS.ROOF,.2,l.h);}
   for(const t of W.trees)disc(t.x,t.y,t.r*.9,CLS.TREE);
   /* shadows (sun) and wakes (wind) from extruded footprints */
@@ -168,7 +284,17 @@ function buildGrids(W){
     for(let j=q.j0;j<=q.j1;j++){const y=WORLD.y1-(j+.5)*CELL;for(let i=q.i0;i<=q.i1;i++){const x=WORLD.x0+(i+.5)*CELL;if(own(x,y))continue;if(!inConvex(P,x,y))continue;const k=j*NX+i;if(skipRoof&&(cls[k]===CLS.ROOF||cls[k]===CLS.HERITAGE))continue;into[k]=1;}}
   };
   const oct=(cx,cy,r)=>Array.from({length:8},(_,i)=>[cx+r*Math.cos(i*Math.PI/4),cy+r*Math.sin(i*Math.PI/4)]);
+  /* polygons: sweep the footprint's edge cells along the sun / wind vector (the swept prism = footprint + its edges' sweep) */
+  const bid=new Int32Array(n);let oid=0;
+  const sweep=(cells,id,L,dx,dy,into,skipRoof)=>{const steps=Math.ceil(L/(CELL*.5));
+    for(const k of cells){const i=k%NX,j=(k-i)/NX;
+      if(i>0&&i<NX-1&&j>0&&j<NY-1&&bid[k-1]===id&&bid[k+1]===id&&bid[k-NX]===id&&bid[k+NX]===id)continue;
+      const x=WORLD.x0+(i+.5)*CELL,y=WORLD.y1-(j+.5)*CELL;
+      for(let s=1;s<=steps;s++){const t=s/steps*L,ii=Math.floor((x+dx*t-WORLD.x0)/CELL),jj=Math.floor((WORLD.y1-y-dy*t)/CELL);if(ii<0||jj<0||ii>=NX||jj>=NY)break;
+        const q=jj*NX+ii;if(bid[q]===id)continue;if(skipRoof&&(cls[q]===CLS.ROOF||cls[q]===CLS.HERITAGE))continue;into[q]=1;}}};
   for(const b of W.buildings){
+    if(b.pts){const id=++oid,cells=[];scan(b.pts,k=>{bid[k]=id;cells.push(k);});if(!cells.length)continue;
+      sweep(cells,id,Math.min(b.h*SHD.k,60),SHD.dx,SHD.dy,shade,false);sweep(cells,id,Math.min(b.h*1.3,70),WIND_DIR[0],WIND_DIR[1],wake,true);continue;}
     const pts=[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]],own=(x,y)=>x>=b.x0&&x<=b.x1&&y>=b.y0&&y<=b.y1;
     cast(pts,own,Math.min(b.h*SHD.k,60),SHD.dx,SHD.dy,shade,false);
     cast(pts,own,Math.min(b.h*1.3,70),WIND_DIR[0],WIND_DIR[1],wake,true);
