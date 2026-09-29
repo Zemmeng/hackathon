@@ -141,5 +141,26 @@ if sig is not None:
         badn = [x['site'] for x in sites if x.get('node') is not None and x['node'] not in ns]
         ok(not badn, '匹配到的节点都存在%s' % ('（坏的：%s）' % badn[:5] if badn else ''))
 
+# ---- equipment.json（PRD-2 §6.4）----
+eq, p = load('equipment.json')
+if eq is not None:
+    ok(isinstance(eq.get('version'), int) and os.path.getsize(p) < 2 * 1024 * 1024, 'equipment.json：version 是整数、小于 2 MB')
+    items = eq.get('items', [])
+    ids = [x.get('id') for x in items]
+    ok(items and len(ids) == len(set(ids)), '设备 %d 种，id 唯一' % len(ids))
+    CAT = {'barrier', 'sign', 'vms', 'arrow_board', 'ped_signal'}
+    EFF = {'close', 'route_vehicles', 'route_peds', 'warn', 'message', 'control_crossing'}
+    bad = [x.get('id') for x in items if x.get('category') not in CAT or x.get('effect') not in EFF]
+    ok(not bad, 'category 和 effect 都在约定取值里%s' % ('（坏的：%s）' % bad if bad else ''))
+    bad = [x['id'] for x in items if x.get('category') == 'barrier' and not (x.get('unit_len_m') or 0) > 0]
+    bad += [x['id'] for x in items if x.get('category') == 'vms' and not ((x.get('lines') or 0) > 0 and (x.get('chars_per_line') or 0) > 0)]
+    ok(not bad, '护栏都有 unit_len_m > 0，VMS 都有 lines 和 chars_per_line%s' % ('（坏的：%s）' % bad if bad else ''))
+    bad = [x['id'] for x in items if not (isinstance(x.get('qty'), (int, float)) and x['qty'] >= 0)
+           or not set(x.get('assumed', [])) <= set(x)]
+    ok(not bad, '每项 qty ≥ 0，assumed 里列的字段都存在%s' % ('（坏的：%s）' % bad if bad else ''))
+    have = {x.get('category') for x in items}
+    ok({'barrier', 'sign', 'vms', 'arrow_board', 'ped_signal'} <= have and sum(x.get('category') == 'sign' for x in items) >= 5,
+       '最少清单：护栏、≥ 5 种静态标志、VMS、箭头板、行人临时信号灯都有')
+
 print('%d passed, %d failed' % (P, F))
 sys.exit(1 if F else 0)

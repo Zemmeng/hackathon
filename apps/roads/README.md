@@ -15,6 +15,14 @@ python3 apps/roads/tools/fetch_scats.py --range 2026-08-01..2026-09-27   # SCATS
 python3 apps/roads/tools/build_flows.py                          # → public/cbd/flows.json
 ```
 
+第二期（需求 `PRD-2.md`，@jinmingq 写，在他的分支 `jinmingq/roads/T3-phase2-prd`）：
+
+```bash
+python3 apps/roads/tools/build_equipment.py                      # → public/cbd/equipment.json（清单写在脚本里）
+```
+
+`equipment.json`：16 种设备（护栏 3、静态标志 9、VMS 2、箭头板 1、行人临时信号灯 1）。规格抄自 RPM Hire 官网产品页（每项 `url`，2026-09-29 查）；**`qty`、`day_rate_aud` 全是假设**（官网没有公开价格），列在每项的 `assumed` 里。标志编号只填查实的 T1-1、T2-16，其余 `null`。RPM 官网没有静态标志牌的产品页。
+
 `flows.json` 里每条路段的 `method`：
 
 | method | 怎么算 | 准不准 |
@@ -58,6 +66,7 @@ python3 apps/roads/tools/build_flows.py                          # → public/cb
 | `tools/fetch_osm.py` | 拉 OSM 机动车路网（不简化）和电车轨道到 `raw/` |
 | `tools/build_network.py` | 生成 `network.json` + `signals.json` |
 | `tools/build_flows.py` | 生成 `flows.json`（只用标准库） |
+| `tools/build_equipment.py` | 生成 `equipment.json`（设备清单和来源写在脚本里） |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
 | `raw/` | 原始数据（已 gitignore，不提交） |

@@ -53,6 +53,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T0 | 热身：验证本机环境、hooks、CI 与仓库权限 | ✅ | `louisxie316-dotcom/hello/T0-hello` / PR #3 | 09-27 14:48 |
 | T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | ✅ | `louisxie316-dotcom/roads/T3-network` / PR #9 | 09-29 13:19 |
+| T3 二期 | 行人、公交、设备库存：`equipment.json` / `transit.json` / `walk.json` + `peds.json`（需求见 @jinmingq 的 `PRD-2.md`、issue #11；等 lead 发任务号后改分支名） | 🔨 | `louisxie316-dotcom/roads/T3-phase2` | 09-29 13:53 |
 
 卡住了：
 
