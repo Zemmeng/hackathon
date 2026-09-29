@@ -475,11 +475,11 @@ add_d() { ID_EXTRA=$((ID_EXTRA + 1)); _add_detail "$1"; }
 finish_item() {  # finish_item <编号> <名称> [全绿时的说明]
   local reason
   if [ "$IE_N" -gt 0 ]; then
-    reason="$IE"; [ "$IE_N" -gt 1 ] && reason="$reason（共 $IE_N 处 ❌）"
-    [ "$IW_N" -gt 0 ] && reason="$reason；另有 $IW_N 处 ⚠️"
+    reason="$IE"; [ "$IE_N" -gt 1 ] && reason="${reason}（共 $IE_N 处 ❌）"
+    [ "$IW_N" -gt 0 ] && reason="${reason}；另有 $IW_N 处 ⚠️"
     item "$1" "$2" err "$reason"
   elif [ "$IW_N" -gt 0 ]; then
-    reason="$IW"; [ "$IW_N" -gt 1 ] && reason="$reason（共 $IW_N 处 ⚠️）"
+    reason="$IW"; [ "$IW_N" -gt 1 ] && reason="${reason}（共 $IW_N 处 ⚠️）"
     item "$1" "$2" warn "$reason"
   else
     item "$1" "$2" ok "${3:-}"
@@ -514,7 +514,7 @@ py_item() {  # py_item <编号> <名称> <子命令>
       *) [ "$rc" -ne 0 ] && [ -n "$line" ] && add_d "$line" ;;
     esac
   done <<<"$out"
-  [ "$rc" -ne 0 ] && add_e "检查脚本自身出错（python 退出码 $rc）——这是 check.sh 的 bug，找 lead"
+  [ "$rc" -ne 0 ] && add_e "检查脚本自身出错（python 退出码 ${rc}）——这是 check.sh 的 bug，找 lead"
   finish_item "$1" "$2" "$okmsg"
 }
 
@@ -543,11 +543,11 @@ run_e2e() {
   fetch() {  # fetch <路径> <输出文件> → 设置 code rc
     code=$(curl -sS -m 3 -o "$2" -w '%{http_code}' "$url$1" 2>"$tmp/err"); rc=$?
   }
-  why_curl() { [ "$rc" = 28 ] && echo "超过 3 秒没返回" || echo "请求失败（curl 退出码 $rc：$(head -n 1 "$tmp/err")）"; }
+  why_curl() { [ "$rc" = 28 ] && echo "超过 3 秒没返回" || echo "请求失败（curl 退出码 ${rc}：$(head -n 1 "$tmp/err")）"; }
 
   fetch "/" "$tmp/index.html"
   if [ "$rc" -ne 0 ]; then item E1 "首页 GET /" err "$(why_curl)"
-  elif [ "$code" != 200 ]; then item E1 "首页 GET /" err "HTTP $code（要 200）"
+  elif [ "$code" != 200 ]; then item E1 "首页 GET /" err "HTTP ${code}（要 200）"
   elif ! grep -q 'data-smoke' "$tmp/index.html"; then item E1 "首页 GET /" err "200，但页面里没有 data-smoke 标记（部署的不是这个站？）"; got_index=1
   else item E1 "首页 GET /" ok "200，含 data-smoke"; got_index=1
   fi
@@ -556,7 +556,7 @@ run_e2e() {
   body=$(head -c 160 "$tmp/health" 2>/dev/null | tr -d '\r\n')
   if [ "$rc" -ne 0 ]; then item E2 "健康检查 GET /api/health" err "$(why_curl)"
   elif grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$tmp/health"; then item E2 "健康检查 GET /api/health" ok "$body"
-  else item E2 "健康检查 GET /api/health" err "HTTP $code，响应里没有 \"ok\":true（开头：${body:-空}）"
+  else item E2 "健康检查 GET /api/health" err "HTTP ${code}，响应里没有 \"ok\":true（开头：${body:-空}）"
   fi
 
   if [ "$got_index" -eq 1 ]; then
@@ -578,7 +578,7 @@ run_e2e() {
 run_selftest() {
   local T="$WORK/selftest" i=0 total=8 out rc
   mkdir -p "$T"
-  say "🧪 check.sh --selftest（临时目录 $T，结束后删除）"
+  say "🧪 check.sh --selftest（临时目录 ${T}，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
              -c core.hooksPath=/dev/null -c init.defaultBranch=main "$@"; }
   mkrepo() {  # mkrepo <目录>：main 上一个干净、全绿的最小仓库
@@ -603,7 +603,7 @@ run_selftest() {
     local ok=0 why=""
     if ! printf '%s\n' "$out" | grep -q '^======== 汇总 '; then why="输出里没有汇总行"
     elif [ "$2" = green ]; then
-      [ "$rc" -eq 0 ] && ok=1 || why="应该无 ❌，实际退出码 $rc：$(printf '%s\n' "$out" | grep -E '^\[[0-9]\] .*❌' | head -n 1)"
+      [ "$rc" -eq 0 ] && ok=1 || why="应该无 ❌，实际退出码 ${rc}：$(printf '%s\n' "$out" | grep -E '^\[[0-9]\] .*❌' | head -n 1)"
     else
       if [ "$rc" -eq 1 ] && printf '%s\n' "$out" | sed -n '/^======== 汇总/,$p' | grep -qF "$2"; then ok=1
       else why="应该在汇总节里看到「$2」，实际退出码 $rc"; fi
@@ -705,7 +705,7 @@ CHANGED_FILE="$WORK/changed.txt"
 } 2>/dev/null | sed '/^$/d' | sort -u >"$CHANGED_FILE"
 N_CHANGED=$(wc -l <"$CHANGED_FILE" | tr -d ' ')
 
-if [ -n "$MB" ]; then BASE_SHOW="$BASE"; else BASE_SHOW="无（$BASE_NOTE）"; fi
+if [ -n "$MB" ]; then BASE_SHOW="$BASE"; else BASE_SHOW="无（${BASE_NOTE}）"; fi
 say "🔍 check.sh（$([ "$MODE" = quick ] && echo 快速 --quick || echo 全量)）· $(basename "$ROOT") · 分支 ${BRANCH_NAME:-（detached）} · base $BASE_SHOW · 改动 $N_CHANGED 个文件 · $(date '+%Y-%m-%d %H:%M')"
 
 # =====================================================================
@@ -731,7 +731,7 @@ check_1() {
     while IFS= read -r f; do [ -n "$f" ] && add_d "$f"; done <<<"$out"
     finish_item 1 "秘密扫描"
   else
-    add_e "secret-scan.sh 自身出错（退出码 $rc）"; finish_item 1 "秘密扫描"
+    add_e "secret-scan.sh 自身出错（退出码 ${rc}）"; finish_item 1 "秘密扫描"
   fi
 }
 
@@ -773,7 +773,7 @@ check_3() {
         else add_e "在 $BRANCH_NAME 上有 $N_CHANGED 个改动：先开分支 git switch -c <handle>/<模块>/T<n>-<slug>（lead 用 lead/<slug>）"; fi
         while IFS= read -r f; do add_d "$f"; done <"$CHANGED_FILE"
       fi
-      [ -z "$MB" ] && add_w "没有 base（$BASE_NOTE），只看了工作区改动"
+      [ -z "$MB" ] && add_w "没有 base（${BASE_NOTE}），只看了工作区改动"
       finish_item 3 "$name" "在 $BRANCH_NAME 上，没有改动"; return ;;
     lead/*)
       # 只提醒不拦：CI 里 GITHUB_ACTOR 可能是机器人，拦了会误伤
@@ -781,9 +781,9 @@ check_3() {
       if [ -z "$lead" ]; then add_w "hackathon.conf 的 LEAD 为空，核不了 lead/* 分支的身份"
       elif [ -z "$me" ]; then add_w "lead/* 只给 lead 用：认不出你是谁（git config hack.me 为空），LEAD=@$lead"
       elif [ "$(lower "$me")" != "$(lower "$lead")" ] && { [ -z "$backup" ] || [ "$(lower "$me")" != "$(lower "$backup")" ]; }; then
-        add_w "lead/* 只给 lead 用：你是 @$me，LEAD=@$lead${backup:+，BACKUP_LEAD=@$backup}（队员请用 <handle>/<模块>/T<n>-<slug>）"
+        add_w "lead/* 只给 lead 用：你是 @${me}，LEAD=@$lead${backup:+，BACKUP_LEAD=@$backup}（队员请用 <handle>/<模块>/T<n>-<slug>）"
       fi
-      finish_item 3 "$name" "$BRANCH_NAME 是 lead 分支（@$me），全仓库可写"; return ;;
+      finish_item 3 "$name" "$BRANCH_NAME 是 lead 分支（@${me}），全仓库可写"; return ;;
   esac
   if [[ ! "$BRANCH_NAME" =~ $re ]]; then
     example="git branch -m ${me:-<handle>}/<模块>/T<n>-<slug>（例：git branch -m ${me:-alice}/web/T3-login）"
@@ -797,7 +797,7 @@ check_3() {
     finish_item 3 "$name"; return
   fi
   handle="${BASH_REMATCH[1]}"; mod="${BASH_REMATCH[2]}"
-  [ -z "$MB" ] && add_w "没有 base（$BASE_NOTE），只检查了工作区改动"
+  [ -z "$MB" ] && add_w "没有 base（${BASE_NOTE}），只检查了工作区改动"
   ref="${MB:-HEAD}"; ref_short=$(g rev-parse --short "$ref" 2>/dev/null || echo "$ref")
   while IFS= read -r f; do
     [ -n "$f" ] || continue
@@ -811,10 +811,10 @@ check_3() {
         # 交接单只新建自己的：文件名 -T 之前的前缀必须是本分支的 handle（不区分大小写）
         prefix=$(basename "$f" | sed -E 's/-T[0-9]+-.*$//')
         if g cat-file -e "$ref:$f" 2>/dev/null; then
-          if [ ! -e "$f" ]; then add_e "删了交接单 $f（交接单只由 lead git mv 到 handoff/done/）"
-          elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then add_e "改了别人的交接单 $f（交接单只新建，不改旧单）"; fi
+          if [ ! -e "$f" ]; then add_e "删了交接单 ${f}（交接单只由 lead git mv 到 handoff/done/）"
+          elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then add_e "改了别人的交接单 ${f}（交接单只新建，不改旧单）"; fi
         elif [ "$(lower "$prefix")" != "$(lower "$handle")" ]; then
-          add_e "新建的交接单 $f 前缀是「$prefix」，不是本分支的 handle「$handle」（命名 $handle-T<n>-<MMDD-HHMM>.md；替别人写的内容放自己那张单里）"
+          add_e "新建的交接单 $f 前缀是「${prefix}」，不是本分支的 handle「${handle}」（命名 $handle-T<n>-<MMDD-HHMM>.md；替别人写的内容放自己那张单里）"
         fi ;;
       docs/4-demo.md|docs/pitch-assets/*)
         [ "$mod" = pitch ] || { out_n=$((out_n + 1)); out_list="$out_list$f"$'\n'; } ;;
@@ -829,7 +829,7 @@ check_3() {
     fi
     while IFS= read -r f; do [ -n "$f" ] && add_d "越界：$f"; done <<<"$out_list"
   fi
-  finish_item 3 "$name" "$BRANCH_NAME → 模块 $mod，$N_CHANGED 个改动都在范围内"
+  finish_item 3 "$name" "$BRANCH_NAME → 模块 ${mod}，$N_CHANGED 个改动都在范围内"
 }
 
 # =====================================================================
@@ -865,7 +865,7 @@ run_test() {  # run_test <path/test.sh> → 设置 T_OK T_LAST T_WHY T_P T_LOG T
   local t="$1" log pid ticks=0 limit rc timed_out=0 f
   log="logs/test-$(printf '%s' "${t%/test.sh}" | tr '/' '-').txt"
   mkdir -p logs 2>/dev/null
-  progress "运行 $t（限时 ${TEST_TIMEOUT}s）"
+  progress "运行 ${t}（限时 ${TEST_TIMEOUT}s）"
   set -m   # 让 test.sh 自成一个进程组：超时 / 被信号打断时整组杀掉，连它起的 node、后台进程一起
   MOCK="${MOCK:-1}" bash "$t" >"$log" 2>&1 </dev/null &
   pid=$!
@@ -892,7 +892,7 @@ run_test() {  # run_test <path/test.sh> → 设置 T_OK T_LAST T_WHY T_P T_LOG T
   T_LAST=$(sed '/^[[:space:]]*$/d' "$log" | tail -n 1 | tr -d '\r' | cut -c 1-300)
   T_OK=0; T_P=0; T_WHY=""
   if [ "$timed_out" -eq 1 ]; then T_WHY="超时（>${TEST_TIMEOUT}s，已杀掉整个进程组）"
-  elif ! printf '%s\n' "$T_LAST" | grep -Eq '[0-9]+ passed, [0-9]+ failed'; then T_WHY="最后一行没有「N passed, M failed」（退出码 $rc，多半是崩了）"
+  elif ! printf '%s\n' "$T_LAST" | grep -Eq '[0-9]+ passed, [0-9]+ failed'; then T_WHY="最后一行没有「N passed, M failed」（退出码 ${rc}，多半是崩了）"
   else
     T_P=$(printf '%s\n' "$T_LAST" | grep -oE '[0-9]+ passed' | head -n 1 | grep -oE '[0-9]+')
     f=$(printf '%s\n' "$T_LAST" | grep -oE '[0-9]+ failed' | head -n 1 | grep -oE '[0-9]+')
