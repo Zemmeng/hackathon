@@ -566,7 +566,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .pd-facts small{color:#6C7B85;font-size:10.5px}
 .pd-reason{margin:10px 0 0;padding:9px 13px;border-left:3px solid #08977F;background:#F3F6F7;border-radius:0 6px 6px 0}
 .pd-reason span{display:block;font:600 9.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85;margin-bottom:4px}
+.pd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .pd-t{width:100%;border-collapse:collapse;font-size:12px}
+.pd-t th small{display:block;margin-top:2px;font-weight:400;letter-spacing:0;text-transform:none;color:#8A99A3}
 .pd-t th{text-align:left;font:600 9.5px/1.25 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:#6C7B85;padding:6px 8px;border-bottom:1px solid #AAB7BF}
 .pd-t td{padding:7px 8px;border-bottom:1px solid #E3E8EB;vertical-align:top}
 .pd-t .n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}

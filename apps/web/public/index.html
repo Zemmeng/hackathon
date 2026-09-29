@@ -576,7 +576,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .pd-facts small{color:#6C7B85;font-size:10.5px}
 .pd-reason{margin:10px 0 0;padding:9px 13px;border-left:3px solid #08977F;background:#F3F6F7;border-radius:0 6px 6px 0}
 .pd-reason span{display:block;font:600 9.5px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:#6C7B85;margin-bottom:4px}
+.pd-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .pd-t{width:100%;border-collapse:collapse;font-size:12px}
+.pd-t th small{display:block;margin-top:2px;font-weight:400;letter-spacing:0;text-transform:none;color:#8A99A3}
 .pd-t th{text-align:left;font:600 9.5px/1.25 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:#6C7B85;padding:6px 8px;border-bottom:1px solid #AAB7BF}
 .pd-t td{padding:7px 8px;border-bottom:1px solid #E3E8EB;vertical-align:top}
 .pd-t .n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -2923,8 +2925,8 @@ function cmpDocHTML(d,x,h){
 <p class="pd-sub">${esc(d.id||'')} · ${esc(d.where)}</p>
 <div class="pd-facts">${facts.map(([k,v,n])=>`<div><span>${esc(k)}</span><b>${v}</b>${n?`<small>${n}</small>`:''}</div>`).join('')}</div>
 ${d.reason?`<blockquote class="pd-reason"><span>${esc(lb.reason)}</span>${esc(d.reason)}</blockquote>`:''}
-${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(L('Car delay · veh·min','车延误 · 车·分钟'))}</th><th class="n">${esc(L('Tram & bus · rider·min','电车公交 · 人·分钟'))}</th><th class="n">${esc(L('On foot · ped·min','行人 · 人·分钟'))}</th><th class="n">${esc(L('Hire','租金'))}</th></tr></thead><tbody>${opts}</tbody></table><p class="pd-note">${esc(L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
-<section><h2>${esc(lb.quote)}</h2><table class="pd-t"><thead><tr><th>${esc(c.item)}</th><th class="n">${esc(c.qty)}</th><th class="n">${esc(c.rate)}</th><th class="n">${esc(c.days)}</th><th class="n">${esc(c.cost)}</th></tr></thead><tbody>${eq}</tbody><tfoot><tr><td colspan="4">${esc(lb.total)}</td><td class="n">${d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud)}</td></tr></tfoot></table><p class="pd-note">${esc(d.quote.note)}</p></section>
+${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(L('Car delay','车延误'))}<small>${esc(L('veh·min','车·分钟'))}</small></th><th class="n">${esc(L('Tram & bus','电车公交'))}<small>${esc(L('rider·min','人·分钟'))}</small></th><th class="n">${esc(L('On foot','行人'))}<small>${esc(L('ped·min','人·分钟'))}</small></th><th class="n">${esc(L('Hire','租金'))}<small>${esc(L('works period','整个工期'))}</small></th></tr></thead><tbody>${opts}</tbody></table></div><p class="pd-note">${esc(L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
+<section><h2>${esc(lb.quote)}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(c.item)}</th><th class="n">${esc(c.qty)}</th><th class="n">${esc(c.rate)}</th><th class="n">${esc(c.days)}</th><th class="n">${esc(c.cost)}</th></tr></thead><tbody>${eq}</tbody><tfoot><tr><td colspan="4">${esc(lb.total)}</td><td class="n">${d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud)}</td></tr></tfoot></table></div><p class="pd-note">${esc(d.quote.note)}</p></section>
 <section><h2>${esc(lb.vms)}</h2>${vms||`<p class="pd-note">${esc(lb.none)}</p>`}</section>
 ${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></section>`:''}
 <section class="pd-two"><div><h2>${esc(lb.checks)}</h2><ul class="pd-list pd-checks">${checks}</ul></div><div><h2>${esc(lb.notify)}</h2><table class="pd-t pd-notify"><tbody>${notify}</tbody></table></div></section>
