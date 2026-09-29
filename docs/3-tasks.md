@@ -92,6 +92,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
+| T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 | T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）。17:00 档已合 #22；21:00 档已合 #26（workerd 跑通、`checkSigns()`、演示文案清单）；现在：接住 #20 引擎的请求（箭头板、长读屏秒数、路名字符）。剩真调大模型，等 lead 定用哪家 | 🔨 | `jinmingq/api/T5-engine-compat` | 09-29 14:40 |
 
 卡住了：
