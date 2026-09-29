@@ -21,7 +21,7 @@ const result = engine.evaluate(plan);
 
 ## 怎么测
 
-`bash apps/engine/test.sh`（2026-09-29 15:25 实跑：104 passed, 0 failed）。
+`bash apps/engine/test.sh`（2026-09-29 15:35 实跑：108 passed, 0 failed）。
 
 | 文件 | 测什么 |
 |---|---|
@@ -50,7 +50,7 @@ const result = engine.evaluate(plan);
 | `anchors.generic_warning_divert` | 两点校准低点：只写 ROADWORK / AHEAD 时全体车辆的绕行比例 | 两个都要合格（0–1、低 < 高），否则都用 3% / 20% |
 | `anchors.named_route_divert` | 两点校准高点：写 USE / RUSSELL ST 时的绕行比例 | 同上 |
 | `persona.<类型>.hurry` | 赶不赶时间，乘在每分钟的效用上（平均 ≈ 1，0.05–5） | 这一项用假设值 |
-| `persona.<类型>.familiar` | 熟不熟路：会不会自己想到这条绕行（0.01–1，进 `ln()`） | 同上 |
+| `persona.<类型>.familiar`（或 `route_familiarity`，T12 #31 的叫法） | 熟不熟路：知道 / 会自己想到这条绕行的比例（0.01–1，进 `ln()`）；两个都给用 `familiar` | 同上 |
 | `persona.<类型>.trust` | 信不信屏：乘在读数的 `trust` 上的**相对倍数**（平均的人 = 1，0–3） | 同上 |
 | `persona.<类型>.sign_trust` | 照屏上说的走的比例（0–1）。没给 `trust` 的类型用它换算：`sign_trust ÷ 按占比加权的平均`；要 4 类都有才换算 | 报一条错，trust 用假设值 |
 | `persona.<类型>.queue_averse` | 怕不怕堵：乘在「看到的排队」上（0–5） | 这一项用假设值 |
@@ -92,6 +92,7 @@ const result = engine.evaluate(plan);
 
 - 每类人参数、占比 `MIX`、两点校准的 3% / 20% 在 T12 的 `params.json` 到之前是假设值［待核］；`BETA`、「看到排队 1 公里 ≈ 多堵 4 分钟」是工程假设，不在 params.json 里
 - T3 的车流有些路段本身就超过通行能力（如 Flinders Street 2526 / 1800）：引擎只算比没施工多出来的，但绝对数会偏大
+- 绕行路线不走 CBD 小巷（OSM `living_street` / `service` 等，见 `routes.js` 的 `NO_DETOUR`）：T3 给 Heffernan Lane 这类小巷的通行能力是 1620 veh/h，比主路单车道还高，不排除的话屏上会点名一条巷子
 - BPR + 确定性排队，没有排队回溢到上游路口；路线按自由流定，不随拥堵重新找路；只改道施工第一段上的车
 - 只模拟开车的人（每车 1 人）：电车公交乘客、行人、骑车、轮椅还没做
 - 冲突 / 顾问的时间窗最多 31 天、每天只采样 1–2 个小时

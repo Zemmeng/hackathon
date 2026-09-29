@@ -7,6 +7,7 @@
 //   mix.<类型>                    4 类人占比，4 个都要有、各在 0–1、加起来 1 ± 0.02（会归一），否则整组用假设值
 //   anchors.generic_warning_divert 只写「前方施工」的绕行比例 → 两点校准低点；named_route_divert 写推荐路线 → 高点。两个都要有、0–1 之间、低 < 高
 //   persona.<类型>.hurry | familiar | trust | queue_averse | truck_only   直接对应 choice.js 的 PERSONAS，逐项回退
+//   persona.<类型>.route_familiarity（T12 #31 的叫法，知道替代路线的比例 0–1）= familiar 的别名，familiar 没给时用它
 //   persona.<类型>.sign_trust     照屏上说的走的比例（0–1）。某类人没给 trust、而 4 类都有 sign_trust 时，
 //                                 换算成相对倍数 sign_trust ÷（按占比加权的平均），平均的人 = 1（绝对高低由两点校准的推荐力度 B 吸收）
 // 每个数可以写成 { value: 数 } 或直接写数；value 是 null（没找到）就当没给。
@@ -79,8 +80,9 @@ export function applyParams(json) {
       const src = own(P, t) ? P[t] : null;
       if (!src || typeof src !== 'object') continue;
       for (const [k, range] of Object.entries(PERSONA_KEYS)) {
-        if (!own(src, k)) continue;
-        const v = numOf(src[k]);
+        const key = !own(src, k) && k === 'familiar' && own(src, 'route_familiarity') ? 'route_familiarity' : k;
+        if (!own(src, key)) continue;
+        const v = numOf(src[key]);
         if (v == null) continue; // null = 没找到，不算错
         if (!inRange(v, range)) { used.errors.push(`persona.${t}.${k} = ${v} 超出 ${range[0]}–${range[1]}`); continue; }
         out.personas[t][k] = v;

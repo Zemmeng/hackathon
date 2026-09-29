@@ -49,6 +49,8 @@ await t('applyParams：不合格的整组 / 单项回退并报错', async () => 
   const zero = applyParams({ persona: { local: { familiar: 0, hurry: -1, trust: 1.5 } } });
   ok(zero.personas.local.familiar === PERSONAS.local.familiar && zero.personas.local.hurry === PERSONAS.local.hurry && zero.personas.local.trust === 1.5 && zero.used.errors.length === 2, 'familiar = 0（进 ln 会炸）、hurry < 0 → 这两项回退，trust 照用');
   ok(applyParams({ persona: { delivery: { truck_only: { value: false } } } }).personas.delivery.truck_only === false, 'truck_only 布尔值照用');
+  const rf = applyParams({ persona: { tourist: { route_familiarity: v(0.25) }, local: { familiar: 0.9, route_familiarity: 0.7 } } });
+  ok(rf.personas.tourist.familiar === 0.25 && rf.used.persona.tourist.familiar === 'params' && rf.personas.local.familiar === 0.9, 'route_familiarity（T12 的叫法）= familiar；两个都给时用 familiar');
   ok(applyParams({ persona: { delivery: { truck_only: 'yes' } } }).personas.delivery.truck_only === true, 'truck_only 不是布尔 → 假设值');
 });
 

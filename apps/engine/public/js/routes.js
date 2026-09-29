@@ -13,6 +13,14 @@ export const DOWN_M = 300;
 const MAX_WALK = 80; // 按段数的保险：走不完就停
 export const MAX_ALTS = 3;
 export const MAX_RATIO = 3; // 比原路平时慢 3 倍以上的绕行不算
+// 绕行不走的路（OSM highway）：CBD 小巷（Heffernan Lane 这类 living_street，步行优先、T3 给的通行能力偏高）等。
+// 原路本来就经过的照算；只是不会被当成绕行路线，屏也就不会点名一条巷子
+export const NO_DETOUR = new Set(['living_street', 'pedestrian', 'service', 'track', 'footway', 'cycleway', 'path']);
+const noDetourCache = new WeakMap();
+function noDetourLinks(net) {
+  if (!noDetourCache.has(net)) noDetourCache.set(net, new Set([...net.links.values()].filter(l => NO_DETOUR.has(l.highway)).map(l => l.id)));
+  return noDetourCache.get(net);
+}
 
 // 同一条街：路名相同（没路名的只和没路名的接），朝向几乎不变
 const same = (a, b) => (a.name ?? null) === (b.name ?? null);
@@ -63,7 +71,7 @@ export function affected(net, flows, ws, when, factors = new Map()) {
     const origin = (up[0] || entry).from;
     const dest = (down[down.length - 1] || chain[chain.length - 1]).to;
     const street = entry.name || 'Unnamed road';
-    const banned = new Set([...closedAll, ...(ws.links || [])]);
+    const banned = new Set([...closedAll, ...(ws.links || []), ...noDetourLinks(net)]);
     const prefixNodes = [origin, ...up.map(l => l.to)]; // 施工前可以拐出去的路口，最后一个 = 施工起点
     const prefixSet = new Set(prefixNodes);
     const stayT = pathTime(net, stayLinks);
