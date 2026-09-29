@@ -1,10 +1,35 @@
 // worksite.js —— 施工方案：什么时候生效、把哪些路段的通行能力降多少、挪日期。纯函数。
 // 施工方案的格式见 docs/contract.md「施工方案」：
-//   { id, name?, links: [路段 id，按行车方向], closes: { lanes }, time: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', hours: [开始, 结束) },
+//   { id, name?, links: [路段 id，按行车方向], closes: { lanes, footpath? }, time: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', hours: [开始, 结束) },
 //     equipment: [{ id, type: 'vms'|'sign'|'arrow'|'barrier', at_m: 离施工起点多少米, dir?, frames?, text?, char_mm? }] }
 // when = { date: 'YYYY-MM-DD', hour: 0–23, day?: 'wd'|'we' }（day 不给就按日期算周几）
 
 export const WZ_FRICTION = 0.9; // 施工区旁边的车道也会变慢：剩下车道的通行能力再打 9 折（工程假设）
+
+// closes.footpath（T17，可选）：封哪一侧人行道，相对施工路段的行车方向，和 walk.json 的 side 同口径（靠左行驶，left = 挨着被封车道那边的路缘）。
+// 不写 / null / 'none' = 人行道不封；别的值 validateWorksite 报错
+export const FOOTPATH_SIDES = ['left', 'right', 'both'];
+export function footpathOf(ws) {
+  const f = ws?.closes?.footpath;
+  return FOOTPATH_SIDES.includes(f) ? f : 'none';
+}
+
+// 施工方案校验 → 错误列表（空 = 合格）。只挡引擎一定会算错的写法，其余字段照旧宽松
+export function validateWorksite(ws) {
+  const errs = [];
+  const who = `施工 ${ws?.id ?? '?'}`;
+  if (!ws || typeof ws !== 'object' || Array.isArray(ws)) return ['施工方案要是一个对象'];
+  if (!Array.isArray(ws.links)) errs.push(`${who}：links 要是路段 id 的数组`);
+  if (ws.closes != null && (typeof ws.closes !== 'object' || Array.isArray(ws.closes))) errs.push(`${who}：closes 要是对象`);
+  const f = ws.closes?.footpath;
+  if (f != null && f !== 'none' && !FOOTPATH_SIDES.includes(f)) errs.push(`${who}：closes.footpath = ${JSON.stringify(f)}，只能是 ${FOOTPATH_SIDES.join(' / ')}（不写 = 人行道不封）`);
+  return errs;
+}
+export function validatePlan(plan) {
+  if (!plan || typeof plan !== 'object') return ['方案要是 { when, worksites } 对象'];
+  if (!Array.isArray(plan.worksites)) return ['方案的 worksites 要是数组'];
+  return plan.worksites.flatMap(validateWorksite);
+}
 
 const dayNum = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
 const fmt = n => new Date(n * 86400000).toISOString().slice(0, 10);
