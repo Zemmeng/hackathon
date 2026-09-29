@@ -5,7 +5,15 @@ Owner: @louisxie316-dotcom
 
 ## 怎么跑
 
-（T3 完成后补：一条命令从原始数据重新生成 `public/cbd/` 下的三个文件）
+第一次：`python3 -m venv apps/roads/.venv && apps/roads/.venv/bin/pip install -r apps/roads/requirements.txt`（`.venv/` 已 gitignore）
+
+```bash
+python3 apps/roads/tools/fetch_scats.py --sites                  # 站点表 → raw/
+apps/roads/.venv/bin/python apps/roads/tools/fetch_osm.py        # OSM 路网 + 电车轨道 → raw/（约 30 秒）
+apps/roads/.venv/bin/python apps/roads/tools/build_network.py    # → public/cbd/network.json、signals.json（约 2 秒）
+```
+
+换街区：三条都加同一个 `--bbox 南,西,北,东`，`build_network.py` 再加 `--area <名>`。
 
 - 先看数据长什么样：`python3 apps/roads/tools/fetch_scats.py --day 2026-09-22`（远程只抽一天 CBD 的 SCATS 数据，约 4.6 MB，存到 `apps/roads/raw/`）
 - 站点表：`python3 apps/roads/tools/fetch_scats.py --sites`
@@ -30,6 +38,9 @@ Owner: @louisxie316-dotcom
 | `PRD.md` | T3 的需求说明 |
 | `public/cbd/` | 生成的 `network.json`、`flows.json`、`signals.json` |
 | `tools/fetch_scats.py` | 远程抽 SCATS 一天 / 站点表 / 单个路口配置表 |
+| `tools/fetch_osm.py` | 拉 OSM 机动车路网（不简化）和电车轨道到 `raw/` |
+| `tools/build_network.py` | 生成 `network.json` + `signals.json` |
+| `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
 | `raw/` | 原始数据（已 gitignore，不提交） |
 
@@ -39,6 +50,14 @@ Owner: @louisxie316-dotcom
 - 路段 id 从 OSM id 派生，重跑时保持稳定
 - 目录别叫 `data/`（仓库 `.gitignore` 忽略所有 `data/`）
 
+- OSMnx 2.x 的 bbox 是 `(西, 南, 东, 北)`，本仓库 `--bbox` 是 `南,西,北,东`，脚本里转换
+- OSMnx 默认把 Overpass 缓存写到**当前目录**的 `cache/`，在仓库根跑会越界（`check [3]` ❌）→ `fetch_osm.py` 已固定到 `raw/osm_cache/`
+- 车道、自行车道在**不简化**的图上逐段算好再简化（简化后标签会混成列表）；澳洲靠左，双向路正向看 `cycleway:left`、反向看 `cycleway:right`
+
 ## 已知问题
 
-（T3 进行中补）
+- 只保留最大强连通块：CBD 默认 bbox 简化后 904 个节点，裁掉 99 个 bbox 边上开不出去的（09-29 13:50）
+- `speed_kmh` 是路段内多个限速按时间加权的等效速度（`len_m / t0_s`），不一定是整数
+- 路段车道数取沿途最小值（瓶颈）；约 190 条路段没有街名（多是转弯匝道）
+- 151 个信号灯站点里 27 个在 30 米内没有节点（17 个行人灯 POS、5 个闪黄灯、5 个路口 INT），`node` 为 `null`
+- `flows.json` 还没做（下一步 `tools/build_flows.py`）
