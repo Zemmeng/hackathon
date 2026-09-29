@@ -9,9 +9,9 @@
 
 每条路段的车流怎么来（写进 method）：
   detector_map   站点在 DETECTOR_MAP 里、进口方向对得上：直接用那几个检测器的和（依据配置表，最准）
-  site_split     路段终点是有 SCATS 数据的路口：车道数 ×「这个路口有效检测器的平均每小时流量」
-                 （信号灯检测器基本一条车道一个，所以「每检测器平均」≈「每车道平均」；日均 < MIN_DAILY 的检测器
-                  当作行人按钮 / 坏掉的，不算）
+  site_split     路段终点是有 SCATS 数据的路口：车道数 ×「这个路口车道检测器的平均每小时流量」
+                 （信号灯检测器基本一条车道一个，所以「每检测器平均」≈「每车道平均」；车道检测器 = 日流量
+                  ≥ 路口最大检测器 LANE_SHARE 且 ≥ MIN_DAILY，见 per_lane_profile）
   street_interp  同一条街上下游相邻路段的平均，沿街一路传过去
   class_default  同道路等级、已测路段的「每车道流量」中位数 × 车道数
 """
@@ -20,6 +20,7 @@ import argparse, csv, datetime, glob, json, math, os, statistics, sys
 MOD = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOLIDAYS = {'2026-09-25'}   # 维州公众假期（AFL 总决赛前一天）
 MIN_DAILY = 300            # 检测器工作日日均低于这个数不算有效（行人按钮、坏检测器）
+LANE_SHARE = 0.5           # 日流量 ≥ 路口最大检测器的这个比例才当「车道检测器」
 INTERP_ROUNDS = 30         # 沿街插值最多传多少段
 # 站点 → {进口车流朝向: [检测器号]}；依据配置表第 2 页平面图（2921 的核对见 apps/sim/tools/build_demand.py 的 DET）
 DETECTOR_MAP = {'2921': {'E': [7], 'W': [5], 'S': [3]}}
@@ -75,8 +76,12 @@ def fill(arr):
 
 
 def per_lane_profile(dets):
-    """有效检测器的每小时平均 → {'wd': [24], 'we': [24]}；没有有效检测器返回 None。"""
-    active = [d for d in dets.values() if sum(x or 0 for x in d['wd']) >= MIN_DAILY]
+    """「像车道」的检测器的每小时平均 → {'wd': [24], 'we': [24]}；没有就返回 None。
+    只算日流量 ≥ 路口最大检测器 LANE_SHARE 的：电车、行人按钮、多数自行车检测器流量小，平均进去会把每车道流量拉低一半
+    （2921：全部有效检测器平均约 3.3k / 天，车道检测器 5、7 号是 6.0–7.0k；按 50% 取约 6.2k）。"""
+    daily = {k: sum(x or 0 for x in d['wd']) for k, d in dets.items()}
+    top = max(daily.values(), default=0)
+    active = [d for k, d in dets.items() if daily[k] >= max(MIN_DAILY, LANE_SHARE * top)]
     if not active:
         return None
     return {k: [statistics.mean(fill(d[k])[h] for d in active) for h in range(24)] for k in ('wd', 'we')}
@@ -175,8 +180,9 @@ def main():
         'period': '%s..%s（去掉缺数的天和公众假期 %s）' % (a.d_from, a.d_to, ', '.join(sorted(HOLIDAYS))),
         'days_used': {k: len(v) for k, v in days.items()},
         'sources': ['Traffic Signal Volume Data, DTP Victoria (CC BY 4.0)'],
-        'assumptions': {'min_daily_active_detector': MIN_DAILY, 'detector_map_sites': sorted(DETECTOR_MAP),
-                        'site_split': 'lanes × 路口有效检测器的平均每小时流量'},
+        'assumptions': {'min_daily_active_detector': MIN_DAILY, 'lane_detector_share_of_site_max': LANE_SHARE,
+                        'detector_map_sites': sorted(DETECTOR_MAP),
+                        'site_split': 'lanes × 路口车道检测器（日流量 ≥ 最大检测器 50%）的平均每小时流量'},
         'days': {k: {lid: [round(x) for x in flows[k][lid]] for lid in links} for k in ('wd', 'we')},
         'method': {lid: method[lid] for lid in links},
         'coverage': {'links': len(links), 'measured': n_meas, 'estimated': len(links) - n_meas},
