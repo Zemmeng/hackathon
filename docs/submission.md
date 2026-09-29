@@ -78,7 +78,7 @@ The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits
   - `.github/` (CI check, manual-only deploy workflow, CODEOWNERS, PR template)
 - **AI assistant configuration:** `.claude/` (settings, 3 hooks, 6 slash commands, 2 agent definitions, launch.json).
 - **Onboarding check:** one teammate's T0 test PR (#3, 09:12), which only touched the task board and a handoff note.
-- **`starters/`:** two generic skeletons (a Cloudflare Worker + Durable Object room demo, and a Python CLI; 22 files). On 09-29 the team decided to remove them from the repository (D-0929-1311). No product feature was built from them. Two **test-tooling** files in `apps/api` do come from the web-worker skeleton; they were copied in during the event (commit `fd6018c`, 2026-09-29 15:02):
+- **`starters/`:** two generic skeletons (a Cloudflare Worker + Durable Object room demo, and a Python CLI; 22 files). On 09-29 the team decided to remove them (D-0929-1311); they were removed from the repository in PR #65 on 2026-09-30. No product feature was built from them. Two **test-tooling** files in `apps/api` do come from the web-worker skeleton; they were copied in during the event (commit `fd6018c`, 2026-09-29 15:02):
   - `apps/api/tests/mini.mjs`, a 51-line assertion helper for the tests, is an unchanged copy of `starters/web-worker/tests/mini.mjs`;
   - `apps/api/test.sh`, the script that runs those tests, is adapted from `starters/web-worker/test.sh` (44 of its 45 lines are the same).
 
@@ -102,7 +102,7 @@ Checked 2026-09-29 ~22:05:
 ## 中文备注（给队员）
 
 - 这份是提交物里「第三方清单 + 赛前准备说明」那一项（`1-brief.md` 规则 5、6）。英文部分只写已经成立的事实，待办全在这一节。
-- 仓库现在还是 **PRIVATE**（22:05 查）。
+- 仓库 09-30 01:30 由 lead 转为 **PUBLIC**（转之前 `secret-scan.sh --history` 扫过全部历史）。
 
 **🟡 待拍板**
 
@@ -112,7 +112,7 @@ Checked 2026-09-29 ~22:05:
 
 **🟡 待办**
 
-1. 删 `starters/`（D-0929-1311 还没执行，22:05 仍在 main）。删完把第 3 节 starters 那条改成过去式（「were removed in PR #xx」）。
+1. ✅ 删 `starters/`：PR #65（09-30 01:25），第 3 节已改成过去式。
 2. LICENSE 里还是 `<队名 / Team Name>`，填队名。
 3. `apps/roads/README.md` 加一行：OSM 衍生文件（`network.json`、`walk.json`、`buildings.json`）是 ODbL 1.0 share-alike，不是 MIT。
 4. 网页署名（交给 web 负责人）：已有部分署名（建筑图层「OSM · City of Melbourne」、电车面板「Timetabled trips from PTV GTFS」、行人面板「City of Melbourne pedestrian counts」）；缺规范写法「© OpenStreetMap contributors」（ODbL 要求）、DataVic / DTP 的 SCATS 车流署名、CC BY 许可说明。
