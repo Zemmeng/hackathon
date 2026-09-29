@@ -162,5 +162,29 @@ if eq is not None:
     ok({'barrier', 'sign', 'vms', 'arrow_board', 'ped_signal'} <= have and sum(x.get('category') == 'sign' for x in items) >= 5,
        '最少清单：护栏、≥ 5 种静态标志、VMS、箭头板、行人临时信号灯都有')
 
+# ---- transit.json（PRD-2 §6）----
+tr, p = load('transit.json')
+if tr is not None:
+    ok(isinstance(tr.get('version'), int) and os.path.getsize(p) < 2 * 1024 * 1024, 'transit.json：version 是整数、小于 2 MB（%d KB）' % (os.path.getsize(p) // 1024))
+    routes, stops = tr.get('routes', []), tr.get('stops', [])
+    rids, sids = {r['id'] for r in routes}, {x['id'] for x in stops}
+    ok(len(rids) == len(routes) and len(sids) == len(stops) and routes and stops, '线路 %d 条、站点 %d 个，id 各自唯一' % (len(routes), len(stops)))
+    if net is not None:
+        lk = {l['id']: l for l in net['links']}
+        bad = [x for r in routes for d in r['dirs'] for x in d['links'] if x not in lk]
+        bad += [x['road_link'] for x in stops if x.get('road_link') is not None and x['road_link'] not in lk]
+        ok(not bad, '线路用到的路段、站点挂的 road_link 都在 network.json 里%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+        tram_links = {x for r in routes if r['mode'] == 'tram' for d in r['dirs'] for x in d['links']}
+        share = sum(lk[x]['tram'] for x in tram_links if x in lk) / max(1, len(tram_links))
+        ok(share >= 0.8, '电车线路用到的路段里 %.0f%% 在 network.json 标了 tram（要求 ≥ 80%%）' % (share * 100))
+        on_lt = {r['id'] for r in routes if r['mode'] == 'tram' for d in r['dirs'] for x in d['links'] if 'la trobe' in str(lk.get(x, {}).get('name') or '').lower()}
+        ok(on_lt, '常识：La Trobe St 上至少挂着一条电车线路（%s）' % sorted(on_lt))
+    bad = [x for r in routes for d in r['dirs'] for x in d['stops'] if x not in sids]
+    bad += [r_ for x in stops for r_ in x.get('routes', []) if r_ not in rids]
+    ok(not bad, '线路的站点、站点的线路互相都存在%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+    bad = ['%s/%s/%s' % (r['id'], d['dir'], k) for r in routes for d in r['dirs'] for k in ('wd', 'we')
+           if not (len(d['trips'].get(k, [])) == 24 and all(isinstance(v, (int, float)) and v >= 0 for v in d['trips'][k]))]
+    ok(not bad, '每个方向的班次都是 24 个非负数%s' % ('（坏的：%s）' % bad[:5] if bad else ''))
+
 print('%d passed, %d failed' % (P, F))
 sys.exit(1 if F else 0)

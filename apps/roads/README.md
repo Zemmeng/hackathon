@@ -19,7 +19,15 @@ python3 apps/roads/tools/build_flows.py                          # → public/cb
 
 ```bash
 python3 apps/roads/tools/build_equipment.py                      # → public/cbd/equipment.json（清单写在脚本里）
+python3 apps/roads/tools/fetch_gtfs.py                           # GTFS 电车 3/、市区巴士 4/ → raw/gtfs/（约 105 MB，一两分钟）
+apps/roads/.venv/bin/python apps/roads/tools/build_transit.py    # → public/cbd/transit.json（约 20 秒）
 ```
+
+`transit.json`（服务日 工作日 2026-09-29、周六 10-03）：电车 22 条、巴士 25 条，站点 182 个；走向对上机动车路网的长度 90.6%。核对（09-29）：
+- 电车线路用到的 285 条路段里 98% 在 `network.json` 标了 `tram`（顺带验证第一期的电车标记）
+- 96 路有 1.3–1.6 km 对不上机动车路网，正是 Bourke St Mall 只走电车的段（`offnet_m`）
+- La Trobe St 上挂着 30、35、86 路；19 路工作日高峰每小时 13 班、96 路 10 班
+- 12 个站点 30 米内没有机动车路段（`road_link: null`），多在电车专用段上
 
 `equipment.json`：16 种设备（护栏 3、静态标志 9、VMS 2、箭头板 1、行人临时信号灯 1）。规格抄自 RPM Hire 官网产品页（每项 `url`，2026-09-29 查）；**`qty`、`day_rate_aud` 全是假设**（官网没有公开价格），列在每项的 `assumed` 里。标志编号只填查实的 T1-1、T2-16，其余 `null`。RPM 官网没有静态标志牌的产品页。
 
@@ -67,6 +75,8 @@ python3 apps/roads/tools/build_equipment.py                      # → public/cb
 | `tools/build_network.py` | 生成 `network.json` + `signals.json` |
 | `tools/build_flows.py` | 生成 `flows.json`（只用标准库） |
 | `tools/build_equipment.py` | 生成 `equipment.json`（设备清单和来源写在脚本里） |
+| `tools/fetch_gtfs.py` | 从 GTFS 总包里只抽电车、市区巴士两个子包 |
+| `tools/build_transit.py` | 生成 `transit.json`：线路走向对到有向路段、每小时班次、站点 |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
 | `raw/` | 原始数据（已 gitignore，不提交） |
@@ -88,6 +98,7 @@ python3 apps/roads/tools/build_equipment.py                      # → public/cb
 - 路段车道数取沿途最小值（瓶颈）；约 190 条路段没有街名（多是转弯匝道）
 - 151 个信号灯站点里 27 个在 30 米内没有节点（17 个行人灯 POS、5 个闪黄灯、5 个路口 INT），`node` 为 `null`
 - SCATS 检测器不能按流量大小区分车 / 自行车 / 电车：2921 的 1 号是 Swanston 自行车检测器，一天 5500 次，和车道一样多 → `site_split` 用「车道检测器平均 × 车道数」，不用「路口总量按车道分摊」（后者会把自行车、电车全算成车，高估 2–3 倍）；也不能把所有检测器一起平均（电车、行人按钮流量小，会把每车道流量拉低到实测的 40%）
+- GTFS 总包里的子包是压缩存放的，不能再往里 Range，只能整个子包下（电车 14 MB、巴士 87 MB）；子包编号 3 电车、4 市区巴士，按 `routes.txt` 的 `route_type` 核对过
 - `fetch_scats.py` 远程读 zip 时缓冲要大（4 MB）：每次读都是一次 HTTPS Range 请求，64 KB 时一天要 2 分钟，4 MB 时几秒
 - 双向有中央隔离带的路（如 La Trobe，电车在中间）在 OSM 里是两条单行道，一个路口由 2–4 个节点组成；这些节点都标同一个站点号，节点之间的连接段不算进口，走插值
 - 2921 的 3 号检测器（Swanston 南行左转）挂不上：OSM 机动车路网里没有 Swanston 从北往南进这个路口的路段
