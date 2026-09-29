@@ -3,14 +3,17 @@
 // 任何 OpenAI 兼容的 POST {LLM_BASE_URL}/chat/completions 都能接：DeepSeek（默认）、百炼 DashScope 兼容模式、OpenAI 等
 // 🔒 key 只在发请求那一刻从 env.LLM_API_KEY 读，不进配置对象、不进日志、不进报错消息、不进响应（tests/llm.test.mjs 反向断言）
 // 🔒 默认不花钱：只有 MOCK === "0" 且有 key 才会真调用；任何一步出错都回规则
+// 🔒 花钱有全局封顶：每次调用前先向 Durable Object BUDGET 预留（src/budget.js），超了当天就只用规则
 import { PROMPT } from "./prompt.js";
+import { takeBudget } from "./budget.js";
 import { canonical, sha256Hex, sanitizeReading } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
 
 export const DEFAULTS = {
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-flash",
-  maxCallsPerMin: 240, // 每个 Worker 实例每分钟最多几次调用（尽力而为，见 guard()）；演示方案一页约 20 条请求 × 3 次
+  maxCallsPerMin: 60, // 每个 Worker 实例每分钟最多几次调用（尽力而为，见 guard()）；演示方案一页约 20 条请求 × 3 次 = 60
+  maxCallsPerDay: 600, // 全局每天最多几次调用（BUDGET 计数，真封顶）：DeepSeek 约 ¥0.002 / 次 → 每天约 ¥1.2，最坏约 ¥2.4
   timeoutMs: 6000, // 每次调用的超时；浏览器端 reader.js 等 8 秒，要比它短
 };
 export const SAMPLES = 3; // 每类人每句话问几次（prompts.md）
@@ -59,6 +62,7 @@ export function llmConfig(env = {}) {
   const m = str(env.LLM_MODEL);
   const model = /^[A-Za-z0-9._:/-]{1,80}$/.test(m) ? m : DEFAULTS.model;
   const n = num(env.LLM_MAX_CALLS_PER_MIN);
+  const d = num(env.LLM_MAX_CALLS_PER_DAY);
   const t = num(env.LLM_TIMEOUT_MS);
   const mock = env.MOCK !== "0";
   const key = hasKey(env);
@@ -71,23 +75,39 @@ export function llmConfig(env = {}) {
     provider: providerOf(base.host, model),
     model,
     maxCallsPerMin: Number.isInteger(n) && n > 0 ? n : DEFAULTS.maxCallsPerMin,
+    maxCallsPerDay: Number.isInteger(d) && d >= 0 ? d : DEFAULTS.maxCallsPerDay, // 0 = 一次都不许
     timeoutMs: Number.isFinite(t) && t > 0 && t <= 30_000 ? t : DEFAULTS.timeoutMs,
   };
 }
 
 const num = (x) => (typeof x === "number" ? x : Number(str(x) || NaN));
 
-export function cacheKind(env = {}) {
+// 跨请求的读数缓存用哪个：kv（有 READINGS 绑定，跨实例）> cache-api（本机房共享）> memory（只有本实例内存 500 条）
+// host = 请求的主机名：Cloudflare 的 Cache API 按域名（zone）存，*.workers.dev 上 put / match 不生效（官方文档），那里只剩内存
+export const isWorkersDev = (host) => /(^|\.)workers\.dev$/i.test(str(host));
+export function cacheKind(env = {}, host = "") {
   const kv = env.READINGS;
   if (kv && typeof kv.get === "function" && typeof kv.put === "function") return "kv";
-  if (globalThis.caches?.default && typeof globalThis.caches.default.match === "function") return "cache-api";
-  return "none";
+  if (!isWorkersDev(host) && globalThis.caches?.default && typeof globalThis.caches.default.match === "function") return "cache-api";
+  return "memory";
 }
 
-// GET /api/health 的 llm 字段：只说有没有 key，不给值
-export function llmStatus(env = {}) {
+const hasBudget = (env) => typeof env?.BUDGET?.idFromName === "function";
+
+// GET /api/health 的 llm 字段：只说有没有 key，不给值。host 同 cacheKind
+export function llmStatus(env = {}, host = "") {
   const c = llmConfig(env);
-  const out = { mode: c.mode, model: c.model, key: c.key, cache: cacheKind(env), prompt_v: PROMPT.v, provider: c.provider };
+  const out = {
+    mode: c.mode,
+    model: c.model,
+    key: c.key,
+    cache: cacheKind(env, host),
+    prompt_v: PROMPT.v,
+    provider: c.provider,
+    budget: hasBudget(env), // 有没有全局每日计数（没有就算 mode 是 llm 也不会调用）
+    per_day: c.maxCallsPerDay,
+    per_min: c.maxCallsPerMin,
+  };
   if (!c.baseOk) out.error = "bad_base_url";
   return out;
 }
@@ -306,19 +326,20 @@ export async function llmReading(req, env, opts = {}) {
 
 // ---------------------------------------------------------------- Worker 用：缓存 + 限流 + 熔断
 
-const state = { mem: new Map(), win: { start: 0, n: 0 }, breaker: { fails: 0, until: 0 } };
+const state = { mem: new Map(), win: { start: 0, n: 0 }, breaker: { fails: 0, until: 0 }, capUntil: 0 };
 
 // 测试用：清掉实例内的内存缓存、限流计数和熔断
 export function resetLlmState() {
   state.mem.clear();
   state.win = { start: 0, n: 0 };
   state.breaker = { fails: 0, until: 0 };
+  state.capUntil = 0;
 }
 
 export const cacheKey = (req, cfg) => sha256Hex(`${PROMPT.v}|${cfg.model}|${canonical(req)}`);
 
-// 每个 Worker 实例一个计数器，尽力而为：Cloudflare 会同时开多个实例、也会随时回收，所以这不是账单上限。
-// 真要封顶去服务商后台设额度 / 充值少一点
+// 每个 Worker 实例一个计数器，尽力而为：Cloudflare 会同时开多个实例、也会随时回收，所以这不是账单上限
+// （账单上限是 src/budget.js 的全局每日计数 + 服务商那边少充值）。它只负责别在一分钟里把一天的额度用光
 function guard(n, max, now) {
   if (now - state.win.start >= 60_000) state.win = { start: now, n: 0 };
   if (state.win.n + n > max) return false;
@@ -331,9 +352,15 @@ function memSet(key, reading) {
   state.mem.set(key, reading);
 }
 
-// KV（有 READINGS 绑定时）或 Cache API（Workers 自带；workers.dev 上可能不生效，见 README）
+// KV（有 READINGS 绑定时）或 Cache API（Workers 自带；*.workers.dev 上不生效，那里 cacheKind 回 memory，不去碰它）
 function store(env, origin) {
-  const kind = cacheKind(env);
+  let host = "";
+  try {
+    host = origin ? new URL(origin).hostname : "";
+  } catch {
+    // 坏 origin 当没有
+  }
+  const kind = cacheKind(env, host);
   if (kind === "kv") {
     const kv = env.READINGS;
     return {
@@ -388,7 +415,12 @@ export async function serverReading(req, env, opts = {}) {
   }
 
   if (now < state.breaker.until) return fallback(req, "llm_paused: recent calls failed");
+  if (now < state.capUntil) return fallback(req, "llm_daily_cap"); // 本实例已知今天用完了：不再每次去问 DO
   if (!guard(SAMPLES, cfg.maxCallsPerMin, now)) return fallback(req, "llm_rate_limited");
+  // 全局每日封顶：先预留 3 次，拿不到就不调用（没绑 BUDGET / DO 出错也一样，不花没记账的钱）
+  const budget = await takeBudget(env, SAMPLES, cfg.maxCallsPerDay);
+  if (budget === "over") state.capUntil = (Math.floor(now / 86_400_000) + 1) * 86_400_000; // 到下一个 UTC 0 点
+  if (budget !== "ok") return fallback(req, { over: "llm_daily_cap", no_budget: "llm_no_budget" }[budget] || "llm_budget_error");
 
   const out = await llmReading(req, env, { ...opts, cfg });
   if (!out.reading) {

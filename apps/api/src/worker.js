@@ -5,6 +5,9 @@ import { normalizeRequest, SignError } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
 import { llmConfig, llmStatus, serverReading } from "./llm.js";
 
+// Durable Object 类必须从入口模块导出（wrangler.jsonc 的 durable_objects / migrations 认这个名字）
+export { LlmBudget } from "./budget.js";
+
 // 部署时可用 --var VERSION:$(git rev-parse --short HEAD) 覆盖
 const VERSION = "0.2.0";
 const MAX_BODY = 8 * 1024; // 合法请求最多几百字节，8KB 足够
@@ -18,14 +21,14 @@ export default {
     const path = url.pathname;
 
     if (path === "/api/health") {
-      // llm：{ mode, model, key: 有没有（不给值）, cache, prompt_v, provider }
-      return json({ ok: true, v: env.VERSION || VERSION, mock: isMock(env), llm: llmStatus(env) });
+      // llm：{ mode, model, key: 有没有（不给值）, cache: kv / cache-api / memory（按主机名）, prompt_v, provider, budget, per_day, per_min }
+      return json({ ok: true, v: env.VERSION || VERSION, mock: isMock(env), llm: llmStatus(env, url.hostname) });
     }
 
     if (path === "/api/read") {
       if (request.method !== "POST") return fail(405, "method", "只接受 POST");
-      const text = await request.text();
-      if (text.length > MAX_BODY) return fail(413, "too_large", `请求体超过 ${MAX_BODY} 字节`);
+      const text = await readLimited(request, MAX_BODY);
+      if (text === null) return fail(413, "too_large", `请求体超过 ${MAX_BODY} 字节`);
       let body;
       try {
         body = JSON.parse(text);
@@ -58,6 +61,33 @@ export async function read(req, env = {}, origin) {
   } catch {
     return { ...ruleReading(req), note: "llm_error" }; // 不透传报错内容
   }
+}
+
+// 最多读 max 字节：Content-Length 超了直接拒；否则边读边数，超了就取消流，不把整个请求体攒进内存。超限回 null
+export async function readLimited(request, max) {
+  const len = Number(request.headers?.get?.("content-length"));
+  if (Number.isFinite(len) && len > max) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    buf.set(c, at);
+    at += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 function json(obj, status = 200) {

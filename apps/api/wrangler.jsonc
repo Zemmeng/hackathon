@@ -1,4 +1,4 @@
-// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc，去掉了用不到的 Durable Object）
+// Cloudflare Worker 配置（照 starters/web-worker/wrangler.jsonc；Durable Object 只有一个 LlmBudget，管大模型每日调用上限）
 // 部署归 DEPLOYER（hackathon.conf），bash scripts/deploy.sh all 先部署这个、再部署 site（site 用服务绑定 API 把 /api/* 转过来）
 // 🔒 key 不写在这里：npx wrangler secret put LLM_API_KEY（在本目录跑）。怎么打开大模型见 README「怎么接大模型」。详见 docs/deploy-cloudflare.md
 {
@@ -9,7 +9,8 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-08-01",
 
-  "workers_dev": true,
+  // 不开 hackathon-api.<子域>.workers.dev：只让网页经 site 的服务绑定进来（绑定不需要这个网址），少一个公开入口
+  "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true },
 
@@ -29,11 +30,20 @@
     //   OpenAI             https://api.openai.com/v1                              gpt-4o-mini
     "LLM_BASE_URL": "https://api.deepseek.com",
     "LLM_MODEL": "deepseek-flash",
-    // 每个 Worker 实例每分钟最多调几次（尽力而为，不是账单上限）；演示方案一页约 20 条请求 × 3 次
-    "LLM_MAX_CALLS_PER_MIN": "240"
-  }
+    // 每个 Worker 实例每分钟最多调几次（尽力而为，不是账单上限）；演示方案一页约 20 条请求 × 3 次 = 60
+    "LLM_MAX_CALLS_PER_MIN": "60",
+    // 全局每天最多调几次（BUDGET 计数，所有实例一本账，UTC 0 点清零）：600 次 ≈ ¥1.2（DeepSeek），超了当天只用规则
+    "LLM_MAX_CALLS_PER_DAY": "600"
+  },
 
-  // 可选：跨访客、跨实例的读数缓存（免费版每天 1000 次写）。没有它就用 Workers 自带的 Cache API（workers.dev 上可能不生效，见 README）
+  // 大模型每日调用计数（src/budget.js）。免费版只能用 SQLite 后端 → new_sqlite_classes；类改名只能加新 tag + renamed_classes
+  "durable_objects": {
+    "bindings": [{ "name": "BUDGET", "class_name": "LlmBudget" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LlmBudget"] }]
+
+  // 推荐：跨访客、跨实例的读数缓存（免费版每天 1000 次写，每日上限 600 次调用最多写 200 条）。
+  // 没有它只剩每个实例的内存缓存：网址是 *.workers.dev，Workers 自带的 Cache API 在那里不生效（/api/health 的 llm.cache 会写 memory）
   // 1. 在本目录跑 npx wrangler kv namespace create READINGS  2. 把打印的 id 填进下面，取消注释  3. 重新部署
   // ,"kv_namespaces": [{ "binding": "READINGS", "id": "<上面打印的 id>" }]
 }
