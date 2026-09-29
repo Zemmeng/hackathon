@@ -66,7 +66,7 @@ check("B5 打开页面默认晴天，不读也不写 localStorage 的 rt-wx", "r
 fit = fn(ENG, "engFit")
 check("1 engFit 不再把路口 (0,0) 硬框进去", "xs=[0]" not in fit and "const xs=[],ys=[]" in fit)
 check("1 engFit 按玻璃没挡住的区域（insets()）定缩放", "insets()" in fit and "V.w-I.l-I.r" in fit and "V.h-I.t-I.b" in fit)
-check("1 engFit 框进排队线（截到地图边）和占比 ≥ 5% 的绕行", "engUp(Math.min(s.queue_m,engWorldReach()))" in fit and ">=.05" in fit)
+check("1 engFit 框进排队线（沿真路、截到路网 / CITY 边，T27）和画出来的绕行（占比 ≥ 1%，T27 起；原来 ≥ 5%）", "engSub(Math.min(s.queue_m,engReach()))" in fit and ">=.01" in fit)
 check("1 第一次拿到引擎结果时重新取景（第 1 步 / 第 3 步路网）", "if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);" in ENG)
 check("1 第 1、3、4 步进来都调 engFly()", all(re.search(rf"if\(n==={n}\)\{{.*?engFly\(", APP, re.S) for n in (1, 4)) and "if(engOn()&&EP.tab3==='net')engFly();" in APP)
 
@@ -80,7 +80,7 @@ check("3 顾问的节省量标「全施工期」，并写清天数 × 采样小�
 check("3 对比表写明「这一小时」，全网延误标「车·分钟（这一小时）」", "这一小时 · ${engHour(EP.hour)}" in ENG and "车·分钟（这一小时）" in ENG)
 
 # ---- 补充 4：一个施工、一个时间 ----
-check("4 microOn() 决定画不画 La Trobe 微观场景（护栏、小人、标注、Δ）", all(x in APP for x in ["if(micro)drawWorks('before')", "&&micro)planNotes()", "&&micro)drawDeltas()", "if(micro){drawWorks('before');drawAgents(S.sim);"]))
+check("4 microOn() 决定画不画 La Trobe 微观场景（护栏、小人、标注、Δ；T27 起小人 / 标注再加一条：缩放 ≥ 1）", all(x in APP for x in ["if(micro)drawWorks('before')", "&&walkers)planNotes()", "&&micro)drawDeltas()", "walkers=micro&&fine", "if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);"]))
 check("4 引擎连着且方案不在 La Trobe 时不画微观场景；连接中也不先闪一下", re.search(r"if\(!BE\.api\)return false;.*?return /la trobe/i\.test\(EP\.street", fn(APP, "microOn"), re.S) is not None)
 check("4 时间轴跟着微观场景走（.app.no-time 隐藏，桌面上 --safe-b 收回）", "classList.toggle('no-time',!on)" in APP and ".app.no-time .timeline{display:none}" in CSS and ".app.no-time{--safe-b:24px}" in CSS)
 check("4 第 1 步的 La Trobe 设备清单 / 道路使用者只在微观场景显示", "${microOn()?`<div class=\"stack\"><div class=\"row between\"><span class=\"eyebrow\">${L('Junction micro-model" in APP)

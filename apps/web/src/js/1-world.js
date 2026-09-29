@@ -59,6 +59,11 @@ function inConvex(P,x,y){for(let i=0,n=P.length;i<n;i++){const a=P[i],b=P[(i+1)%
    World: Swanston St × La Trobe St, Melbourne CBD (local metres, x east, y north)
    ============================================================ */
 const WORLD={x0:-320,x1:320,y0:-300,y1:300};
+/* The whole Hoddle Grid (Spencer–Spring × Flinders–La Trobe) plus ~150 m, in page units (T27); north to Franklin St (y 450,
+   ~210 m past La Trobe — the La Trobe 17:00 detours run along it; north of La Trobe the page is stretched ×1.85, so no further).
+   Only decides how far the view pans, how far it zooms out and where the engine's lines are drawn; imagery, weather and the
+   micro-model stay on WORLD */
+const CITY={x0:-1150,x1:750,y0:-950,y1:450};
 const ORIGIN={lat:-37.8098,lon:144.9652};
 const MLAT=111320,MLON=111320*Math.cos(ORIGIN.lat*Math.PI/180);
 const toLL=(x,y)=>[ORIGIN.lat+y/MLAT,ORIGIN.lon+x/MLON];

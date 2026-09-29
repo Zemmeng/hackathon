@@ -120,8 +120,9 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T2 | 网页面板（`apps/web`）：GIS 地图 + 六种极端天气 + 四步红队流程 + 中英切换；交接单 `handoff/unicornnnnnny-T2-0929-1440.md` | ✅ 已合（#19） | `unicornnnnnny/web/T2-gis-weather-ui` | 09-29 14:40 |
 | T14 | 网页改液态玻璃：地图铺满、顶栏 / 图层栏 / 分析面板 / 时间轴浮在地图上；面板和顶栏真折射（Chromium 桌面），其余磨砂；右侧面板「简洁 / 详细」+ 分节折叠 + 可收起；道路描边、建筑压暗；交接单 `handoff/unicornnnnnny-T14-0929-1905.md` | ✅ 已合 #47、#50，已上线 b1ef637 | `unicornnnnnny/web/T14-liquid-glass` | 09-29 17:30 |
 | T20 | 删掉页面上写死的假数（安全分、查表的修复前后对比、复现种子、第 2 步假进度 / 变体、「AI 红队」字样）+ 天气标示意、默认晴天 + 评委 5 条（地图对准 Lonsdale、引擎数字不折叠、单位、一个施工一个时间、假设亮出来）；交接单 `handoff/unicornnnnnny-T20-0929-2201.md`。后续：页面和执行包补数据来源署名（© OpenStreetMap contributors、DataVic SCATS / GTFS、墨尔本市开放数据） | ✅ 已合 #60（lead 核对见 `docs/arch/T26-T27-web-PRD.md` 第 1 节）、署名 #72、浮层精简 #75，已上线 3fd3064 | `unicornnnnnny/web/T20-no-fake-numbers` | 09-29 21:40 |
-| T28 | 引擎 `raw.links` 每条多给 `extra_min`（车·分钟，和同一小时不施工比，可 < 0），页面画变慢路段不再把 Flinders / King St 本来的排队算成涟漪；`docs/arch/T26-T27-web-PRD.md` 第 0 节 | 🔨 待 lead review | `unicornnnnnny/engine/T28-extra-min` | 09-30 00:10 |
-| T26 | T20 收尾（PRD 第 2 节）：顶栏场景名跟着施工走、「回到施工区」飞回施工区、第 1 步 VMS 输入框紧贴 4 个大数字（不用滚动）、取景让开图例、假设两行说清楚（读懂 ≠ 照做、信任度是假设值、全封也有一行、「绕行的车」不标绿）、步骤条和「智能体」字样改掉 | 🔨 | `unicornnnnnny/web/T26-t20-tail` | 09-30 00:40 |
+| T28 | 引擎 `raw.links` 每条多给 `extra_min`（车·分钟，和同一小时不施工比，可 < 0），页面画变慢路段不再把 Flinders / King St 本来的排队算成涟漪；`docs/arch/T26-T27-web-PRD.md` 第 0 节 | ✅ 已合 #79，已上线（lead 部署） | `unicornnnnnny/engine/T28-extra-min` | 09-30 00:10 |
+| T26 | T20 收尾（PRD 第 2 节）：顶栏场景名跟着施工走、「回到施工区」飞回施工区、第 1 步 VMS 输入框紧贴 4 个大数字（不用滚动）、取景让开图例、假设两行说清楚（读懂 ≠ 照做、信任度是假设值、全封也有一行、「绕行的车」不标绿）、步骤条和「智能体」字样改掉 | ✅ 已合 #80，已上线（lead 部署） | `unicornnnnnny/web/T26-t20-tail` | 09-30 00:40 |
+| T27 | 地图放下整个 CBD（PRD 第 3 节阶段 1）：精细窗口不动，外面垫一层预渲染的全城路网 + 建筑（`6c-city.js`；`CITY` 北边放到 Franklin St，装下 La Trobe 17:00 的绕行），放开拖动 / 缩放（缩放 < 1 不画天气、小人、经纬网，不能点图挪施工区），引擎线改用 `CITY`，排队线沿同名路段按 `len_m` 画到街没了为止（标签照写引擎的数），比例尺按 1 m ≈ 0.862 页面单位，变慢路段的筛选和标红只看 `extra_min`（#82），引擎标签避开地图控件、施工段和彼此（375 px 不再出屏）；顺带 T26 审查两处字样 | 🔨 | `unicornnnnnny/web/T27-full-cbd` | 09-30 00:37 |
 
 卡住了：
 
