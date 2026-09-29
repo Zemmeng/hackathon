@@ -43,7 +43,9 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 }
 ```
 
-- `persona` ∈ `commuter / local / tourist / delivery`；`signs` 按经过的先后顺序；`read_s` 是引擎按「可读距离 ÷ 车速」算好的秒数
+- `persona` ∈ `commuter / local / tourist / delivery`；`signs` 按经过的先后顺序；`read_s` 是引擎按「可读距离 ÷ 车速」算好的秒数，超过 120 按 120 算（排队时车速 5 km/h 会算出约 137 秒）
+- `signs[].kind` ∈ `vms / sign / arrow`；`arrow`（箭头板）的 `text` 可以省；护栏 `barrier` 不进请求。路名字符和引擎的 `cleanName()` 一致（字母、数字、空格和 `. , ' & / ( ) -`）
+- 请求不合规范时 `readSigns()` 抛 `SignError`（`.code` 是短码）。引擎把抛错记成 `prepare()` 的 `failed` 和 `evaluate` 结果的 `missing`（那一类人按「没人被说动」算），界面要显示出来；T2 在用户输入屏上文字时先用 `apps/api/public/js/check.js` 的 `checkSigns()` 挡住（不抛错，回 `{ ok, error?, warnings[] }`）
 - `roads` = 当前路 + 候选绕行路的名字，只用来把「叫你走哪条」对到路名
 - 请求里**没有**各条路的耗时和排队：读数只取决于「字 + 人」，所以同一句话每类人只问一次，缓存一直有效
 
@@ -104,7 +106,15 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 
 ## evaluate（engine → web）
 
-D-0929-1435 定稿（T9 骨架，T4 认领后接着做）。前端只 import `/engine/public/js/index.js`：
+D-0929-1435 定稿（T9 骨架）。**网页只 import 接线层 `/engine/public/js/backend.js`**（D-0929-1540，lead 接好了路网 + 车流 + 参数 + T5 读屏）：
+
+```js
+const be = await (await import('/engine/public/js/backend.js')).connect();
+const s = await be.run(方案);          // 能直接显示的数字：queue_m mean_delay_s routes by_type hot flags …；引擎原始结果（下表）在 s.raw
+const c = await be.compare(前, 后);     // 前后对比，c.delta 负数 = 变好；be.advise(方案) 顾问改法；be.check(方案) 屏上文字规范
+```
+
+字段表见 `docs/arch/T13-web-wiring-PRD.md` 第 5 节。下面是引擎核心的用法（接线层内部就是这么调的）：
 
 ```js
 import { createEngine } from '/engine/public/js/index.js';
@@ -147,6 +157,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | 方法 + 路径 | 请求 | 响应 | 负责模块 |
 |---|---|---|---|
 | `GET /api/health` | — | `{ "ok": true, "v": "<版本>", "mock": bool }` | api |
+| `POST /api/read` | 同 §路人读数 的请求 | `{ "ok": true, "reading": <读数> }`；不合规范 400 `{ "ok": false, "error", "msg" }` | api |
 | `POST /api/create` | `{}` | `{ "code": "ABCDE" }` | api |
 
 ## WebSocket 消息（`/ws?room=<CODE>`）
@@ -189,6 +200,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.1 | 2026-09-29 | §路人读数：`kind` 加 `arrow`、`read_s` 上限 120、路名字符、`SignError` 和 `failed` / `missing`（T5 #29 对齐引擎）；HTTP API 加 `POST /api/read`；§evaluate：网页只接 `backend.js`（D-0929-1540） | lead |
 | v3 | 2026-09-29 | 加「施工方案」；「evaluate」定稿（createEngine / prepare / evaluate / conflict / advise 和结果字段，T9 骨架）；参数入口 `loadParams()` 读 T12 的 `params.json`，`calib.target` | lead |
 | v2 | 2026-09-29 | 加「路人读数」（api → engine，D-0929-1435）和「evaluate」草案（engine → web） | lead |
 | v1 | 2026-09-29 | 加「路网数据文件」一节（roads → engine、web）；HTTP / WS 节还是模板预置，T5 定了再改 | lead |

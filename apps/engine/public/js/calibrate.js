@@ -68,6 +68,9 @@ function bisect(f, lo, hi, target, increasing, iters = 60) {
   return (a + b) / 2;
 }
 
+// 命中目标：相对误差 5% 以内（目标可以低到 0.1%，绝对容差在小目标上会放过差一倍的结果）
+const near = (d, t) => Math.abs(d - t) <= Math.max(1e-4, 0.05 * t);
+
 // lo / hi：每类人对两块标准屏的读数 { persona: reading }。缺任何一类就不校准（method: 'default'）
 // opts.anchors = { lo, hi }：两块标准屏的目标绕行比例（T12 params.json 的 anchors；不给就用 ANCHORS 里的假设值）
 export function calibrate(lo, hi, opts = {}) {
@@ -86,7 +89,7 @@ export function calibrate(lo, hi, opts = {}) {
     B: +B.toFixed(4),
     method: 'two_point',
     // false = 两个目标至少有一个够不着：比如读数里「点名路线」的力度不够，推荐力度顶到上限也到不了高点；或者目标本身离谱
-    ok: Math.abs(loD - tLo) < 0.005 && Math.abs(hiD - tHi) < 0.005,
+    ok: near(loD, tLo) && near(hiD, tHi),
     target: { lo: tLo, hi: tHi },
     lo_detour: +loD.toFixed(4),
     hi_detour: +hiD.toFixed(4),

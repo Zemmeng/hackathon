@@ -10,5 +10,5 @@ export { loadParams, applyParams, PARAMS_URL } from './params.js';
 export { makeGrid } from './grid.js';
 export { loadNetwork, shortestPath, linkTime, bearing } from './net.js';
 export { isActive, overlaps, capFactors, shiftWorksite, windowWhens, sampleHours, dayType } from './worksite.js';
-export { approaches, affected } from './routes.js';
+export { approaches, affected, NO_DETOUR } from './routes.js';
 export { readSeconds, cleanName } from './cards.js';

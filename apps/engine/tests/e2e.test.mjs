@@ -75,6 +75,11 @@ await t('real CBD network (T3)', async () => {
   ok(ms < 100 && p.links.length === rn.links.length, `真路网单次 evaluate ${ms.toFixed(1)} 毫秒（目标 < 100），结果覆盖全部 ${p.links.length} 个路段`);
   ok(p.delay_min > 0 && n.approaches[0].routes[1].share > p.approaches[0].routes[1].share && n.approaches[0].queue_m <= p.approaches[0].queue_m,
     `真路网第一幕：屏上点名 ${ap.alts[0].name}，它分到的车 ${p.approaches[0].routes[1].share} → ${n.approaches[0].routes[1].share}，排队 ${p.approaches[0].queue_m} → ${n.approaches[0].queue_m} 米`);
+  // 网页 T2 的演示场景：离 La Trobe / Swanston 路口一个街区的 Lonsdale Street 西行，早 8 点约 1100 veh/h
+  const lon = 'l595594354_9756035316';
+  const [lap] = affected(real.net, rf, { id: 'L', links: [lon], closes: { lanes: 1 } }, { date: '2026-10-06', hour: 8 }, capFactors(real.net, [{ links: [lon], closes: { lanes: 1 } }]));
+  ok(lap && lap.street === 'Lonsdale Street' && lap.alts.length >= 1 && lap.alts.every(r => r.links.every(id => !['living_street', 'service'].includes(real.net.links.get(id).highway))),
+    `真路网绕行不走 CBD 小巷（Heffernan Lane 这类 living_street）：Lonsdale Street 西行的绕行 = ${lap?.alts.map(r => r.name).join(' / ')}`);
 });
 
 done();

@@ -48,6 +48,12 @@ await t('step 1-2: detours and reading requests', async () => {
     links: [['a', 'b'], ['b', 'c'], ['c', 'd']].map(([x, y]) => ({ id: x + y, from: x, to: y, name: null, len_m: 200, lanes: 2, speed_kmh: 40, cap_vph: 1800, t0_s: 38 })) };
   const [lap] = affected(loadNetwork(line), null, { id: 'X', links: ['bc'], closes: { lanes: 1 } }, WHEN);
   ok(lap.street === 'Unnamed road' && lap.stayLinks.length === 3, '没路名的路段也能连成一段（真路网里有 193 段没路名）');
+  const g2 = makeGrid();
+  for (const l of g2.network.links) if (l.id === 'L-n0_6-n1_6') l.highway = 'living_street'; // 把 La Trobe → Lonsdale 那段 Russell St 改成小巷
+  const n2 = loadNetwork(g2.network);
+  const [ap2] = affected(n2, g2.flows, wsA(), WHEN, capFactors(n2, [wsA()]));
+  ok(ap2.alts.every(r => r.links.every(id => n2.links.get(id).highway !== 'living_street')) && ap2.alts.length >= 2, `绕行路线不走小巷（living_street）：${ap2.alts.map(r => r.name).join(' / ')}`);
+  ok(ap2.stay.links.length === ap.stay.links.length, '原路不受影响');
 });
 
 await t('step 4: choice model', async () => {

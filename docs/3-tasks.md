@@ -44,6 +44,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T8 | 任何人：**传一张大模型 API 卡**——手里有哪家的 key / 免费额度，照 `docs/llm-apis/README.md` 写一张卡（只写变量名）；分支 `<handle>/llm-apis/T8-<服务商>`，像 T0 一样人人可做、不用认领 | 15m | — |
 | T11 | 给 @louisxie316-dotcom：**临街建筑 `buildings.json`**（issue #21，@unicornnnnnny 提）——CBD 临街建筑的真实轮廓、高度、名称、用途和临街路段，给 T2 地图换掉随机楼块。**要求全在 issue #21**；分支 `louisxie316-dotcom/roads/T11-buildings`；先交 P0（OSM 轮廓 + 高度 + 用途）draft PR；排在 T7 A `equipment.json` 后面 | 1h + 2h | T3 |
 | T12 | 给 @Unzzip：**引擎参数找依据**——4 类路人占比、校准锚点（3% / 20% / 1/5）、信不信屏、时间价值、屏上文字可读距离，每个数带出处和置信度，交 `apps/params/public/params.json`。**要求全在 `docs/arch/T12-params-PRD.md`**；分支 `Unzzip/params/T12-evidence`；先把 #5 拆完或关掉；17:00 交有出处的 P0 一半 | 2h | — |
+| T13 | 给 @unicornnnnnny：**网页接后端**——RippleTwin 第 1、3、4 步的数字从预设换成引擎真算的；后端 lead 已接好，页面只调 `backend.js` 的 `connect()` → `run / compare / advise / check`（D-0929-1540）。**要求全在 `docs/arch/T13-web-wiring-PRD.md`**；分支 `unicornnnnnny/web/T13-wiring`；先做第 3 步排队 + 分流和第 4 步「只改一行字」的前后对比 | 2h | T9 后续 PR（`backend.js`） |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -54,8 +55,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff` | 09-29 13:05 |
-| T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | 🔨 | `claude/lead/ai-infra` / PR #20 | 09-29 13:50 |
-| T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | 🔨 | `claude/lead/deploy-site`（未推） | 09-29 15:00 |
+| T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | 🔨 | `claude/lead/ai-infra` / PR #20 ✅ 已合；后续 `claude/lead/engine-fixes`（未推：不走小巷、参数审查 8 条、契约 v3.1、给 T2 的接线说明） | 09-29 13:50 |
+| T10 | 同源部署外壳 `apps/site`：一个 Worker 挂所有模块的 `public/`（`/<模块>/public/`），`/api/*` 留给 T5 的服务绑定；高h 照 `apps/site/README.md` 部署（T10 原号作废的任务是 #25，已关，沿用） | ⏸ | `claude/lead/deploy-site`（未推；lead 15:26 叫停。部署前必须先修审查查出的高危：`build.mjs` 会把 public/ 下被 gitignore 的文件也发到公网） | 09-29 15:00 |
 
 卡住了：
 

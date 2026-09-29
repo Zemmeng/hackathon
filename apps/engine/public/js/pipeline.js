@@ -13,7 +13,7 @@ import { round1, cleanName } from './cards.js';
 import { canon } from './canon.js';
 import { TYPES, DEFAULT_AB, chooseShares, informed } from './choice.js';
 import { calibrate, anchorRequest } from './calibrate.js';
-import { applyParams } from './params.js';
+import { applyParams, isApplied } from './params.js';
 import { requestsFor, requestKey } from './reading.js';
 import { evaluate as assign, pathNow, maxQueue } from './assign.js';
 
@@ -25,7 +25,7 @@ const r3 = x => Math.round(x * 1000) / 1000;
 // params：loadParams() / applyParams() 的结果（或者直接传 params.json 的内容），不传就全用假设值；
 // 显式传的 personas / mix 优先于 params
 export function createEngine({ network, flows, readSigns, params, personas, mix } = {}) {
-  const P = params && typeof params === 'object' && params.used ? params : applyParams(params ?? null);
+  const P = isApplied(params) ? params : applyParams(params ?? null);
   personas = personas || P.personas;
   mix = mix || P.mix;
   const anchors = P.anchors;
