@@ -107,6 +107,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 卡住了：
 
 
+| T23 | 方案对比接 AI 解读：summary / pros / cons + lean / decide，textContent；语言切换丢弃旧响应、规则兜底；网页测试及桌面/375px 检查通过 | ✅ | `jinmingq/web/T23-ai-explain` | 09-29 23:40 |
+
 ## @unicornnnnnny
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |

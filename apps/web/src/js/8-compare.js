@@ -85,9 +85,9 @@ ${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></se
 }
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
 
-// pack.js (quote, pack, text) + explain.js (only optionFromRun: run() summary → the metrics the pack's notice list uses) + inventory
+// Execution pack, AI explanation and inventory; all model text is rendered as textContent.
 function cmpLoad(){
   if(CP.loading)return CP.loading;
   CP.loading=Promise.all([import('/api/public/js/pack.js'),import('/api/public/js/explain.js')])
@@ -128,6 +128,45 @@ async function cmpUpdate(){
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
 }
 
+// Independent of scoring: never delay choosing/exporting a plan for AI text.
+function cmpExplainUpdate(){
+  const lang=LANG.cur==='zh'?'zh':'en';
+  const key=CP.key+'|'+lang;
+  if(CP.busy||!CP.rows.length){
+    if(CP.exKey){CP.exKey='';++CP.exSeq;CP.explain=null;CP.exBusy=false;}
+    return;
+  }
+  if(!CP.mod||CP.exKey===key)return;
+  CP.exKey=key;CP.explain=null;CP.exError=false;CP.exBusy=true;
+  const seq=++CP.exSeq;
+  const options=CP.rows.filter(r=>r.s).map(r=>CP.mod.ex.optionFromRun(r.id,cmpLabel(r),r.s,{hire_aud:r.hire,days:r.days}));
+  Promise.resolve().then(()=>CP.mod.ex.explainOptions({lang,options})).then(result=>{
+    if(seq!==CP.exSeq||key!==CP.key+'|'+(LANG.cur==='zh'?'zh':'en'))return;
+    CP.explain=result;
+  }).catch(e=>{if(seq===CP.exSeq)CP.exError=true;console.warn('compare: explanation unavailable',e);})
+    .finally(()=>{if(seq===CP.exSeq){CP.exBusy=false;cmpRender();}});
+}
+function cmpExplainRender(el){
+  const result=CP.explain;
+  el.querySelectorAll('[data-cmpexplain]').forEach(box=>{
+    box.replaceChildren();
+    const r=CP.rows[+box.dataset.cmpexplain];
+    const item=result?.options.find(o=>o.id===r.id);
+    const add=(tag,text)=>{const node=document.createElement(tag);node.textContent=text;box.appendChild(node);};
+    add('b',L('AI explanation','AI 解读'));
+    if(!item){add('p',CP.exBusy?L('Reading these plans…','正在解读这些方案…'):L('Explanation unavailable; you can still choose a plan.','解读暂不可用，仍可选择方案。'));return;}
+    add('small',result.src==='rule'?L('Rule fallback','规则兜底'):result.src==='kv'?L('AI · cached','AI · 缓存'):L('AI interpretation','AI 解读'));
+    add('p',item.summary);
+    for(const [title,items] of [[L('Pros','优点'),item.pros],[L('Cons','缺点'),item.cons]]){
+      add('b',title);const list=document.createElement('ul');
+      for(const text of items.length?items:[L('None listed','未列出')]){const li=document.createElement('li');li.textContent=text;list.appendChild(li);}box.appendChild(list);
+    }
+  });
+  const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
+  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.textContent=row?L('Leaning toward ','倾向 ')+cmpLabel(row)+' · '+result.lean.why:'';}
+  if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
+}
+
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
   const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
@@ -142,9 +181,9 @@ function cmpHTML(){
     return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
       <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
       ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
-        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}</div>`;}).join('');
+        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}).join('');
   const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
-  let h=head+`<div class="cmp-cards">${cards}</div>
+  let h=head+`<div class="cmp-cards">${cards}</div><p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
     <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
   if(CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
@@ -158,8 +197,8 @@ function cmpHTML(){
 
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
-  cmpUpdate();
-  const h=cmpHTML();if(el.dataset.sig===h)return;el.innerHTML=h;el.dataset.sig=h;
+  cmpUpdate();cmpExplainUpdate();
+  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
