@@ -16,6 +16,8 @@ credentials*.json
 
 # ---- 本机 AI 中间产物（多 agent 落盘区，结论归并进 docs 后可清）----
 .claude/agent-out/
+# Claude 会话 / Workflow 的临时 worktree（wf_* 等），不进库；不忽略的话 check [3] 在无关会话里报越界
+.claude/worktrees/
 
 # ---- 依赖 ----
 node_modules/
