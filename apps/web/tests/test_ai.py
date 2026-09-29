@@ -45,7 +45,6 @@ def body(name, text):
 code = re.sub(r"/\*.*?\*/", "", AI, flags=re.S)
 # 1 挂载点：只在别人的文件里加一行钩子
 check("5-app.js 第 3 步路网面板挂上 aiMount()", "clashMount();aiMount();" in APP)
-check("8-compare.js 的 cmpRender() 最后调 aiCmp()", "aiCmp();" in body("cmpRender", CMP))
 # 2 隐私 / 网络：不发任何请求；下载在浏览器里拼文件
 check("反向：9-ai.js 没有 import() / fetch() / XMLHttpRequest / sendBeacon / WebSocket",
       not re.search(r"\bimport\s*\(|\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket", code))
@@ -55,9 +54,6 @@ check("下载 JSON：Blob + createObjectURL（本地文件，不上传），内�
 check("日志只从 backend.js 来：aiLog() 快照 + onAiLog() 订阅，同一个 tick", re.search(r"AI\.log=api\.aiLog\(\);\s*api\.onAiLog\(", AI) is not None)
 # 3 注入：模型写的字只走 textContent
 check("why 用 textContent 写（data-aiwhy）", "q.textContent=p&&p.reading&&p.reading.why||''" in AI)
-paint = body("aiCmpPaint", AI)
-check("反向：第 4 步解读（summary / pros / cons / lean / decide）不用 innerHTML，只用 textContent / createTextNode",
-      paint and "innerHTML" not in paint and "n.textContent=txt" in paint and "createTextNode(' — '+res.lean.why)" in paint)
 check("反向：整个 9-ai.js 只有一处 innerHTML（aiRender 写 aiHTML() 的结果，里面每个字符串过 esc()）",
       code.count("innerHTML") == 1 and "el.innerHTML=h;" in body("aiRender", AI))
 interp = re.findall(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", body("aiPersonaHTML", AI) + body("aiLogRowHTML", AI))
@@ -65,13 +61,7 @@ raw = [x for x in interp if re.search(r"\.(text|why|src|error|persona)\b|\b(txt|
 check("读数卡片 / 日志行里的字都过 esc()", not raw, str(raw[:3]))
 # 4 签名守卫（CLAUDE.md §9）：同样的状态不重建 DOM
 check("aiRender 有签名守卫（HTML + why 一起算签名）", "if(el.dataset.sig===sig)return;" in AI and "const sig=h+'\\u0000'+whys;" in AI)
-check("第 4 步每张卡片、底部那条也有签名守卫", paint.count("dataset.sig===") == 2)
 check("一次 run 问 ~20 条读数只重画一次（aiRenderSoon 防抖）", "setTimeout(aiRender,120)" in AI)
-# 5 解读的请求：用 T5 的 optionFromRun + explainOptions（数字只来自引擎），过期的回答丢掉
-cmp = body("aiCmp", AI)
-check("解读请求 = explainOptions({ lang, options: optionFromRun(卡片) })，模块用 T23 已加载的 explain.js",
-      "ex.optionFromRun(r.id,aiLabel(cmpLabel(r)),r.s,{hire_aud:r.hire,days:r.days})" in cmp and "ex.explainOptions(req)" in cmp and "CP.mod&&CP.mod.ex" in cmp)
-check("过期的解读丢掉（seq），失败只写一行灰字", "if(seq!==x.seq)return;" in cmp and "AI explanation unavailable" in paint)
 # 6 审查修复：出错 / 不合规 / 还没算完时不画上一份方案的读数；徽章按这份方案的读数算来源
 check("反向：aiReadings 和 engPanel3 同一个判断（run() 出错留着的旧 EP.sum 不拿来画卡片）",
       "if(aiState(EP)!=='ok'" in body("aiReadings", AI) and "ep.runErr&&!ep.busy?'err'" in AI)

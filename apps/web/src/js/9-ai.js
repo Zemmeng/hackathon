@@ -6,7 +6,6 @@
    in order, noticed / understood / trusts with the reader's range, the route advice, the one-sentence why, and where
    the reading came from. Below it the AI call log: every readSigns call this session (backend.js aiLog(), oldest
    first), downloadable as JSON built in the browser (nothing is uploaded).
-   Step 4 · the T23 compare cards get T5's AI explanation (explain.js explainOptions over optionFromRun of each card).
    The LLM only interprets (D-0929-1435): every number here comes from the engine or from the reading itself.
    Sign text, road names and model text are untrusted: esc() in templates, textContent for why / summary / pros / cons.
    ============================================================ */
@@ -166,64 +165,4 @@ function aiDownload(){
     const a=document.createElement('a');a.href=url;a.download=`rippletwin-ai-log-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
     document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
   }catch(e){console.warn('AI log download failed',e);toast(L('Download failed','下载失败'));}
-}
-
-// Step 4: cmpRender() → aiCmp(). One explanation for the plans on the cards; numbers in it can only come from the engine
-function aiCmp(){
-  const el=document.getElementById('cmp4');if(!el)return;
-  const rows=CP.rows||[],ex=CP.mod&&CP.mod.ex;
-  if(CP.busy||rows.length<2)return;
-  let req=null;
-  if(ex&&typeof ex.explainOptions==='function'&&typeof ex.optionFromRun==='function'){
-    try{
-      const options=rows.filter(r=>r.s).map(r=>ex.optionFromRun(r.id,aiLabel(cmpLabel(r)),r.s,{hire_aud:r.hire,days:r.days}));
-      req=options.length?{lang:LANG.cur==='zh'?'zh':'en',options}:null;
-    }catch(e){console.warn('AI explanation request not built',e);req=null;}
-  }
-  const key=req?JSON.stringify(req):'none';
-  if(key!==AI.ex.key){
-    const x=AI.ex,seq=++x.seq;x.key=key;x.res=null;x.err=!req;x.busy=!!req;
-    if(req)ex.explainOptions(req).then(r=>{if(seq!==x.seq)return;x.res=r;x.busy=false;aiCmpPaint();},
-      e=>{if(seq!==x.seq)return;console.warn('AI explanation failed',e);x.err=true;x.busy=false;aiCmpPaint();});
-  }
-  aiCmpPaint();
-}
-function aiCmpPaint(){
-  const el=document.getElementById('cmp4');if(!el)return;
-  const cards=[...el.querySelectorAll('.cmp-card')],rows=CP.rows||[],x=AI.ex,res=x.res;
-  const byId=new Map(((res&&res.options)||[]).map(o=>[o.id,o]));
-  const node=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!=null)n.textContent=txt;return n;};
-  cards.forEach((c,i)=>{
-    let box=c.querySelector('.cmp-ai');
-    const o=rows[i]&&byId.get(rows[i].id);
-    const sig=x.busy?'busy':o?JSON.stringify([o.summary,o.pros,o.cons]):'';
-    if(!sig){if(box)box.remove();return;}
-    if(!box){box=node('div','cmp-ai');c.appendChild(box);}
-    if(box.dataset.sig===sig)return;
-    box.dataset.sig=sig;box.textContent='';
-    if(x.busy){box.appendChild(node('p','small muted',L('AI is reading this plan’s numbers…','AI 正在读这套方案的数字…')));return;}
-    if(o.summary)box.appendChild(node('p','cmp-ai-sum',o.summary));
-    const ul=node('ul','cmp-ai-pc');
-    for(const t of o.pros||[])ul.appendChild(node('li','pro',t));
-    for(const t of o.cons||[])ul.appendChild(node('li','con',t));
-    if(ul.children.length)box.appendChild(ul);
-  });
-  const wrap=el.querySelector('.cmp-cards');let foot=el.querySelector('#cmpAiFoot');
-  const fsig=!wrap?'':x.busy?'busy':res?JSON.stringify([res.lean,res.decide,res.src]):x.err?'err':'';
-  if(!fsig){if(foot)foot.remove();return;}
-  if(!foot){foot=node('div','card cmp-ai-foot');foot.id='cmpAiFoot';wrap.parentNode.insertBefore(foot,wrap.nextSibling);}
-  if(foot.dataset.sig===fsig)return;
-  foot.dataset.sig=fsig;foot.textContent='';
-  if(x.err){foot.className='cmp-ai-foot off';foot.appendChild(node('p','small muted',L('AI explanation unavailable — the engine numbers above are unaffected.','AI 解读暂时没有 —— 上面引擎的数字不受影响。')));return;}
-  foot.className='card cmp-ai-foot';
-  const hd=node('div','between');hd.appendChild(node('span','eyebrow',L('AI explanation','AI 解读')));
-  hd.appendChild(node('span','pill '+(x.busy?'':aiExplainTone(res.src)),x.busy?L('Working…','生成中…'):aiExplainLabel(res.src)));foot.appendChild(hd);
-  if(x.busy){foot.appendChild(node('p','small muted',L('Reading the engine numbers for each plan…','正在读每套方案的引擎数字…')));return;}
-  if(res.lean&&res.lean.option){
-    const r=rows.find(y=>y.id===res.lean.option),p=node('p','cmp-ai-lean');
-    p.appendChild(node('b',null,L(`Leans towards ${res.lean.option}`,`倾向 ${res.lean.option}`)+(r?' · '+cmpLabel(r):'')));
-    if(res.lean.why)p.appendChild(document.createTextNode(' — '+res.lean.why));
-    foot.appendChild(p);
-  }else foot.appendChild(node('p','small muted',L('No clear lean between these plans.','这几套方案之间没有明显倾向。')));
-  if(res.decide)foot.appendChild(node('p','cmp-ai-decide',res.decide));
 }
