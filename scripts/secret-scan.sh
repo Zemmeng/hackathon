@@ -13,6 +13,7 @@
 #
 # 覆盖的模式（改这里就改下面 PATTERNS）：AWS AKIA…、OpenAI 风格 sk-…、Anthropic sk-ant-…、
 #   GitHub gh[pous]_… / github_pat_…、Google AIza…、Slack xox[bpa]-…、PEM 私钥头、火山方舟 ark-…、
+#   Hugging Face hf_…、Groq gsk_…、xAI xai-…、Replicate r8_…、请求头里直接写值的 Bearer <≥20 位>（curl 示例最常见）、
 #   api_key|token|secret|password|passwd 后面用 = 或 : 赋一个 ≥20 位的串，
 #   以及 password|passwd|secret 用引号赋一个 ≥12 位的串（${…}、process.env、env. 这类引用不算）。
 # 白名单按「命中的那一段」判断，不按整行（同一行有 <br/>、__CONFIG__ 也照样抓）：
@@ -60,6 +61,12 @@ PATTERNS = [
     ('slack_token', re.compile(r'(?<![A-Za-z0-9])xox[bpa]-[A-Za-z0-9-]{10,}'), 0),
     ('private_key', re.compile(r'-----BEGIN ([A-Z]+ )?PRIVATE KEY-----'), 0),
     ('ark_key', re.compile(r'(?<![A-Za-z0-9_-])ark-[0-9a-f-]{30,}'), 0),
+    ('huggingface_token', re.compile(r'(?<![A-Za-z0-9_])hf_[A-Za-z0-9]{30,}'), 0),
+    ('groq_key', re.compile(r'(?<![A-Za-z0-9_])gsk_[A-Za-z0-9]{40,}'), 0),
+    ('xai_key', re.compile(r'(?<![A-Za-z0-9_-])xai-[A-Za-z0-9]{40,}'), 0),
+    ('replicate_token', re.compile(r'(?<![A-Za-z0-9_])r8_[A-Za-z0-9]{30,}'), 0),
+    # 请求头里直接写的值：Bearer $VAR、Bearer ${…}、Bearer <你的key> 都不算（字符集里没有 $ { <）
+    ('bearer_token', re.compile(r'(?i)(?<![A-Za-z0-9_])Bearer\s+([A-Za-z0-9._~+/=-]{20,})'), 1),
     # 通用赋值：KEY=…、"token": "…"、password: '…'；后面紧跟 ( 的是函数调用，不算
     ('generic_secret_assignment', re.compile(
         r'(?i)(?:api[_-]?key|secret|token|password|passwd)[\'"]?\s*[:=]\s*[\'"]?'
@@ -104,6 +111,8 @@ def hits_in_line(line):
             names.append(name)
     if 'generic_secret_assignment' in names and 'password_assignment' in names:
         names.remove('password_assignment')  # 同一个值别报两遍
+    if 'bearer_token' in names and len(names) > 1:
+        names.remove('bearer_token')  # Bearer sk-… 已经被具体模式报了
     return names
 
 

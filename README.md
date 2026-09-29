@@ -58,6 +58,7 @@ git push -u origin HEAD && gh pr create --fill
 | `docs/3-tasks.md` 的 `## @你` 那节 | 你的任务状态 | 你 |
 | `docs/decisions.md` · `docs/pitfalls.md` | 已定的事 · 踩过的坑 | 所有人，**只追加** |
 | `handoff/` | 交接单 | 所有人，**只新建** |
+| `docs/llm-apis/<你>-<服务商>.md` | 你手里的大模型 API 卡（只写变量名，不写 key） | 你，只动自己的卡 |
 | 其余 | 基建、赛题、计划、契约 | lead |
 
 完整定义见 [CONTRIBUTING.md §1](CONTRIBUTING.md#1-写文件分区)。
@@ -126,6 +127,7 @@ gh pr create --fill                                     # 只动了自己模块�
 | [docs/4-demo.md](docs/4-demo.md) | 演示脚本、pitch、兜底、提交清单 | pitch owner |
 | [docs/decisions.md](docs/decisions.md) | 已定的事，别再推翻 | 所有人追加 |
 | [docs/pitfalls.md](docs/pitfalls.md) | 踩过的坑，别再踩 | 所有人追加 |
+| [docs/llm-apis/](docs/llm-apis/README.md) | 候选大模型 API：谁有 key、多少钱、怎么调 | 每人只建自己的卡 |
 | [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md) | 怎么部署到 Cloudflare、队友怎么拿到部署权限 | lead |
 | [handoff/](handoff/README.md) | 交接单怎么写 | 所有人 |
 | [apps/README.md](apps/README.md) | 模块规则、端口表、模块 README 模板 | lead |

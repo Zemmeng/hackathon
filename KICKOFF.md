@@ -95,7 +95,7 @@ bash scripts/check.sh --e2e           # 地址读 conf 的 DEMO_URL
 我是 `<handle>`，负责模块 `<模块>`，分支 `<handle>/<模块>/T<n>-<slug>`。**这个对话只做 T<n>：<一句话 + 验收标准>。**
 项目一句话：`<lead 填>`。
 
-**作用域**：只准写 `apps/<模块>/`、`handoff/` 下我新建的文件、`docs/3-tasks.md` 我那节；`docs/decisions.md` `docs/pitfalls.md` 只追加；其余只读。要改别处就告诉我，我去找 lead。
+**作用域**：只准写 `apps/<模块>/`、`handoff/` 下我新建的文件、`docs/llm-apis/` 下我自己的 API 卡（`<handle>-*`，只写变量名）、`docs/3-tasks.md` 我那节；`docs/decisions.md` `docs/pitfalls.md` 只追加；其余只读。要改别处就告诉我，我去找 lead。
 
 **硬约束**：截止 `<DEADLINE 带时区>`；T-6h 功能冻结，T-2h 代码冻结；付费 API 额度 `<数>`，默认 `MOCK=1`；技术栈 `<已定>`，不许引入新依赖，要引入先问。
 

@@ -21,6 +21,8 @@
 /docs/contract.md             @Zemmeng
 /docs/deploy-cloudflare.md    @Zemmeng
 /handoff/README.md            @Zemmeng
+/docs/llm-apis/README.md      @Zemmeng
+/docs/llm-apis/TEMPLATE.md    @Zemmeng
 /.claude/                     @Zemmeng
 /.github/                     @Zemmeng
 /.githooks/                   @Zemmeng
