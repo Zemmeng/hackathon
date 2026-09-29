@@ -269,6 +269,8 @@ elif sub == 'hygiene':
     MB = 1024 * 1024
     # apps/<模块>/public/ 下的 .json 数据文件上限 2MB、不报 500KB 提醒（PRD「每个文件 < 2 MB」，D-0929-1430）；其余 1MB
     DATA_RE = re.compile(r'apps/[^/]+/public/.+\.json$')
+    # docs/pitch-assets/ 下的 .pdf（初筛 / 决赛要交的 PDF）上限 10MB、不报 500KB 提醒（D-0930-0116）
+    PDF_RE = re.compile(r'docs/pitch-assets/.+\.pdf$')
 
     def is_data(p):
         return DATA_RE.match(p) is not None
@@ -291,13 +293,16 @@ elif sub == 'hygiene':
         if is_data(p):
             if sz > 2 * MB:
                 emit('E', '%s %.1fMB > 2MB（数据文件上限；抽稀、省字段或拆文件）' % (p, sz / MB))
+        elif PDF_RE.match(p):
+            if sz > 10 * MB:
+                emit('E', '%s %.1fMB > 10MB（pitch PDF 上限；导出时降图片分辨率）' % (p, sz / MB))
         elif sz > MB:
             emit('E', '%s %.1fMB > 1MB（压缩或放网盘；git rm --cached %s）' % (p, sz / MB, p))
         elif sz > 500 * 1024:
             emit('W', '%s %dKB > 500KB（能压就压）' % (p, sz // 1024))
     for p in sorted(untracked):
         fp = fpath(p)
-        lim = 2 * MB if is_data(p) else MB
+        lim = 2 * MB if is_data(p) else 10 * MB if PDF_RE.match(p) else MB
         if os.path.isfile(fp) and not os.path.islink(fp) and os.path.getsize(fp) > lim:
             emit('W', '%s（未跟踪）%.1fMB > %dMB：别 git add，放 out/ 或网盘' % (p, os.path.getsize(fp) / MB, lim // MB))
     shells = [p for p in list(tracked) + untracked if p.endswith('.sh') or p.startswith('.githooks/')]
@@ -594,7 +599,7 @@ run_e2e() {
 # --selftest：门禁本身也要被验证
 # =====================================================================
 run_selftest() {
-  local T="$WORK/selftest" i=0 total=20 out rc q v
+  local T="$WORK/selftest" i=0 total=21 out rc q v
   mkdir -p "$T"
   say "🧪 check.sh --selftest（临时目录 ${T}，结束后删除）"
   gq() { git -c user.name=selftest -c user.email=selftest@example.invalid -c commit.gpgsign=false \
@@ -724,6 +729,11 @@ run_selftest() {
   ( mkrepo "$T/big" && gq checkout -q -b alice/demo/T7-big &&
     head -c 1572864 /dev/zero | tr '\0' '1' >apps/demo/big.txt && gq add apps/demo/big.txt ) >/dev/null 2>&1
   run_case "大文件：apps/demo/big.txt 1.5MB → [6] ❌（非数据文件上限 1MB）" "[6] 仓库卫生 ❌" "$T/big"
+
+  # pitch PDF：docs/pitch-assets/ 下的 .pdf 上限 10MB（D-0930-0116）
+  ( mkrepo "$T/pdf" && gq checkout -q -b alice/pitch/T9-pdf && mkdir -p docs/pitch-assets &&
+    head -c 3145728 /dev/zero | tr '\0' '1' >docs/pitch-assets/deck.pdf && gq add docs/pitch-assets/deck.pdf ) >/dev/null 2>&1
+  run_case "pitch PDF：docs/pitch-assets/deck.pdf 3MB → 应全绿（上限 10MB）" green "$T/pdf"
 
   # $var 紧跟全角字符：macOS bash 会崩（$mod 后面直接接全角逗号，会读成变量 mod\xEF），check [6] 要提醒；全角逗号用 %s 传进去，本文件里不出现这种写法
   ( mkrepo "$T/utf8var" && gq checkout -q -b alice/demo/T8-utf8 &&
