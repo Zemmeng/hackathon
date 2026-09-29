@@ -1,6 +1,9 @@
 # wrangler dev 读的是本目录的 .dev.vars，不是 .env：cp .dev.vars.example .dev.vars
 # 🔒 .dev.vars 已被 .gitignore 忽略；这份示例只写变量名和假值。线上密钥用 npx wrangler secret put <NAME>
-# 1 = 不调大模型，只用关键词规则（/api/health 会返回 "mock":true）；只有写 0 才会真调用
+# 1 = 不调大模型，只用关键词规则（/api/health 会返回 "mock":true、llm.mode "rules"）；只有写 0 且填了 LLM_API_KEY 才会真调用
 MOCK=1
-# 大模型定了以后填（D-0929-1435 还没定用哪家）；key 的变量名到时候加在这里，值不进仓库
-LLM_MODEL=
+# 大模型的 key（DeepSeek / 百炼 / OpenAI 兼容都用这一个变量名）。值只填在你本机的 .dev.vars，不进仓库
+LLM_API_KEY=
+# 不填就用 wrangler.jsonc 的 vars（DeepSeek：https://api.deepseek.com + deepseek-flash）；换服务商见 README「怎么接大模型」
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-flash

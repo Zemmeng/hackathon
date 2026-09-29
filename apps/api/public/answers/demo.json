@@ -1,5 +1,5 @@
 {
-  "note": "演示文案提前问好的读数。键 = answerKey(请求)（见 apps/api/README.md）；每条 { req, reading }，req 只给人看。大模型定了以后填",
-  "prompt_v": "r1",
+  "note": "演示文案提前问好的读数。键 = answerKey(请求)（见 apps/api/README.md）；每条 { req, reading, from }，req 只给人看。由 node apps/api/tools/precompute.mjs --run 生成（默认 dry-run 不花钱），--check 校验",
+  "prompt_v": "r2",
   "answers": {}
 }

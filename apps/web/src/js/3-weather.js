@@ -58,6 +58,8 @@ class Weather{
     this.windFlow=new Flow(2200);this.waterFlow=new Flow(1100);this._fog=null;this._fogL=null;this.pois=null;this.deep=null;
     this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
+  /* the world changed under us (T15: real buildings arrived): drop every raster built from the old grids, rebuild the current one */
+  rebind(W,G){this.W=W;this.G=G;this.R={};this.lst=null;this.floodBase=null;this.pois=null;this.deep=null;this.wet=[];this.set(this.kind);}
   set(k){this.kind=k;this.cont=[];this.age=1e9;this.strikes=[];this.flash=0;this.nextStrike=1.4;this.windFlow.reset();this.waterFlow.reset();this.hyd=-1;if(k!=='clear')this.buildRaster(k==='fog'?null:k);}
   setTheme(light){if(this.light!==light){this.light=light;this.windFlow.reset();this.waterFlow.reset();if(this.kind==='wind')this.buildRaster('wind');}}
   hydro(h){return h<.42?.45+.55*smooth(h/.42):1-.5*smooth((h-.42)/.58);}
@@ -113,7 +115,7 @@ class Weather{
     const at=(x,y)=>L[this.G.idx(x,y)];
     let shadeP=null;for(let y=-100;y<=20;y+=2)for(let x=-60;x<=40;x+=2){const q=this.G.idx(x,y);if(this.G.cls[q]===CLS.FOOT&&this.G.shade[q]){const d=(x+13)**2+(y+40)**2;if(!shadeP||d<shadeP.d)shadeP={x,y,d};}}
     if(!shadeP)shadeP={x:-13,y:-40};
-    let cool=null;for(const b of this.W.buildings){const cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;if(cx>AOI.x0&&cx<AOI.x1+100&&cy>AOI.y0-30&&cy<AOI.y1&&b.kind==='roof'&&(!cool||b.albedo>cool.albedo))cool={...b,cx,cy};}
+    let cool=null;for(const b of this.W.buildings){const cx=b.cx!=null?b.cx:(b.x0+b.x1)/2,cy=b.cy!=null?b.cy:(b.y0+b.y1)/2;if(cx>AOI.x0&&cx<AOI.x1+100&&cy>AOI.y0-30&&cy<AOI.y1&&b.kind==='roof'&&(!cool||b.albedo>cool.albedo))cool={...b,cx,cy};}
     this.pois=[{x:70,y:-6.6,t:'ASPHALT',zh:'沥青路面',c:'#FDB32F',v:()=>at(70,-6.6),dx:40,dy:-44},{x:shadeP.x,y:shadeP.y,t:'BUILDING SHADE',zh:'建筑阴影',c:'#8BD17C',v:()=>at(shadeP.x,shadeP.y),dx:-120,dy:-30},{x:36,y:-72,t:'LAWN',zh:'草坪',c:'#8BD17C',v:()=>at(36,-72),dx:40,dy:40}];
     if(cool)this.pois.push({x:cool.cx,y:cool.cy,t:'COOL ROOF',zh:'冷屋顶',c:'#9FD3FF',v:()=>at(cool.cx,cool.cy),dx:44,dy:-30});
   }

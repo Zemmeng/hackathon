@@ -1,11 +1,15 @@
-// Worker 薄路由：入口校验 + 分发；读屏规则在 public/js/rules.js（浏览器和这里共用）
+// Worker 薄路由：入口校验 + 分发；读屏规则在 public/js/rules.js（浏览器和这里共用），大模型在 src/llm.js
 // GET /api/health 自检 · POST /api/read 读懂屏上的字 · 其余交给静态资源 public/
-// 大模型还没定（D-0929-1435）：现在不管 MOCK 是什么都用规则回答；定了以后在 read() 里接 KV 缓存和大模型
+// 默认（MOCK 不是 "0" 或没有 LLM_API_KEY）只用规则、不花钱；打开大模型见 README「怎么接大模型」（T19）
 import { normalizeRequest, SignError } from "../public/js/signs.js";
 import { ruleReading } from "../public/js/rules.js";
+import { llmConfig, llmStatus, serverReading } from "./llm.js";
+
+// Durable Object 类必须从入口模块导出（wrangler.jsonc 的 durable_objects / migrations 认这个名字）
+export { LlmBudget } from "./budget.js";
 
 // 部署时可用 --var VERSION:$(git rev-parse --short HEAD) 覆盖
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const MAX_BODY = 8 * 1024; // 合法请求最多几百字节，8KB 足够
 
 // 只有明确写 MOCK=0 才算关掉 MOCK：变量没配时默认不花钱
@@ -17,13 +21,14 @@ export default {
     const path = url.pathname;
 
     if (path === "/api/health") {
-      return json({ ok: true, v: env.VERSION || VERSION, mock: isMock(env) });
+      // llm：{ mode, model, key: 有没有（不给值）, cache: kv / cache-api / memory（按主机名）, prompt_v, provider, budget, per_day, per_min }
+      return json({ ok: true, v: env.VERSION || VERSION, mock: isMock(env), llm: llmStatus(env, url.hostname) });
     }
 
     if (path === "/api/read") {
       if (request.method !== "POST") return fail(405, "method", "只接受 POST");
-      const text = await request.text();
-      if (text.length > MAX_BODY) return fail(413, "too_large", `请求体超过 ${MAX_BODY} 字节`);
+      const text = await readLimited(request, MAX_BODY);
+      if (text === null) return fail(413, "too_large", `请求体超过 ${MAX_BODY} 字节`);
       let body;
       try {
         body = JSON.parse(text);
@@ -37,7 +42,7 @@ export default {
         if (e instanceof SignError) return fail(400, e.code, e.message);
         throw e;
       }
-      return json({ ok: true, reading: await read(req, env) });
+      return json({ ok: true, reading: await read(req, env, url.origin) });
     }
 
     // 未知 /api/* 明确回 404 JSON：不交给 ASSETS，免得前端把一页 HTML 当成接口响应
@@ -47,10 +52,42 @@ export default {
   },
 };
 
-// req 已规范化。以后的顺序：KV → 大模型（问 3 次取平均和区间）→ 任何一步失败回规则
-export async function read(req, env) {
-  void env;
-  return ruleReading(req);
+// req 已规范化。MOCK 或没 key → 规则（和 T19 以前一模一样）；
+// 否则 内存 → KV / Cache API → 大模型（问 3 次合成）→ 任何一步失败回规则。origin：Cache API 的键用同源的假网址
+export async function read(req, env = {}, origin) {
+  if (llmConfig(env).mode !== "llm") return ruleReading(req);
+  try {
+    return await serverReading(req, env, { origin });
+  } catch {
+    return { ...ruleReading(req), note: "llm_error" }; // 不透传报错内容
+  }
+}
+
+// 最多读 max 字节：Content-Length 超了直接拒；否则边读边数，超了就取消流，不把整个请求体攒进内存。超限回 null
+export async function readLimited(request, max) {
+  const len = Number(request.headers?.get?.("content-length"));
+  if (Number.isFinite(len) && len > max) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const buf = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    buf.set(c, at);
+    at += c.byteLength;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 function json(obj, status = 200) {

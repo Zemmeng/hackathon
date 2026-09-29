@@ -322,6 +322,221 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-legend span{display:inline-flex;align-items:center;gap:6px}
 .eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
 .eng-wrap{flex-wrap:wrap;gap:8px}
+.eng-impacts>div{padding:7px 11px;font-size:12px}
+.eng-impacts .val{font:600 10.5px/1.2 var(--f-mono);color:var(--works)}
+.eng-trs>div{align-items:flex-start}
+.eng-tr .md{min-width:30px;height:20px;padding:0 5px;border-radius:4px;display:inline-grid;place-items:center;font:700 10.5px/1 var(--f-mono);color:#fff;flex:none}
+.eng-tr small{display:block;font:400 10.5px/1.4 var(--f-mono);margin-top:3px;white-space:normal}
+
+/* ============================================================
+   T14 liquid glass (docs/arch/T14-liquid-glass-PRD.md) — appearance only.
+   Desktop: the map fills the window and every panel floats over it as glass; .app's --safe-* say how much of the map
+   the glass covers (js/7-glass.js keeps the view, scale bar and alert inside the rest). Refraction on .panel / .top
+   comes from js/7-glass.js (liquid-glass.js by Deepika Rao, MIT); everything here is the frosted base it sits on.
+   Apple-style clear glass (09-29 ask, lead: clearer still): the tint is light (~.3); --glass-tone dims the map behind it (dark) or lifts it
+   (light) so text still clears 4.5:1. Reduced transparency or no backdrop-filter → solid surfaces.
+   ============================================================ */
+:root,:root[data-theme="dark"]{
+  --bg:#07090B;--raised:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--line-2:rgba(255,255,255,.24);
+  --fg:#F7F9FA;--fg-2:#CDD4D9;--fg-3:#B8C1C7;
+  --panel:rgba(22,27,34,.30);--glass:rgba(22,27,34,.28);--glass-line:rgba(255,255,255,.18);
+  --shell:rgba(22,27,34,.30);--shell-line:rgba(255,255,255,.16);--shell-solid:#0F1419;
+  --glass-tone:brightness(.44) saturate(1.9);
+  --tone-deep:brightness(.44) saturate(1.9);--shell-deep:rgba(22,27,34,.30);--glass-deep:rgba(22,27,34,.28);--tone-fog:brightness(.29) saturate(1.6);--tone-fog-deep:brightness(.29) saturate(1.6);
+  --shadow:0 20px 50px rgba(0,0,0,.36);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.42),inset -1px -1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.05),inset 0 26px 40px -34px rgba(255,255,255,.38);
+  --hl:rgba(255,255,255,.08);--hl-2:rgba(255,255,255,.05);--hl-edge:rgba(255,255,255,.18);
+  --sun:#FF9F0A;--sun-tint:rgba(255,159,10,.16);--on-sun:#1B1000;--sun-ink:#FFB340;
+  --tt-moon:var(--sun);--tt-moon-fg:var(--on-sun);--tt-sun:transparent;--tt-sun-fg:var(--fg-3);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+    --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+    --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+    --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+    --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+    --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+    --shadow:0 18px 44px rgba(28,40,50,.14);
+    --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+    --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+    --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
+    --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#E7ECEE;--raised:rgba(255,255,255,.42);--line:rgba(17,27,34,.12);--line-2:rgba(17,27,34,.24);
+  --fg:#0B1013;--fg-2:#35414A;--fg-3:#4E5B64;
+  --panel:rgba(255,255,255,.32);--glass:rgba(255,255,255,.32);--glass-line:rgba(255,255,255,.72);
+  --shell:rgba(255,255,255,.30);--shell-line:rgba(255,255,255,.78);--shell-solid:#FFFFFF;
+  --glass-tone:brightness(1.24) contrast(.8) saturate(1.8);
+  --tone-deep:brightness(1.9) contrast(.45) saturate(1.4);--shell-deep:rgba(255,255,255,.72);--glass-deep:rgba(255,255,255,.72);--tone-fog:brightness(1.24) contrast(.8) saturate(1.8);--tone-fog-deep:brightness(1.9) contrast(.45) saturate(1.4);
+  --shadow:0 18px 44px rgba(28,40,50,.14);
+  --rim:inset 1.5px 1.5px 0 -.5px rgba(255,255,255,.98),inset -1px -1px 0 rgba(255,255,255,.6),inset 0 0 0 1px rgba(255,255,255,.3),inset 0 -22px 34px -28px rgba(255,255,255,.75);
+  --hl:rgba(255,255,255,.58);--hl-2:rgba(255,255,255,.22);--hl-edge:rgba(255,255,255,.9);
+  --sun:#F08A00;--sun-tint:rgba(240,138,0,.14);--on-sun:#1E1100;--sun-ink:#874800;
+  --tt-moon:transparent;--tt-moon-fg:var(--fg-3);--tt-sun:var(--sun);--tt-sun-fg:var(--on-sun);
+}
+
+/* glass adapts to what is behind it (like Apple's): over dark content (imagery / NIR basemap, heat layer) light glass
+   lifts harder and turns milkier (dark text needs a near-white ground for 4.5:1); over fog's near-white map dark
+   glass dims harder. Each theme sets its own
+   --tone-deep / --tone-fog(-deep), so these rules hold for both. data-bm / data-wx are set in js/5-app.js. */
+:root[data-bm="imagery"],:root[data-bm="nir"],:root[data-wx="heat"]{--glass-tone:var(--tone-deep);--shell:var(--shell-deep);--glass:var(--glass-deep)}
+:root[data-wx="fog"]{--glass-tone:var(--tone-fog)}
+:root[data-wx="fog"][data-bm="imagery"],:root[data-wx="fog"][data-bm="nir"]{--glass-tone:var(--tone-fog-deep)}
+
+/* glass surfaces: a light tint over a toned backdrop, a sheen across the top-left, a lit rim (brighter top-left,
+   fainter bottom-right) and a soft inner glow for thickness */
+.top,.rail,.panel,.timeline,.panel-open{
+  background:linear-gradient(150deg,var(--hl),transparent 36%,transparent 72%,var(--hl-2)),var(--shell);
+  border:1px solid var(--shell-line);
+  -webkit-backdrop-filter:blur(20px) var(--glass-tone);backdrop-filter:blur(20px) var(--glass-tone);
+  box-shadow:var(--shadow),var(--rim);
+}
+.glass{
+  background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),var(--glass);
+  border:1px solid var(--glass-line);border-radius:16px;
+  -webkit-backdrop-filter:blur(16px) var(--glass-tone);backdrop-filter:blur(16px) var(--glass-tone);
+  box-shadow:0 12px 32px rgba(0,0,0,.2),var(--rim);
+}
+/* real refraction (js/7-glass.js sets --lg-url on the panel and the top bar) */
+.lg-on{-webkit-backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone);backdrop-filter:var(--lg-url) blur(var(--lg-blur,12px)) var(--glass-tone)}
+
+/* brand + workflow */
+.brand>svg{width:32px;height:32px;padding:6px;border-radius:50%;background:var(--raised);box-shadow:inset 0 1px 0 var(--hl-edge)}
+.brand-name{font-size:18px;letter-spacing:-.03em}
+.scene{border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--raised)}
+.stepper{gap:4px}
+.stepper button{border-radius:999px;padding:9px 12px;transition:background .18s,color .18s}
+.stepper button:hover{background:var(--raised)}
+.stepper button[aria-current="step"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 18px rgba(255,159,10,.24),inset 0 1px 0 rgba(255,255,255,.42)}
+.chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
+
+/* layer rail */
+.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
+.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+
+/* map HUDs */
+.wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
+.wx{padding:4px;gap:3px}
+.wx button,.basemap button{border-radius:999px}
+.wx button{padding:7px 10px}
+.basemap{padding:4px}
+.basemap button{padding:8px 11px}
+.basemap button[aria-pressed="true"]{background:var(--sun);color:var(--on-sun)}
+.zoom{padding:4px;gap:2px}
+.zoom button{width:32px;height:32px;border-radius:50%}
+.legend{border-radius:18px;padding:13px 14px 14px}
+.legend-ramp{border-radius:999px}
+.probe{padding:8px 13px}
+.toast{padding:10px 16px}
+.alert{border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.10),transparent 38%),rgba(40,10,15,.86);color:#F5F7F8}
+.alert .m span{color:#B3A3A6}
+.swipe .knob{background:var(--sun);color:var(--on-sun);border:1px solid rgba(255,255,255,.45)}
+.swipe .tag{border-radius:999px;padding:6px 9px}
+
+/* analysis panel */
+.panel{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+.panel h2{font-size:22px;line-height:1.18;letter-spacing:-.025em}
+.pill{border-radius:999px;padding:5px 8px}
+.card,.list,.metric,.agents3 div,.table,.pre,.eng-seg,.eng-opt{border-radius:14px;box-shadow:inset 0 1px 0 var(--hl-edge)}
+.card,.list,.metric,.agents3 div,.table,.pre{background:linear-gradient(135deg,rgba(255,255,255,.06),transparent 50%),var(--raised)}
+.list>div{padding:10px 13px}
+.progress .track,.bars .track,.eng-route .track{border-radius:999px}
+.chips button,.chips span{border-radius:999px;padding:7px 10px}
+.btn{border-radius:14px;box-shadow:0 10px 22px rgba(79,227,193,.16),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.ghost,.btn:disabled{box-shadow:inset 0 1px 0 var(--hl-edge)}
+.chain .c{border-radius:12px}
+.chain .badge{background:var(--shell-solid)}
+.eng-seg{padding:3px}
+.eng-seg button{border-radius:11px}
+.eng-seg button[aria-selected="true"]{background:var(--sun);color:var(--on-sun)}
+.eng-opt[aria-pressed="true"]{border-color:var(--sun);background:var(--sun-tint)}
+.eng-field input{border-radius:10px}
+.eng-vms textarea{border-radius:10px;border-color:#2A2A2A;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.eng-msg{border-radius:10px}
+
+/* compact panel: explanatory copy hides, secondary sections fold behind their heading */
+.panel-tools{display:flex;align-items:center;gap:8px;margin-bottom:-4px}
+.seg-mode{display:inline-flex;gap:2px;padding:3px;border-radius:999px;border:1px solid var(--line);background:var(--raised)}
+.seg-mode button{border:0;background:none;color:var(--fg-2);font:600 10px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:7px 11px;border-radius:999px;cursor:pointer}
+.seg-mode button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+:lang(zh) .seg-mode button{letter-spacing:.02em;text-transform:none}
+.panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
+.panel-hide:hover{color:var(--fg)}
+.panel.compact p.muted{display:none}
+.panel.compact #copyFallback p.muted{display:block}
+.sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
+.sec-head:hover{background:var(--raised)}
+.sec-head::after{content:"";flex:none;width:7px;height:7px;margin:0 4px 3px auto;border-right:1.6px solid var(--fg-3);border-bottom:1.6px solid var(--fg-3);transform:rotate(45deg);transition:transform .18s}
+.sec-head.between::after{margin-left:0}
+.sec-closed>.sec-head::after{transform:rotate(-45deg);margin-bottom:0}
+.sec-closed>:not(.sec-head){display:none!important}
+.panel-open{display:none}
+
+/* one action colour (09-29): every primary / selected control is --sun; teal stays only where it means
+   "better / after repair" (numbers, the v2 tag, OK pills) and on map overlays (AOI, graticule) */
+button:focus-visible,[tabindex]:focus-visible,.eng-vms textarea:focus-visible,.eng-field input:focus-visible{outline-color:var(--sun)}
+.brand>svg{stroke:var(--sun)}
+.brand>svg circle[fill]{fill:var(--sun)}
+.meta .eyebrow{color:var(--sun-ink)}
+.btn{background:var(--sun);color:var(--on-sun);box-shadow:0 10px 22px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.4)}
+.play{background:var(--sun);color:var(--on-sun);box-shadow:0 8px 20px rgba(255,159,10,.26),inset 0 1px 0 rgba(255,255,255,.45)}
+.chips [aria-pressed="true"],.lang-toggle span.on,.speed button[aria-pressed="true"]{background:var(--sun);border-color:transparent;color:var(--on-sun)}
+.speed{border-radius:999px;padding:3px}
+.speed button{border-radius:999px}
+.progress .track i{background:var(--sun)}
+input[type="range"]#vmsAt{accent-color:var(--sun)}
+
+/* ---------- floating layout (desktop) ---------- */
+@media (min-width:821px){
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .map{position:fixed;inset:0;z-index:0}
+  .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
+  .rail{position:fixed;z-index:5;top:var(--safe-t);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
+  .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
+  .panel-hide{display:grid}
+  .app.panel-min{--safe-r:64px}
+  .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
+  .panel-open:not([hidden]){display:flex;position:fixed;z-index:5;right:12px;top:var(--safe-t);flex-direction:column;align-items:center;gap:8px;padding:12px 8px;border-radius:18px;cursor:pointer;color:var(--fg);font:600 10px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+  .panel-open span{writing-mode:vertical-rl}
+  :lang(zh) .panel-open{letter-spacing:.2em;text-transform:none}
+
+  /* HUDs keep to the part of the map the glass leaves open */
+  .meta{top:calc(var(--safe-t) + 2px);left:var(--safe-l)}
+  .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
+  .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
+  .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 34px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .swipe .tag{top:calc(var(--safe-t) + 60px)}
+}
+/* narrower desktops: fewer HUDs, a slimmer panel */
+@media (min-width:821px) and (max-width:1360px){ .app:not(.panel-min) .meta{display:none} }
+@media (min-width:821px) and (max-width:1180px){ .app{--panel-w:332px;--safe-r:356px} .app.panel-min{--safe-r:64px} .basemap{top:calc(var(--safe-t) + 52px)} }
+@media (min-width:821px) and (max-width:1000px){ .probe{display:none} .scene{display:none} }
+
+/* ---------- phones / narrow: the stacked flow, glass surfaces kept ---------- */
+@media (max-width:820px){
+  .top{border-radius:0 0 20px 20px;border-width:0 0 1px}
+  .timeline,.panel{border-width:1px 0 0;border-radius:0}
+}
+
+/* ---------- fallbacks ---------- */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+}
+@media (prefers-reduced-transparency: reduce){
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
+}
+@media (prefers-reduced-motion: reduce){
+  .panel,.app.panel-min .panel,.stepper button,.rail button,.sec-head::after{transition:none}
+}
 </style>
 </head>
 <body>
@@ -368,6 +583,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
           <dt data-zh="分辨率">GSD</dt><dd id="metaGsd">0.25 m/px · EPSG:7855</dd>
           <dt data-zh="太阳">SUN</dt><dd data-zh="方位 292° · 高度 34°">AZ 292° · EL 34°</dd>
           <dt data-zh="中心">CENTRE</dt><dd id="metaCentre">-37.80990, 144.96500</dd>
+          <dt data-zh="建筑">BLDG</dt><dd id="metaBldg">Procedural</dd>
         </dl>
       </div>
       <div class="wx glass" id="wx" role="radiogroup" aria-label="Weather scenario" data-zh-aria-label="天气情景"></div>
@@ -391,6 +607,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
   </main>
 
   <section class="panel" id="panel" aria-live="polite"></section>
+  <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -511,6 +728,11 @@ function freeSpans(s,pad){
   const out=[];let cur=lo;for(const[a,b]of others){if(a>cur)out.push([cur,a]);cur=Math.max(cur,b);}if(cur<hi)out.push([cur,hi]);return out;
 }
 
+/* hand-placed pieces shared by the synthetic city and the real one (T15 keeps them when they sit inside the matching real footprint) */
+const SLV_LAWN={x0:15,y0:-95,x1:58,y1:-15,kind:'lawn'},SLV_PATHS=[[[15,-15],[58,-56]],[[15,-95],[58,-56]],[[15,-56],[58,-56]]];
+const SYN_LANDMARKS={dome:{kind:'dome',x:130,y:-56,r:17,h:36,name:'La Trobe Reading Room'},cone:{kind:'cone',x:-86,y:-54,r:25,h:42,name:'Melbourne Central cone'},shot:{kind:'shot',x:-86,y:-54,r:4.6,h:50,name:"Coop's Shot Tower"}};
+const LANDMARK_HOST={dome:'State Library Victoria',cone:'Melbourne Central',shot:'Melbourne Central'};
+
 function buildWorld(){
   const R=rng(20260929);
   const W={streets:STREETS,buildings:[],trees:[],parks:[],plazas:[],lanes:[],platforms:[],landmarks:[],paths:[]};
@@ -535,21 +757,21 @@ function buildWorld(){
     const b={x0:xb[i]+xw[i]/2,x1:xb[i+1]-xw[i+1]/2,y0:yb[j]+yw[j]/2,y1:yb[j+1]-yw[j+1]/2};
     if(b.x1<=b.x0||b.y1<=b.y0)continue;
     if(near(b.x0,15)&&near(b.y1,-15)){ /* State Library Victoria */
-      W.parks.push({x0:15,y0:-95,x1:58,y1:-15,kind:'lawn'});
-      W.paths.push([[15,-15],[58,-56]],[[15,-95],[58,-56]],[[15,-56],[58,-56]]);
+      W.parks.push({...SLV_LAWN});
+      W.paths.push(...SLV_PATHS.map(p=>p.map(q=>q.slice())));
       W.buildings.push({x0:60,y0:-82,x1:100,y1:-27,h:24,kind:'heritage',tone:.7,albedo:.34,seed:11});
       W.buildings.push({x0:100,y0:-40,x1:183.5,y1:-16.5,h:22,kind:'heritage',tone:.6,albedo:.34,seed:12});
       W.buildings.push({x0:100,y0:-93.5,x1:183.5,y1:-72,h:20,kind:'heritage',tone:.6,albedo:.34,seed:13});
       W.buildings.push({x0:160,y0:-72,x1:183.5,y1:-40,h:22,kind:'heritage',tone:.6,albedo:.34,seed:14});
       W.plazas.push({x0:100,y0:-72,x1:160,y1:-40});
-      W.landmarks.push({kind:'dome',x:130,y:-56,r:17,h:36,name:'La Trobe Reading Room'});
+      W.landmarks.push({...SYN_LANDMARKS.dome});
       continue;
     }
     if(near(b.x1,-15)&&near(b.y1,-15)){ /* Melbourne Central */
       W.buildings.push({x0:-183.5,y0:-94,x1:-17,y1:-16.5,h:26,kind:'mall',tone:.5,albedo:.45,seed:21});
       W.buildings.push({x0:-181,y0:-92,x1:-142,y1:-54,h:211,kind:'tower',tone:.15,albedo:.18,seed:22});
-      W.landmarks.push({kind:'cone',x:-86,y:-54,r:25,h:42,name:'Melbourne Central cone'});
-      W.landmarks.push({kind:'shot',x:-86,y:-54,r:4.6,h:50,name:"Coop's Shot Tower"});
+      W.landmarks.push({...SYN_LANDMARKS.cone});
+      W.landmarks.push({...SYN_LANDMARKS.shot});
       continue;
     }
     if(near(b.x0,15)&&near(b.y0,15)){ /* RMIT courtyard */
@@ -561,6 +783,126 @@ function buildWorld(){
   }
   W.platforms.push({x0:-7.6,x1:-3.9,y0:-78,y1:-38},{x0:3.9,x1:7.6,y0:-78,y1:-38});
   W.busStop={x0:-104,x1:-86,y0:-14.4,y1:-12.8};
+  return W;
+}
+
+/* ============================================================
+   Real buildings (T15): /roads/public/cbd/buildings.json (OSM + City of Melbourne 2018 footprints) → polygons on the page grid.
+   No DOM here: tests/world_real.mjs runs this file in node. buildWorld() above stays as the fallback city (file://, offline,
+   the web-only static server). toWorld = geoToWorld from 6-engine.js, passed in because it only exists once the whole page script ran.
+   ============================================================ */
+const REAL_MIN=50; /* fewer usable footprints than this → keep the synthetic city */
+function polyArea(P){let a=0;for(let i=0,n=P.length;i<n;i++){const p=P[i],q=P[(i+1)%n];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
+function inPoly(P,x,y){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[i],b=P[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;}
+function bboxOf(P){let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;for(const p of P){if(p[0]<x0)x0=p[0];if(p[0]>x1)x1=p[0];if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];}return{x0,x1,y0,y1};}
+/* Part of a simple polygon on one side of the line p[ax] = c (keep >= c when sg = 1, <= c when sg = -1), as separate rings:
+   an L / U shape cut by a street comes back as two pieces, never joined by a zero-width sliver along the cut. */
+function clipSide(P,ax,c,sg){
+  const n=P.length,F=P.map(p=>{const v=(p[ax]-c)*sg;return v===0?1e-9:v;});
+  let s=-1;for(let i=0;i<n;i++)if(F[i]<0){s=i;break;}
+  if(s<0)return[P];if(F.every(v=>v<0))return[];
+  const cut=(a,b,fa,fb)=>{const t=fa/(fa-fb),p=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];p[ax]=c;return p;};
+  const ch=[];let cur=null;
+  for(let k=0;k<n;k++){const i=(s+k)%n,j=(i+1)%n,fa=F[i],fb=F[j];
+    if(fa<0&&fb>0){const X=cut(P[i],P[j],fa,fb);cur={pts:[X,P[j]],a:X};}
+    else if(fa>0&&fb>0)cur.pts.push(P[j]);
+    else if(fa>0&&fb<0){const X=cut(P[i],P[j],fa,fb);cur.pts.push(X);cur.b=X;ch.push(cur);cur=null;}}
+  /* along the cut line the polygon's inside is the intervals between sorted crossings (1st–2nd, 3rd–4th …): each joins an exit to an entry */
+  const X=[];ch.forEach((q,i)=>{X.push({t:q.a[1-ax],i,e:1},{t:q.b[1-ax],i,e:0});});X.sort((u,v)=>u.t-v.t);
+  const next=new Array(ch.length).fill(-1);
+  for(let k=0;k+1<X.length;k+=2){const u=X[k],v=X[k+1];if(u.e===v.e)return ch.map(q=>q.pts);next[(u.e?v:u).i]=(u.e?u:v).i;}
+  const used=new Array(ch.length).fill(false),out=[];
+  for(let i=0;i<ch.length;i++){if(used[i])continue;const ring=[];let k=i;while(k>=0&&!used[k]){used[k]=true;ring.push(...ch[k].pts);k=next[k];}if(ring.length>=3)out.push(ring);}
+  return out;
+}
+/* Where a page street really exists (network.json, T3): Little La Trobe only between Elizabeth and Swanston, A'Beckett only west
+   of Swanston. The page grid draws both across the whole width, but east of Swanston (RMIT) and west of Elizabeth real buildings
+   stand there, so footprints are only cut along the real stretch. [a, b] = page x range (these two are h streets). */
+const STREET_SPAN={llatrobe:[-185,-15],abeckett:[-Infinity,-15]};
+/* cut this far outside the street edge: 2 m cell centres sit exactly on some edges (x = ±15, y = −95 …), and a roof that
+   ends on the edge would repaint that footpath cell as roof in buildGrids */
+const CLIP_EPS=.05;
+/* pieces thinner than this on average (area / longest bbox side) are clipping slivers, not buildings (assumed threshold) */
+const MIN_PIECE_W=1.5;
+/* cut away every part that lies on a page street (carriageway + footpath), so roads, tram stops and footpaths stay clear */
+function clipStreets(P){
+  let parts=[P];
+  for(const s of STREETS){const r=streetRect(s),ax=s.axis==='h'?1:0,al=1-ax,lo=(ax?r.y0:r.x0)-CLIP_EPS,hi=(ax?r.y1:r.x1)+CLIP_EPS,sp=STREET_SPAN[s.id],out=[];
+    const cutStrip=q=>{out.push(...clipSide(q,ax,lo,-1),...clipSide(q,ax,hi,1));};
+    for(const q of parts){const b=bboxOf(q),bl=ax?b.y0:b.x0,bh=ax?b.y1:b.x1;if(bh<=lo||bl>=hi){out.push(q);continue;}
+      if(!sp){cutStrip(q);continue;}
+      /* a street that exists only on [a, b]: split the piece at a and b, cut the strip out of the middle part only */
+      let pcs=[q];
+      for(const c of sp){if(!isFinite(c))continue;const nx=[];for(const p of pcs){const pb=bboxOf(p),pl=al?pb.y0:pb.x0,ph=al?pb.y1:pb.x1;if(pl<c&&ph>c)nx.push(...clipSide(p,al,c,-1),...clipSide(p,al,c,1));else nx.push(p);}pcs=nx;}
+      for(const p of pcs){const pb=bboxOf(p),m=al?(pb.y0+pb.y1)/2:(pb.x0+pb.x1)/2;if(m>sp[0]&&m<sp[1])cutStrip(p);else out.push(p);}}
+    parts=out;}
+  return parts.filter(q=>{const a=Math.abs(polyArea(q)),b=bboxOf(q);return a>=4&&a/Math.max(b.x1-b.x0,b.y1-b.y0)>=MIN_PIECE_W;});
+}
+/* a point well inside the polygon (for labels and probes): the centroid when it is inside, else the deepest of a 7 × 7 sample */
+function innerPt(P,b){
+  const n=P.length;let a=0,cx=0,cy=0;for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n],cr=p[0]*q[1]-q[0]*p[1];a+=cr;cx+=(p[0]+q[0])*cr;cy+=(p[1]+q[1])*cr;}
+  const depth=(x,y)=>{let m=Infinity;for(let i=0;i<n;i++){const p=P[i],q=P[(i+1)%n],dx=q[0]-p[0],dy=q[1]-p[1],L2=dx*dx+dy*dy||1e-9;let t=((x-p[0])*dx+(y-p[1])*dy)/L2;t=t<0?0:t>1?1:t;const d=Math.hypot(p[0]+t*dx-x,p[1]+t*dy-y);if(d<m)m=d;}return m;};
+  let best=null,bd=-1;
+  if(a){cx/=3*a;cy/=3*a;if(inPoly(P,cx,cy)){best=[cx,cy];bd=depth(cx,cy);}}
+  for(let j=1;j<8;j++)for(let i=1;i<8;i++){const x=b.x0+(b.x1-b.x0)*i/8,y=b.y0+(b.y1-b.y0)*j/8;if(!inPoly(P,x,y))continue;const d=depth(x,y);if(d>bd*1.15){bd=d;best=[x,y];}}
+  return best||[P[0][0],P[0][1]];
+}
+function strHash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+/* the data has no roof material or heritage flag: heritage = well-known heritage names (assumed); towers from the real height */
+const HERITAGE_RE=/Library Victoria|Church|Cathedral|Gaol|Watch House/i;
+function realKind(name,use,h,area){if(name&&HERITAGE_RE.test(name))return'heritage';if(h>=60)return'tower';if(use==='retail'&&area>=2500)return'mall';return'roof';}
+const NAME_ZH={'State Library Victoria':'维多利亚州立图书馆','Melbourne Central':'墨尔本中央购物中心','Melbourne Central office tower':'墨尔本中央办公塔楼','Emporium':'Emporium 购物中心','The Strand Melbourne':'The Strand 购物中心','RMIT Swanston Academic Building':'RMIT 斯旺斯顿教学楼','Old Melbourne Gaol':'老墨尔本监狱',"St Francis' Church":'圣方济各教堂','State Library Station':'州立图书馆站','QV Residential':'QV 公寓','Storey Hall':'斯托里礼堂','Former City Watch House':'旧城市看守所','Golden Square Car Park':'Golden Square 停车场','Wesley Uniting Church':'卫斯理联合教会','Aurora Melbourne Central':'Aurora 墨尔本中央公寓'};
+const GENERIC_NAME=/^(building|block)\s+[\w.-]+$/i; /* RMIT's "Building 8" etc. — the campus gets one RMIT label instead */
+function blockRects(){
+  const vs=STREETS.filter(s=>s.axis==='v').sort((a,b)=>a.c-b.c),hs=STREETS.filter(s=>s.axis==='h').sort((a,b)=>a.c-b.c);
+  const xb=[WORLD.x0-60,...vs.map(s=>s.c),WORLD.x1+60],xw=[0,...vs.map(s=>s.w),0],yb=[WORLD.y0-60,...hs.map(s=>s.c),WORLD.y1+60],yw=[0,...hs.map(s=>s.w),0],out=[];
+  for(let i=0;i<xb.length-1;i++)for(let j=0;j<yb.length-1;j++){const b={x0:xb[i]+xw[i]/2,x1:xb[i+1]-xw[i+1]/2,y0:yb[j]+yw[j]/2,y1:yb[j+1]-yw[j+1]/2};if(b.x1>b.x0&&b.y1>b.y0)out.push(b);}
+  return out;
+}
+function buildWorldReal(data,toWorld){
+  const W={streets:STREETS,buildings:[],trees:[],parks:[],plazas:[],lanes:[],platforms:[],landmarks:[],paths:[],lots:blockRects(),labels:[],real:true,sources:[],count:0};
+  const list=data&&Array.isArray(data.buildings)?data.buildings:[],dh=+(data&&data.assumptions&&data.assumptions.default_height_m)||12;
+  if(data&&Array.isArray(data.sources))W.sources=data.sources.map(String);
+  const raw=[];
+  for(const b of list){
+    const fp=b&&b.footprint;if(!Array.isArray(fp)||fp.length<3)continue;
+    const P=[];for(const q of fp){const p=Array.isArray(q)?toWorld(+q[0],+q[1]):null;if(!p||!isFinite(p[0])||!isFinite(p[1]))break;P.push([p[0],p[1]]);}
+    if(P.length!==fp.length)continue;
+    const bb=bboxOf(P);if(bb.x1<WORLD.x0||bb.x0>WORLD.x1||bb.y1<WORLD.y0||bb.y0>WORLD.y1)continue;
+    const area=Math.abs(polyArea(P));if(area<4)continue;
+    raw.push({b,P,bb,area,h:+b.height_m>0&&isFinite(+b.height_m)?+b.height_m:dh,pt:innerPt(P,bb),name:typeof b.name==='string'?b.name.replace(/\s+/g,' ').trim():''});
+  }
+  /* an outline drawn round a whole complex carries its tallest part's height (Melbourne Central's outline is 211 m because the
+     office tower sits inside it): when parts cover ≥ 30% of an outline, the outline takes the parts' median height */
+  for(const A of raw){let ia=0;const hs=[];
+    for(const C of raw){if(C===A||C.area>=A.area)continue;const p=C.pt;if(p[0]<A.bb.x0||p[0]>A.bb.x1||p[1]<A.bb.y0||p[1]>A.bb.y1||!inPoly(A.P,p[0],p[1]))continue;ia+=C.area;hs.push(C.h);}
+    if(hs.length&&ia>=.3*A.area){hs.sort((a,b)=>a-b);A.h2=Math.min(A.h,hs[hs.length>>1]);}}
+  raw.sort((a,b)=>b.area-a.area); /* outlines first, the parts inside them drawn on top */
+  for(const r of raw){
+    const id=String(r.b.id||''),seed=strHash(id||r.name||String(r.area)),R=rng(seed),h=r.h2!=null?r.h2:r.h,use=String(r.b.use||'other'),kind=realKind(r.name,use,h,r.area);
+    const tone=R(),albedo=kind==='heritage'?.34:.12+R()*.45; /* albedo: assumed (no roof material in the data) */
+    let n=0;
+    for(const P of clipStreets(r.P)){const bb=bboxOf(P),pt=innerPt(P,bb);n++;
+      W.buildings.push({pts:P,x0:bb.x0,y0:bb.y0,x1:bb.x1,y1:bb.y1,cx:pt[0],cy:pt[1],area:Math.abs(polyArea(P)),h,kind,use,name:r.name,id,tone,albedo,seed,solar:false});}
+    if(n)W.count++;
+  }
+  W.parks.push({...SLV_LAWN});W.paths.push(...SLV_PATHS.map(p=>p.map(q=>q.slice())));
+  W.platforms.push({x0:-7.6,x1:-3.9,y0:-78,y1:-38},{x0:3.9,x1:7.6,y0:-78,y1:-38});
+  W.busStop={x0:-104,x1:-86,y0:-14.4,y1:-12.8};
+  const inside=(name,x,y)=>W.buildings.some(b=>b.name===name&&x>=b.x0&&x<=b.x1&&y>=b.y0&&y<=b.y1&&inPoly(b.pts,x,y));
+  for(const k of Object.keys(SYN_LANDMARKS)){const l=SYN_LANDMARKS[k];if(inside(LANDMARK_HOST[k],l.x,l.y))W.landmarks.push({...l});}
+  /* labels: real names of the big named buildings (pieces of one name merged), plus the RMIT campus and Coop's Shot Tower */
+  const groups=new Map();
+  for(const b of W.buildings){
+    if(!b.name||GENERIC_NAME.test(b.name)||b.name.length>34)continue;
+    if(b.cx<WORLD.x0+12||b.cx>WORLD.x1-12||b.cy<WORLD.y0+8||b.cy>WORLD.y1-8)continue;
+    const g=groups.get(b.name)||{name:b.name,area:0,h:0,best:null};g.area+=b.area;g.h=Math.max(g.h,b.h);if(!g.best||b.area>g.best.area)g.best=b;groups.set(b.name,g);}
+  for(const g of groups.values()){
+    if(g.area<1100&&!(g.h>=120&&g.area>=400))continue;
+    W.labels.push({x:g.best.cx,y:g.best.cy,t:g.name.toUpperCase(),zh:NAME_ZH[g.name]||g.name,min:g.area>=8000?1.8:g.area>=2500?2.6:3.6,pri:g.area,name:g.name});}
+  W.labels.push({x:90,y:62,t:'RMIT UNIVERSITY',zh:'皇家墨尔本理工大学',min:1.8,pri:5000});
+  if(W.landmarks.some(l=>l.kind==='shot'))W.labels.push({x:-86,y:-66,t:"COOP'S SHOT TOWER",zh:'库普制弹塔',min:5,pri:100});
+  W.labels.sort((a,b)=>b.pri-a.pri);
   return W;
 }
 
@@ -579,7 +921,13 @@ function buildGrids(W){
   for(const p of W.plazas)fill(p,CLS.PLAZA);
   for(const l of W.lanes)fill(l,CLS.LANE);
   for(const p of W.parks)fill(p,CLS.LAWN);
-  for(const b of W.buildings)fill(b,b.kind==='heritage'?CLS.HERITAGE:CLS.ROOF,b.albedo,b.h);
+  /* polygon footprints (real buildings): scanline, a cell belongs to the polygon when its centre is inside (even-odd) */
+  const scan=(P,f)=>{const q=rng2(bboxOf(P)),xs=[];
+    for(let j=q.j0;j<=q.j1;j++){const y=WORLD.y1-(j+.5)*CELL;xs.length=0;
+      for(let i=0,k=P.length-1;i<P.length;k=i++){const a=P[i],b=P[k];if((a[1]>y)!==(b[1]>y))xs.push(a[0]+(y-a[1])*(b[0]-a[0])/(b[1]-a[1]));}
+      xs.sort((u,v)=>u-v);
+      for(let m=0;m+1<xs.length;m+=2){const i0=Math.max(q.i0,Math.ceil((xs[m]-WORLD.x0)/CELL-.5)),i1=Math.min(q.i1,Math.floor((xs[m+1]-WORLD.x0)/CELL-.5));for(let i=i0;i<=i1;i++)f(j*NX+i);}}};
+  for(const b of W.buildings){const v=b.kind==='heritage'?CLS.HERITAGE:CLS.ROOF;if(b.pts)scan(b.pts,k=>{cls[k]=v;alb[k]=b.albedo;hgt[k]=b.h;});else fill(b,v,b.albedo,b.h);}
   for(const l of W.landmarks){if(l.kind==='dome')disc(l.x,l.y,l.r,CLS.DOME,.3,l.h);else if(l.kind==='cone')disc(l.x,l.y,l.r,CLS.GLASS,.4,l.h);else disc(l.x,l.y,l.r,CLS.ROOF,.2,l.h);}
   for(const t of W.trees)disc(t.x,t.y,t.r*.9,CLS.TREE);
   /* shadows (sun) and wakes (wind) from extruded footprints */
@@ -590,7 +938,17 @@ function buildGrids(W){
     for(let j=q.j0;j<=q.j1;j++){const y=WORLD.y1-(j+.5)*CELL;for(let i=q.i0;i<=q.i1;i++){const x=WORLD.x0+(i+.5)*CELL;if(own(x,y))continue;if(!inConvex(P,x,y))continue;const k=j*NX+i;if(skipRoof&&(cls[k]===CLS.ROOF||cls[k]===CLS.HERITAGE))continue;into[k]=1;}}
   };
   const oct=(cx,cy,r)=>Array.from({length:8},(_,i)=>[cx+r*Math.cos(i*Math.PI/4),cy+r*Math.sin(i*Math.PI/4)]);
+  /* polygons: sweep the footprint's edge cells along the sun / wind vector (the swept prism = footprint + its edges' sweep) */
+  const bid=new Int32Array(n);let oid=0;
+  const sweep=(cells,id,L,dx,dy,into,skipRoof)=>{const steps=Math.ceil(L/(CELL*.5));
+    for(const k of cells){const i=k%NX,j=(k-i)/NX;
+      if(i>0&&i<NX-1&&j>0&&j<NY-1&&bid[k-1]===id&&bid[k+1]===id&&bid[k-NX]===id&&bid[k+NX]===id)continue;
+      const x=WORLD.x0+(i+.5)*CELL,y=WORLD.y1-(j+.5)*CELL;
+      for(let s=1;s<=steps;s++){const t=s/steps*L,ii=Math.floor((x+dx*t-WORLD.x0)/CELL),jj=Math.floor((WORLD.y1-y-dy*t)/CELL);if(ii<0||jj<0||ii>=NX||jj>=NY)break;
+        const q=jj*NX+ii;if(bid[q]===id)continue;if(skipRoof&&(cls[q]===CLS.ROOF||cls[q]===CLS.HERITAGE))continue;into[q]=1;}}};
   for(const b of W.buildings){
+    if(b.pts){const id=++oid,cells=[];scan(b.pts,k=>{bid[k]=id;cells.push(k);});if(!cells.length)continue;
+      sweep(cells,id,Math.min(b.h*SHD.k,60),SHD.dx,SHD.dy,shade,false);sweep(cells,id,Math.min(b.h*1.3,70),WIND_DIR[0],WIND_DIR[1],wake,true);continue;}
     const pts=[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]],own=(x,y)=>x>=b.x0&&x<=b.x1&&y>=b.y0&&y<=b.y1;
     cast(pts,own,Math.min(b.h*SHD.k,60),SHD.dx,SHD.dy,shade,false);
     cast(pts,own,Math.min(b.h*1.3,70),WIND_DIR[0],WIND_DIR[1],wake,true);
@@ -614,11 +972,27 @@ const FONT_BODY='Inter,"Noto Sans SC",ui-sans-serif,system-ui,sans-serif';
 const PAL_RGB={ground:'#2a2a25',foot:'#6a665d',road:'#2f302e',line:'rgba(232,228,218,.62)',yellow:'rgba(214,176,66,.72)',tramBed:'#484741',rail:'rgba(168,166,158,.85)',bike:'#3b6a47',zebra:'rgba(236,232,222,.8)',shadow:'rgba(5,6,7,.56)',
   roofs:['#4a4843','#57544d','#3d3c38','#615d55','#6e6a61','#45423c','#524f47','#7a7466','#3a3935','#686257','#80796b','#8c887a','#9d998d','#5b5f5f','#4b5152','#b3b0a6'],
   hvac:'#a39e92',solar:'#26364a',sky:'#b9c6ca',tree:['#1e331b','#2c4727','#44643a','#5f8349'],lawn:['#3c5335','#47623d'],paving:'#77726a',path:'#8f897d',platform:'#8b877e',platEdge:'#c9b458',heritage:'#8d9189',
-  dome:['#b2bfb3','#66766a','#2c3530'],glass:['#a9bfca','#587080','#233039'],brick:'#8a4b35',mall:'#9a978d',tower:['#3b4148','#50575f']};
+  dome:['#b2bfb3','#66766a','#2c3530'],glass:['#a9bfca','#587080','#233039'],brick:'#8a4b35',mall:'#9a978d',tower:['#3b4148','#50575f'],
+  lot:'#3a3833',use:{residential:'#74675b',office:'#55616d',retail:'#716b5f',education:'#6c5d52',public:'#676e65',hotel:'#665e68',parking:'#474846'}};
 const PAL_NIR={...PAL_RGB,ground:'#3a4042',foot:'#7f8e92',road:'#223036',line:'rgba(220,235,240,.55)',tramBed:'#3a484e',bike:'#5a2a28',
   roofs:['#5d7a82','#6f8c93','#4f6770','#8aa5ab','#93a9ae','#56707a','#7b979e','#a9bfc3','#3f5760','#68848c','#8fb0b6','#b8cbcf'],
-  tree:['#5c0f0c','#961c16','#cc3328','#ee5a4a'],lawn:['#b3322a','#c9473c'],paving:'#8d9da1',path:'#a4b3b6',heritage:'#9fb3b7',dome:['#c3d3d6','#71878d','#33444a'],glass:['#86a6b2','#3f5b66','#18272e'],brick:'#7b8f93',mall:'#9fb1b5',tower:['#3d5058','#52666e']};
+  tree:['#5c0f0c','#961c16','#cc3328','#ee5a4a'],lawn:['#b3322a','#c9473c'],paving:'#8d9da1',path:'#a4b3b6',heritage:'#9fb3b7',dome:['#c3d3d6','#71878d','#33444a'],glass:['#86a6b2','#3f5b66','#18272e'],brick:'#7b8f93',mall:'#9fb1b5',tower:['#3d5058','#52666e'],
+  lot:'#4b5658',use:{residential:'#809a9f',office:'#5c767e',retail:'#8fa4a8',education:'#7f9699',public:'#9aadaf',hotel:'#6b848b',parking:'#4a5d63'}};
 
+const mixRgb=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t];
+/* roof colour of a real building: its hashed roof tone, pulled toward its use's tint; taller roofs catch more light, sheds sit darker */
+function roofRgb(b,pal){
+  const base=b.kind==='heritage'?pal.heritage:b.kind==='mall'?pal.mall:b.kind==='tower'?pal.tower[b.tone<.5?0:1]:pal.roofs[Math.floor(b.tone*pal.roofs.length)%pal.roofs.length];
+  let c=hexRgb(base);const u=pal.use&&pal.use[b.use];if(u&&b.kind!=='heritage')c=mixRgb(c,hexRgb(u),.45);
+  const k=clamp((b.h-15)/140,0,1)*.3,d=b.h<8?.1:0;return c.map(v=>v+(255-v)*k-v*d);
+}
+/* footprint extruded along (ox, oy) as one path: the footprint, its moved copy and one quad per edge, all wound the same way,
+   so a nonzero fill paints their union once (no darker overlaps, no sliver across a concave notch) */
+function extrudePath(g,P,ox,oy,X,Y){
+  const ring=Q=>{g.moveTo(X(Q[0][0]),Y(Q[0][1]));for(let i=1;i<Q.length;i++)g.lineTo(X(Q[i][0]),Y(Q[i][1]));g.closePath();};
+  const base=polyArea(P)>0?P:P.slice().reverse();ring(base);ring(base.map(p=>[p[0]+ox,p[1]+oy]));
+  for(let i=0,n=P.length;i<n;i++){const a=P[i],b=P[(i+1)%n],cr=(b[0]-a[0])*oy-(b[1]-a[1])*ox;if(Math.abs(cr)<1e-9)continue;const q=[a,b,[b[0]+ox,b[1]+oy],[a[0]+ox,a[1]+oy]];ring(cr>0?q:q.reverse());}
+}
 function renderImagery(W,pal){
   const S=4,cw=(WORLD.x1-WORLD.x0)*S,ch=(WORLD.y1-WORLD.y0)*S;
   const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;const g=cv.getContext('2d');
@@ -656,16 +1030,39 @@ function renderImagery(W,pal){
   }
   for(const p of W.platforms){rect(p,pal.platform);const e=p.x0<0?p.x1-.35:p.x0;rect({x0:e,x1:e+.35,y0:p.y0,y1:p.y1},pal.platEdge);}
   rect(W.busStop,'#2a2c2e');rect({x0:W.busStop.x0+.3,x1:W.busStop.x1-.3,y0:W.busStop.y0+.35,y1:W.busStop.y1-.35},'#9fb3bd');
+  /* open ground between real footprints (laneways, yards): one flat paving tone per block */
+  for(const l of W.lots||[])rect(l,pal.lot);
   /* plazas and parks */
   for(const p of W.plazas){rect(p,pal.paving);g.globalAlpha=.25;for(let x=p.x0;x<p.x1;x+=3)line(x,p.y0,x,p.y1,'#000',.08);for(let y=p.y0;y<p.y1;y+=3)line(p.x0,y,p.x1,y,'#000',.08);g.globalAlpha=1;}
   for(const p of W.parks){rect(p,pal.lawn[0]);g.save();g.beginPath();g.rect(X(p.x0),Y(p.y1),(p.x1-p.x0)*S,(p.y1-p.y0)*S);g.clip();g.globalAlpha=.45;for(let k=-120;k<120;k+=6){g.fillStyle=pal.lawn[1];g.beginPath();g.moveTo(X(p.x0+k),Y(p.y1));g.lineTo(X(p.x0+k+3),Y(p.y1));g.lineTo(X(p.x0+k+3+80),Y(p.y0));g.lineTo(X(p.x0+k+80),Y(p.y0));g.fill();}g.restore();g.globalAlpha=1;}
   for(const pth of W.paths)line(pth[0][0],pth[0][1],pth[1][0],pth[1][1],pal.path,2.4);
   /* shadows */
-  g.fillStyle=pal.shadow;
-  for(const b of W.buildings){const L=Math.min(b.h*SHD.k,60),pts=[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]];const P=hull(pts.concat(pts.map(p=>[p[0]+SHD.dx*L,p[1]+SHD.dy*L])));poly(P,pal.shadow);}
+  g.fillStyle=pal.shadow;g.beginPath();
+  for(const b of W.buildings){const L=Math.min(b.h*SHD.k,60);extrudePath(g,b.pts||[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]],SHD.dx*L,SHD.dy*L,X,Y);}
+  g.fill('nonzero');
   for(const l of W.landmarks){const L=Math.min(l.h*SHD.k,40);disc(l.x+SHD.dx*L*.5,l.y+SHD.dy*L*.5,l.r*1.02,pal.shadow);disc(l.x+SHD.dx*L,l.y+SHD.dy*L,l.r,pal.shadow);}
   /* roofs */
-  for(const b of W.buildings)roof(b);
+  for(const b of W.buildings)if(b.pts)roofPoly(b);else roof(b);
+  function path(P){g.beginPath();P.forEach((p,i)=>i?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1])));g.closePath();}
+  /* a real footprint: flat roof tinted by use and height, parapet band inside the outline (wide setback on towers),
+     plant units on low roofs, a helipad on the tallest; edges facing the sun (NW) lit, the rest dark */
+  function roofPoly(b){
+    const P=b.pts,Rb=rng(b.seed),w=b.x1-b.x0,h=b.y1-b.y0;
+    path(P);g.fillStyle=rgba(roofRgb(b,pal),1);g.fill();
+    g.save();g.clip();
+    const gr=g.createLinearGradient(X(b.x0),Y(b.y1),X(b.x1),Y(b.y0));gr.addColorStop(0,'rgba(255,255,255,.07)');gr.addColorStop(1,'rgba(0,0,0,.1)');g.fillStyle=gr;g.fillRect(X(b.x0),Y(b.y1),w*S,h*S);
+    const band=b.kind==='tower'?clamp(Math.sqrt(b.area)*.1,1.2,3.4):b.kind==='heritage'?.45:.8;
+    g.lineJoin='miter';g.lineWidth=band*2*S;g.strokeStyle=b.kind==='tower'?'rgba(0,0,0,.3)':'rgba(0,0,0,.16)';path(P);g.stroke();
+    if(b.kind==='mall'){for(let x=b.x0+6;x<b.x1-4;x+=9)rect({x0:x,x1:x+1.6,y0:b.y0+4,y1:b.y1-4},rgba(hexRgb(pal.sky),.45));}
+    else if(b.kind==='heritage'){g.globalAlpha=.18;for(let k=-h;k<w;k+=2.2)line(b.x0+k,b.y0,b.x0+k+h,b.y1,'rgba(255,255,255,.5)',.12);g.globalAlpha=1;}
+    else if(b.kind==='tower'){if(b.h>150&&b.area>500){const r=clamp(Math.sqrt(b.area)*.11,3,6);disc(b.cx,b.cy,r,'#5b6166');g.strokeStyle='rgba(230,230,220,.8)';g.lineWidth=.35*S;g.beginPath();g.arc(X(b.cx),Y(b.cy),r*.8*S,0,Math.PI*2);g.stroke();g.fillStyle='rgba(230,230,220,.85)';g.font=`700 ${r*S*1.05}px sans-serif`;g.textAlign='center';g.textBaseline='middle';g.fillText('H',X(b.cx),Y(b.cy));}}
+    else if(b.area>150){const n=(Rb()*5)|0;for(let i=0,tries=0;i<n&&tries<n*4;tries++){const uw=1.5+Rb()*3.5,uh=1.5+Rb()*3,ux=b.x0+Rb()*(w-uw),uy=b.y0+Rb()*(h-uh);
+      if(!inPoly(P,ux-1,uy-1)||!inPoly(P,ux+uw+1,uy-1)||!inPoly(P,ux-1,uy+uh+1)||!inPoly(P,ux+uw+1,uy+uh+1))continue;i++;
+      rect({x0:ux+.5,x1:ux+uw+.5,y0:uy-.4,y1:uy+uh-.4},'rgba(0,0,0,.35)');rect({x0:ux,x1:ux+uw,y0:uy,y1:uy+uh},pal.hvac);}}
+    g.restore();
+    const sg=polyArea(P)>0?1:-1;
+    for(let i=0,n=P.length;i<n;i++){const a=P[i],c=P[(i+1)%n],nx=(c[1]-a[1])*sg,ny=-(c[0]-a[0])*sg,lit=-(nx*SHD.dx+ny*SHD.dy)>0;line(a[0],a[1],c[0],c[1],lit?'rgba(255,255,255,.2)':'rgba(0,0,0,.32)',.35);}
+  }
   function edges(b){line(b.x0,b.y1,b.x1,b.y1,'rgba(255,255,255,.2)',.35);line(b.x0,b.y0,b.x0,b.y1,'rgba(255,255,255,.14)',.35);line(b.x0,b.y0,b.x1,b.y0,'rgba(0,0,0,.35)',.35);line(b.x1,b.y0,b.x1,b.y1,'rgba(0,0,0,.28)',.35);}
   function roof(b){
     const Rb=rng(b.seed),w=b.x1-b.x0,h=b.y1-b.y0;
@@ -723,8 +1120,12 @@ function renderImagery(W,pal){
 }
 
 const VEC={
-  light:{land:'#EEF1F0',foot:'#F7F8F7',road:'#FFFFFF',casing:'#D2D9D8',lane:'#F9FAFA',park:'#D5E8D2',tree:'rgba(142,190,138,.55)',tram:'#AEB9BC',bike:'#CDE7D5',zebra:'#E1E7E6',bldg:'#DEE3E2',bldgEdge:'#C5CDCC',bldgSide:'#CFD6D5',plaza:'#F1F1EC',label:'#4F6064',halo:'rgba(255,255,255,.92)',poi:'#6E7F84',dome:'#C9D6CD',glass:'#CFE0EA',marking:'#DDE3E2',platform:'#E4E6E1'},
-  dark:{land:'#0D1215',foot:'#151C21',road:'#20292F',casing:'#2C383F',lane:'#1A2328',park:'#132519',tree:'rgba(64,112,74,.45)',tram:'#3A4951',bike:'#1B3527',zebra:'#34424A',bldg:'#1A2328',bldgEdge:'#2A363E',bldgSide:'#0A0F12',plaza:'#171F24',label:'#9AABB2',halo:'rgba(9,13,16,.92)',poi:'#7C8E97',dome:'#2B3A33',glass:'#1B2E3A',marking:'#35434B',platform:'#28323A'}};
+  light:{land:'#EEF1F0',foot:'#F7F8F7',road:'#FFFFFF',casing:'#D2D9D8',lane:'#F9FAFA',park:'#D5E8D2',tree:'rgba(142,190,138,.55)',tram:'#AEB9BC',bike:'#CDE7D5',zebra:'#E1E7E6',bldg:'#DEE3E2',bldgEdge:'#C5CDCC',bldgSide:'#CFD6D5',plaza:'#F1F1EC',label:'#4F6064',halo:'rgba(255,255,255,.92)',poi:'#6E7F84',dome:'#C9D6CD',glass:'#CFE0EA',marking:'#DDE3E2',platform:'#E4E6E1',
+    bldgTall:'#C3CCCB',use:{public:'#E4E1D6',education:'#E6DDD8',retail:'#E8E1D2',residential:'#DCDFE8',office:'#D5DEE7',hotel:'#E2DAE4',parking:'#D7D9D7'}},
+  dark:{land:'#0D1215',foot:'#151C21',road:'#20292F',casing:'#2C383F',lane:'#1A2328',park:'#132519',tree:'rgba(64,112,74,.45)',tram:'#3A4951',bike:'#1B3527',zebra:'#34424A',bldg:'#1A2328',bldgEdge:'#2A363E',bldgSide:'#0A0F12',plaza:'#171F24',label:'#9AABB2',halo:'rgba(9,13,16,.92)',poi:'#7C8E97',dome:'#2B3A33',glass:'#1B2E3A',marking:'#35434B',platform:'#28323A',
+    bldgTall:'#2C3943',use:{public:'#232B26',education:'#29242A',retail:'#2A2720',residential:'#1D2233',office:'#182835',hotel:'#251F2C',parking:'#1D1F20'}}};
+/* flat top of a real building on the vector map: taller = further from the base tone, a light hint of its use */
+function vecRgb(b,pal){let c=mixRgb(hexRgb(pal.bldg),hexRgb(pal.bldgTall),clamp((b.h-10)/120,0,1));const u=pal.use&&pal.use[b.use];if(u)c=mixRgb(c,hexRgb(u),.35);return c;}
 
 function drawVector(c,V,W,pal){
   const X=x=>V.X(x),Y=y=>V.Y(y),s=V.s;
@@ -747,8 +1148,12 @@ function drawVector(c,V,W,pal){
   for(const p of W.parks)rect(p,pal.park);
   c.strokeStyle=pal.foot;c.lineWidth=Math.max(1,s*2);for(const pth of W.paths){c.beginPath();c.moveTo(X(pth[0][0]),Y(pth[0][1]));c.lineTo(X(pth[1][0]),Y(pth[1][1]));c.stroke();}
   /* buildings with a soft extrusion */
-  for(const b of W.buildings){const e=Math.min(b.h,90)*.045;c.fillStyle=pal.bldgSide;c.fillRect(X(b.x0+e*.8),Y(b.y1-e),(b.x1-b.x0)*s,(b.y1-b.y0)*s);}
-  for(const b of W.buildings){rect(b,pal.bldg);c.strokeStyle=pal.bldgEdge;c.lineWidth=1;c.strokeRect(X(b.x0)+.5,Y(b.y1)+.5,(b.x1-b.x0)*s-1,(b.y1-b.y0)*s-1);}
+  const off=b=>X(b.x1)<-40||X(b.x0)>V.w+40||Y(b.y0)<-40||Y(b.y1)>V.h+40;
+  const vpath=(P,ox,oy)=>{c.beginPath();P.forEach((p,i)=>i?c.lineTo(X(p[0]+ox),Y(p[1]+oy)):c.moveTo(X(p[0]+ox),Y(p[1]+oy)));c.closePath();};
+  for(const b of W.buildings){const e=Math.min(b.h,90)*.045;c.fillStyle=pal.bldgSide;if(b.pts){if(off(b))continue;vpath(b.pts,e*.8,-e);c.fill();}else c.fillRect(X(b.x0+e*.8),Y(b.y1-e),(b.x1-b.x0)*s,(b.y1-b.y0)*s);}
+  for(const b of W.buildings){
+    if(b.pts){if(off(b))continue;vpath(b.pts,0,0);c.fillStyle=rgba(vecRgb(b,pal),1);c.fill();c.strokeStyle=pal.bldgEdge;c.lineWidth=1;c.stroke();continue;}
+    rect(b,pal.bldg);c.strokeStyle=pal.bldgEdge;c.lineWidth=1;c.strokeRect(X(b.x0)+.5,Y(b.y1)+.5,(b.x1-b.x0)*s-1,(b.y1-b.y0)*s-1);}
   for(const l of W.landmarks){c.fillStyle=l.kind==='dome'?pal.dome:l.kind==='cone'?pal.glass:pal.bldgEdge;c.strokeStyle=pal.bldgEdge;c.beginPath();c.arc(X(l.x),Y(l.y),l.r*s,0,Math.PI*2);c.fill();c.stroke();}
   c.fillStyle=pal.tree;for(const t of W.trees){c.beginPath();c.arc(X(t.x),Y(t.y),t.r*s*.8,0,Math.PI*2);c.fill();}
 }
@@ -766,16 +1171,21 @@ function drawLabels(c,V,W,pal){
     const txt=L(st.name.toUpperCase(),st.zh);const tw=c.measureText(txt).width+12;
     const H=st.axis==='h',step=Math.max(520,tw*2.2)/V.s;
     const lo=H?V.wx(0):V.wy(V.h),hi=H?V.wx(V.w):V.wy(0);
-    const spans=freeSpans(st,tw/2/V.s+2);
+    const spans=freeSpans(st,tw/2/V.s+2),real=W.real&&STREET_SPAN[st.id]; /* real city: no street name where only real buildings stand */
     for(let u=Math.floor(lo/step)*step+step*.5;u<hi;u+=step){
       if(!spans.some(([a,b])=>u>a&&u<b))continue;
+      if(real&&!(u>real[0]&&u<real[1]))continue;
       const off=st.tram?0:0;const px=H?V.X(u):V.X(st.c+off),py=H?V.Y(st.c+off):V.Y(u);
       c.save();c.translate(px,py);if(!H)c.rotate(-Math.PI/2);
       c.strokeStyle=pal.halo;c.lineWidth=3.2;c.strokeText(txt,0,0);c.fillStyle=pal.label;c.fillText(txt,0,0);c.restore();
     }
   }
   c.font=`500 9.5px ${FONT_MONO}`;
-  for(const l of LANDMARK_LABELS){if(V.s<l.min)continue;const px=V.X(l.x),py=V.Y(l.y);if(px<-100||py<-20||px>V.w+100||py>V.h+20)continue;const t=L(l.t,l.zh);c.strokeStyle=pal.halo;c.lineWidth=3;c.strokeText(t,px,py);c.fillStyle=pal.poi;c.fillText(t,px,py);}
+  /* building names: W.labels (real names once buildings.json is in) or the fallback city's four; biggest first, overlaps skipped */
+  const placed=[];
+  for(const l of W.labels||LANDMARK_LABELS){if(V.s<l.min)continue;const px=V.X(l.x),py=V.Y(l.y);if(px<-100||py<-20||px>V.w+100||py>V.h+20)continue;const t=L(l.t,l.zh),hw=c.measureText(t).width/2+4;
+    if(placed.some(q=>Math.abs(q[0]-px)<q[2]+hw&&Math.abs(q[1]-py)<13))continue;placed.push([px,py,hw]);
+    c.strokeStyle=pal.halo;c.lineWidth=3;c.strokeText(t,px,py);c.fillStyle=pal.poi;c.fillText(t,px,py);}
   try{c.letterSpacing='0px';}catch(e){}
   c.restore();
 }
@@ -839,6 +1249,8 @@ class Weather{
     this.windFlow=new Flow(2200);this.waterFlow=new Flow(1100);this._fog=null;this._fogL=null;this.pois=null;this.deep=null;
     this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
+  /* the world changed under us (T15: real buildings arrived): drop every raster built from the old grids, rebuild the current one */
+  rebind(W,G){this.W=W;this.G=G;this.R={};this.lst=null;this.floodBase=null;this.pois=null;this.deep=null;this.wet=[];this.set(this.kind);}
   set(k){this.kind=k;this.cont=[];this.age=1e9;this.strikes=[];this.flash=0;this.nextStrike=1.4;this.windFlow.reset();this.waterFlow.reset();this.hyd=-1;if(k!=='clear')this.buildRaster(k==='fog'?null:k);}
   setTheme(light){if(this.light!==light){this.light=light;this.windFlow.reset();this.waterFlow.reset();if(this.kind==='wind')this.buildRaster('wind');}}
   hydro(h){return h<.42?.45+.55*smooth(h/.42):1-.5*smooth((h-.42)/.58);}
@@ -894,7 +1306,7 @@ class Weather{
     const at=(x,y)=>L[this.G.idx(x,y)];
     let shadeP=null;for(let y=-100;y<=20;y+=2)for(let x=-60;x<=40;x+=2){const q=this.G.idx(x,y);if(this.G.cls[q]===CLS.FOOT&&this.G.shade[q]){const d=(x+13)**2+(y+40)**2;if(!shadeP||d<shadeP.d)shadeP={x,y,d};}}
     if(!shadeP)shadeP={x:-13,y:-40};
-    let cool=null;for(const b of this.W.buildings){const cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;if(cx>AOI.x0&&cx<AOI.x1+100&&cy>AOI.y0-30&&cy<AOI.y1&&b.kind==='roof'&&(!cool||b.albedo>cool.albedo))cool={...b,cx,cy};}
+    let cool=null;for(const b of this.W.buildings){const cx=b.cx!=null?b.cx:(b.x0+b.x1)/2,cy=b.cy!=null?b.cy:(b.y0+b.y1)/2;if(cx>AOI.x0&&cx<AOI.x1+100&&cy>AOI.y0-30&&cy<AOI.y1&&b.kind==='roof'&&(!cool||b.albedo>cool.albedo))cool={...b,cx,cy};}
     this.pois=[{x:70,y:-6.6,t:'ASPHALT',zh:'沥青路面',c:'#FDB32F',v:()=>at(70,-6.6),dx:40,dy:-44},{x:shadeP.x,y:shadeP.y,t:'BUILDING SHADE',zh:'建筑阴影',c:'#8BD17C',v:()=>at(shadeP.x,shadeP.y),dx:-120,dy:-30},{x:36,y:-72,t:'LAWN',zh:'草坪',c:'#8BD17C',v:()=>at(36,-72),dx:40,dy:40}];
     if(cool)this.pois.push({x:cool.cx,y:cool.cy,t:'COOL ROOF',zh:'冷屋顶',c:'#9FD3FF',v:()=>at(cool.cx,cool.cy),dx:44,dy:-30});
   }
@@ -1229,7 +1641,9 @@ const IMPACT={
   heat:['Pedestrians detour to shade · crossing compliance −22%','行人绕行寻找阴影 · 按信号过街比例 −22%'],
   wind:['Water barrier may slide 0.4 m · cyclist lateral drift 0.6 m','注水护栏可能滑移 0.4 m · 骑行者横向偏移 0.6 m']};
 
-const W=buildWorld(),G=buildGrids(W),WX=new Weather(W,G);
+/* W / G start as the synthetic city (drawn at once, and the fallback when buildings.json can't be fetched);
+   loadBuildings() swaps in the real footprints once they arrive → rebuildWorld() */
+let W=buildWorld(),G=buildGrids(W);const WX=new Weather(W,G);
 const TK={};
 function readTokens(){const cs=getComputedStyle(document.documentElement);for(const k of['bg','panel','raised','line','line-2','fg','fg-2','fg-3','accent','on-accent','works','risk','delta','glass','glass-line','tint','tint-line','works-tint','risk-tint','a-car','a-bike','a-ped','a-wc','a-bus','a-tram','map-mode'])TK[k.replace(/-(\w)/g,(m,c)=>c.toUpperCase())]=cs.getPropertyValue('--'+k).trim();TK.light=TK.mapMode==='light';}
 
@@ -1240,13 +1654,13 @@ function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB)
 /* ---------- view ---------- */
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 function setView(cx,cy,s){V.s=clamp(s,1.1,14);const hw=V.w/2/V.s,hh=V.h/2/V.s,mw=(WORLD.x1-WORLD.x0)/2,mh=(WORLD.y1-WORLD.y0)/2;V.cx=hw>=mw?0:clamp(cx,WORLD.x0+hw,WORLD.x1-hw);V.cy=hh>=mh?0:clamp(cy,WORLD.y0+hh,WORLD.y1-hh);V.ver++;}
-function flyTo(cx,cy,s,d=.9){S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
 const cv=$('#mapCanvas'),ctx=cv.getContext('2d'),base=document.createElement('canvas'),bctx=base.getContext('2d');
 let baseVer=-1,baseKey='';
-function resize(){const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
+function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Math.max(1,r.width);V.h=Math.max(1,r.height);V.dpr=Math.min(2,window.devicePixelRatio||1);for(const c of[cv,base]){c.width=Math.round(V.w*V.dpr);c.height=Math.round(V.h*V.dpr);}setView(V.cx,V.cy,V.s);}
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
@@ -1270,6 +1684,7 @@ function renderBase(){
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
+  emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
 }
 
@@ -1355,13 +1770,13 @@ function drawGrid(){
   const dl=pick(MLAT),dn=pick(MLON);ctx.save();ctx.strokeStyle=TK.accent;ctx.globalAlpha=.24;ctx.setLineDash([2,6]);ctx.lineWidth=1;
   ctx.beginPath();for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);ctx.moveTo(0,y);ctx.lineTo(V.w,y);}for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);ctx.moveTo(x,0);ctx.lineTo(x,V.h);}ctx.stroke();
   ctx.setLineDash([]);ctx.globalAlpha=.9;ctx.font=`500 9px ${FONT_MONO}`;ctx.fillStyle=TK.accent;ctx.lineWidth=3;ctx.strokeStyle=TK.light?'rgba(255,255,255,.9)':'rgba(6,9,12,.85)';ctx.textBaseline='top';
-  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<70||y>V.h-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,6,y+3);ctx.fillText(t,6,y+3);}
-  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<20||x>V.w-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,4);ctx.fillText(t,x+4,4);}
+  for(let a=Math.ceil(lat0/dl)*dl;a<lat1;a+=dl){const y=V.Y((a-ORIGIN.lat)*MLAT);if(y<GL.ins.t+70||y>V.h-GL.ins.b-80)continue;const t=dms(a,'N','S');ctx.strokeText(t,GL.ins.l+6,y+3);ctx.fillText(t,GL.ins.l+6,y+3);}
+  for(let o=Math.ceil(lon0/dn)*dn;o<lon1;o+=dn){const x=V.X((o-ORIGIN.lon)*MLON);if(x<GL.ins.l+20||x>V.w-GL.ins.r-110)continue;const t=dms(o,'E','W');ctx.strokeText(t,x+4,GL.ins.t+4);ctx.fillText(t,x+4,GL.ins.t+4);}
   ctx.restore();
 }
 function drawScale(){
   const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=22,y=V.h-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -1389,7 +1804,7 @@ function drawReplay(dt){
   S.nodes.forEach((n,k)=>{const px=V.X(n.x),py=V.Y(n.y),on=S.chainHover===k;ctx.save();ctx.fillStyle=k===3?TK.risk:TK.panel;ctx.strokeStyle=n.c;ctx.lineWidth=on?3:2;ctx.beginPath();ctx.arc(px,py,on?13:10,0,7);ctx.fill();ctx.stroke();ctx.fillStyle=k===3?'#fff':n.c;ctx.font=`700 10px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(k+1),px,py+.5);ctx.restore();});
   for(const a of h.a)if(a.tag){drawTag(ctx,V.X(a.x),V.Y(a.y),a.tag==='C-17'?-20:22,a.tag==='C-17'?34:-30,`${a.tag} · ${(a.v*3.6).toFixed(0)} km/h`,colOf(a.ty));}
   drawTag(ctx,V.X(ev.x),V.Y(ev.y),-70,52,`TTC ${ev.ttc.toFixed(2)} s`,TK.risk);
-  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,V.w/2-w/2,V.h-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,V.w/2,V.h-28);ctx.restore();
+  const lab=`${L('REPLAY','回放')} ${(tt-ev.t>=0?'+':'')}${(tt-ev.t).toFixed(1)} s · 0.4×`;ctx.save();ctx.font=`600 10.5px ${FONT_MONO}`;const w=ctx.measureText(lab).width+20;ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;const mx=(GL.ins.l+V.w-GL.ins.r)/2,by=V.h-GL.ins.b;rr(ctx,mx-w/2,by-40,w,24,4);ctx.fill();ctx.stroke();ctx.fillStyle=TK.accent;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,mx,by-28);ctx.restore();
 }
 
 /* ---------- frame ---------- */
@@ -1432,7 +1847,7 @@ function goStep(n){
     S.sim=S.stress;S.event=S.stress.critical;S.playing=false;S.replayT=0;if(S.event)S.nodes=causal(S.event);
     if(engOn()&&EP.tab3==='net')engFly();else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150));
   }
-  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=.5;if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
+  if(n===4){S.sim=newStress('before');S.simAfter=newStress('after');S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;S.swipe=visibleMid();if(engOn())engFly();else flyTo(-48,-6,Math.max(3.2,Math.min(4.8,V.w/220)));engStep4();}
   updateSteps();renderPanel();updateSafety();
 }
 function causal(ev){
@@ -1459,7 +1874,7 @@ function renderAlert(){
   al.innerHTML=`<div class="h"><i></i>${L('CRITICAL RIPPLE DETECTED','检测到严重涟漪')}</div><div class="ttl">${L('Cyclist × car × bus conflict','骑行者 × 小汽车 × 公交冲突')}</div><div class="m"><div><span>TTC</span><b>${ev.ttc.toFixed(2)} s</b></div><div><span>${L('CLOSING','接近速度')}</span><b>${((ev.v[0]-ev.v[1])*3.6).toFixed(0)} km/h</b></div><div><span>${L('SEEDS','复现')}</span><b>${SEEDS[S.wx]}/50</b></div></div><button type="button" class="btn danger" id="alertBtn" style="padding:10px 12px;font-size:13px">${L('Explain why →','查看原因 →')}</button>`;
   $('#alertBtn').onclick=()=>goStep(3);
 }
-function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;x=clamp(x,14,V.w-al.offsetWidth-14);y=clamp(y,70,V.h-al.offsetHeight-60);al.style.left=x+'px';al.style.top=y+'px';}
+function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical)return;const ev=S.sim.critical;let x=V.X(ev.x)+60,y=V.Y(ev.y)+40;const I=insets();x=clamp(x,I.l+14,V.w-I.r-al.offsetWidth-14);y=clamp(y,I.t+70,V.h-I.b-al.offsetHeight-14);al.style.left=x+'px';al.style.top=y+'px';}
 
 /* ---------- panel ---------- */
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
@@ -1468,7 +1883,7 @@ function renderPanel(){
   const P=$('#panel'),R=RESULTS[S.wx],wl=wxLabel(S.wx);
   if(S.step===1){
     const eng=!!BE.api&&!!EP.link;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
     ${engPanel1()}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
@@ -1476,7 +1891,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--accent)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
+    <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather to stress-test','压力测试天气')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
     <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run AI red team →','运行 AI 红队测试 →')}</button><span class="note">${L('250 agents × 30 behaviour variations · seed 4218','250 个智能体 × 30 种行为变体 · 随机种子 4218')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
@@ -1486,7 +1901,7 @@ function renderPanel(){
     const crit=S.sim&&S.sim.critical;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
     <div class="stack"><h2>${L('Searching for hidden failures','正在搜索隐藏的失效点')}</h2><p class="muted small">${L(`The red team recombines road users, behaviours and the ${wl.toLowerCase()} scenario to find the combinations that start a chain reaction.`,`红队把道路使用者、行为和「${wl}」情景反复组合，寻找会引发连锁反应的组合。`)}</p></div>
-    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--accent)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
+    <div class="card progress"><div class="row between"><span class="eyebrow">${L('Variation','变体')} <span data-live="var">22</span> / 30</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="pct">73%</span></div><div class="track"><i id="pctBar" style="width:73%"></i></div><div class="row" style="align-items:baseline;gap:8px"><span class="big" data-live="dps">0</span><span class="eyebrow">${L('agent decisions / s','智能体决策 / 秒')}</span></div></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Active agents','活跃智能体')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
@@ -1499,7 +1914,7 @@ function renderPanel(){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event,n=SEEDS[S.wx];
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px"><div class="row between"><span class="eyebrow">${L('Reproduced in','复现次数')}</span><span class="eyebrow" style="color:var(--risk)">${n} / 50 ${L('seeds','个种子')} · ${wl}</span></div><div class="seeds">${Array.from({length:50},(_,i)=>`<i class="${hash2(i,n,3)<n/50?'hit':''}"></i>`).join('')}</div><p class="muted small">${L('This is not a prediction about one person. The layout fails across a plausible range of behaviours.','这不是对某一个人的预测，而是说明这个方案在一系列合理行为下都会失效。')}</p></div>
@@ -1515,7 +1930,7 @@ function renderPanel(){
     const row=(k,a,b,col)=>`<div><span class="muted">${k}</span><span class="o">${a}</span><span class="ar">→</span><span class="a" style="color:${col}">${b}</span></div>`;
     const mn=L(' min',' 分钟');
     const eng=!!BE.api;
-    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--accent)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
+    P.innerHTML=`${engPanel4()}<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${eng?L('Junction safety repair · layout v2','路口安全修复 · 方案 v2'):L('AI repair · layout v2','AI 修复 · 方案 v2')}</span><span class="eyebrow">${L('same agents · same seed','相同智能体 · 相同种子')}</span></div>
     <div class="score"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="38" cy="38" r="30" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(C*g/100).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 38 38)"/></svg>
       <div><span class="eyebrow">${L('Safety score','安全分')} · ${wl}</span><div class="row" style="align-items:baseline;gap:10px;margin-top:4px"><span style="font:700 38px/1 var(--f-display);color:var(--accent)">${g}</span><span class="mono" style="color:var(--risk);font-size:12px">${L('from','原为')} ${R.score[0]}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Changes','改动')}</span><span class="eyebrow">${L('4 · low cost','4 项 · 低成本')}</span></div><div class="stack" style="gap:8px">
@@ -1528,7 +1943,7 @@ function renderPanel(){
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Live sample on the map','地图实时样本')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span> ${L('conflicts','次冲突')}</span></div></div>
     ${!eng&&R.car[1]>R.car[0]?`<p class="small" style="color:var(--works)">${L(`Trade-off: cars wait ${(R.car[1]-R.car[0]).toFixed(1)} s longer on average so that no user group is shut out.`,`取舍：小汽车平均多等 ${(R.car[1]-R.car[0]).toFixed(1)} s，换来所有用户群体都有路可走。`)}</p>`:''}
     <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('All figures are simulation results, not field-validated.','所有数字均为模拟结果，未经实地验证。')}</span><div id="copyFallback"></div></div>`;
-    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:.5;$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
+    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
 }
@@ -1595,7 +2010,7 @@ function renderWxSwitcher(){
   el.querySelectorAll('button').forEach(b=>{b.onclick=()=>setWeather(b.dataset.k);b.onkeydown=e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const i=WX_KINDS.indexOf(S.wx)+(e.key==='ArrowRight'?1:-1);setWeather(WX_KINDS[(i+6)%6]);el.querySelector(`[data-k="${S.wx}"]`).focus();e.preventDefault();}};});
 }
 function setWeather(k){
-  S.wx=k;ls.set('rt-wx',k);WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
+  S.wx=k;ls.set('rt-wx',k);document.documentElement.dataset.wx=k;WX.set(k);heatStats=null;for(const s of[S.sim,S.simAfter,S.stress])if(s)s.setWeather(k,WX);
   renderWxSwitcher();renderLegend();updateSafety();renderPanel();renderAlert();
 }
 
@@ -1615,7 +2030,30 @@ function applyTheme(){
   readTokens();WX.setTheme(TK.light);makePatterns();S.basemap=TK.light?'streets':'imagery';baseKey='';
   updateBasemapUI();renderWxSwitcher();renderLegend();if(S.step===3&&S.event){S.nodes=causal(S.event);renderPanel();}
 }
-function updateBasemapUI(){document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';}
+/* ---------- real buildings (T15) ---------- */
+/* g / imgs: grids and imagery already built for nw (loadBuildings makes them in earlier tasks); missing ones are rebuilt here */
+function rebuildWorld(nw,g,imgs){
+  W=nw;G=g||buildGrids(nw);WX.rebind(W,G);
+  for(const k of Object.keys(IMG))delete IMG[k];
+  if(imgs)Object.assign(IMG,imgs);
+  baseKey='';probeKey='';heatStats=null;updateBasemapUI();
+}
+/* same-origin data from T3 (apps/roads). Fails on file://, the web-only static server or offline → the synthetic city stays.
+   The swap runs in separate tasks (footprints → grids → imagery → swap): when the data lands after the page started, the
+   animation keeps drawing the old city in between and the map flips to the real one in a single frame, instead of one
+   ~0.4 s freeze. Before the first frame it just finishes a few ms later. */
+const nextTask=()=>new Promise(r=>setTimeout(r,0));
+function loadBuildings(){
+  return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(async d=>{
+    const nw=d?buildWorldReal(d,geoToWorld):null;
+    if(!nw||nw.buildings.length<REAL_MIN)return false;
+    await nextTask();const g=buildGrids(nw);
+    await nextTask();const bm=S.basemap,imgs=bm==='streets'?null:{[bm]:renderImagery(nw,bm==='nir'?PAL_NIR:PAL_RGB)};
+    await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
+  }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
+}
+function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));$('#metaMode').textContent=S.basemap==='streets'?L('Vector','矢量'):S.basemap==='nir'?L('NIR false colour','近红外假彩色'):L('Ortho','正射影像');$('#metaGsd').textContent=S.basemap==='streets'?L('Vector tiles · EPSG:7855','矢量瓦片 · EPSG:7855'):S.basemap==='nir'?L('B8·B4·B3 composite · 0.25 m','B8·B4·B3 合成 · 0.25 m'):'0.25 m/px · EPSG:7855';
+  const mb=$('#metaBldg');if(mb)mb.textContent=W.real?L(`${W.count} · OSM · City of Melbourne`,`${W.count} 栋 · OSM · 墨尔本市政`):L('Procedural','程序生成');}
 
 /* ---------- histogram ---------- */
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
@@ -1641,7 +2079,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>flyTo(HOME.cx,HOME.cy,HOME.s,.7);
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -1686,16 +2124,20 @@ function loop(now){
 /* ---------- boot ---------- */
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
-  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;
+  const wx=ls.get('rt-wx');if(wx&&WX_KINDS.includes(wx))S.wx=wx;document.documentElement.dataset.wx=S.wx;
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   const leg=ls.get('rt-leg');if(leg==='1'||(leg!=='0'&&$('#map').clientWidth<700))$('#legend').classList.add('collapsed');
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
-  resize();sizeHist();bindInput();engBindMap();
-  WX.set(S.wx);renderWxSwitcher();renderLegend();updateBasemapUI();
-  const start=()=>{if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
-  if(S.basemap==='streets')start();else setTimeout(start,40);
+  initGlass();resize();sizeHist();bindInput();engBindMap();
+  renderWxSwitcher();renderLegend();updateBasemapUI();
+  /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
+     on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
+  const start=()=>{if(WX.kind!==S.wx)WX.set(S.wx);if(S.basemap!=='streets')imagery(S.basemap);$('#loading').hidden=true;goStep(1);requestAnimationFrame(t=>{last=t;loop(t);});};
+  /* wait up to 1.2 s for the real footprints so the first frame is already the real city; slower → start synthetic, swap on arrival */
+  let go=false;const once=()=>{if(go)return;go=true;if(S.basemap==='streets')start();else setTimeout(start,40);};
+  loadBuildings().then(once);setTimeout(once,1200);
 }
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(boot,boot);
 
@@ -1744,7 +2186,8 @@ function planFrom(ep){
   if(sign)eq.push({id:'S-1',type:'sign',at_m:ep.signAt,text:sign});
   eq.push({id:'A-1',type:'arrow',at_m:ep.arrowAt},{id:'B-1',type:'barrier',at_m:0});
   const tm=ep.time||WORKS_TIME;
-  return{when:{date:'2026-10-06',hour:ep.hour},worksites:[{id:'W-1',name:`${ep.street||'Road'} lane closure`,links:[ep.link],closes:{lanes:ep.lanes},
+  const closes={lanes:ep.lanes};if(ep.foot==='left'||ep.foot==='right'||ep.foot==='both')closes.footpath=ep.foot; // absent = footpath open
+  return{when:{date:'2026-10-06',hour:ep.hour},worksites:[{id:'W-1',name:`${ep.street||'Road'} lane closure`,links:[ep.link],closes,
     time:{from:tm.from,to:tm.to,hours:[tm.hours[0],tm.hours[1]]},equipment:eq}]};
 }
 // A whole plan (e.g. an advisor option) → the form fields planFrom() reads. By type, not id: the advisor adds a VMS of
@@ -1756,13 +2199,14 @@ function formFromPlan(plan){
   const sign=eq.find(e=>e.id==='S-1')||eq.find(e=>e.type==='sign');if(sign){out.signAt=sign.at_m;out.sign=sign.text||'';}
   const arrow=eq.find(e=>e.type==='arrow');if(arrow)out.arrowAt=arrow.at_m;
   if(ws.time)out.time={from:ws.time.from,to:ws.time.to,hours:[ws.time.hours[0],ws.time.hours[1]]};
+  if(ws.closes)out.foot=ws.closes.footpath||'none';
   return out;
 }
 /* pure:end */
 
 const BE={api:null,err:null};
 const EP={preset:'lonsdale',link:null,pts:null,street:null,dir:null,lanes:1,lanesMax:1,all:false,hour:8,time:null,
-  f1:'ROADWORK\nAHEAD',f2:'',vmsAt:300,sign:'RIGHT LANE CLOSED',signAt:100,arrowAt:60,
+  f1:'ROADWORK\nAHEAD',f2:'',vmsAt:300,sign:'RIGHT LANE CLOSED',signAt:100,arrowAt:60,foot:'none',walkGeo:null,walkLoading:false,
   sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',mix:null,idx:null,alts:[],altsKey:'',
   adv:null,advKey:'',advBusy:false,pick:-1,cmp:null,cmpKey:'',cmpBusy:false};
 BE.ready=import('/engine/public/js/backend.js')
@@ -1895,13 +2339,34 @@ function engMetrics(s){
     <div class="metric"><span class="eyebrow">${L('Detouring','绕行')}</span><div class="v">${pctS(s.detour_share)}<small>${top?esc(shortSt(top.name))+' '+pctS(top.share):''}</small></div></div>
     <div class="metric"><span class="eyebrow">${L('Network delay','全网延误')}</span><div class="v">${fmtN(s.delay_min)}<small>${L('veh·min / h','车·分钟 / 时')}</small></div></div></div>`;
 }
+const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
+const hasTransit=s=>!!(s&&s.transit&&s.transit.src);
+const hasPeds=s=>!!(s&&s.peds&&s.peds.src);
+// One line each for trams / buses and people on foot, under the car numbers
+function engImpacts(s){
+  const rows=[];
+  if(hasTransit(s)){
+    const t=s.transit,n=(t.routes||[]).length;
+    if(!n)rows.push(['var(--a-bus)',L('No tram or bus route uses the affected streets','没有电车 / 公交线路经过受影响的路段'),'']);
+    else rows.push([t.blocked_routes>0?'var(--risk)':'var(--a-bus)',L(`${n} tram/bus route${n===1?'':'s'} · ${fmtN(t.trips_h)} trips/h · ${fmtN(t.pax_h)} riders/h`,`${n} 条电车 / 公交线 · 每小时 ${fmtN(t.trips_h)} 班 · ${fmtN(t.pax_h)} 名乘客`),
+      t.blocked_routes>0?L(`${t.blocked_routes} blocked`,`${t.blocked_routes} 条停运`):`+${fmtN(t.pax_min)} ${L('rider·min','人·分钟')}`]);
+  }
+  if(hasPeds(s)){
+    const p=s.peds;
+    if(p.footpath==='none'||!(p.closed||[]).length)rows.push(['var(--a-ped)',L('Footpath stays open','人行道照常通行'),'']);
+    else if(p.blocked)rows.push(['var(--risk)',L(`${fmtN(p.ped_h)} people/h on the closed footpath — no way round`,`封闭的人行道上每小时 ${fmtN(p.ped_h)} 人 —— 无路可绕`),L('blocked','走不通')]);
+    else rows.push(['var(--a-ped)',L(`${fmtN(p.ped_h)} people/h walk round · +${fmtN(p.detour_m)} m each${p.crossings?` · ${p.crossings} extra crossing${p.crossings===1?'':'s'}`:''}`,`每小时 ${fmtN(p.ped_h)} 人绕行 · 每人多走 ${fmtN(p.detour_m)} 米${p.crossings?` · 多过 ${p.crossings} 次马路`:''}`),`+${fmtN(p.extra_min)} ${L('ped·min','人·分钟')}`]);
+  }
+  if(!rows.length)return'';
+  return`<div class="list eng-impacts">${rows.map(([c,t,v])=>`<div><i class="dot" style="background:${c}"></i><span class="grow">${t}</span>${v?`<span class="val">${v}</span>`:''}</div>`).join('')}</div>`;
+}
 function engOutHTML(){
   if(!BE.api)return engOfflineCard();
   if(!EP.link)return`<div class="card eng-note warn"><b>${L('Click a street on the map to place the work zone','在地图上点一条街来放施工区')}</b></div>`;
   if(EP.runErr&&!EP.sum)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
   const s=EP.sum;if(!s)return`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`;
   const stale=EP.busy||EP.badText||!!EP.runErr;
-  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
+  return`<div class="eng-out${stale?' stale':''}">${EP.runErr&&!EP.badText?`<p class="small" style="color:var(--risk)">${L('The engine could not score the latest change — these numbers are from before it.','引擎算不了最新的改动 —— 下面是改之前的数字。')} ${esc(EP.runErr.message||EP.runErr)}</p>`:''}${EP.badText?`<p class="small" style="color:var(--risk)">${L('Fix the sign text to update the numbers.','把屏上文字改合规范，数字才会更新。')}</p>`:''}${engMetrics(s)}${engImpacts(s)}${engBadges(s.flags)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
 function engRenderOut(){const el=document.getElementById('engOut');if(!el)return;const h=engOutHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
@@ -1926,7 +2391,8 @@ function engPanel1(){
     <div class="chips">${presets.map(([k,t])=>`<button type="button" data-preset="${k}" aria-pressed="${EP.preset===k}">${t}</button>`).join('')}${EP.preset==='custom'?`<button type="button" aria-pressed="true">${L('Picked on map','地图上选的')}</button>`:''}</div>
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
     <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
-    <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div></div>
+    <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
+    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works-side footpath closed','施工侧人行道封闭')],['both',L('Both footpaths closed','两侧人行道都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
@@ -1940,6 +2406,7 @@ function engBind1(){
   P.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{engPreset(b.dataset.preset);renderPanel();engFly(.7);});
   P.querySelectorAll('[data-all]').forEach(b=>b.onclick=()=>{EP.all=b.dataset.all==='true';EP.lanes=EP.all?EP.lanesMax:1;renderPanel();engChanged(0);});
   P.querySelectorAll('[data-hour]').forEach(b=>b.onclick=()=>{EP.hour=+b.dataset.hour;renderPanel();engChanged(0);});
+  P.querySelectorAll('[data-foot]').forEach(b=>b.onclick=()=>{EP.foot=b.dataset.foot;renderPanel();engChanged(0);});
   const f1=document.getElementById('vmsF1'),f2=document.getElementById('vmsF2'),at=document.getElementById('vmsAt'),sg=document.getElementById('signTxt');
   if(f1)f1.oninput=()=>{EP.f1=f1.value;engChanged();};
   if(f2)f2.oninput=()=>{EP.f2=f2.value;engChanged();};
@@ -1962,8 +2429,8 @@ function engHeadline(s){
 }
 function engPanel3(){
   const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
-  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
-  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
   const mix=EP.mix,mixTxt=mix?TYPES4.map(t=>`${Math.round((mix[t]&&mix[t].value||0)*100)}`).join(' / '):'';
@@ -1972,16 +2439,33 @@ function engPanel3(){
     return`<div class="eng-type"><i class="dot" style="background:${TYPE_C[t]}"></i><div class="grow"><b>${L(TYPE_L[t][0],TYPE_L[t][1])}</b> <span class="mono small muted">${fmtN(b.vehicles)} ${L('veh','辆')}${r?` · ${L('mix','占比')} ${Math.round(r[0]*100)}–${Math.round(r[1]*100)}%`:''}</span><small data-why="${t}"></small></div><div class="eng-tv"><b>+${(+(b.per_capita_min||0)).toFixed(1)}</b><span>${L('min each','分钟/人')}</span><span>${pctS(x.detour)} ${L('detour','绕行')}</span></div></div>`;}).join('');
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
-  return`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engBadges(f)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
+  ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
   <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${f.reading_src==='rule'?'keyword rules (LLM reader pending)':esc(f.reading_src)}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${f.reading_src==='rule'?'关键词规则（大模型读屏待接）':esc(f.reading_src)}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
+}
+function engTransit3(s){
+  if(!hasTransit(s))return'';const t=s.transit,rs=(t.routes||[]).slice(0,6),a=t.assumed||{},pp=a.pax_per_trip||{};
+  const rows=rs.map(r=>`<div class="eng-tr"><span class="md" style="background:${r.mode==='tram'?'var(--a-tram)':'var(--a-bus)'}">${esc(r.short)}</span><div class="grow"><b>${L(MODE_L[r.mode]?MODE_L[r.mode][0]:'',MODE_L[r.mode]?MODE_L[r.mode][1]:'')} ${esc(r.short)}</b> <span class="mono small muted">→ ${esc(r.headsign)}</span>${(r.stops_closed||[]).length?`<small style="color:var(--works)">${L('Stop closed','车站封闭')}: ${r.stops_closed.map(x=>esc(x.name)).join(', ')}</small>`:''}</div><div class="eng-tv">${r.blocked?`<b style="color:var(--risk)">${L('blocked','停运')}</b><span>${fmtN(r.pax_h)} ${L('riders/h','人/时')}</span>`:`<b>+${fmtN(r.delay_s)}<small> s</small></b><span>${fmtN(r.trips_h)} ${L('trips/h','班/时')}${r.diverted?' · '+L('diverted','改线'):''}</span>`}</div></div>`).join('');
+  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Trams & buses','电车 · 公交')}</span><span class="eyebrow">${(t.routes||[]).length} ${L('routes','条线')} · +${fmtN(t.pax_min)} ${L('rider·min','人·分钟')}</span></div>
+  ${rs.length?`<div class="list eng-trs">${rows}</div>`:`<div class="card eng-note"><b>${L('No tram or bus route uses the affected streets','没有电车 / 公交线路经过受影响的路段')}</b></div>`}
+  <p class="small muted">${L(`Timetabled trips from PTV GTFS. Riders per trip are assumed (tram ${fmtN(pp.tram)}, bus ${fmtN(pp.bus)}).`,`班次来自 PTV 官方时刻表（GTFS）。每班乘客数是假设值（电车 ${fmtN(pp.tram)}、公交 ${fmtN(pp.bus)}）。`)}</p></div>`;
+}
+function engPeds3(s){
+  if(!hasPeds(s))return'';const p=s.peds;
+  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath stays open — close it in step 1 to see the detour','人行道照常通行 —— 在第 1 步把人行道封掉就能看到绕行')}</b></div></div>`;
+  const sensorTxt=p.sensor?L(`nearest counter ${esc(p.sensor.name)}: ${fmtN(p.sensor.ped_h)}/h`,`最近的计数器 ${esc(p.sensor.name)}：每小时 ${fmtN(p.sensor.ped_h)} 人`):'';
+  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
+  <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
+  <div class="metric"><span class="eyebrow">${L('Walk round','绕行')}</span><div class="v" style="color:${p.blocked?'var(--risk)':'var(--works)'}">${p.blocked?L('none','无路'):'+'+fmtN(p.detour_m)}<small>${p.blocked?'':'m'}${p.crossings?` · ${p.crossings} ${L('crossings','次过街')}`:''}</small></div></div></div>
+  <p class="small muted">${L(`City of Melbourne pedestrian counts; ${fmtN(p.extra_min)} extra person-minutes this hour at ${(p.assumed&&p.assumed.walk_mps)||1.3} m/s.`,`墨尔本市行人计数；这一小时共多走 ${fmtN(p.extra_min)} 人·分钟（按每秒 ${(p.assumed&&p.assumed.walk_mps)||1.3} 米）。`)}${sensorTxt?' '+sensorTxt+L('.','。'):''} ${L('Step-free access unknown (no steps data).','无障碍情况未知（数据里没有台阶信息）。')}</p></div>`;
 }
 function engBind3(){
   const s=EP.sum;if(!s)return;
@@ -1996,7 +2480,7 @@ function eng4HTML(){
   if(EP.badText)return`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`;
   const a=EP.adv;
   const n=a?a.options.length:0,rule=!a||a.src==='rule';
-  let h=`<div class="row between"><span class="eyebrow" style="color:var(--accent)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
+  let h=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
   const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{
@@ -2015,7 +2499,7 @@ function eng4HTML(){
     else{
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
       const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better?'var(--accent)':'var(--works)'}">${y}</span></div>`;
-      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min','全网延误 · 车·分钟'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}</div>
+      h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),true)}${row(L('Network delay · veh·min','全网延误 · 车·分钟'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
@@ -2034,8 +2518,8 @@ function engRender4(){
 function engPlaybook(){
   const s=engSumFor('now');if(!BE.api||!s)return['',''];
   const o=EP.adv&&EP.adv.options[EP.pick],c=EP.cmp;
-  const en=`\n\nNetwork impact (engine, real CBD flows, ${engHour(s.when.hour)})\n${s.street} ${dirL(EP.dir)}: queue ${fmtN(s.queue_m)} m · +${fmtN(s.mean_delay_s)} s per affected vehicle · ${pctS(s.detour_share)} detour`+(o&&c?`\nAdvisor: ${o.why||o.kind} → queue ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} m, +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} s per vehicle`:'')+(s.flags.reading_src==='rule'?'\n(Sign reading estimated with keyword rules.)':'');
-  const zh=`\n\n路网影响（引擎，真实 CBD 车流，${engHour(s.when.hour)}）\n${s.street} ${dirL(EP.dir)}：排队 ${fmtN(s.queue_m)} 米 · 受影响的车每辆多 ${fmtN(s.mean_delay_s)} 秒 · 绕行 ${pctS(s.detour_share)}`+(o&&c?`\n顾问：${o.why||o.kind} → 排队 ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} 米，每车 +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} 秒`:'')+(s.flags.reading_src==='rule'?'\n（读屏为关键词规则估算。）':'');
+  const en=`\n\nNetwork impact (engine, real CBD flows, ${engHour(s.when.hour)})\n${s.street} ${dirL(EP.dir)}: queue ${fmtN(s.queue_m)} m · +${fmtN(s.mean_delay_s)} s per affected vehicle · ${pctS(s.detour_share)} detour`+(o&&c?`\nAdvisor: ${o.why||o.kind} → queue ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} m, +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} s per vehicle`:'')+(hasTransit(s)&&(s.transit.routes||[]).length?`\nTrams & buses: ${s.transit.routes.length} routes, ${fmtN(s.transit.pax_h)} riders/h, +${fmtN(s.transit.pax_min)} rider-min${s.transit.blocked_routes?`, ${s.transit.blocked_routes} blocked`:''}`:'')+(hasPeds(s)&&(s.peds.closed||[]).length?`\nPedestrians: ${fmtN(s.peds.ped_h)}/h walk round, +${fmtN(s.peds.detour_m)} m each`:'')+(s.flags.reading_src==='rule'?'\n(Sign reading estimated with keyword rules.)':'');
+  const zh=`\n\n路网影响（引擎，真实 CBD 车流，${engHour(s.when.hour)}）\n${s.street} ${dirL(EP.dir)}：排队 ${fmtN(s.queue_m)} 米 · 受影响的车每辆多 ${fmtN(s.mean_delay_s)} 秒 · 绕行 ${pctS(s.detour_share)}`+(o&&c?`\n顾问：${o.why||o.kind} → 排队 ${fmtN(c.before.queue_m)} → ${fmtN(Math.max(0,c.before.queue_m+c.delta.queue_m))} 米，每车 +${fmtN(c.before.mean_delay_s)} → +${fmtN(c.after.mean_delay_s)} 秒`:'')+(hasTransit(s)&&(s.transit.routes||[]).length?`\n电车公交：${s.transit.routes.length} 条线，每小时 ${fmtN(s.transit.pax_h)} 名乘客，多 ${fmtN(s.transit.pax_min)} 人·分钟${s.transit.blocked_routes?`，${s.transit.blocked_routes} 条停运`:''}`:'')+(hasPeds(s)&&(s.peds.closed||[]).length?`\n行人：每小时 ${fmtN(s.peds.ped_h)} 人绕行，每人多走 ${fmtN(s.peds.detour_m)} 米`:'')+(s.flags.reading_src==='rule'?'\n（读屏为关键词规则估算。）':'');
   return[en,zh];
 }
 
@@ -2069,6 +2553,25 @@ function engLine(P,off){const Q=engOffset(P,off);ctx.beginPath();Q.forEach((p,i)
 function engUp(m){const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[a[0]-(b[0]-a[0])/l*m,a[1]-(b[1]-a[1])/l*m];}
 // Numbers that belong to what is on screen: none while the sign text is invalid or the last run failed
 function engSumFor(which){if(EP.badText||EP.runErr)return null;return which==='before'?(EP.cmp&&EP.cmp.before)||EP.sum:which==='after'?(EP.cmp&&EP.cmp.after)||EP.sum:EP.sum;}
+// Walk-link geometry for the pedestrian detour, fetched only once a plan closes a footpath (same file the engine reads)
+function engWalkGeo(){
+  if(EP.walkGeo||EP.walkLoading)return EP.walkGeo;EP.walkLoading=true;
+  fetch('/roads/public/cbd/walk.json').then(r=>r.ok?r.json():null).then(w=>{const m=new Map();for(const l of (w&&w.links)||[])if(Array.isArray(l.geometry)&&l.geometry.length>1)m.set(l.id,l.geometry.map(p=>geoToWorld(p[0],p[1])));EP.walkGeo=m;}).catch(()=>{EP.walkGeo=new Map();});
+  return null;
+}
+function engPedDraw(s,faint){
+  const p=s&&s.peds;if(!hasPeds(s)||!(p.closed||[]).length)return;const G=engWalkGeo();if(!G)return;const k=clamp(V.s/2.4,.7,1.6);
+  ctx.save();ctx.lineCap='round';ctx.globalAlpha=faint?.6:.95;
+  ctx.strokeStyle=TK.risk;ctx.lineWidth=4*k;for(const id of p.closed){const P=G.get(id);if(!P)continue;ctx.beginPath();P.forEach((q,i)=>i?ctx.lineTo(V.X(q[0]),V.Y(q[1])):ctx.moveTo(V.X(q[0]),V.Y(q[1])));ctx.stroke();}
+  ctx.strokeStyle=TK.aPed;ctx.lineWidth=3*k;ctx.setLineDash([5,4]);for(const id of p.detour||[]){const P=G.get(id);if(!P)continue;ctx.beginPath();P.forEach((q,i)=>i?ctx.lineTo(V.X(q[0]),V.Y(q[1])):ctx.moveTo(V.X(q[0]),V.Y(q[1])));ctx.stroke();}
+  ctx.restore();
+}
+function engTransitDraw(s,faint){
+  if(!hasTransit(s))return;const k=clamp(V.s/2.4,.7,1.6);
+  ctx.save();ctx.lineCap='round';ctx.setLineDash([7,5]);
+  for(const r of (s.transit.routes||[]).slice(0,8)){ctx.globalAlpha=faint?.5:.9;ctx.strokeStyle=r.blocked?TK.risk:r.mode==='tram'?TK.aTram:TK.aBus;ctx.lineWidth=(r.blocked?3.4:2.4)*k;for(const id of [...(r.links||[]),...(r.detour_links||[])]){const P=engGeo(id);if(!P)continue;engLine(P,-2.5);ctx.stroke();}}
+  ctx.restore();
+}
 // Ripple (every link that got slower), the queue, the closed link and the signs. Drawn under the road users.
 function engDraw(which){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works)return;
@@ -2085,6 +2588,7 @@ function engDraw(which){
     if(s.queue_m>0){const q=engUp(s.queue_m),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
     if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
   }
+  if(s&&S.step!==2){engTransitDraw(s,S.step===1);engPedDraw(s,S.step===1);}
   ctx.globalAlpha=1;ctx.strokeStyle=TK.works;ctx.lineWidth=9*k;engLine(EP.pts,off);ctx.stroke();
   ctx.strokeStyle=TK.light?'#1b1b1b':'#101010';ctx.lineWidth=2;ctx.setLineDash([4,4]);engLine(EP.pts,off);ctx.stroke();ctx.setLineDash([]);
   if(S.step<=2){
@@ -2132,6 +2636,141 @@ function engBindMap(){
       if(engSetLink(id)){EP.preset='custom';renderPanel();engChanged(0);toast(L(`Work zone moved to ${shortSt(EP.street)||'this road'} ${dirL(EP.dir)}`,`施工区挪到 ${shortSt(EP.street)||'这条路'} ${dirL(EP.dir)}`));}
     },280);
   });
+}
+
+/* ============================================================
+   T14 liquid glass (docs/arch/T14-liquid-glass-PRD.md) — appearance only, no numbers change.
+   · Floating layout (desktop): the map fills the window; top bar, layer rail, analysis panel and timeline float over it.
+     .app carries --safe-l/r/t/b = how much of the map the glass covers; the view, scale bar, graticule labels and the alert
+     keep inside what is left (insets()).
+   · Real refraction on the analysis panel and the top bar, adapted from liquid-glass.js by Deepika Rao
+     (github.com/sven1577/liquid-glass, MIT): a canvas displacement map fed to three staggered feDisplacementMap
+     passes through backdrop-filter:url(). Chromium only; Safari / Firefox / reduced transparency / phones keep the CSS
+     frosted blur, so nothing depends on it.
+   · Compact analysis panel: secondary sections fold behind their heading, explanatory text hides; "Details" shows it all.
+   · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
+   ============================================================ */
+const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function insets(){return GL.ins;}
+/* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
+function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
+
+/* ---------- refraction ---------- */
+const LG_OK=(()=>{const ua=navigator.userAgent;if(/Firefox/.test(ua)||(/Safari/.test(ua)&&!/Chrome|Chromium|Edg/.test(ua)))return false;try{return CSS.supports('backdrop-filter','url(#lg)');}catch(e){return false;}})();
+const SVG_NS='http://www.w3.org/2000/svg';let lgDefs=null,lgUid=0;
+function lgEnsureDefs(){if(lgDefs)return lgDefs;const svg=document.createElementNS(SVG_NS,'svg');svg.setAttribute('width','0');svg.setAttribute('height','0');svg.setAttribute('aria-hidden','true');svg.style.position='absolute';lgDefs=document.createElementNS(SVG_NS,'defs');svg.appendChild(lgDefs);document.body.appendChild(svg);return lgDefs;}
+/* red left→right ramp = x push, blue top→bottom ramp = y push; a blurred mid-grey inset neutralises the interior so only the rim bends */
+function lgMap(w,h,radius,border,mapBlur){
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d');
+  const gx=g.createLinearGradient(0,0,w,0);gx.addColorStop(0,'rgb(0,0,0)');gx.addColorStop(1,'rgb(255,0,0)');g.fillStyle=gx;g.fillRect(0,0,w,h);
+  const gy=g.createLinearGradient(0,0,0,h);gy.addColorStop(0,'rgb(0,0,0)');gy.addColorStop(1,'rgb(0,0,255)');g.globalCompositeOperation='difference';g.fillStyle=gy;g.fillRect(0,0,w,h);
+  g.globalCompositeOperation='source-over';const ins=border*Math.min(w,h);g.filter=`blur(${mapBlur}px)`;g.fillStyle='rgba(128,128,128,.93)';
+  rr(g,ins,ins,w-ins*2,h-ins*2,Math.max(radius-ins,2));g.fill();g.filter='none';return cv.toDataURL();
+}
+function lgFilter(id,scales){
+  const f=document.createElementNS(SVG_NS,'filter');for(const[k,v]of[['id',id],['x','0'],['y','0'],['width','100%'],['height','100%'],['color-interpolation-filters','sRGB']])f.setAttribute(k,v);
+  const img=document.createElementNS(SVG_NS,'feImage');for(const[k,v]of[['x','0'],['y','0'],['result','map'],['preserveAspectRatio','none']])img.setAttribute(k,v);f.appendChild(img);
+  const keep=['1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0','0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0','0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0'];
+  for(let i=0;i<3;i++){
+    const d=document.createElementNS(SVG_NS,'feDisplacementMap');for(const[k,v]of[['in','SourceGraphic'],['in2','map'],['scale',scales[i]],['xChannelSelector','R'],['yChannelSelector','B'],['result','d'+i]])d.setAttribute(k,v);f.appendChild(d);
+    const m=document.createElementNS(SVG_NS,'feColorMatrix');for(const[k,v]of[['in','d'+i],['type','matrix'],['values',keep[i]],['result','c'+i]])m.setAttribute(k,v);f.appendChild(m);
+  }
+  const b1=document.createElementNS(SVG_NS,'feBlend');for(const[k,v]of[['in','c0'],['in2','c1'],['mode','screen'],['result','c01']])b1.setAttribute(k,v);f.appendChild(b1);
+  const b2=document.createElementNS(SVG_NS,'feBlend');for(const[k,v]of[['in','c01'],['in2','c2'],['mode','screen']])b2.setAttribute(k,v);f.appendChild(b2);
+  lgEnsureDefs().appendChild(f);return{f,img};
+}
+function liquidGlass(el,opts){
+  const o=Object.assign({scale:-90,chroma:5,border:.06,mapBlur:12,blur:12},opts);
+  const id='lg-'+(++lgUid),parts=lgFilter(id,[o.scale,o.scale+o.chroma,o.scale+2*o.chroma]);let timer=0;
+  const refresh=()=>{const w=el.offsetWidth,h=el.offsetHeight;if(!w||!h)return;const r=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;parts.img.setAttribute('href',lgMap(w,h,r,o.border,o.mapBlur));parts.img.setAttribute('width',w);parts.img.setAttribute('height',h);};
+  /* the tone (dim / lift) lives in CSS (.lg-on + --glass-tone) so a theme switch needs no re-apply */
+  refresh();el.style.setProperty('--lg-url',`url(#${id})`);el.style.setProperty('--lg-blur',o.blur+'px');el.classList.add('lg-on');
+  const ro=new ResizeObserver(()=>{clearTimeout(timer);timer=setTimeout(refresh,120);});ro.observe(el);
+  return{destroy(){ro.disconnect();clearTimeout(timer);parts.f.remove();el.style.removeProperty('--lg-url');el.style.removeProperty('--lg-blur');el.classList.remove('lg-on');}};
+}
+function applyGlass(){
+  for(const g of GL.fx)g.destroy();GL.fx=[];
+  const desktop=matchMedia('(min-width: 821px)').matches,lowT=matchMedia('(prefers-reduced-transparency: reduce)').matches;
+  if(!LG_OK||!desktop||lowT)return;
+  const P=document.getElementById('panel'),T=document.querySelector('.top');
+  if(P)GL.fx.push(liquidGlass(P,{scale:-110,chroma:6,border:.05,mapBlur:14,blur:12}));
+  if(T)GL.fx.push(liquidGlass(T,{scale:-78,chroma:5,border:.14,mapBlur:9,blur:10}));
+}
+
+/* ---------- compact analysis panel ---------- */
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,.score';
+function compactPanel(){
+  const P=document.getElementById('panel');if(!P)return;
+  if(GL.obs)GL.obs.disconnect();
+  P.classList.toggle('compact',GL.mode==='compact');
+  let tools=P.firstElementChild&&P.firstElementChild.classList.contains('panel-tools')?P.firstElementChild:null;
+  if(!tools){tools=document.createElement('div');tools.className='panel-tools';P.insertBefore(tools,P.firstChild);}
+  tools.innerHTML=`<div class="seg-mode" role="group" aria-label="${L('Panel detail','面板详略')}"><button type="button" data-mode="compact" aria-pressed="${GL.mode==='compact'}">${L('Compact','简洁')}</button><button type="button" data-mode="full" aria-pressed="${GL.mode==='full'}">${L('Details','详细')}</button></div><button type="button" class="panel-hide" aria-label="${L('Hide panel — show the whole map','收起面板，看完整地图')}" title="${L('Hide panel','收起面板')}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/><path d="M11 3v10" opacity=".45"/></svg></button>`;
+  tools.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{GL.mode=b.dataset.mode;GL.open.clear();ls.set('rt-panel',GL.mode);compactPanel();});
+  tools.querySelector('.panel-hide').onclick=()=>setPanelMin(true);
+  const tab=(S.step===3&&typeof EP!=='undefined')?EP.tab3:'';let n=0;
+  for(const sec of[...P.children]){
+    if(sec===tools||!sec.classList.contains('stack'))continue;
+    const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
+    const key=`${S.step}${tab}:${n++}`;
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
+    sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
+    head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
+    const toggle=()=>{GL.open.set(key,sec.classList.contains('sec-closed'));compactPanel();};
+    head.onclick=e=>{if(e.target.closest('button,a,input,textarea,select'))return;toggle();};
+    head.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  }
+  if(GL.obs)GL.obs.observe(P,{childList:true});
+}
+function setPanelMin(on){
+  const app=document.getElementById('app');app.classList.toggle('panel-min',on);ls.set('rt-pmin',on?'1':'0');
+  const b=document.getElementById('panelOpen');if(b)b.hidden=!on;
+  readInsets();if(on){const btn=document.getElementById('panelOpen');if(btn)btn.focus();}
+}
+function initGlass(){
+  GL.mode=ls.get('rt-panel')==='full'?'full':'compact';
+  const P=document.getElementById('panel');
+  GL.obs=new MutationObserver(()=>compactPanel());if(P)GL.obs.observe(P,{childList:true});
+  const b=document.getElementById('panelOpen');if(b)b.onclick=()=>setPanelMin(false);
+  if(ls.get('rt-pmin')==='1'&&matchMedia('(min-width: 821px)').matches)setPanelMin(true);
+  readInsets();applyGlass();
+  let t=0;window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{readInsets();applyGlass();},200);});
+  for(const q of['(prefers-reduced-transparency: reduce)','(min-width: 821px)']){try{matchMedia(q).addEventListener('change',()=>{readInsets();applyGlass();});}catch(e){}}
+}
+
+/* ---------- roads over buildings ---------- */
+function roadPieces(Wd){
+  const out=[],span=Wd.real&&typeof STREET_SPAN!=='undefined'?STREET_SPAN:{};
+  for(const st of Wd.streets){
+    const r=carriage(st),H=st.axis==='h',sp=span[st.id],lim=sp?[sp[0],sp[1]]:[-Infinity,Infinity];
+    const runs=H?[[r.x0,r.x1]]:freeSpans(st,0);
+    for(const[a0,b0]of runs){const a=Math.max(a0,lim[0]),b=Math.min(b0,lim[1]);if(b<=a)continue;out.push(H?{H,x0:a,x1:b,y0:r.y0,y1:r.y1,st}:{H,x0:r.x0,x1:r.x1,y0:a,y1:b,st});}
+  }
+  return out;
+}
+function emphasizeRoads(c,V,Wd,basemap,light){
+  const X=x=>V.X(x),Y=y=>V.Y(y),s=V.s,vec=basemap==='streets';
+  c.save();
+  /* 1. wash roofs back toward the ground tone */
+  c.fillStyle=vec?(light?'rgba(240,243,242,.62)':'rgba(13,18,21,.52)'):(light?'rgba(20,24,28,.34)':'rgba(6,8,10,.5)');
+  c.beginPath();
+  for(const b of Wd.buildings){
+    if(X(b.x1)<-20||X(b.x0)>V.w+20||Y(b.y0)<-20||Y(b.y1)>V.h+20)continue;
+    const P=b.pts?(polyArea(b.pts)>0?b.pts:b.pts.slice().reverse()):[[b.x0,b.y0],[b.x1,b.y0],[b.x1,b.y1],[b.x0,b.y1]];
+    c.moveTo(X(P[0][0]),Y(P[0][1]));for(let i=1;i<P.length;i++)c.lineTo(X(P[i][0]),Y(P[i][1]));c.closePath();
+  }
+  c.fill('nonzero');
+  /* a landmark already inside a washed footprint (real data) would go twice as dark */
+  for(const l of Wd.landmarks||[]){if(Wd.buildings.some(b=>l.x>=b.x0&&l.x<=b.x1&&l.y>=b.y0&&l.y<=b.y1))continue;c.beginPath();c.arc(X(l.x),Y(l.y),l.r*s,0,Math.PI*2);c.fill();}
+  /* 2. lift the carriageways out of building shadow, then edge them */
+  const pcs=roadPieces(Wd);
+  if(!vec){c.globalCompositeOperation='screen';c.fillStyle=light?'rgba(72,80,88,.5)':'rgba(60,68,76,.55)';for(const p of pcs)c.fillRect(X(p.x0),Y(p.y1),(p.x1-p.x0)*s,(p.y1-p.y0)*s);c.globalCompositeOperation='source-over';}
+  c.strokeStyle=vec?(light?'rgba(88,104,110,.9)':'rgba(150,172,184,.6)'):'rgba(238,242,246,.66)';c.lineWidth=clamp(s*.32,1,2.2);c.beginPath();
+  for(const p of pcs){if(p.H){for(const y of[p.y0,p.y1]){c.moveTo(X(p.x0),Y(y));c.lineTo(X(p.x1),Y(y));}}else{for(const x of[p.x0,p.x1]){c.moveTo(X(x),Y(p.y0));c.lineTo(X(x),Y(p.y1));}}}
+  c.stroke();
+  c.restore();
 }
 
 </script>

@@ -62,6 +62,11 @@ ok(ws.equipment.find(e => e.type === 'sign').text === 'RIGHT LANE CLOSED' && ws.
 ok(ws.links[0] === EP.link && ws.closes.lanes === 1 && plan.when.hour === 8 && /^\d{4}-\d\d-\d\d$/.test(ws.time.from) && ws.time.hours.length === 2, '路段、封几条道、时段、日期都按契约');
 ok(!planFrom({ ...EP, f1: '  \n ', f2: '' }).worksites[0].equipment.some(e => e.type === 'vms') && !planFrom({ ...EP, sign: ' ' }).worksites[0].equipment.some(e => e.type === 'sign'), '反向断言：VMS / 标志牌写空了就不放，不发空字');
 ok(JSON.stringify(parseFrame('use\nrussell   st\n\n')) === '["USE","RUSSELL ST"]', 'parseFrame：一行一句');
+// 人行道封闭（契约 closes.footpath，T18）：默认不发；选了才发；乱写的值不发
+ok(!('footpath' in planFrom(EP).worksites[0].closes) && !('footpath' in planFrom({ ...EP, foot: 'none' }).worksites[0].closes), '反向断言：人行道默认照常，不发 closes.footpath');
+ok(planFrom({ ...EP, foot: 'left' }).worksites[0].closes.footpath === 'left' && planFrom({ ...EP, foot: 'both' }).worksites[0].closes.footpath === 'both', '选了「施工侧 / 两侧封闭」→ closes.footpath = left / both');
+ok(!('footpath' in planFrom({ ...EP, foot: '<x>' }).worksites[0].closes), '反向断言：不认识的人行道取值不发给引擎');
+ok(formFromPlan(planFrom({ ...EP, foot: 'left' })).foot === 'left' && formFromPlan(planFrom(EP)).foot === 'none', 'formFromPlan 把人行道状态套回表单');
 
 // 4 页面拼的方案交给真的 backend.js（真路网 + T12 参数 + T5 读屏，不联网）
 const file = p => APPS + p.replace(/^\//, '');

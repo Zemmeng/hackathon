@@ -115,6 +115,35 @@ export function shortestPath(net, from, to, { cost = l => l.t0_s, banned = new S
   return { links, cost: dist.get(to) };
 }
 
+// 单源 Dijkstra：从 from 到所有走得到的节点（公交绕行、补线路缺口用，transit.js）。参数同 shortestPath；
+// bannedNodes 里的节点一律不进；maxCost = 超过这个代价就不再往外扩。→ { dist: 节点 → 代价, prev: 节点 → 进来的那个路段 }
+export function dijkstra(net, from, { cost = l => l.t0_s, banned = new Set(), bannedNodes = new Set(), linkOk = () => true, maxCost = Infinity } = {}) {
+  const dist = new Map([[from, 0]]), prev = new Map();
+  const h = new Heap();
+  h.push(0, from);
+  while (h.size) {
+    const [d, , u] = h.pop();
+    if (d > (dist.get(u) ?? Infinity)) continue;
+    for (const l of net.out.get(u) || []) {
+      if (banned.has(l.id) || bannedNodes.has(l.to) || !linkOk(l)) continue;
+      const c = cost(l);
+      if (!Number.isFinite(c)) continue;
+      const nd = d + c;
+      if (nd > maxCost) continue;
+      if (nd < (dist.get(l.to) ?? Infinity)) { dist.set(l.to, nd); prev.set(l.to, l); h.push(nd, l.to); }
+    }
+  }
+  return { dist, prev };
+}
+
+// dijkstra() 的结果 → from 到 to 的路段 id 列表（走不到 = null）
+export function treePath(tree, from, to) {
+  if (!tree.dist.has(to)) return null;
+  const links = [];
+  for (let n = to; n !== from; ) { const l = tree.prev.get(n); links.push(l.id); n = l.from; }
+  return links.reverse();
+}
+
 export function pathTime(net, ids, time = l => l.t0_s) {
   let s = 0;
   for (const id of ids) s += time(net.links.get(id));
