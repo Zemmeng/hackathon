@@ -61,9 +61,11 @@ Owner: @unicornnnnnny
 | `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑，分几个 task 先建好轮廓、栅格、当前底图的影像，最后 `rebuildWorld(nw, g, imgs)` 在一帧里换掉 `W / G / IMG`（`WX.rebind()` 重建天气栅格）；存下来的天气（如高温）的栅格只在 `start()` 里建一次 |
 | `src/js/6-engine.js` | 接引擎（T13）：连 `backend.js`、第 1 步方案表单、第 3 步路网涟漪、第 4 步顾问 + 前后对比、地图上的施工区 / 排队 / 绕行 / 变慢路段；开头 `pure:begin…pure:end` 是测试要跑的纯函数（坐标换算、选路段、拼方案） |
 | `src/js/8-compare.js` | T23（@jinmingq，D-0929-2011 ④）：第 4 步顾问下面的「方案对比 · 选一套」——T22 的 `be.options()` 按 RPM 库存配的 3 套（最省 / 标准 / 引导，引擎算好延误、租金、库存检查；拿不到时退回「现在的方案 + 顾问的改法」逐套 `run()`），并排比车延误 / 电车公交 / 行人 / 租金，标「最少」，库存不够、此时段不施工另起一行提示；选定 + 施工方 / 市政 + 理由，导出一页执行包（T5 的 `/api/public/js/pack.js`，打印 / 存 PDF / 复制）。开头 `pure:begin…pure:end` 是测试要跑的纯函数 |
+| `src/js/9-ai.js` | AI 面板（lead，D-0929-2307）：第 3 步「AI 路人 · 各自读到了什么」——主路段上 4 类人各自看到的屏（按经过顺序，VMS 各帧用 ▸ 连）、看到 / 看懂 / 相信的条和区间、路线建议、一句理由（textContent）、来源（大模型 · 预先算好 / 缓存 / 现场 + 毫秒，规则 · 兜底）；下面可展开的「AI 调用日志（N）」列出这次打开页面以来每次读屏调用，可在浏览器里导出 JSON（不上传）。第 4 步方案卡片的 AI 解读归 T23（`8-compare.js`，#73），本文件不管。数据只来自 `backend.js` 的 `aiLog()` / `onAiLog()` / `readingsOf()`。开头 `pure:begin…pure:end` 是测试要跑的纯函数；`6-engine.js` 的读屏 pill / 图例也用这里的 `aiSrcLabel()` |
 | `build.py` | 打包成 `public/index.html`（进仓库）和 `out/web-artifact.html`（不进仓库） |
 | `tests/test_web.py` `tests/test_engine.py` `tests/engine_glue.mjs` | 上面「怎么测」的断言 |
 | `tests/test_compare.py` `tests/compare_glue.mjs` | T23：`8-compare.js` 的纯函数（选哪几套、三个数、「最少」）+ 真 `backend.js` 顾问的改法逐套 `run()` + 真 `pack.js` 执行包（选了谁、理由、租金标假设值） |
+| `tests/test_ai.py` `tests/ai_glue.mjs` | AI 面板：来源标签（中英）、屏上文字 / 建议 / 百分比、卡片和日志行全部转义（反向：why 不进 HTML、`<img>` 进不去）、下载的 JSON 只放白名单字段（反向：token / header 不进文件）、接真 `backend.js`（假读屏 file / llm / kv / 规则兜底）出 4 张卡片；静态：挂载钩子、不发请求、解读只用 textContent、签名守卫 |
 
 ## 本模块固定模式
 

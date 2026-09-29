@@ -272,6 +272,8 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 其他：`engine.window(worksites, whens)` 一段时间的总延误；`engine.conflict(a, b, { whens?, hours? })` → `{ a, b, ab, cost, overlap, whens, truncated }`，`cost = D(A+B) − D(A) − D(B)`（时段不重叠时正好是 0；默认采样每个施工时段里的 8 点、17 点，没有就取时段中间那个小时，最多 31 天）；`advise(engine, 方案, { askAdvisor })` 第 ⑦ 步，每个改法都重算、标 `better`（MOCK 顾问 `mockAdvise`）。
 
+**AI 调用日志（v3.10，只加方法）**：`connect({ onAiLog?, aiLogMax? })` 把读屏函数包一层，每次调用记一条 `{ seq, t（ISO）, persona, signs, roads, kmh, read_s（每块屏几秒）, src, model, ms, reading, fallback?, error? }`：`src` 照读数给的（`file / kv / llm / rule`）；读屏抛普通错改用引擎规则时记 `src: "rule"` + `fallback`（原因），请求不合规范（`SignError`）记 `src: "error"` + `error`（code）、`reading: null`。只在内存里，环形最多 `AI_LOG_MAX = 200` 条；不多发请求、不改读数（引擎按「字 + 人」缓存，同一句话只问一次，也只记一次）。`be.aiLog()` → 全部记录（拷贝，时间顺序）；`be.onAiLog(fn)` → 每来一条调 `fn(记录)`，回退订函数（回调抛错不影响读数）；`be.readingsOf(summary)` → 这次 `run()` 主路段上每类人读到了什么 `{ when, worksite, entry, street, dir, personas: { <类型>: { signs（按经过顺序，远 → 近）, roads, kmh, reading, src, model, ms, t, fallback } | null } }`，不是 `run()` 出的 summary → `null`；`be.lastReadings()` = 最近一次 `run()` 的。网页第 3 步「AI 路人」和「AI 调用日志」用它们（`apps/web/src/js/9-ai.js`）
+
 - 🔒 只支持同源：网页、`/engine/public/`、`/roads/public/`、`/api/*` 挂在同一个域名下
 - 路段可选字段 `truck: false` = 禁货车（T3 现在没有这个字段，没有时禁货车不生效）
 
@@ -334,6 +336,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.10 | 2026-09-29 | §evaluate 加 AI 调用日志（向后兼容，只加方法 / 可选参数）：`be.aiLog()` / `be.onAiLog(fn)` / `be.readingsOf(summary)` / `be.lastReadings()`，`connect({ onAiLog, aiLogMax })`；summary 字段不变 | lead |
 | v3.9 | 2026-09-29 | D-0929-2307（向后兼容，只加字段 / 取值）：`POST /api/explain` 接上大模型，`src` 多了 `llm / kv`，另加可选 `model` / `prompt_v`（`llm / kv` 时）和 `note`（兜底时）；`/api/health` 的 `llm` 加 `explain_v` | lead |
 | v3.8 | 2026-09-29 | T21（D-0929-2011 ②）§evaluate 加 `be.clash(a, b)` / `be.stagger(a, b)`：叠加冲突成本 D(A+B) − D(A) − D(B) 和一键错开，显示字段永远 ≥ 0、`flags.reliable`；只加方法 | lead |
 | v3.7 | 2026-09-29 | T22（D-0929-2011 ③）§施工方案 加「按库存出方案 `options[]`」：`be.options()` 出 `o1 / o2 / o3` 三套方案，每套带引擎结果、租金（`hire.assumed = true`）、库存检查（不超库存）；只加字段。依赖 v3.6（#57）的 `equipment[].item / qty` | lead |
