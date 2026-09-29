@@ -431,8 +431,12 @@ export async function connect(opts = {}) {
   // 时间窗 = 两处施工真正重叠的那几天 × 重叠时段里的早晚高峰（8、17 点，没有就取时段中间那个小时；和 advise() 同一口径）。
   //   只看重叠的时刻：不重叠的时刻只有一处在施工，冲突成本本来就是 0。a / b / ab 因此是「重叠那几天的采样小时」加总，不是整个工期。
   //   opts.hours 换采样小时；opts.when 只算这一个时刻。a、b 可以是一条施工（§施工方案），也可以是整份方案（取 worksites[0]）。
-  // 显示字段 a / b / ab / cost 永远 ≥ 0：任何一个原始数 < 0（基线车流本来就超过通行能力的路段，如 Flinders St，见 #58）
-  //   → flags.reliable = false、cost 显示 0，原始数放在 raw，页面写「≈ 0 · 结果不可信」。
+  // 显示字段 a / b / ab / cost 永远 ≥ 0，原始数放在 raw。两种「≈ 0」分开标：
+  //   flags.negative_delay：D(A) / D(B) / D(A+B) 有 < 0 的（基线车流本来就超过通行能力的路段，如 Flinders St，见 #58）
+  //     → flags.reliable = false、cost 显示 0，页面写「≈ 0 · 基线车流超出通行能力，结果不可信」
+  //   flags.substitutes：三个 D 都 ≥ 0，只是 D(A+B) < D(A) + D(B)（同一走廊的两处施工互相替代，叠加不额外增加延误）
+  //     → cost 显示 0，仍然可信
+  //   读屏有失败（flags.failed > 0，同 compare / advise 的口径）→ 也 reliable = false。
   const wsOf = x => (x && Array.isArray(x.worksites) ? x.worksites[0] : x);
   const dn = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
   function overlapOf(a, b) {
@@ -448,6 +452,8 @@ export async function connect(opts = {}) {
     const a = wsOf(a0), b1 = wsOf(b0);
     if (!a || !b1) throw new Error('clash(a, b)：a、b 要是一条施工或一份方案');
     if (!opts.when && (!a.time || !b1.time)) throw new Error('clash(a, b)：两处施工都要写 time（或给 opts.when 只算一个时刻）');
+    const errs = validate({ worksites: [a, b1] }); // 和 run / compare / advise 一样先挡不合格的施工，不悄悄算
+    if (errs.length) throw planError(errs);
     const b = a.id === b1.id ? { ...b1, id: `${b1.id}-2` } : b1; // 同一个 id 引擎会当成一处施工
     const ov = overlapOf(a, b);
     const whens = opts.when ? [opts.when] : ov.days ? windowWhens([{ time: { from: ov.from, to: ov.to, hours: ov.hours } }], opts.hours) : [];
@@ -458,17 +464,20 @@ export async function connect(opts = {}) {
       c = engine.conflict(a, b, { whens });
     }
     const raw = { a: c.a, b: c.b, ab: c.ab, cost: c.cost };
-    const negative = Object.values(raw).some(x => x < 0);
+    const negDelay = [raw.a, raw.b, raw.ab].some(x => x < 0);
+    const substitutes = !negDelay && raw.cost < 0;
+    const failed = errCount() - e0;
     return {
-      a: Math.max(0, raw.a), b: Math.max(0, raw.b), ab: Math.max(0, raw.ab), cost: negative ? 0 : raw.cost, raw,
+      a: Math.max(0, raw.a), b: Math.max(0, raw.b), ab: Math.max(0, raw.ab), cost: negDelay ? 0 : Math.max(0, raw.cost), raw,
       whens: whens.length, hours: [...new Set(whens.map(w => w.hour))], truncated: Boolean(whens.truncated),
       overlap: { from: ov.from, to: ov.to, days: ov.days },
-      flags: { reliable: !negative, negative, reading_src: engine.calib.src, failed: errCount() - e0 },
+      flags: { reliable: !negDelay && !failed, negative_delay: negDelay, substitutes, reading_src: engine.calib.src, failed },
     };
   }
 
   // 一键错开（T21）：把 b 往后挪 1…maxDays 天（back: true 时每一步再试往前挪同样天数，顺序 +1, −1, +2, −2 …），
   // 每一步都用 clash() 重算；碰到第一个「不再重叠」或「冲突成本 = 0 且结果可信」就停。同样输入同样结果。
+  // best：可信的尝试排在不可信的前面（不可信的被清成 0，不能冒充「清零了」），同样可信时取冲突成本最小的，一样时取先试的。
   // best.ab / period：挪之前和挪之后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，
   //   两个数用同一把尺子比：b 自己的延误只是换了日子，省下的主要就是冲突成本。
   async function stagger(a0, b0, { maxDays = 7, hours, back = false } = {}) {
@@ -482,19 +491,23 @@ export async function connect(opts = {}) {
     for (const days of order) {
       const r = await clash(a, shiftWorksite(b, days), { hours });
       tries.push({ days, cost: r.cost, overlap_days: r.overlap.days, reliable: r.flags.reliable });
-      if (!best || r.cost < best.cost) best = { days, cost: r.cost, overlap_days: r.overlap.days, reliable: r.flags.reliable };
+      const cand = { days, cost: r.cost, overlap_days: r.overlap.days, reliable: r.flags.reliable };
+      if (!best || (cand.reliable && !best.reliable) || (cand.reliable === best.reliable && cand.cost < best.cost)) best = cand;
       if (!r.overlap.days || (r.cost === 0 && r.flags.reliable)) break;
     }
     if (!best) return { base, best: null, tries, period: null };
     const b2 = shiftWorksite(b, best.days);
     const W = windowWhens([a, b, b2], hours);
+    const e0 = errCount();
     await prepPairs([[a, b], [a, b2]], W);
     const before = engine.window([a, b], W).delay_min, after = engine.window([a, b2], W).delay_min;
+    const failed = errCount() - e0;
     best.ab = Math.max(0, after);
     return {
       base, best, tries, worksite: b2,
       period: { from: W[0]?.date ?? null, to: W[W.length - 1]?.date ?? null, whens: W.length, truncated: Boolean(W.truncated),
-        ab_before: Math.max(0, before), ab_after: Math.max(0, after), reliable: before >= 0 && after >= 0 },
+        ab_before: Math.max(0, before), ab_after: Math.max(0, after),
+        reliable: before >= 0 && after >= 0 && !failed && base.flags.reliable && best.reliable, failed },
     };
   }
 

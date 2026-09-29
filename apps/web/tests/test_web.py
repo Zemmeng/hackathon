@@ -197,6 +197,8 @@ check("T21 登记表走 /api/public/js/worksites.js，数由 BE.api.clash / stag
       "import('/api/public/js/worksites.js')" in CLASH and "BE.api.clash(" in CLASH and "BE.api.stagger(" in CLASH)
 check("T21 flags.reliable = false 时写「≈ 0 · 结果不可信」（中英）",
       "!r.flags.reliable" in CLASH and "result not reliable" in CLASH and "结果不可信" in CLASH)
+check("T21 两种 ≈ 0 分开写：negative_delay 说基线超通行能力，substitutes 说同一走廊；错开前看 best.reliable",
+      "r.flags.negative_delay?" in CLASH and "r.flags.substitutes?" in CLASH and "same corridor" in CLASH and "同一走廊" in CLASH and "b&&!b.reliable" in CLASH)
 check("T21 第 3 步挂上叠加检查（clashMount）、地图画那处施工（clashDraw）", "clashMount();" in app_js and "clashDraw();" in app_js)
 raw_title = [x for x in interpolations(CLASH) if "${" not in x and re.search(r"\.(title|name)\b", x) and "esc(" not in x]
 check("T21 反向断言：登记表的标题 / 路名进 HTML 都过 esc()", not raw_title and "esc(o.title)" in CLASH, str(raw_title[:3]))

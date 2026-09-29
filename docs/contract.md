@@ -171,16 +171,18 @@ const k = await be.clash(a, b, { hours?, when? });   // a、b = §施工方案�
 // k = { a, b, ab, cost,                    // 显示用，永远 ≥ 0：D(A) / D(B) / D(A+B) / 冲突成本 D(A+B) − D(A) − D(B)，单位 车·分钟，按采样小时加总
 //       raw: { a, b, ab, cost },           // 引擎原始数（可能 < 0）
 //       whens, hours, truncated, overlap: { from, to, days },
-//       flags: { reliable, negative, reading_src, failed } }
+//       flags: { reliable, negative_delay, substitutes, reading_src, failed } }
 const g = await be.stagger(a, b, { maxDays = 7, hours?, back = false });
 // g = { base: clash(a, b), best: { days, cost, ab, overlap_days, reliable }, tries: [{ days, cost, overlap_days, reliable }],
-//       worksite: 挪好的 b, period: { from, to, whens, truncated, ab_before, ab_after, reliable } }
+//       worksite: 挪好的 b, period: { from, to, whens, truncated, ab_before, ab_after, reliable, failed } }
 ```
 
 - 时间窗 = 两处施工**重叠的那几天** × 重叠时段里的早晚高峰（8、17 点；都不在就取时段中间那个小时，和 `advise()` 同一口径）；`opts.hours` 换采样小时，`opts.when` 只算那一个时刻。不重叠 → 全 0、`whens = 0`，不跑引擎。两处施工都要写 `time`（或给 `when`），否则抛错
 - 数由 `engine.conflict()` 算（下文「其他」），接线层不另写算法；同样输入同样结果
-- 🔒 `raw` 里任何一个 < 0（基线车流本来就超过通行能力的路段，如 Flinders St，#58）→ `flags.reliable = false`、`flags.negative = true`、`cost` 显示 0；页面写「≈ 0 · 这段路的基线车流超出通行能力，结果不可信」，不显示负数
-- `stagger` 只挪 `b`：`+1 … +maxDays` 天（`back: true` 时 `+1, −1, +2, −2 …`），碰到第一个「不再重叠」或「冲突成本 0 且可信」就停；`best` 取冲突成本最小的（一样时取先试的）。`period` 是挪前、挪后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，同一把尺子比
+- 🔒 显示字段不出现负数，两种「≈ 0」分开标：`raw.a / raw.b / raw.ab` 有 < 0 的（基线车流本来就超过通行能力的路段，如 Flinders St，#58）→ `flags.negative_delay = true`、`flags.reliable = false`、`cost` 显示 0，页面写「≈ 0 · 这段路的基线车流超出通行能力，结果不可信」；三个 D 都 ≥ 0、只有 `raw.cost` < 0（同一走廊的两处施工互相替代）→ `flags.substitutes = true`、`cost` 显示 0、仍可信，页面写「≈ 0 · 两处施工在同一走廊，叠加不额外增加延误」
+- 读屏有失败（`flags.failed > 0`，和 `compare` / `advise` 同一口径）→ `flags.reliable = false`；a、b 先过 `validate()`，不合格抛 `bad_plan`
+- `stagger` 只挪 `b`：`+1 … +maxDays` 天（`back: true` 时 `+1, −1, +2, −2 …`），碰到第一个「不再重叠」或「冲突成本 0 且可信」就停；`best` 先取可信的尝试，同样可信时取冲突成本最小的（一样时取先试的），页面显示前看 `best.reliable`。`period` 是挪前、挪后在同一段时间（a、b、挪后的 b 从最早开工到最晚完工 × 采样小时）里的全网总延误 D(A+B)，同一把尺子比；`period.reliable` 要两个总和 ≥ 0、没有读屏失败、`base` 和 `best` 都可信
+- 读数和 `run()` 走同一条读屏链（T5 答案文件 → `/api/read` → 规则）。登记表 3 条预置施工的屏上文字（`ROAD CLOSED` / `USE RUSSELL ST` / `RIGHT LANE CLOSED`）还不在 T5 答案文件里：正式环境 MOCK=0 时第 3 步一打开就会现场问 `/api/read`，数和规则读数算的（测试里 27,783）不一样。演示前要预算进答案文件，或在 pitch 里说明这个数用的是规则读数
 
 **电车公交 `s.transit`**（T16，`apps/engine/public/js/transit.js`；`connect()` 同时读 `/roads/public/cbd/transit.json`，读不到不抛：`status().transit = "none"`、`status().errors` 记一条、`s.transit = { src: null }`；这一块算的时候抛错 → `{ src: null, error }`，车的数字照出；`opts.transit` 可以直接给）：
 

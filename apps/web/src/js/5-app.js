@@ -198,10 +198,11 @@ function render(dt){
     const sx=S.swipe*V.w;
     ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);ctx.restore();
-  }else if(S.step===3){engDraw('now');drawWorks('before');clashDraw();}
+  }else if(S.step===3){engDraw('now');drawWorks('before');}
   else{engDraw('now');drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}
   if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
+  clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
   if(S.layers.weather)WX.drawNotes(ctx,V,TK);
   if(S.step===1&&S.layers.works)planNotes();
   if(S.step<=2)fogRings(S.sim);

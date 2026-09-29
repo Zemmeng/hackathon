@@ -46,17 +46,21 @@ function clashHTML(){
   const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
   const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
   <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
-  const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
-  if(!r.flags.reliable)return`${head}<div class="card eng-note warn"><b>${L('≈ 0 · baseline flow on this street exceeds capacity; result not reliable','≈ 0 · 这段路的基线车流超出通行能力，结果不可信')}</b></div>${more}`;
+  const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable&&x.r.cost>0?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
+  // Not reliable: negative delay (baseline over capacity, #58) or failed sign readings — never show a number
+  if(!r.flags.reliable)return`${head}<div class="card eng-note warn"><b>${r.flags.negative_delay?L('≈ 0 · baseline flow on this street exceeds capacity; result not reliable','≈ 0 · 这段路的基线车流超出通行能力，结果不可信'):L(`≈ 0 · ${r.flags.failed} sign reading${r.flags.failed===1?'':'s'} failed; result not reliable`,`≈ 0 · 有 ${r.flags.failed} 条屏上文字没读成，结果不可信`)}</b></div>${more}`;
+  // Same corridor: D(A+B) < D(A) + D(B) with every D ≥ 0 → shown as 0, still reliable
+  const sub=r.flags.substitutes?`<div class="card eng-note"><b>${L('≈ 0 · both works sit on the same corridor; together they add no extra delay','≈ 0 · 两处施工在同一走廊，叠加不额外增加延误')}</b></div>`:'';
   const m=(lab,v,col)=>`<div class="metric"><span class="eyebrow">${lab}</span><div class="v"${col?` style="color:${col}"`:''}>${v}<small>${U}</small></div></div>`;
   const metrics=`<div class="metrics">${m(L('This plan alone','本方案单独'),fmtN(r.a))}${m(L('Other works alone','那处施工单独'),fmtN(r.b))}${m(L('Both at once','两处同时'),fmtN(r.ab))}${m(L('Clash cost','叠加冲突'),(r.cost>0?'+':'')+fmtN(r.cost),r.cost>0?'var(--risk)':'var(--accent)')}</div>`;
   const why=`<p class="small muted">${L(`Clash cost = D(A+B) − D(A) − D(B): network delay that exists only because both run at once. Summed over ${r.whens} sampled hours (${hrs} on each overlapping day), all CBD links.`,`叠加冲突 = D(A+B) − D(A) − D(B)：只因两处同时施工才多出来的全网延误。按 ${r.whens} 个采样小时加总（每个重叠日的 ${hrs}），全部 CBD 路段。`)}</p>
   <div class="eng-legend"><span><i style="background:var(--a-bike)"></i>${L('Dashed · the other works','虚线 · 那处施工')}</span></div>`;
   let act='';
   const st=CL.st,b=st&&st.best;
-  if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates. Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`)}</span></div>`;}
+  if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
+  else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
   else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
-  return`${head}${metrics}${why}${act}${more}`;
+  return`${head}${metrics}${sub}${why}${act}${more}`;
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
