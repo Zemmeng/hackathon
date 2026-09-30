@@ -110,7 +110,7 @@ class RealReplay(unittest.TestCase):
 
     def test_files_small_and_chunks_hashed(self):
         files = [p for p in REAL.rglob('*') if p.is_file()]
-        big = [(str(p.relative_to(REAL)), p.stat().st_size) for p in files if p.stat().st_size >= MB15]
+        big = [(p.relative_to(REAL).as_posix(), p.stat().st_size) for p in files if p.stat().st_size >= MB15]
         self.assertEqual(big, [])
         listed = {'index.json'} | {k+'/manifest.json' for k in IDS}
         for k, m in self.man.items():
@@ -119,7 +119,7 @@ class RealReplay(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(data).hexdigest(), c['sha256'], k+'/'+c['file'])
                 self.assertRegex(c['file'], r'^frames-\d{3}\.json$')
                 listed.add(k+'/'+c['file'])
-        self.assertEqual({str(p.relative_to(REAL)) for p in files}, listed)  # 没有多余的原始文件混进来
+        self.assertEqual({p.relative_to(REAL).as_posix() for p in files}, listed)  # 没有多余的原始文件混进来
 
     def test_frames_inside_study_area(self):
         for k, m in self.man.items():
