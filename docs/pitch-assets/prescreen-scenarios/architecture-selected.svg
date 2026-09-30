@@ -139,7 +139,7 @@
 <text x="1562" y="450" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#0E1A33" font-weight="600" letter-spacing="4">DECIDE</text>
 <text x="1562" y="504" font-family="'Source Serif 4', Charter, Georgia, 'Times New Roman', serif" font-size="32" fill="#0E1A33" font-weight="600">Planner selects</text>
 <text x="1562" y="550" font-family="'Source Serif 4', Charter, Georgia, 'Times New Roman', serif" font-size="32" fill="#0E1A33" font-weight="600">a plan</text>
-<text x="1562" y="598" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#0E1A33" font-weight="600">Compare 3 kits + hire cost</text>
+<text x="1562" y="598" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#0E1A33" font-weight="600">AI comments · 3 kits + cost</text>
 <text x="1562" y="630" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#2A3550">Pick one, record why</text>
 <text x="1562" y="662" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#0E1A33" font-weight="600">Export a one-page pack</text>
 <line x1="1562" y1="682" x2="1828" y2="682" stroke="#94A5B9" stroke-width="1.5"/>
@@ -190,7 +190,7 @@
 <text x="60" y="1040" font-family="'Source Serif 4', Charter, Georgia, 'Times New Roman', serif" font-size="36" fill="#0E1A33" font-weight="600">Every revised plan is tested again.</text>
 <line x1="876" y1="996" x2="876" y2="1054" stroke="#C9CFDA" stroke-width="1.5"/>
 <text x="904" y="1018" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#0E1A33" font-weight="500" letter-spacing="0.6">VMS text check · rule fallback · API keys stay server-side</text>
-<text x="904" y="1046" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#687085">Implementation status · 29 Sep 2026 · D-0929-2307</text>
+<text x="904" y="1046" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="15" fill="#687085">Implemented workflow · 30 Sep 2026</text>
 <line x1="1496" y1="996" x2="1496" y2="1054" stroke="#C9CFDA" stroke-width="1.5"/>
 <line x1="1524" y1="1012" x2="1580" y2="1012" stroke="#0E1A33" stroke-width="8" marker-end="url(#ah-ink)"/>
 <text x="1596" y="1018" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="#0E1A33">Main workflow</text>
