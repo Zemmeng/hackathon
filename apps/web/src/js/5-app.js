@@ -51,7 +51,7 @@ function microOn(){
 function updateScene(){
   const el=$('#sceneName'),micro=microOn();if(!el)return;
   const st=shortSt(EP.street)||L('Unnamed road','无名道路'),on=engOn()&&!micro;
-  const t=micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
+  const t=gridShown()?L('Swanston / Russell × Lonsdale / Little Lonsdale · Melbourne CBD','Swanston / Russell × Lonsdale / Little Lonsdale · 墨尔本 CBD'):micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
   if(el.textContent!==t)el.textContent=t;
   cv.setAttribute('aria-label',micro?L('Map of Swanston St and La Trobe St with simulated road users and weather layers','Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层'):on?L(`Map of the ${st} ${dirL(EP.dir)} works at ${engHour(EP.hour)} on real CBD streets, with the engine's queue and detours`,`${st} ${dirL(EP.dir)} 施工地图（${engHour(EP.hour)}）：真实 CBD 路网上引擎算出的排队和绕行`):L('Map of the Melbourne CBD','墨尔本 CBD 地图'));
 }
@@ -194,7 +194,8 @@ function drawEvents(sim){
 }
 const riskCv=document.createElement('canvas');riskCv.width=RNX;riskCv.height=RNY;const riskG=riskCv.getContext('2d');let riskVer=-1,riskSim=null;
 function drawRisk(sim){
-  if(!sim)return;if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
+  if(!sim||sim.isGrid)return; // the 2×2 grid sim's risk field is not on the La Trobe WORLD raster
+ if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
   ctx.save();ctx.globalAlpha=.75;ctx.imageSmoothingEnabled=true;ctx.drawImage(riskCv,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);ctx.restore();
 }
 function drawReticle(ev){
@@ -203,7 +204,7 @@ function drawReticle(ev){
   for(let k=0;k<3;k++){const f=((t*.8)+k/3)%1;ctx.globalAlpha=1-f;ctx.beginPath();ctx.arc(px,py,6+f*40,0,7);ctx.stroke();}ctx.restore();
 }
 function fogRings(sim){
-  if(!sim||S.wx!=='fog'||!S.layers.weather)return;
+  if(!sim||sim.isGrid||S.wx!=='fog'||!S.layers.weather)return; // reads LAYOUTS[sim.layout]: La Trobe scene only
   let car=sim.agents.find(a=>a.tag==='D-42');if(!car)car=sim.agents.find(a=>(a.p.id==='WB'||a.p.id==='WBU')&&a.x>10&&a.x<170);
   const Z=LAYOUTS[sim.layout];ctx.save();ctx.setLineDash([6,5]);ctx.lineWidth=1.5;
   if(car){const r=WX.visibility(car.x,car.y);ctx.strokeStyle=TK.light?'#1d2a2e':'#fff';ctx.beginPath();ctx.arc(V.X(car.x),V.Y(car.y),r*V.s,0,7);ctx.stroke();ctx.setLineDash([]);drawTag(ctx,V.X(car.x),V.Y(car.y-r),30,-16,`${L('SIGHT RANGE','视距')} ${r.toFixed(0)} m`,TK.light?'#1d2a2e':'#FFFFFF');ctx.setLineDash([6,5]);}
@@ -268,7 +269,7 @@ function render(dt){
     ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter)drawWorks('after');if(walkers&&S.simAfter){drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
   }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
-  else{engDraw('now');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}}
+  else{const grid=gridShown();engDraw('now');if(micro&&!grid)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}if(grid&&fine)drawJunctions(S.sim);}
   if(wx)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
@@ -286,11 +287,28 @@ function render(dt){
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
+/* 2×2 junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs the
+   plan's own four junctions instead of the scripted La Trobe scene. Missing file or a throw → the La Trobe scene, as before. */
+function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<120)s.step(.05);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
+function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
+function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 4 个路口（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the 2×2 grid sim
+function drawJunctions(sim){
+  if(!sim||!sim.isGrid)return;ctx.save();
+  if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}
+  const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
+  for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
+  ctx.restore();
+}
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
-  if(n===2){S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}
+  if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();}
+    else{S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}}
   if(n===3){
     if(!S.stress||!S.stress.critical){S.stress=S.stress&&S.stress.script?S.stress:newStress('before');let guard=0;while((!S.stress.critical||!S.stress.critical.frozen)&&guard++<3000)S.stress.step(.05);S.clock=CLOCK_EVENT+(S.stress.t-45);}
     else{let g2=0;while(!S.stress.critical.frozen&&g2++<200)S.stress.step(.05);}
@@ -348,15 +366,15 @@ function renderPanel(){
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
   }else if(S.step===2){
-    const crit=S.sim&&S.sim.critical;
+    const crit=S.sim&&S.sim.critical,grid=gridShown();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${grid?gridNote():L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
+    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: trace the ripple →','下一步：追踪涟漪 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -402,6 +420,7 @@ function updateLive(force){
   const P=$('#panel'),sim=S.sim,set=(k,v)=>{const e=P.querySelector(`[data-live="${k}"]`);if(e&&e.textContent!==String(v))e.textContent=v;};
   if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
+    if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
     set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
@@ -517,7 +536,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(gridShown())gridFly(.7);else if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
