@@ -4,8 +4,9 @@
 
 **Team Uncapped** · FEIT Hackathon Festival 2026 · Challenge 5 — RPM Hire, *Future Cities: Digital Tool for Temporary Infrastructure*
 
-**Live demo:** https://hackathon-site.zemmmeng.workers.dev · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
-<!-- VIDEO: when the unlisted demo video is up, add " · **Video:** <link>" to the line above -->
+[![Watch the RippleTwin demo: traffic simulation, AI sign interpretation and plan comparison](docs/pitch-assets/demo-video-cover.svg)](https://youtu.be/y2zOMj6vj7k)
+
+[▶ Demo video (1 min 25 sec · 1440p)](https://youtu.be/y2zOMj6vj7k) · [Live demo](https://hackathon-site.zemmmeng.workers.dev) · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
 
 ---
 
@@ -45,7 +46,7 @@ We say which is which, on screen, everywhere.
 
 **Real, open data:** 1,513 CBD road links (street segments) with real geometry and speeds · 8 weeks of hourly traffic-signal detector counts (SCATS, via DataVic) · Public Transport Victoria tram and bus timetables (GTFS) · City of Melbourne pedestrian counts · building footprints and floor counts · 8 weeks of hourly weather from Open-Meteo, used offline to back-test the weather layer. All downloaded ahead of time by scripts in `apps/roads/tools/`; **no data API is called at runtime.**
 
-**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items: the 7 hire products link to their RPM Hire product pages, and the 9 static signs use Transport for NSW sign codes) · the pull of "save 9 minutes" on driver choice is our model's assumption. Following a *named* detour is calibrated to a field trial — roughly one driver in five (Erke, Sagberg & Hagman, 2007). The weather layer on the map is illustrative and labelled so; the engine ignores weather, and our back-test against 8 weeks of real hourly weather found that rain barely changes CBD car volumes.
+**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items: the 7 hire products link to their RPM Hire product pages, and the 9 static signs use Transport for NSW sign codes) · the pull of "save 9 minutes" on driver choice is our model's assumption. How many drivers follow a recommended detour is calibrated to a field study at two motorway sites outside Oslo, where about every fifth vehicle changed route as recommended (Erke, Sagberg & Hagman, 2007). What drivers say they would do is not taken at face value: in London, only one-fifth as many drivers diverted as a survey predicted (Chatterjee et al., 2002). Sources in §10. The weather layer on the map is illustrative and labelled so; the engine ignores weather, and our back-test against 8 weeks of real hourly weather found that rain barely changes CBD car volumes.
 
 ## 5. How to run it
 
@@ -82,7 +83,7 @@ All code under `apps/` was written during the event — by the team, with the AI
 
 The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL; DataVic / Department of Transport and Planning and Open-Meteo CC BY 4.0; City of Melbourne open data — see the table for each dataset's terms); one paid API in the product — DeepSeek, called from our Cloudflare Worker to read sign text and to word the plan explanations, on pay-as-you-go credit with a daily call cap; one open-source simulator used offline (Eclipse SUMO); AI coding assistants (Claude Code, OpenAI Codex), listed there too; and no image or video generation models anywhere in the project.
 
-**Before the event.** Before 29 Sep 09:30 the repository held team-workflow tooling (process docs, git hooks, CI, check and deploy scripts, AI-assistant settings) and `starters/`: two generic code skeletons, a Cloudflare Worker room demo and a Python command-line tool, unrelated to this challenge. None of it was RippleTwin product code, design, graphics or data, and no feature was built from the skeletons. Two small test helpers (`apps/api/tests/mini.mjs`, `apps/api/test.sh`) were copied from `starters/web-worker` during the event; `starters/` itself was deleted in PR #65. Some process docs (such as `CONTRIBUTING.md` and `CLAUDE.md`) and the AI-assistant settings were removed from the working tree on 30 Sep (PR #89). All of it stays readable in the public git history. Details in [docs/submission.md](docs/submission.md) §3.
+**Before the event.** Before 29 Sep 09:30 the repository held only team-workflow tooling — process docs, git hooks, CI, check and deploy scripts, AI-assistant settings and starter templates for practising the GitHub workflow — with no RippleTwin product code, design, graphics or data. The product was built during the event; the only carry-over is two small test helpers in `apps/api`, with no product logic. The templates, process docs and AI-assistant settings have since been removed from the working tree and stay readable in the public git history. Details in [docs/submission.md](docs/submission.md) §3.
 
 ## 8. Team
 
@@ -103,6 +104,22 @@ Most internal docs are in Chinese; the English essentials are this README and [d
 | [`docs/pitch-assets/`](docs/pitch-assets/README.md) | Pre-screening PDF, architecture diagrams, before/after screenshots |
 | [`docs/submission.md`](docs/submission.md) | Third-party list, AI use, what existed before the event |
 | [`handoff/`](handoff/README.md) | Session hand-off notes — how the five of us actually worked |
+
+## 10. References
+
+Sources behind the numbers in this README and in [`apps/params/public/params.json`](apps/params/public/params.json). Each was checked on 30 Sep 2026 against Crossref, the publisher or the official page; the note after each entry says only what that source supports.
+
+- Australian Transport Assessment and Planning Guidelines Steering Committee. (2016). *PV2 Road parameter values*. Transport and Infrastructure Council, Commonwealth of Australia. https://www.atap.gov.au/sites/default/files/pv2_road_parameter_values.pdf — values of travel time (private car $14.99 per person-hour, June 2013 prices).
+- Austroads. (2020). *Guide to traffic management part 10: Transport control – types of devices* (Edition 3.0, AGTM10-20). https://austroads.gov.au/publications/traffic-management/agtm10 — VMS messages: one frame preferred, two acceptable, three to be avoided.
+- Bonsall, P. W., & Palmer, I. A. (1999). Route choice in response to variable message signs: Factors affecting compliance. In R. Emmerink & P. Nijkamp (Eds.), *Behavioural and network impacts of driver information systems* (pp. 181–214). Ashgate. Reissued by Routledge, 2018: https://doi.org/10.4324/9781351119740-9 — early surveys reported diversion anywhere from 10% to 80%.
+- Chatterjee, K., Hounsell, N. B., Firmin, P. E., & Bonsall, P. W. (2002). Driver response to variable message sign information in London. *Transportation Research Part C: Emerging Technologies, 10*(2), 149–169. https://doi.org/10.1016/S0968-090X(01)00008-0 — only one-fifth as many drivers diverted as the stated-intention survey predicted.
+- City of Melbourne. (n.d.). *Update of the strategic transport evidence base* [Slide deck]. https://s3.ap-southeast-2.amazonaws.com/hdp.au.prod.app.com-participate.files/8115/2150/7514/VISTA_2015-16_Summary.pdf — car occupancy of 1.09 persons per vehicle for work trips to the City of Melbourne (2016 Census journey to work).
+- Dudek, C. L. (2001). *Variable message sign operations manual* (Report No. FHWA-NJ-2001-10). New Jersey Department of Transportation. https://www.nj.gov/transportation/business/research/reports/FHWA-NJ-2001-010.pdf — VMS message design and length.
+- Erke, A., Sagberg, F., & Hagman, R. (2007). Effects of route guidance variable message signs (VMS) on driver behaviour. *Transportation Research Part F: Traffic Psychology and Behaviour, 10*(6), 447–457. https://doi.org/10.1016/j.trf.2007.03.003 — at two motorway sites outside Oslo, about every fifth vehicle changed route as the VMS recommended.
+- O'Fallon, C., & Sullivan, C. (2007). *Light/medium commercial vehicle use in four urban centres* (Research Report 316). Land Transport New Zealand. — qualitative background on delivery drivers in city centres.
+- Standards Australia. (2019). *Variable message signs, Part 1: Fixed signs* (AS 4852.1:2019) and *Part 2: Portable signs* (AS 4852.2:2019). — the Australian VMS standards; worksite trailer signs fall under Part 2.
+- Transport for NSW. (2021). *Variable message signs* (Specification TSI-SP-008, Issue 7.0). https://standards.transport.nsw.gov.au/_entity/annotation/170e2dfb-b735-ed11-9db1-000d3ae011f9 — legibility distance taken as 700 times the upper-case letter height.
+- Wardman, M., Bonsall, P. W., & Shires, J. (1996). *Stated preference analysis of driver route choice reaction to variable message sign information* (Working Paper 475). Institute of Transport Studies, University of Leeds. https://eprints.whiterose.ac.uk/id/eprint/2114/ — earlier traffic counts suggested messages divert between 5% and 80% of drivers.
 
 ---
 

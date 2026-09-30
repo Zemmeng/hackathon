@@ -207,7 +207,7 @@ Slides 链接：`<>` · 导出 PDF：`docs/pitch-assets/slides.pdf`
 | 2 | `bash scripts/secret-scan.sh --history` 零命中 | lead | 贴输出 | ⬜ |
 | 3 | `.env`、数据、大文件不在历史里 | lead | `git log --all --stat` 抽查 | ⬜ |
 | 4 | LICENSE 里的队名已改 | lead | 打开看 | ⬜ |
-| 5 | README 顶部评委段：截图、在线地址、视频、运行方法、英文段（pitch owner 在「对外文案审阅」里起草，README 是 lead 独占区，由 lead 落盘） | lead | 打开看 | ⬜ |
+| 5 | README 顶部评委段：截图、在线地址、视频、运行方法、英文段（pitch owner 在「对外文案审阅」里起草，README 是 lead 独占区，由 lead 落盘） | lead | 打开看 | ✅ 09-30（#97–#102） |
 | 6 | 没用到的 `starters/` 已删或已说明 | lead | `ls starters` | ⬜ |
 | 7 | 赛前模板已在 README「披露」节说明 | lead | 打开看 | ⬜ |
 
@@ -216,7 +216,7 @@ Slides 链接：`<>` · 导出 PDF：`docs/pitch-assets/slides.pdf`
 | # | 项 | 负责人 | 验证方式 | 状态 |
 |---|---|---|---|---|
 | 8 | `DEMO_URL` 在无痕窗口 + 手机网络下都能开 | DEPLOYER | 手机试 | ⬜ |
-| 9 | 视频 unlisted 可播放，时长合规 | pitch owner | 换个账号打开 | ⬜ |
+| 9 | 视频 unlisted 可播放，时长合规 | pitch owner | 换个账号打开 | ✅ 09-30 未登录可播放（YouTube oEmbed），1:25 |
 
 ### 材料
 

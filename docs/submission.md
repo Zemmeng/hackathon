@@ -26,18 +26,19 @@ On the web page, source credits appear next to the layers that use them: "OSM ·
 
 **Numbers from the literature** (`apps/params/public/params.json`). Every value has a source and a confidence rating, and low-confidence values are labelled "assumed" on the page (D-0929-1536). Sources:
 
-- ATAP Parameter Values: travel time
-- City of Melbourne VISTA report (car occupancy 1.09)
-- ABS Census 2016, via Huda et al. 2025
-- ABS Survey of Motor Vehicle Use
-- Chatterjee 2002 (TR Part A)
+- ATAP PV2 Road parameter values (2016): travel time
+- City of Melbourne, Update of the strategic transport evidence base (car occupancy 1.09, from the 2016 Census journey to work)
+- ABS Census 2016 and ABS Survey of Motor Vehicle Use, for the road-user mix, which is a labelled assumption (not re-checked on 30 Sep)
+- Chatterjee, Hounsell, Firmin & Bonsall 2002 (TR Part C)
 - Erke, Sagberg & Hagman 2007 (TR Part F)
-- Bonsall 1999
-- Wardman 1996
-- Austroads GTM Part 10 / AS 4852
-- NSW TSI-SP-008
-- Dudek 2001 (NJDOT VMS manual)
-- O'Fallon & Sullivan
+- Bonsall & Palmer 1999 (book chapter)
+- Wardman, Bonsall & Shires 1996 (ITS Leeds Working Paper 475)
+- Austroads GTM Part 10 (2020); AS 4852.1:2019 and AS 4852.2:2019
+- Transport for NSW TSI-SP-008 (2021)
+- Dudek 2001 (NJDOT VMS operations manual)
+- O'Fallon & Sullivan 2007 (Land Transport NZ Research Report 316)
+
+Full citations with DOI or URL, each checked on 2026-09-30, are in README §10.
 
 The papers behind our design choices (Meister 2024, Xiong 2024, Wang et al. 2025, Song et al. 2025, Liu, Li & Yin 2026) are cited in `docs/decisions.md` only. We use their numbers and cite them; we do not reproduce their text.
 
@@ -70,7 +71,7 @@ We found no map tiles, CDN JavaScript libraries, stock images, audio or 3D asset
 
 ## 3. What existed before the event (rule 3)
 
-The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits, from 2026-09-26 01:29 to 2026-09-29 09:12 (`git log --before=2026-09-29T09:30:00+10:00`). Almost all of it is team-workflow tooling; the one exception is `starters/`, two generic code skeletons unrelated to the challenge (see below). **None of it is RippleTwin product code, design, graphics or data**:
+The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits, from 2026-09-26 01:29 to 2026-09-29 09:12 (`git log --before=2026-09-29T09:30:00+10:00`). All of it is **team-workflow tooling, with no product code, design, graphics or data**:
 
 - **Process docs:**
   - `README`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `KICKOFF.md`
@@ -82,7 +83,6 @@ The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits
   - `.github/` (CI check, manual-only deploy workflow, CODEOWNERS, PR template)
 - **AI assistant configuration:** `.claude/` (settings, 3 hooks, 6 slash commands, 2 agent definitions, launch.json).
 - **Onboarding check:** one teammate's T0 test PR (#3, 09:12), which only touched the task board and a handoff note.
-- **Generic code skeletons:** `starters/` (22 files: a Cloudflare Worker + Durable Object room demo and a Python CLI), deleted in PR #65 (details below).
 
 **Removed from the working tree on 09-30, still in git history.** On 2026-09-30 the team decided (D-0930-0200) to remove the collaboration-scaffold files that the project does not depend on: `KICKOFF.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `docs/onboarding.md`, `scripts/new-app.sh` and the whole `.claude/` directory. They were replaced by nothing: the three hard rules they carried now live in `README.md`, and the checks that enforced them (`scripts/check.sh`, `.githooks/`, CI) are unchanged.
 
@@ -116,11 +116,11 @@ Checked 2026-09-29 ~22:05:
 
 **🟡 待拍板**
 
-- 提交记录里的个人邮箱：去重后 6 个个人邮箱（4 个 gmail、1 个 outlook、1 个学校邮箱），另有 5 个 GitHub noreply 和 1 个 anthropic.com；文档里还有真名。改历史要 force push，D-07 禁止，队里定接不接受。Canvas 表只要队名。
 - 放不放线上链接 + 二维码：网址子域里有队员 handle（`zemmmeng`），和「只写队名」可能冲突（`4-demo.md` 拍板 2）。`README.md` 顶部现在放了 Demo 链接。
 
 **✅ 已定（09-30）**
 
+- 提交记录里的个人邮箱（6 个）和文档里的真名 → **随仓库公开，不改历史**（D-0930-0133，全队同意）。
 - `apps/api` 里两个测试小工具来自赛前模板 → **如实披露，不改口**。第 3 节照实写着，`README.md` 的「披露与 License」同一口径，不再提「重写那两条」的备选。
 - `docs/event/canvas-export.md`（Canvas 课程页逐字拷贝，含四家赞助商赛题原文）→ **已删**。赛题要点已在 `docs/1-brief.md`，不依赖该拷贝。
 - 赛前协作脚手架（`KICKOFF.md`、`CONTRIBUTING.md`、`AGENTS.md`、`CLAUDE.md`、`docs/onboarding.md`、`.claude/`、`scripts/new-app.sh`）→ **已从工作区删除**（D-0930-0200）。三条硬规矩移到 `README.md`，`scripts/check.sh` / `.githooks/` / CI 的检查机制不变。历史保留，第 3 节已写明。
