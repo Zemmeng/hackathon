@@ -319,5 +319,14 @@ check("T49：gridFly 用 gridFit() 框 16 个路口（S.sim.spec.junctions）+ �
       "function gridFit(){" in app_js and "S.sim.spec.junctions" in app_js and "return fitView(Math.min(...xs)-m,Math.max(...xs)+m,Math.min(...ys)-m,Math.max(...ys)+m,3);" in app_js
       and "const f=gridFit();if(f)flyTo(f[0],f[1],f[2],d);else flyTo((GRID_BOX.x0" in app_js and "function fitView(x0,x1,y0,y1,maxS){" in ENG)
 
+# 14. T50（@unicornnnnnny 10-01）：精细窗口（高清影像 / 楼房阴影）盖住第 2 步整个 4×4，不再一半落在矢量底图上
+wm = re.search(r"const WORLD=\{x0:(-?\d+),x1:(-?\d+),y0:(-?\d+),y1:(-?\d+)\};", WORLD_JS)
+wx0, wx1, wy0, wy1 = (int(v) for v in wm.groups()) if wm else (0, 0, 0, 0)
+check("T50：WORLD 盖住 16 个路口（x −195…401、y −300…9）外加一条街宽，边长能被 40 整除（CELL 2 / RISK_CELL 4 / 天气格 5、8）",
+      bool(wm) and wx0 <= -195 - 30 and wx1 >= 401 + 30 and wy0 <= -300 - 30 and wy1 >= 9 + 30 and (wx1 - wx0) % 40 == 0 and (wy1 - wy0) % 40 == 0,
+      str((wx0, wx1, wy0, wy1)))
+check("T50：精细窗口的街道补上 Exhibition St（x ≈ 401）和 Little Bourke St（y ≈ −300）",
+      "{id:'exhibition',name:'Exhibition St',zh:'展览街',axis:'v',c:402," in WORLD_JS and "{id:'lbourke',name:'Little Bourke St',zh:'小博克街',axis:'h',c:-300," in WORLD_JS)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

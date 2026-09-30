@@ -48,8 +48,8 @@ dups = sorted({n for n in names if names.count(n) > 1})
 check("所有 js 文件的顶层 const / let / function 不重名", not dups, str(dups))
 
 # 1 范围：CITY 只管拖到哪、缩到多小、引擎线画到哪
-check("1-world.js 有 CITY = Hoddle Grid + 约 150 m，北边到 Franklin St（x −1150..750、y −950..450），WORLD 不变",
-      "const CITY={x0:-1150,x1:750,y0:-950,y1:450};" in WORLDJS and "const WORLD={x0:-320,x1:320,y0:-300,y1:300};" in WORLDJS)
+check("1-world.js 有 CITY = Hoddle Grid + 约 150 m，北边到 Franklin St（x −1150..750、y −950..450）；WORLD（精细窗口）T50 起往东、往南扩到盖住第 2 步 4×4",
+      "const CITY={x0:-1150,x1:750,y0:-950,y1:450};" in WORLDJS and "const WORLD={x0:-320,x1:480,y0:-380,y1:300};" in WORLDJS)
 check("反向：天气、微观仿真、正射影像的网格仍按 WORLD 建，不按 CITY",
       "CITY" not in JS["3-weather.js"] and "CITY" not in JS["4-sim.js"] and "CITY" not in JS["2-basemap.js"] and "CITY" not in fn(WORLDJS, "buildWorldReal"))
 
