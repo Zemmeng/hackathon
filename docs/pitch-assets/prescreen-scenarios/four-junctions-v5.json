@@ -1,0 +1,6 @@
+{
+  "clock": "17:25:18",
+  "grid": true,
+  "agents": 81,
+  "panel": "COMPACT\nDETAILS\nMICRO-SIMULATION · RUNNING · CLEAR\nJunction micro-simulation\n\nMicro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed · works queue 0 m\n\nROAD USERS\n80\nCONFLICTS\n0\nTTC < 1.5 s\nCRITICAL\n0\nTTC < 1.0 s\nHARSH BRAKING\n20\n> 4.2 m/s²\nNext: trace the ripple →"
+}

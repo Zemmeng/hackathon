@@ -30,6 +30,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | 时间 | 谁 | 服务 | 花了多少 | 干了什么 |
 |---|---|---|---|---|
 | 09-29 23:18 | @Zemmeng | DeepSeek `deepseek-flash` | 约 ¥0.54（估算：92 条请求 × 3 = 276 次调用，含 2 条试水） | 预先算演示读数 `apps/api/tools/precompute.mjs --run` → `apps/api/public/answers/demo.json`（D-0929-2307） |
+| 09-30 01:54 | @jinmingq | DeepSeek `deepseek-flash` | 估计 < ¥0.05；实际 token/账单未返回 | 用户明确允许后，仅 1 次 `/api/explain`；src=llm，解读已保存三方案结果；未重算读屏。证据 `docs/pitch-assets/prescreen-scenarios/ai-comment-saved-run.json` |
 
 ## 未认领（lead 维护；任务号全局唯一，每个 ≤ 2 小时）
 
@@ -119,6 +120,8 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js`；导出排成一页 A4（中 / 英）；09-29 22:50 线上验过 | ✅ | #61 | 09-29 21:55 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
 | T41 | 引擎顾问改字建议改成两帧 `USE / 路名` ▸ `SAVE / N MIN`：原来一行「SAVE 9 MIN」10 个字符，被 T5 检查警告「超过 8 个字符难读」（顾问自己的建议被自己的检查打回）；`apps/engine`，lead 同意改法、用户要求不等审直接合；任务号待 lead 确认 | ✅ | `jinmingq/engine/T41-vms-two-frames` | 09-30 21:15 |
+
+| T15（汇报完善） | Uncapped 三页英文初筛：首图车辆/行人、真实数据来源、AI 角色差异、真实 LLM comment / 人工选择 / 导出；修正 −46% 与三方案口径、人行道脚注、商业路径和网址；PR #83 已上传；按最新线上系统更新四角色卡、完整解释/日志、四路口及车辆行人截图，2.03 MB 定稿已获用户上传授权（链接移至顶部，首图高度恢复，Guided 节省时间文案已补） | ✅ 待审 | `jinmingq/pitch/T15-prescreen-review` | 09-30 00:50 |
 
 卡住了：
 
