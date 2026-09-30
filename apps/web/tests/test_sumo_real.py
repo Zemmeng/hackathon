@@ -1,6 +1,7 @@
 """真实 CBD 路网 SUMO 回放（contract v2）：烘焙副本 apps/sumo/public/real/ 的形状 + build_real.py 的纯函数。
 T48：整整一小时 08:00–09:00（clock0_s = 0），回放只有 original / ai（baseline 只出指标），只含页面视野里的车，每 2 s 一帧；
 新指标 works_queue_end_m / works_queue_equiv_end_m / queue_series / works_throughput_vph / works_capacity_assumption_vph。
+T49 方案模式：options → baseline + opt-<id>（p 相同只跑一次、默认只写指标）；旧 {p_original, p_ai, scenarios} 输出不变。
 不需要 SUMO；装了 SUMO 的 venv（环境变量 SUMO_PY，或 README 里的 /tmp/rippletwin-sumo-venv）时再真跑查可复现。
 """
 import hashlib
@@ -321,6 +322,108 @@ class RealReplay(unittest.TestCase):
                                  [c['sha256'] for c in load(d/'a/original/manifest.json')['chunks']])
             b = run('b', 43, ['baseline'])
             self.assertNotEqual(b['scenarios'][0]['metrics']['queue_series'], a['scenarios'][0]['metrics']['queue_series'])
+
+    # ---- T49 方案模式：options → baseline + opt-<id>（封一条车道 + 各自的 p）；旧形式不变 ----
+    def test_validate_options(self):
+        v = build_real.validate_real({'network': 'real', 'options': [{'id': 'C', 'p': .607}, {'id': 'A', 'p': .14}, {'id': 'B', 'p': 0}]})
+        self.assertEqual(v, {'seed': 42, 'options': [{'id': 'A', 'p': .14}, {'id': 'B', 'p': 0.0}, {'id': 'C', 'p': .607}], 'frames': False,
+                             'scenarios': ['baseline', 'opt-A', 'opt-B', 'opt-C']})
+        self.assertEqual(type(v['options'][1]['p']), float)
+        v = build_real.validate_real({'seed': 9, 'options': [{'id': x, 'p': 1} for x in 'EDCBA'], 'frames': True})
+        self.assertEqual((v['seed'], v['frames'], v['scenarios']), (9, True, ['baseline', 'opt-A', 'opt-B', 'opt-C', 'opt-D', 'opt-E']))
+        # 旧形式一个字段都没变
+        self.assertEqual(build_real.validate_real({'p_ai': .6}), {'seed': 42, 'p_original': .14, 'p_ai': .6, 'scenarios': IDS})
+        for bad in [{'options': []}, {'options': [{'id': x, 'p': .1} for x in 'ABCDEA']}, {'options': [{'id': 'F', 'p': .1}]},
+                    {'options': [{'id': 'A', 'p': .1}, {'id': 'A', 'p': .1}]}, {'options': [{'id': 'A', 'p': 1.01}]},
+                    {'options': [{'id': 'A', 'p': float('inf')}]}, {'options': [{'id': 'A', 'p': None}]}, {'options': [{'id': 'A', 'p': False}]},
+                    {'options': [{'id': 'A', 'p': .1, 'x': 1}]}, {'options': [{'id': ['A'], 'p': .1}]}, {'options': 'A'}, {'options': None},
+                    {'options': [{'id': 'A', 'p': .1}], 'p_ai': .5}, {'options': [{'id': 'A', 'p': .1}], 'p_original': .5},
+                    {'options': [{'id': 'A', 'p': .1}], 'scenarios': ['baseline']},
+                    {'options': [{'id': 'A', 'p': .1}], 'frames': 0}, {'options': [{'id': 'A', 'p': .1}], 'seed': True},
+                    {'options': [{'id': 'A', 'p': .1}], 'network': 'synthetic'}]:
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                build_real.validate_real(bad)
+
+    def test_scenario_plan_reuses_equal_p(self):
+        from types import SimpleNamespace
+        old = build_real.validate_real({'p_original': .2, 'scenarios': ['baseline', 'ai']})
+        # 旧三情景：写帧照 T48（只 original / ai），不复用
+        self.assertEqual(build_real.scenario_plan(old), ({'baseline': 0.0, 'original': .2, 'ai': .53}, {'baseline': False, 'original': True, 'ai': True}, {}))
+        opts = build_real.validate_real({'options': [{'id': 'A', 'p': .14}, {'id': 'B', 'p': .14}, {'id': 'C', 'p': .607}, {'id': 'D', 'p': .14}]})
+        shares, frames, reuse = build_real.scenario_plan(opts)
+        self.assertEqual(shares, {'baseline': 0.0, 'opt-A': .14, 'opt-B': .14, 'opt-C': .607, 'opt-D': .14})
+        self.assertEqual(reuse, {'opt-B': 'opt-A', 'opt-D': 'opt-A'})
+        self.assertEqual(set(frames.values()), {False})
+        _, frames, _ = build_real.scenario_plan(build_real.validate_real({'options': [{'id': 'A', 'p': .3}], 'frames': True}))
+        self.assertEqual(frames, {'baseline': False, 'opt-A': True})  # baseline 永远只出指标
+        self.assertEqual([build_real.closed(k) for k in ['baseline', 'original', 'ai', 'opt-A']], [False, True, True, True])
+        self.assertEqual(build_real.label('opt-C'), {'en': 'Option C', 'zh': '方案 C'})
+        self.assertEqual(build_real.label('ai'), {'en': build_real.SCENARIOS['ai']['en'], 'zh': build_real.SCENARIOS['ai']['zh']})
+        # build(args) 的入参：serve.py 传进来的 config（带 scenarios）/ 命令行 args 都能认
+        args = SimpleNamespace(**opts, output='x', work_dir='y')
+        self.assertEqual(build_real.validate_real(build_real.run_config(args)), opts)
+        args = SimpleNamespace(**old, output='x', work_dir='y')
+        self.assertEqual(build_real.validate_real(build_real.run_config(args)), old)
+
+    def test_copy_reused_keeps_chunk_hashes(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = pathlib.Path(d)
+            build_real.dump(out/'opt-A/frames-000.json', {'frames': [{'t': 0}]})
+            sha = hashlib.sha256((out/'opt-A/frames-000.json').read_bytes()).hexdigest()
+            m = {'scenario': 'opt-A', 'chunks': [{'file': 'frames-000.json', 'sha256': sha}], 'metrics': {'works_queue_max_m': 5.0}}
+            results = {'opt-A': {'manifest': m, 'loss': {'v1': 1.0}, 'passed': {'v1': 200.0}, 'bound': ['v1'], 'wall': {}},
+                       'opt-C': {'manifest': {'scenario': 'opt-C', 'chunks': [], 'metrics': {}}, 'loss': {}, 'passed': {}, 'bound': [], 'wall': {}}}
+            build_real.copy_reused(out, {'opt-B': 'opt-A', 'opt-D': 'opt-C'}, results)
+            b = results['opt-B']['manifest']
+            self.assertEqual((b['scenario'], b['reused_from'], b['metrics']), ('opt-B', 'opt-A', {'works_queue_max_m': 5.0}))
+            self.assertIsNot(b['metrics'], m['metrics'])  # 深拷贝：后面补 mean_extra_s 不会串
+            self.assertEqual(m['scenario'], 'opt-A'); self.assertNotIn('reused_from', m)
+            self.assertEqual((results['opt-B']['loss'], results['opt-B']['passed'], results['opt-B']['bound']), ({'v1': 1.0}, {'v1': 200.0}, ['v1']))
+            self.assertEqual(hashlib.sha256((out/'opt-B/frames-000.json').read_bytes()).hexdigest(), sha)
+            self.assertFalse((out/'opt-D').exists())  # 只有指标的不建目录（manifest 由 build 稍后写）
+            self.assertEqual(results['opt-D']['manifest']['reused_from'], 'opt-C')
+
+    def test_options_run_matches_original_and_reuses_equal_p(self):
+        py = sumo_python()
+        if not py:
+            self.skipTest('没有装了 SUMO 的 venv（设 SUMO_PY）')
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            env = {**os.environ, 'SUMO_REAL_CACHE': os.environ.get('SUMO_REAL_CACHE') or str(d/'cache')}
+            for name, extra in [('o', ['--options', 'A=0.14', 'B=0.14', 'C=0.607']), ('c', ['--scenarios', 'baseline', 'original'])]:
+                r = subprocess.run([py, str(TOOLS/'build_real.py'), '--seed', '42', *extra, '--output', str(d/name), '--work-dir', str(d/(name+'-raw'))],
+                                   capture_output=True, text=True, env=env, timeout=900)
+                self.assertEqual(r.returncode, 0, r.stdout[-2000:]+r.stderr[-2000:])
+            o, c = load(d/'o/index.json'), load(d/'c/index.json')
+            self.assertEqual([s['id'] for s in o['scenarios']], ['baseline', 'opt-A', 'opt-B', 'opt-C'])
+            self.assertEqual([s['diversion_share'] for s in o['scenarios']], [0, .14, .14, .607])
+            self.assertEqual([s['label']['en'] for s in o['scenarios']], ['No works', 'Option A', 'Option B', 'Option C'])
+            self.assertEqual([s.get('reused_from') for s in o['scenarios']], [None, None, 'opt-A', None])
+            self.assertEqual(set(o['timing']['sumo_s']), {'baseline', 'opt-A', 'opt-C'})  # p 相同的 B 没有再跑
+            self.assertEqual(set(o['timing']['job_s']), {'baseline', 'opt-A', 'opt-C'})
+            self.assertEqual(o['params']['options'], [{'id': 'A', 'p': .14}, {'id': 'B', 'p': .14}, {'id': 'C', 'p': .607}])
+            self.assertEqual((o['params']['frames'], o['hour'], o['params']['shown_s']), (False, 8, 3600))
+            man = {s['id']: load(d/'o'/s['manifest']) for s in o['scenarios']}
+            cm = load(d/'c/original/manifest.json')
+            # 方案 A（p = 0.14）就是 original（p_original = 0.14）：同一批车、同一个抽签数，T48 的全部指标一模一样
+            self.assertEqual(man['opt-A']['metrics'], cm['metrics'])
+            self.assertTrue(NEW_METRICS <= set(man['opt-A']['metrics']))
+            self.assertEqual(man['opt-A']['per_minute'], cm['per_minute'])
+            self.assertEqual(man['baseline']['metrics'], load(d/'c/baseline/manifest.json')['metrics'])
+            self.assertEqual(man['opt-B']['metrics'], man['opt-A']['metrics'])
+            self.assertEqual((man['opt-B']['scenario'], man['opt-B']['reused_from']), ('opt-B', 'opt-A'))
+            for k, m in man.items():
+                self.assertEqual((m['chunks'], m['agents']), ([], []), k)  # 默认只写指标
+                self.assertEqual(m['metrics'], next(s['metrics'] for s in o['scenarios'] if s['id'] == k))
+                self.assertEqual(m['works']['closed_lane'], None if k == 'baseline' else build_real.WORKS_LANE)
+                self.assertEqual(m['metrics']['collisions'], 0)
+                self.assertEqual(m['diversion_share'], next(s['diversion_share'] for s in o['scenarios'] if s['id'] == k))
+            self.assertEqual(sorted(p.relative_to(d/'o').as_posix() for p in (d/'o').rglob('*.json')),
+                             sorted(['index.json']+[k+'/manifest.json' for k in man]))
+            a, cc = man['opt-A']['metrics'], man['opt-C']['metrics']
+            self.assertGreater(cc['detour_vehicles'], a['detour_vehicles'])
+            # 绕行多的方案施工段排队（引擎算法，09:00）更短
+            self.assertLess(cc['works_queue_equiv_end_m'], a['works_queue_equiv_end_m'])
 
 
 if __name__ == '__main__':

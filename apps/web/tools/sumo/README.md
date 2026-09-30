@@ -158,6 +158,12 @@ rm -rf apps/sumo/public/real && cp -R ~/.cache/t48bake/bake42 apps/sumo/public/r
 
 跟引擎的 918 m 比：引擎 = 需求 1 144 − 513 × 0.14 = 1 072 辆/小时、能力 810 → 每小时多 262 辆 → 918 m。SUMO 用同一个能力假设（实放 805），这一抽的需求略高（1 100：泊松抽样，绕行 73 辆），多 295 辆 → 引擎算法 973 m、对照组算法 991 m，比 918 m 长 6–8%，差在需求抽样上。但**停在路上的**排队只有约 250 m（最长 373 m，到 Exhibition 前），不是引擎地图上那样沿 Lonsdale 一直排到 Spring：Russell 到施工段只有约 100 m，上游路段装不下；被耽误的车大多是本该从 Russell 两侧的 Lonsdale 路段中间进来（SCATS 513 → 1 144）、被排队挡在外面的，少数回溢到 Russell St 上。本机（macOS）同一 seed 的需求抽样不同：原方案 1 065 m、AI 方案 394 m。这是模型之间的交叉检验，不是实测。
 
+### 方案模式（T49，`options`）
+
+同一路网、同一施工（封一条车道），每个方案只换绕行比例 p：`POST /sumo/v1/runs` 带 `{"network":"real","seed":42,"options":[{"id":"A","p":0.14},{"id":"B","p":0.14},{"id":"C","p":0.607}]}`（`options` 1–5 个，`id` ∈ A–E 不重复，`p` 0–1；可选 `"frames":true`，默认 `false`；不能和 `p_original` / `p_ai` / `scenarios` 混用，否则 400 `bad_config`）→ 一个任务跑 `baseline` + `opt-A` / `opt-B` / `opt-C`（T48 的一小时：08:00 封道、跑到 09:00），目录还是 contract v2（`index.json` + `<id>/manifest.json`，指标字段同 `original` / `ai`，含 `works_queue_equiv_end_m` / `works_queue_end_m` / `queue_series` / `works_throughput_vph` / `works_traffic_extra_s` / `detour_vehicles` 等全部 T48 指标；`label` = `Option A` / `方案 A`）。`frames:true` 只给 `opt-<id>` 写帧，`baseline` 照旧只出指标。p 相同的方案（同一 seed、同一批车、同一个抽签数，结果本来一样）只跑一次，后面的照抄 manifest 并带 `reused_from: "opt-A"`（`index.timing.sumo_s` 里没有它）；`frames:false` 时 `chunks: []`、不写 `frames-NNN.json`。命令行：`build_real.py --options A=0.14 B=0.14 C=0.607 [--frames] --output …`。p = 0.14 的方案和 `original` 指标逐项相同（`test_sumo_real.py` 真跑对过）。
+
+实测（T48 一小时版，Apple 芯片 10 核，seed 42，A 0.14 / B 0.14 / C 0.605 + baseline，只写指标，实际跑 3 个 SUMO）：3 个并行 16.6–18.3 s（缓存冷 18.3 s，建缓存约 3 s）；`SUMO_REAL_JOBS=1` 一个一个跑（约等于单核）35.4 s。原三情景同一台机器 16.9–17.9 s。没有预跑兜底：`sumo-client.js` 的 `runOptions(options, {seed, onStatus, signal, timeoutMs = 180000})` 成功回 `{source:'live', runId, index}`，失败回 `{source:'none', reason}`。
+
 ## 验证
 
 ```bash

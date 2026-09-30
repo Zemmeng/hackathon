@@ -5,6 +5,8 @@
 T48：跑满 08:00–09:00 一整小时（07:57 空网起步预热 180 s、不展示；施工 08:00 整才封），SUMO 自己算 09:00 的排队；
 路网往东（Spring 以东的 Albert St）、往南（到 Collins）、往北（过 La Trobe）扩出来，排队和回溢有地方放；
 回放只给 original / ai 两个情景、只给页面视野里的车（baseline 只出指标）。
+T49 方案模式：options = [{id:'A'…'E', p}] → baseline + 每个方案一个 opt-<id>（封一条车道 + 这个方案的绕行比例 p），默认只出指标；
+p 相同的方案只跑一次、后面的照抄（reused_from）。原来的 {p_original, p_ai, scenarios} 输出不变。
 只跑原生 SUMO，不编造轨迹；路网和候选路线缓存在 SUMO_REAL_CACHE（默认系统临时目录），同一 seed 结果可复现。
 用 requirements.txt 的 venv 跑；第一次建缓存要 numpy + scipy（SUMO 自带的 routeSampler.py 要）。
 """
@@ -466,21 +468,20 @@ def run_job(spec):
     routes = demand['routes']
     rows = vehicles(routes, spec['seed'])
     plan = assign(rows, routes, spec['share'])
-    write_routes(folder, plan); write_additional(folder, SCENARIOS[k]['closed'])
+    write_routes(folder, plan); write_additional(folder, spec['closed'])
     args = sumo_args(spec['bins'], cache/'base.net.xml', spec['seed'])
     (folder/'command.json').write_text(json.dumps([str(a) for a in args[1:]], indent=1)+'\n')
     command(args, folder, 3600)
     t_sumo = time.time()
-    result = export(folder, out, k, cache/'base.net.xml', demand, plan)
+    result = export(folder, out, k, cache/'base.net.xml', demand, plan, spec['closed'], spec['frames'])
     result['wall'] = {'sumo_s':round(t_sumo-t0, 2),'export_s':round(time.time()-t_sumo, 2)}
     dump(folder/'result.json', result)
 
 
-def export(folder, out, scenario, net_path, demand, plan):
+def export(folder, out, scenario, net_path, demand, plan, closed, write_frames):
     programs, heads, lanes = net_info(net_path)
     length = demand['length']
     chain = dict(demand['chain'])
-    write_frames = SCENARIOS[scenario]['frames']
     heads = [h for h in heads if in_box(VIEW_BOX, *h['_uv'])]
     shown_tls = sorted({h['tls'] for h in heads})
     for h in heads: del h['_uv']
@@ -597,8 +598,8 @@ def export(folder, out, scenario, net_path, demand, plan):
     works_shape = [list(lonlat_e6(x, y)) for x, y in lanes.get(WORKS_LANE, [])]
     manifest = {'version':2,'network':'real','scenario':scenario,'duration_s':SHOWN,'sample_s':SAMPLE,'clock0_s':0,
         'agent_columns':['i','lon_e6','lat_e6','angle_deg','speed_cms'],'agents':catalog,'signal_heads':heads,'chunks':chunks,
-        'works':{'link':WORKS,'closed_lane':WORKS_LANE if SCENARIOS[scenario]['closed'] else None,'lane_shape_e6':works_shape,
-                 'closed_from_s':0 if SCENARIOS[scenario]['closed'] else None},
+        'works':{'link':WORKS,'closed_lane':WORKS_LANE if closed else None,'lane_shape_e6':works_shape,
+                 'closed_from_s':0 if closed else None},
         'metrics':{'vehicles':len(seen),'completed':completed,'teleports':int(tele.get('total')),'collisions':collisions,'junction_collisions':junction,
                    'emergency_braking':int(safety.get('emergencyBraking')),
                    'mean_timeloss_s':round(sum(loss.get(v, 0.0) for v in cohort)/len(cohort), 1) if cohort else None,'mean_extra_s':None,
@@ -650,6 +651,7 @@ def validate_real(payload):
     payload = dict(payload)
     if payload.pop('network', 'real') != 'real':
         raise ValueError('network must be "real"')
+    if 'options' in payload: return validate_options(payload)  # T49：任意方案的绕行比例
     extra = set(payload)-DEFAULT_KEYS
     if extra:
         raise ValueError('Unknown field: '+', '.join(sorted(extra)))
@@ -669,9 +671,83 @@ def validate_real(payload):
     return config
 
 
+# ---- T49：任意方案（A–E）各自的绕行比例 p → 各跑一个情景 opt-<id>（和 original / ai 一样封一条车道，只是 p 不同）----
+OPTION_IDS = ('A','B','C','D','E')
+OPTION_KEYS = {'seed','options','frames'}
+
+
+def validate_options(payload):
+    """{seed?, options:[{id:'A'…'E', p:0…1}]（1–5 个，id 不重复）, frames?:false} → config；
+    scenarios = baseline + opt-<id>（按 id 排序）。不能和 p_original / p_ai / scenarios 混用。"""
+    extra = set(payload)-OPTION_KEYS
+    if extra:
+        raise ValueError('Unknown field with options: '+', '.join(sorted(extra)))
+    s = payload.get('seed', DEFAULTS['seed'])
+    if type(s) is not int or not 0 <= s <= 2147483647:
+        raise ValueError('seed must be an integer in [0, 2147483647]')
+    opts = payload['options']
+    if not isinstance(opts, list) or not 1 <= len(opts) <= len(OPTION_IDS):
+        raise ValueError('options must be a list of 1–5 {id, p}')
+    out = []
+    for o in opts:
+        if not isinstance(o, dict) or set(o) != {'id','p'} or not isinstance(o['id'], str) or o['id'] not in OPTION_IDS:
+            raise ValueError('each option must be {id: A–E, p: number in [0, 1]}')
+        p = o['p']
+        if type(p) not in (int, float) or not math.isfinite(p) or not 0 <= p <= 1:
+            raise ValueError('option '+o['id']+': p must be a number in [0, 1]')
+        out.append({'id':o['id'],'p':float(p)})
+    if len({o['id'] for o in out}) != len(out):
+        raise ValueError('option ids must be unique')
+    frames = payload.get('frames', False)
+    if type(frames) is not bool:
+        raise ValueError('frames must be true or false')
+    out.sort(key=lambda o: o['id'])
+    return {'seed':s,'options':out,'frames':frames,'scenarios':['baseline']+['opt-'+o['id'] for o in out]}
+
+
+def run_config(args):
+    """build(args) 的入参：带 options 走方案模式，否则照旧取 seed / p_original / p_ai / scenarios。"""
+    if getattr(args, 'options', None) is not None:
+        return {k: getattr(args, k) for k in OPTION_KEYS if getattr(args, k, None) is not None}
+    return {k: getattr(args, k) for k in DEFAULTS}
+
+
+def scenario_plan(config):
+    """→ ({情景: 绕行比例}, {情景: 写不写逐帧}, {复用的情景: 真跑的那个})。
+    旧三情景照 SCENARIOS（只 original / ai 写帧）；方案模式 baseline 只出指标，opt-<id> 按 frames（默认不写）。
+    同一 seed 各情景是同一批车、同一个抽签数，p 相同结果就一模一样，所以只跑第一个、后面的照抄。"""
+    if 'options' not in config:
+        shares = {'baseline':0.0,'original':config['p_original'],'ai':config['p_ai']}
+        return shares, {k: SCENARIOS[k]['frames'] for k in shares}, {}
+    shares, frames, first, reuse = {'baseline':0.0}, {'baseline':False}, {}, {}
+    for o in config['options']:
+        k = 'opt-'+o['id']; shares[k] = o['p']; frames[k] = config['frames']
+        if o['p'] in first: reuse[k] = first[o['p']]
+        else: first[o['p']] = k
+    return shares, frames, reuse
+
+
+def closed(k):
+    return SCENARIOS[k]['closed'] if k in SCENARIOS else k.startswith('opt-')
+
+
+def label(k):
+    s = SCENARIOS.get(k) or {'en':'Option '+k[4:],'zh':'方案 '+k[4:]}
+    return {'en':s['en'],'zh':s['zh']}
+
+
+def copy_reused(out, reuse, results):
+    """p 相同的方案照抄真跑那个的结果（深拷贝；有逐帧就连 frames-NNN.json 一起抄，sha256 不变），manifest 标 reused_from。"""
+    for k, src in reuse.items():
+        r = json.loads(json.dumps(results[src]))
+        r['manifest']['scenario'] = k; r['manifest']['reused_from'] = src
+        if r['manifest']['chunks']: shutil.copytree(out/src, out/k)
+        results[k] = r
+
+
 def build(args):
     t_start = time.time()
-    config = validate_real({k: getattr(args, k) for k in DEFAULTS})
+    config = validate_real(run_config(args))
     bins, version, tools = binaries()
     work = Path(args.work_dir or tempfile.mkdtemp(prefix='rippletwin-sumo-real-')).resolve(); work.mkdir(parents=True, exist_ok=True)
     out = Path(args.output).resolve(); out.mkdir(parents=True, exist_ok=True)
@@ -683,15 +759,16 @@ def build(args):
     cache = prepare(bins, version, tools, green)
     t_prep = time.time()
     demand = json.loads((cache/'demand.json').read_text())
-    shares = {'baseline':0.0,'original':config['p_original'],'ai':config['p_ai']}
+    shares, frames, reuse = scenario_plan(config)  # T49：原来三情景 / options 的 opt-<id>；p 相同的方案只跑一次
     jobs = max(1, int(os.environ.get('SUMO_REAL_JOBS') or min(3, os.cpu_count() or 1)))
-    pending = list(config['scenarios']); walls = {}; procs = {}
+    pending = [k for k in config['scenarios'] if k not in reuse]; walls = {}; procs = {}
     while pending or procs:
         while pending and len(procs) < jobs:
             k = pending.pop(0); folder = work/k
             if folder.exists(): shutil.rmtree(folder)
             folder.mkdir(parents=True)
-            spec = {'scenario':k,'folder':str(folder),'out':str(out/k),'cache':str(cache),'seed':config['seed'],'share':shares[k],'bins':bins}
+            spec = {'scenario':k,'folder':str(folder),'out':str(out/k),'cache':str(cache),'seed':config['seed'],'share':shares[k],'bins':bins,
+                    'closed':closed(k),'frames':frames[k]}
             (folder/'job.json').write_text(json.dumps(spec, indent=1)+'\n')
             log = open(folder/'stdout.log', 'w')
             # 每个情景一个子进程：SUMO + 读 FCD 都在里面，几个情景真并行（Python 解析是 CPU 活，线程不顶用）
@@ -710,7 +787,10 @@ def build(args):
                 for q, _, lg in procs.values(): q.kill(); lg.close()
                 tail = lambda f: (work/k/f).read_text()[-4000:] if (work/k/f).exists() else ''
                 raise RuntimeError('SUMO failed ('+k+'):\n'+tail('stdout.log')+tail('run.log'))
-    results = {k: json.loads((work/k/'result.json').read_text()) for k in config['scenarios']}
+    results = {k: json.loads((work/k/'result.json').read_text()) for k in config['scenarios'] if k not in reuse}
+    job_s = {k: r['wall'] for k, r in results.items()}
+    copy_reused(out, reuse, results)
+    results = {k: results[k] for k in config['scenarios']}
     manifests = {k: r['manifest'] for k, r in results.items()}
     for k, m in manifests.items():
         if m['metrics']['collisions']:
@@ -747,9 +827,10 @@ def build(args):
                   'network_extent':NETWORK_EXTENT['en'],'network_extent_zh':NETWORK_EXTENT['zh'],
                   'view_box_uv_m':list(VIEW_BOX),'study_area':NETWORK_EXTENT['en']},
         'assumptions':{k:[x.replace('{green}', str(round(green*100))).replace('{extent}', NETWORK_EXTENT[k]) for x in v] for k, v in ASSUMPTIONS.items()},
-        'scenarios':[{'id':k,'label':{'en':SCENARIOS[k]['en'],'zh':SCENARIOS[k]['zh']},'diversion_share':shares[k],
-                      'manifest':k+'/manifest.json','metrics':manifests[k]['metrics']} for k in config['scenarios']],
-        'timing':{'prepare_s':round(t_prep-t_start, 2),'sumo_s':walls,'job_s':{k: r['wall'] for k, r in results.items()},
+        'scenarios':[{'id':k,'label':label(k),'diversion_share':shares[k],
+                      'manifest':k+'/manifest.json','metrics':manifests[k]['metrics'],**({'reused_from':reuse[k]} if k in reuse else {})}
+                     for k in config['scenarios']],
+        'timing':{'prepare_s':round(t_prep-t_start, 2),'sumo_s':walls,'job_s':job_s,
                   'total_s':round(time.time()-t_start, 2),'jobs':jobs}}
     dump(out/'index.json', index)
     print('Raw audit:', work, '\nReplay:', out, '\nTotal %.1f s' % index['timing']['total_s'], flush=True)
@@ -766,8 +847,13 @@ if __name__ == '__main__':
     parser.add_argument('--work-dir')
     parser.add_argument('--green-2935', type=float, default=GREEN_2935, help='2935 人行灯给 Lonsdale 车流的绿 + 黄占比（只给烘焙 / 敏感性用，不进 API）')
     parser.add_argument('--prepare-only', action='store_true', help='只建缓存（路网 + 需求），镜像构建时预热用')
+    parser.add_argument('--options', nargs='+', metavar='ID=P', help='T49 方案模式：如 A=0.14 B=0.14 C=0.607 → baseline + opt-A/B/C（忽略 --p-original / --p-ai / --scenarios）')
+    parser.add_argument('--frames', action='store_true', help='方案模式也给 opt-<id> 写逐帧文件（默认只写指标）')
     parser.add_argument('--job', help=argparse.SUPPRESS)  # build() 内部用：跑一个情景
     args = parser.parse_args()
+    if args.options is not None:
+        try: args.options = [{'id':x.split('=', 1)[0],'p':float(x.split('=', 1)[1])} for x in args.options]
+        except (IndexError, ValueError): parser.error('--options takes ID=P pairs, e.g. A=0.14')
     if args.job:
         run_job(json.loads(Path(args.job).read_text()))
         sys.exit(0)
@@ -776,5 +862,5 @@ if __name__ == '__main__':
         sys.exit(0)
     if not args.output:
         parser.error('--output is required')
-    for k, v in validate_real({k: getattr(args, k) for k in DEFAULTS}).items(): setattr(args, k, v)
+    for k, v in validate_real(run_config(args)).items(): setattr(args, k, v)
     build(args)

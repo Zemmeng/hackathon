@@ -320,6 +320,33 @@ try {
   // ---- 9. 常量和契约一致 ----
   ok(MAX_BODY === 2048 && proxy.BUSY_JOBS === 2 && IMMUTABLE === 'public, max-age=86400, immutable', `常量：body ≤ ${MAX_BODY}、忙闸 ${proxy.BUSY_JOBS}、${IMMUTABLE}`);
   ok(CONTAINER_ENV.HOST === '0.0.0.0' && CONTAINER_ENV.PORT === '8080' && CONTAINER_ENV.SUMO_DATA_DIR === '/data' && CONTAINER_ENV.SUMO_KEEP_RUNS === '20' && Object.isFrozen(CONTAINER_ENV), 'CONTAINER_ENV 是契约 §1 的四个值，而且冻结');
+
+  // ---- 10. 方案模式（T49）：opt-A … opt-E 的 manifest / frames 放行、可缓存；别的写法 404；options 请求体原样到容器 ----
+  {
+    for (const sc of ['opt-A', 'opt-C', 'opt-E']) {
+      for (const file of ['manifest.json', 'frames-000.json', 'frames-042.json']) {
+        const path = `/api/sumo/v1/runs/${ID}/${sc}/${file}`;
+        const stub = fakeStub();
+        const res = await run(path, {}, stub);
+        ok(res.status === 200 && stub.seen.length === 1 && stub.seen[0].url.pathname === `/sumo/v1/runs/${ID}/${sc}/${file}` && res.headers.get('cache-control') === IMMUTABLE,
+          `GET <id>/${sc}/${file} → 容器，cache-control 一天`);
+      }
+    }
+    const bad = ['opt-F', 'opt-a', 'opt-AB', 'opt-', 'OPT-A', 'opt_A', 'optA', 'opt-A-', 'xopt-A', 'opt-Z'].map((sc) => `/api/sumo/v1/runs/${ID}/${sc}/manifest.json`)
+      .concat([`/api/sumo/v1/runs/${ID}/opt-A/frames-1.json`, `/api/sumo/v1/runs/${ID}/opt-A/index.json`, `/api/sumo/v1/runs/${ID}/opt-A/../job.json`, `/api/sumo/v1/runs/${ID}/opt-A/manifest.json/`]);
+    for (const path of bad) {
+      const stub = fakeStub();
+      const res = await run(path, {}, stub);
+      ok((await isErr(res, 404, 'not_found')) && stub.seen.length === 0, `GET ${path.replace(ID, '<id>')} → 404 not_found，容器没收到`);
+    }
+    const five = JSON.stringify({ network: 'real', seed: 2147483647, options: ['A', 'B', 'C', 'D', 'E'].map((id) => ({ id, p: 0.123456789012 })), frames: false });
+    const stub = fakeStub({ active: 0 });
+    const res = await run('/api/sumo/v1/runs', { method: 'POST', headers: { ...J, 'cf-connecting-ip': '203.0.113.9' }, body: five }, stub, { SUMO_RL: fakeRL(true) });
+    ok(res.status === 202 && stub.seen.length === 2 && stub.seen[1].url.pathname === '/sumo/v1/runs' && stub.seen[1].text === five && five.length < MAX_BODY / 4,
+      `方案模式 POST {network, seed, options×5, frames} 一个字节不改到容器（${five.length} 字节，远小于 ${MAX_BODY}）`);
+    const busy = fakeStub({ active: 2 });
+    ok((await isErr(await run('/api/sumo/v1/runs', { method: 'POST', headers: J, body: five }, busy, {}), 429, 'sumo_busy')) && busy.seen.length === 1, '方案模式 POST 也过忙闸：active_jobs = 2 → 429 sumo_busy');
+  }
 } catch (e) {
   F++;
   console.log('❌ 测试本身崩了：' + (e && e.stack));
