@@ -33,8 +33,9 @@
     "LLM_MODEL": "deepseek-flash",
     // 每个 Worker 实例每分钟最多调几次（尽力而为，不是账单上限）；演示方案一页约 20 条请求 × 3 次 = 60
     "LLM_MAX_CALLS_PER_MIN": "60",
-    // 全局每天最多调几次（BUDGET 计数，所有实例一本账，UTC 0 点清零）：600 次 ≈ ¥1.2（DeepSeek），超了当天只用规则
-    "LLM_MAX_CALLS_PER_DAY": "600"
+    // 全局每天最多调几次（BUDGET 计数，所有实例一本账，UTC 0 点清零），超了当天只用规则。
+    // D-1001-0125：lead 说不用设上限（DeepSeek 余额约 ¥100）→ 调到 50000 次（一次约 ¥0.002，≈ ¥100），真正的闸是服务商余额；余额用完 DeepSeek 报错，同样回规则
+    "LLM_MAX_CALLS_PER_DAY": "50000"
   },
 
   // BUDGET：大模型每日调用计数（src/budget.js）；REGISTER：施工登记表（src/register.js，提案 #48 第 ⑤ 步）
@@ -50,7 +51,7 @@
     { "tag": "v2", "new_sqlite_classes": ["WorksiteRegister"] }
   ]
 
-  // 推荐：跨访客、跨实例的读数缓存（免费版每天 1000 次写，每日上限 600 次调用最多写 200 条）。
+  // 推荐：跨访客、跨实例的读数缓存（每份新读数写 1 次；账号 09-30 起是 Workers Paid，KV 写入按月计、不再是免费版每天 1000 次）。
   // 没有它只剩每个实例的内存缓存：网址是 *.workers.dev，Workers 自带的 Cache API 在那里不生效（/api/health 的 llm.cache 会写 memory）
   // 1. 在本目录跑 npx wrangler kv namespace create READINGS  2. 把打印的 id 填进下面，取消注释  3. 重新部署
   ,"kv_namespaces": [{ "binding": "READINGS", "id": "f1729ac78da649198d3e1f5d41e30956" }]
