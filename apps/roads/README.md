@@ -95,6 +95,30 @@ apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次
 - 跨 bbox 边界的楼不要（验收要求所有点在 bbox 内）；只取外轮廓，天井不要；轮廓抽稀约 0.5 m
 - 测试单独放 `tests/test_buildings.py`（不并进 `test_roads.py`，免得和 T7 的 PR #14 冲突）
 
+## 天气回测（T31，需求见 `docs/arch/T31-weather-backtest-PRD.md`）
+
+```bash
+python3 apps/roads/tools/fetch_weather.py       # Open-Meteo 逐小时天气 → public/cbd/weather_hourly.json（免费、不要 key；日期默认按 raw/ 里的交通数据定）
+python3 apps/roads/tools/backtest_weather.py    # → public/cbd/weather_backtest.json（约 20 秒）
+```
+
+前置：SCATS 原始数据（`fetch_scats.py --range 2026-08-01..2026-09-27`）、行人计数 `raw/peds.csv`（见上面 T7 的 curl），以及 **BoM 逐日观测手动下载**到 `raw/`（`IDCJDW3033.202608.csv`、`IDCJDW3033.202609.csv`，浏览器打开 `https://www.bom.gov.au/climate/dwo/2026MM/text/IDCJDW3033.2026MM.csv`；BoM 不支持自动抓取，© Commonwealth of Australia，不提交）。
+
+**结论**（2026-08-01..09-27，剔除 09-21..09-27 学校假期周；BoM 核过的湿小时 vs 同一星期几同一小时的晴天中位数）：
+- 车：下雨（≥ 0.1 mm/h，13 天）白天车流 **0.997 [0.989, 1.005]**，≥ 1 mm/h（4 天）0.998——8 周里看不出变化；饱和进口高峰最大 15 分钟流量早高峰 0.979 [0.971, 0.986]（上限）
+- 自行车（2921 的 4 个检测器）：0.924 [0.861, 0.986]；安慰剂平均 0.966，方法对自行车约偏低 3%，所以实际约 −5%
+- 行人（5 个计数器）：0.875 [0.813, 0.933]；≥ 1 mm/h 时 0.681 [0.50, 0.91]；08-10 周一早高峰（BoM 24.4 mm）行人 0.44、自行车 0.78、车 1.00
+- 页面 `WXP`：雷暴 `rate .9` 对车过强、对行人偏弱，一个共用的 `rate` 表达不了；`T 1.4`（通行能力 ×0.71）远强于实测（×0.98）；雾（仅模型）车流反而 +3%（雾多在无风晴冷的早上，不是因果）；内涝、高温、大风这 8 周没有样本
+
+口径和坑：
+- 数据：天气 Open-Meteo `ecmwf_ifs`（**Weather data by Open-Meteo.com**，CC BY 4.0）；核对 BoM 墨尔本 Olympic Park；车流 DataVic SCATS；行人 City of Melbourne
+- Open-Meteo 格点在 CBD 西北约 3 km（-37.786, 144.940）；模型的雨点时间对不准：模型报雨但 BoM 那 24 h < 0.2 mm 的 33 小时算误报（例 08-19 早上），不当雨天用
+- 时间对齐：交通第 h 小时对 Open-Meteo T = h+1（T 的降水是前一小时累计）；拿自行车雨天效应核对，T = h / h+1 / h+2 三种差别在区间内，核不出哪种更对
+- 基线按**星期几**分：只分工作日 / 周末时安慰剂偏低 4–11%（全天晴的日子里周日多，周一比周二到周四低约 6%）；安慰剂用「留一天」基线，和真雨天对称
+- 每天取基线加权中位数的 log 比，再对天平均；95% 区间按天重抽样 2,000 次；`n_days < 3` 不给数
+- 没有速度、占有率数据：`WXP` 的 `v` `ped` `bike` `b` `wob`（速度 / 减速 / 摇摆）测不了；通行能力近似把「车少了」和「开慢了」混在一起，只当上限
+- `car` 用全 CBD 540 个车道检测器（按流量启发式挑，没逐个核车道）；`car_2921` 用配置表核过的 3 个检测器，结论一致
+
 ## 对外接口
 
 静态文件，格式见 `docs/contract.md`「路网数据文件」一节（和 `PRD.md` 第 5 节一致）。线上和本地都从 `/roads/public/cbd/<文件>` 读。`buildings.json` 格式是 issue #21 第 5 节的草案 v1，契约那一行由 lead 加。
@@ -118,6 +142,9 @@ apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次
 | `tools/build_equipment.py` | 生成 `equipment.json`（设备清单和来源写在脚本里） |
 | `tools/fetch_gtfs.py` | 从 GTFS 总包里只抽电车、市区巴士两个子包 |
 | `tools/build_transit.py` | 生成 `transit.json`：线路走向对到有向路段、每小时班次、站点 |
+| `tools/fetch_weather.py` | Open-Meteo 逐小时天气 → `weather_hourly.json`（只用标准库） |
+| `tools/backtest_weather.py` | 天气回测 → `weather_backtest.json`（只用标准库） |
+| `tests/test_weather.py` | 天气两个文件的校验和反向断言 |
 | `tools/build_walk.py` | 生成 `walk.json` + `peds.json`：人行道挂车行道和左右、传感器挂人行道、插值 |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
