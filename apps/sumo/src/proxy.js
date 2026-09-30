@@ -6,7 +6,7 @@
 export const PUBLIC_PREFIX = '/api/sumo/v1';
 export const UPSTREAM_PREFIX = '/sumo/v1';
 export const UPSTREAM_ORIGIN = 'http://sumo-container'; // 主机名随便写：Container 类只按端口转，serve.py 不看 Host
-export const MAX_BODY = 2048; // POST /runs 的请求体上限（字节）；serve.py 自己是 16 KB，这里更紧
+export const MAX_BODY = 2048; // POST /runs 的请求体上限（字节）；serve.py 自己是 16 KB，这里更紧。真实路网的 {network,seed,p_original,p_ai,scenarios} 原样转，不在这里挑字段（serve.py 的 validate_real 管）
 export const BUSY_JOBS = 2; // 容器里同时有这么多个任务（排队 + 在跑）就回 429 sumo_busy
 export const IMMUTABLE = 'public, max-age=86400, immutable'; // 运行 id 是随机的 32 位 hex，完成后的产物不会再变
 export const STRIP_HEADERS = ['origin', 'cookie', 'authorization']; // Origin 不删的话 serve.py 回 403（ALLOW_ORIGINS 是空的）
@@ -16,7 +16,8 @@ export const CONTAINER_ENV = Object.freeze({ HOST: '0.0.0.0', PORT: '8080', SUMO
 
 const GET = Object.freeze(['GET', 'HEAD']); // HEAD 只是不要响应体的 GET，serve.py 支持
 const ID = '[0-9a-f]{32}';
-const SCENARIO = '(?:baseline|closure|guided|footpath)';
+// 合成 2×2 的四个情景 + 真实路网（contract v2，network:'real'）的 original / ai；baseline 两边共用
+const SCENARIO = '(?:baseline|closure|guided|footpath|original|ai)';
 // 白名单：只有这几种路径会碰到容器；别的一律 404，不唤醒容器
 const ROUTES = [
   { kind: 'health', re: /^health$/, methods: GET },

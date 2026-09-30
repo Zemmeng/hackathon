@@ -291,7 +291,9 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `POST /api/explain` | `{ lang?, options: [{ id, label, metrics, per_capita_min?, flags? }] }`（1–5 套，数字从 `optionFromRun()` 转） | `{ "ok": true, "explain": { src, lang, options: [{ id, summary, pros, cons, hardest_hit, risks }], lean, decide, model?, prompt_v?, note? } }`（`src` 是 `llm / kv / rule`；`model` / `prompt_v` 只在 `llm / kv`；`note` 只在大模型兜底成规则时）；解读里的每个数都要能追溯到请求里的数，`hardest_hit` 和规则风险永远按引擎的数算；不合规范 400，> 8KB 413 | api |
 | `GET /api/sumo/v1/health`、`POST /api/sumo/v1/runs`、`GET /api/sumo/v1/runs/<id>[/index.json \| /<情景>/manifest.json \| /<情景>/frames-NNN.json \| /frame?scenario&t]` | 同 `apps/web/tools/sumo/README.md` §接口 v1；POST 只收白名单字段，`demand_scale` 0.1–1.2、`clearance_s` 600–2400，body ≤ 2KB | 同 README（完成前读结果 409）；错误一律 `{ ok:false, error, msg }`：`sumo_off` 503（site 没绑 `SUMO`）、`sumo_down` 502（容器没响应）、`sumo_starting` 503、`sumo_rate` 429（每 IP 每分钟 3 次运行）、`sumo_busy` 429（同时 ≥ 2 个任务）、`not_found` 404、`too_big` 413；完成的 index / manifest / frames 可缓存一天 | sumo |
 | 静态 `/sumo/public/baked/…` | — | 预跑结果：`baked.json`（目录：生成时间、来源、SUMO 版本、`generator_sha256`、预设和 15 个格点各自 complete / failed）+ `preset/`（seed 42 默认 4 种情景的 index / manifest / frames）+ `grid/<key>.json`（只有 index）；页面用它时**必须**标「预先跑好」 | sumo |
-| 静态 `/sumo/public/js/sumo-client.js` | — | `createSumoClient()`：先试云端，连不上 / 限流 / 忙 / 超时 / 运行失败都回预跑结果；返回值带 `source: live \| baked` 和 `reason`，页面按它选文案（`labels`） | sumo |
+| 静态 `/sumo/public/js/sumo-client.js` | — | `createSumoClient()`（T40 加 `loadReal()` / `realManifest()` / `realChunk()` / `runReal()`，真实路网，失败回 `/sumo/public/real/`）：先试云端，连不上 / 限流 / 忙 / 超时 / 运行失败都回预跑结果；返回值带 `source: live \| baked` 和 `reason`，页面按它选文案（`labels`） | sumo |
+| `POST /api/sumo/v1/runs` 带 `{"network":"real", "seed"?, "p_original"?, "p_ai"?, "scenarios"?}` | `p_*` 0–1（绕行比例，默认 0.14 / 0.53），`scenarios` ⊆ `baseline / original / ai`（默认全部） | 同上；结果目录格式 v2：`index.json`（情景列表、指标、假设）+ `<情景>/manifest.json`（车辆目录、`signal_heads`、分块、指标）+ `<情景>/frames-NNN.json`（每秒 `[i, lon×1e6, lat×1e6, 角度, 速度 cm/s]`、各信号机状态、施工排队 m）；位置是车身中心、经纬度，角度 0 = 正北顺时针 | sumo |
+| 静态 `/sumo/public/real/…` | — | 真实路网 SUMO 预跑（同上 v2 格式，seed 42，三个情景）；页面第 2 步默认播放它，必须标「SUMO · 预先跑好」 | sumo |
 
 - `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
 - `POST /api/explain` 开关同 `/api/read`，每个请求最多 1 次外部调用、预留 1 次（和读屏同一本账），兜底 `note` 另有 `llm_fallback: bad_json / invalid / empty / timeout / http_<码>`
@@ -340,6 +342,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.13 | 2026-09-30 | T40（D-0930-2200）§HTTP API：`POST /api/sumo/v1/runs` 加 `network:'real'`（情景 baseline / original / ai，结果格式 v2，经纬度）和静态 `/sumo/public/real/…`；`sumo-client.js` 加真实路网方法（只加字段 / 方法） | lead |
 | v3.12 | 2026-09-30 | T37（D-0930-1700）§HTTP API 加 `/api/sumo/v1/*`（经 site → `hackathon-sumo` → 容器）和两处静态文件 `/sumo/public/baked/…`、`/sumo/public/js/sumo-client.js`（只加路径） | lead |
 | v3.11 | 2026-09-30 | §引擎原始结果 `raw.links` 加 `extra_min`（T28 #79，只加字段）；`delay_s` 的说明改成「比自由流多」（原来误写「比平时多」），并写明 `queue_m` 是绝对值 | lead |
 | v3.10 | 2026-09-29 | §evaluate 加 AI 调用日志（向后兼容，只加方法 / 可选参数）：`be.aiLog()` / `be.onAiLog(fn)` / `be.readingsOf(summary)` / `be.lastReadings()`，`connect({ onAiLog, aiLogMax })`；summary 字段不变 | lead |

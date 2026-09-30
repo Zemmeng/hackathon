@@ -457,7 +457,7 @@ export async function connect(opts = {}) {
       if (tier.id === 'o1' && count > 1) {
         const adv = await mockAdvise(advisorSummary(s.raw, [plan.worksites[idx]]));
         const sug = (adv?.suggestions || []).find(x => x.kind === 'text' && x.worksite === ws.id);
-        const fr = sug ? guidedFrames(sug.frames?.[0]) : null;
+        const fr = sug ? guidedFrames(sug.frames) : null;
         guide = { frames: fr, at_m: Number.isFinite(sug?.at_m) ? sug.at_m : VMS_AT_M, why: sug?.why ?? null };
       }
       const vms = equipment.find(e => e.type === 'vms');

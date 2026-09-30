@@ -1,4 +1,4 @@
-// 用途：核对 wrangler.jsonc / Dockerfile / package.json 的关键项 —— 容器 standard-2、只开 1 个实例、没有 workers.dev 入口、
+// 用途：核对 wrangler.jsonc / Dockerfile / package.json 的关键项 —— 容器 standard-2、只开 1 个实例、构建上下文 apps/（镜像带实网的 roads 数据）、没有 workers.dev 入口、
 //       Durable Object 绑定和 migration、限流 3 次 / 60 s、镜像的环境变量和 worker.js 一致、site 绑的名字对得上、sumo 不进 DEPLOY_MODULES
 // 用法：node tests/config.test.mjs（test.sh 会自动跑）；不需要 npm i、不需要 Docker；最后一行固定「N passed, M failed」
 import { readFileSync, existsSync } from 'node:fs';
@@ -39,7 +39,8 @@ try {
   const c = cs[0] || {};
   ok(cs.length === 1 && c.class_name === 'SumoContainer', `containers 只有一个，class_name = ${c.class_name}`);
   ok(c.image === './Dockerfile' && existsSync(new URL('../Dockerfile', import.meta.url)), `image = ${c.image}（文件存在）`);
-  ok(c.image_build_context === '../web' && existsSync(new URL('../../web/tools/sumo/serve.py', import.meta.url)), `image_build_context = ${c.image_build_context}（= apps/web，里面有 tools/sumo/serve.py）`);
+  ok(c.image_build_context === '..' && existsSync(new URL('../../web/tools/sumo/serve.py', import.meta.url)) && existsSync(new URL('../../roads/public/cbd/network.json', import.meta.url)),
+    `image_build_context = ${c.image_build_context}（= apps/，里面有 web/tools/sumo/serve.py 和 roads/public/cbd/）`);
   ok(c.instance_type === 'standard-2', `instance_type = ${c.instance_type}（1 vCPU；SUMO 单核跑满）`);
   ok(c.max_instances === 1, `max_instances = ${c.max_instances}（任务状态只在一个实例里）`);
 
@@ -66,17 +67,29 @@ try {
   const df = read('../Dockerfile');
   ok(/^FROM python:3\.\d+-slim$/m.test(df), 'Dockerfile FROM python:3.x-slim');
   const copies = [...df.matchAll(/^COPY\s+(.+)$/gm)].flatMap((m) => m[1].trim().split(/\s+/).slice(0, -1));
-  const missing = copies.filter((p) => !existsSync(new URL('../../web/' + p, import.meta.url)));
-  ok(copies.length >= 4 && missing.length === 0, `COPY 的 ${copies.length} 个源文件都在 apps/web 下（构建上下文）${missing.length ? '，缺：' + missing.join(' ') : ''}`);
+  const missing = copies.filter((p) => !existsSync(new URL('../../' + p, import.meta.url)));
+  ok(copies.length >= 4 && missing.length === 0, `COPY 的 ${copies.length} 个源文件都在 apps/ 下（构建上下文）${missing.length ? '，缺：' + missing.join(' ') : ''}`);
+  // 实网（contract v2）：build_real.py + roads 的三个输入进镜像，SUMO_ROADS_DIR 指向 COPY 的目标目录；routeSampler 要 numpy + scipy
+  const need = ['web/tools/sumo/serve.py', 'web/tools/sumo/build_demo.py', 'web/tools/sumo/build_real.py',
+    'roads/public/cbd/network.json', 'roads/public/cbd/signals.json', 'roads/public/cbd/flows.json'];
+  ok(need.every((p) => copies.includes(p)), `COPY 了实网要的文件：${need.filter((p) => !copies.includes(p)).join(' ') || '全有'}`);
+  const roadsCopy = (df.match(/^COPY[ \t]+roads\/public\/cbd\/\S+(?:[ \t]+\S+)*[ \t]+(\S+)$/m) || [])[1];
+  const roadsEnv = (df.match(/^ENV [^\n]*\bSUMO_ROADS_DIR=(\S+)/m) || [])[1];
+  ok(roadsCopy && roadsEnv && ('/app/' + roadsCopy).replace(/\/$/, '') === roadsEnv.replace(/\/$/, ''),
+    `ENV SUMO_ROADS_DIR = roads 文件 COPY 到的目录（WORKDIR /app + ${roadsCopy}）`);
+  ok(/^WORKDIR \/app$/m.test(df) && /pip install [^\n]*numpy==[\d.]+[^\n]*scipy==[\d.]+/.test(df) && /import numpy, scipy\.optimize/.test(df),
+    'pip 锁版本装 numpy + scipy，构建时查能 import（routeSampler --optimize 要）');
+  ok(/import build_real; build_real\.validate_real/.test(df) && /build_real\.py --prepare-only/.test(df) && /^ENV [^\n]*SUMO_REAL_CACHE=\/app\/\S+/m.test(df),
+    '构建时查 build_real 能 import、validate_real 能用，并用 --prepare-only 把实网缓存建进镜像（SUMO_REAL_CACHE 在 /app 下，不在会清空的 /tmp）');
   const envLine = (df.match(/^ENV [\s\S]*?[^\\]\n/m) || [''])[0];
   const envOk = Object.entries(CONTAINER_ENV).every(([k, v]) => new RegExp(`\\b${k}=${v.replace(/\./g, '\\.')}(\\s|$)`).test(envLine));
   ok(envOk, `Dockerfile 的 ENV 和 worker.js 的 envVars（CONTAINER_ENV）一致：${JSON.stringify(CONTAINER_ENV)}`);
   ok(!/ALLOW_ORIGINS=|SUMO_API_KEY=|SUMO_POSTS_PER_MIN=/.test(df), '反向：镜像里不设 ALLOW_ORIGINS / SUMO_API_KEY / SUMO_POSTS_PER_MIN（Worker 删 Origin、按 IP 限流）');
-  ok(/^EXPOSE 8080$/m.test(df) && /CMD \["python", "tools\/sumo\/serve\.py"\]/.test(df), 'EXPOSE 8080，CMD 跑 tools/sumo/serve.py');
+  ok(/^EXPOSE 8080$/m.test(df) && /CMD \["python", "web\/tools\/sumo\/serve\.py"\]/.test(df), 'EXPOSE 8080，CMD 跑 web/tools/sumo/serve.py');
   ok(/ldd .*grep 'not found'/.test(df) && /Eclipse SUMO sumo 1\.27\.1/.test(df), '构建时查共享库（ldd）和 SUMO 版本 1.27.1');
   ok(/requirements\.txt/.test(df) && read('../../web/tools/sumo/requirements.txt').includes('eclipse-sumo==1.27.1'), 'pip 装的是 apps/web/tools/sumo/requirements.txt（eclipse-sumo==1.27.1）');
   // 构建时的最小端到端要用公开范围内的参数：clearance_s 600–2400、demand_scale 0.1–1.2（< 600 / ≥ 1.5 实测必失败）
-  const check = (df.match(/RUN python tools\/sumo\/build_demo\.py(?:[^\n]*\\\n)*[^\n]*/) || [''])[0]; // 连同 \ 续行
+  const check = (df.match(/RUN python web\/tools\/sumo\/build_demo\.py(?:[^\n]*\\\n)*[^\n]*/) || [''])[0]; // 连同 \ 续行
   const cl = Number((check.match(/--clearance-s (\d+)/) || [])[1]);
   const ds = (check.match(/--demand-scale ([\d.]+)/) || [])[1];
   ok(check && cl >= 600 && cl <= 2400 && (ds === undefined || (Number(ds) >= 0.1 && Number(ds) <= 1.2)) && /test -f \/tmp\/check-out\/index\.json/.test(check),

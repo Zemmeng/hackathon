@@ -1,0 +1,102 @@
+"""第 2 步接真实路网 SUMO 回放（T40：4c-sumo.js 的 SumoReplay + 5-app.js 的接线）。
+
+tests/sumo_glue.mjs 在 node 里用内存里造的 v2 回放（Lonsdale 西行几辆车 + 公交 + 两个信号头 + 两块）跑 SumoReplay；
+apps/sumo/public/real/ 在的话也验它。这里再加源码静态断言：只经同源 sumo-client.js、失败留在 GridSim、预跑绝不标实时。
+用法：python3 apps/web/tests/test_sumo_wire.py（要 node ≥ 18，不联网）
+最后一行固定输出「N passed, M failed」，有失败退出码 1。
+"""
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parent
+JS = {p.name: p.read_text(encoding="utf-8") for p in sorted((ROOT / "src" / "js").glob("*.js"))}
+APP, SU = JS["5-app.js"], JS.get("4c-sumo.js", "")
+passed = failed = 0
+
+
+def check(name, ok, detail=""):
+    global passed, failed
+    if ok:
+        passed += 1
+        print(f"✅ {name}")
+    else:
+        failed += 1
+        print(f"❌ {name}{('：' + detail) if detail else ''}")
+
+
+def fn(src, name):
+    m = re.search(r"^(?:async )?function " + re.escape(name) + r"\(.*?(?=^(?:async )?function |^const |^/\*|\Z)", src, re.M | re.S)
+    return m.group(0) if m else ""
+
+
+# 1. 4c-sumo.js：纯逻辑、名字带 sumo 前缀、排在 4b-grid.js 之后（用 GRID_K）、5-app.js 之前
+check("4c-sumo.js 有 /* sumo:begin */ … /* sumo:end */", "/* sumo:begin */" in SU and "/* sumo:end */" in SU)
+names = re.findall(r"^(?:const|let|class|function) ([A-Za-z_$][\w$]*)", SU, re.M)
+check("4c-sumo.js 的顶层名都带 sumo / Sumo / SUMO 前缀", names and all(n.lower().startswith("sumo") for n in names), str(names))
+check("反向：4c-sumo.js 不碰 DOM、不自己取数据", not re.search(r"\b(document|window|canvas|fetch|import)\b", SU))
+order = list(JS)
+check("打包顺序 4b-grid.js → 4c-sumo.js → 5-app.js", order.index("4b-grid.js") < order.index("4c-sumo.js") < order.index("5-app.js"))
+check("SumoReplay 的形状和 GridSim 一样（isGrid、all / agents、signalHeads、works、stats、minute、resetStats、setWeather）",
+      all(k in SU for k in ["this.isGrid=true", "this.isSumo=true", "this.agents=all", "signalHeads(){", "works(){", "resetStats(){", "setWeather(){", "this.minute=new Float32Array(60)", "this.critical=null"]))
+
+# 2. 接线：只经同源 sumo-client.js；只在 gridOn() 且是 Lonsdale 演示路段时换；失败留在 GridSim
+check("页面只用字面量 import('/sumo/public/js/sumo-client.js') 连 SUMO", APP.count("import('/sumo/public/js/sumo-client.js')") == 1)
+want = fn(APP, "sumoWant")
+check("sumoWant()：gridOn() && EP.link===SUMO_LINK，封 1 条道", "gridOn()" in want and "EP.link===SUMO_LINK" in want and "EP.lanes===1" in want and "typeof SumoReplay==='function'" in want)
+g2 = re.search(r"if\(n===2\)\{(.*?)\n", APP)
+check("goStep(2)：先起 GridSim（立刻有车），再 sumoStart()", bool(g2) and g2.group(1).index("gridOn()&&newGrid()") < g2.group(1).index("sumoStart()"))
+start = fn(APP, "sumoStart")
+check("sumoStart() 出错只打一行 console.info，留在 GridSim", "console.info('SUMO replay unavailable, keeping the browser grid sim:'" in start and "catch(e)" in start)
+play = fn(APP, "sumoPlay")
+check("sumoPlay()：第一块到了才换 S.sim，换前再确认还在第 2 步 / 还要 SUMO / 没被新请求顶掉",
+      "R.addChunk(k,await c.realChunk(ref,scen,ch[k]))" in play and "if(!gridShown()||!sumoWant())return;" in play and "if(tok!==SU.tok)return;}while(" in play
+      and play.index("R.addChunk(k,") < play.index("S.sim=R"))
+check("换方案（chips）停在同一时刻：先载到含当前时刻的块再换，R.seek(keepT)", "const keepT=S.sim&&S.sim.isSumo?S.sim.t:0" in play and "+ch[k].start<=keepT" in play and "if(keepT)R.seek(keepT);" in play)
+check("sumoPlay()：施工多边形和路口用正在跑的 GridSim 的（同一路段）", "polys:base.works().polys" in play and "spec:base.spec" in play)
+check("gridRebuild()：SUMO 回放在放且还该放就不重建；新网格后再试 SUMO", "if(S.sim&&S.sim.isSumo&&sumoWant())return;" in APP and re.search(r"renderPanel\(\);sumoStart\(\);\}", APP))
+
+# 3. 来源标签：只有客户端说 live 的那次运行才写实时；预跑写「预先跑好」+ 原因
+pill = fn(APP, "sumoPill")
+check("来源标签读屏上回放自己的 src，live 要 source==='live' 且有用时", "S.sim.src" in pill and "s.source==='live'&&isFinite(s.elapsedMs)" in pill)
+check("预跑标签写 SUMO · pre-computed / 预先跑好，带原因", "SUMO · pre-computed" in pill and "SUMO · 预先跑好" in pill and "sumoReason(s.reason)" in pill)
+rr = fn(APP, "sumoRerun")
+check("重跑：runReal({seed, p_original:.14, p_ai})，只有 source==='live' 且有 runId 才记成 live",
+      "runReal({seed:" in rr and "p_original:.14" in rr and "p_ai:sumoPAi()" in rr and "if(r.source==='live'&&r.runId)" in rr)
+check("p_ai：引擎顾问对比的绕行比例，没有就 0.53", "return isFinite(p)&&p>=0&&p<=1?" in APP and ":.53;}" in APP)
+check("第 2 步面板 SUMO 模式：说明、两个方案按钮、重跑按钮、四个指标",
+      "real CBD network (OSM) + SCATS" in APP and "Original plan · ROADWORK AHEAD" in APP and "AI plan · USE RUSSELL" in APP
+      and "▶ Re-run live in the cloud (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
+check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "在云端重新实时运行", "地图上的车"]))
+check("不在 SUMO 模式时第 2 步原来的四个 GridSim 指标还在", "${su?sumoTiles():`" in APP and "L('Road users','道路使用者')" in APP and "TTC &lt; 1.5 s" in APP)
+check("时钟跟回放走（clock0_s + t），时间轴点击跳过去，时段用回放的 hour",
+      "if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock();" in APP and "S.sim.seek(S.clock-S.sim.clock0)" in APP and "S.sim.isSumo?S.sim.hour:" in APP)
+
+# 4. node：SumoReplay 行为（内存回放 + 有的话验预跑目录）
+node = shutil.which("node")
+if not node:
+    check("找到 node（sumo_glue.mjs 要用）", False)
+else:
+    try:
+        r = subprocess.run([node, str(HERE / "sumo_glue.mjs")], capture_output=True, text=True, encoding="utf-8", timeout=150)
+        out, code = r.stdout + r.stderr, r.returncode
+    except subprocess.TimeoutExpired:
+        out, code = "❌ sumo_glue.mjs 超过 150 秒没跑完\n", 1
+    n0 = passed + failed
+    for line in out.splitlines():
+        if line.startswith("✅"):
+            passed += 1
+            print(line)
+        elif line.startswith("❌"):
+            failed += 1
+            print(line)
+        elif line.startswith("   "):
+            print(line)
+    if code != 0 and passed + failed == n0:
+        check(f"sumo_glue.mjs 退出码 {code}", False, out[-400:])
+
+print(f"{passed} passed, {failed} failed")
+sys.exit(1 if failed else 0)

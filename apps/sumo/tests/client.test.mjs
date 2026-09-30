@@ -1,8 +1,9 @@
 // 用途：用假的 fetch 测 public/js/sumo-client.js —— 云端正常走 live；查活失败、限流、忙、运行失败、超时、取消、404 都回预跑结果并写明原因；
-//       挑最近格点；manifest / chunk 地址和 sha256；预跑结果任何情况下都不会被标成「云端实时」
+//       挑最近格点；manifest / chunk 地址和 sha256；预跑结果任何情况下都不会被标成「云端实时」；
+//       真实 CBD 路网（contract v2）：loadReal / runReal / realManifest / realChunk 两种来源、回退原因、文案（§11–§15）
 // 用法：node apps/sumo/tests/client.test.mjs（test.sh 会自动跑）；不联网、不需要 wrangler；最后一行固定「N passed, M failed」
 import { createHash } from 'node:crypto';
-import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS } from '../public/js/sumo-client.js';
+import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS, realLabels, realSourceLabel, REAL_SCENARIOS, REAL_DEFAULTS } from '../public/js/sumo-client.js';
 
 let P = 0, F = 0;
 const ok = (cond, msg) => { if (cond) { P++; console.log('✅ ' + msg); } else { F++; console.log('❌ ' + msg); } };
@@ -30,6 +31,20 @@ const CHUNK_SHA = createHash('sha256').update(JSON.stringify(CHUNK)).digest('hex
 files['preset/closure/manifest.json'] = { scenario: 'closure', chunks: [{ file: 'frames-000.json', sha256: CHUNK_SHA, frames: 1 }] };
 files['preset/closure/frames-000.json'] = CHUNK;
 
+// ---- 真实路网（contract v2）的预跑文件：/sumo/public/real/ ----
+const WORKS = { link: 'l595594354_9756035316', lanes_closed: 1 };
+const realIdx = (tag, extra = {}) => ({
+  version: 2, network: 'real', engine: ENGINE, generator_sha256: 'e'.repeat(64), seed: 42, hour: 8, works: WORKS, tag,
+  params: { seed: 42, p_original: 0.14, p_ai: 0.53 }, assumptions: { en: ['a'], zh: ['甲'] },
+  scenarios: REAL_SCENARIOS.map((id) => ({ id, label: { en: id, zh: id }, diversion_share: id === 'ai' ? 0.53 : id === 'original' ? 0.14 : 0, manifest: `${id}/manifest.json`, metrics: {} })), ...extra,
+});
+const RCHUNK = { frames: [{ t: 0, a: [[0, 144963000, -37812000, 90, 850]], tls: { J1: 'GGrr' }, q: 12.5 }] };
+const RCHUNK_TEXT = JSON.stringify(RCHUNK);
+const RCHUNK_SHA = createHash('sha256').update(RCHUNK_TEXT).digest('hex');
+const rman = (sc) => ({ version: 2, network: 'real', scenario: sc, duration_s: 60, sample_s: 1, clock0_s: 180, agent_columns: ['i', 'lon_e6', 'lat_e6', 'angle_deg', 'speed_cms'], agents: [{ id: 'v0', type: 'car', length_m: 4.5, width_m: 1.8 }], signal_heads: [], chunks: [{ file: 'frames-000.json', start: 0, end: 59, sha256: RCHUNK_SHA }], metrics: {}, per_minute: { halting: [], harsh: [] } });
+const realFiles = { 'index.json': realIdx('baked', { source: 'live' }) }; // 文件里就算写着 live，也不能盖过 baked
+for (const sc of REAL_SCENARIOS) { realFiles[`${sc}/manifest.json`] = rman(sc); realFiles[`${sc}/frames-000.json`] = RCHUNK; }
+
 const json = (status, body) => new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 // 一直不回，直到被 abort（模拟卡住的容器）
 const hang = (init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true }));
@@ -42,6 +57,11 @@ function fake(o = {}) {
     const u = String(url), method = init.method || 'GET';
     calls.push({ url: u, method, body: init.body });
     if (init.signal && init.signal.aborted) throw new DOMException('aborted', 'AbortError');
+    if (u.startsWith('/sumo/public/real/')) {
+      if (o.realDown) throw new TypeError('fetch failed');
+      const f = o.realFiles ? o.realFiles[u.slice('/sumo/public/real/'.length)] : realFiles[u.slice('/sumo/public/real/'.length)];
+      return f === undefined ? new Response('Not found', { status: 404 }) : json(200, f);
+    }
     if (u.startsWith('/sumo/public/baked/')) {
       if (o.bakedDown) throw new TypeError('fetch failed');
       const f = files[u.slice('/sumo/public/baked/'.length)];
@@ -54,8 +74,12 @@ function fake(o = {}) {
       const st = polls.length > 1 ? polls.shift() : polls[0];
       return json(200, { id: RID, status: st, ...(st === 'failed' ? { error: FAIL_TEXT } : {}) });
     }
-    if (u === `/api/sumo/v1/runs/${RID}/index.json`) return json(200, idx('live', { config: { ...PRESET, diversion_share: 0.3 } }));
+    if (u === `/api/sumo/v1/runs/${RID}/index.json`) return o.index ? o.index(init) : json(200, idx('live', { config: { ...PRESET, diversion_share: 0.3 } }));
     if (u === `/api/sumo/v1/runs/${RID}/closure/manifest.json`) return json(200, { scenario: 'closure', chunks: [] });
+    if (u.startsWith(`/api/sumo/v1/runs/${RID}/`)) {
+      const f = realFiles[u.slice(`/api/sumo/v1/runs/${RID}/`.length)];
+      if (f !== undefined) return u.endsWith('.json') && f.frames ? new Response(RCHUNK_TEXT, { status: 200, headers: { 'content-type': 'application/json' } }) : json(200, f);
+    }
     return json(404, { ok: false, error: 'not_found', msg: 'no route ' + u });
   };
   return { fetch, calls, posts: () => calls.filter((c) => c.method === 'POST') };
@@ -221,6 +245,164 @@ try {
     ok(sourceLabel({ source: 'baked', elapsedMs: 1234, runId: RID }) === labels.zh.baked, '反向：baked 结果就算带了 elapsedMs / runId，文案也还是「预先跑好」');
     ok(sourceLabel({ source: 'live' }) === labels.zh.none && sourceLabel(undefined) === labels.zh.none, '反向：live 但没有用时 / 空值 → 不显示「云端实时」');
     ok(DEFAULT_PARAMS.seed === 42 && DEFAULT_PARAMS.diversion_share === 0.45 && Object.isFrozen(DEFAULT_PARAMS), 'DEFAULT_PARAMS 和 build_demo.py 默认一致（seed 42、绕行 0.45）');
+  }
+
+  // ================= 真实 CBD 路网（contract v2）=================
+  const realLive = () => json(200, realIdx('live'));
+  const neverLiveReal = (r, msg) => {
+    const both = realSourceLabel(r, 'zh') + realSourceLabel(r, 'en') + sourceLabel(r, 'zh') + sourceLabel(r, 'en');
+    ok(r.source === 'baked' && r.network === 'real' && sourceLabel(r, 'zh') === realLabels.zh.baked && sourceLabel(r, 'en') === realLabels.en.baked
+      && !/live|Live|现场|实时/.test(both) && r.runId === undefined && r.index && r.index.tag === 'baked',
+      `${msg}：source=baked、文案「${sourceLabel(r, 'en')}」、不带 runId、给的是预跑 index`);
+  };
+
+  // ---- 11. runReal 云端正常：POST {network:'real', seed, p_original, p_ai} → 轮询 → index（v2）----
+  {
+    const f = fake({ polls: ['queued', 'running', 'running', 'complete'], index: realLive });
+    const phases = [];
+    const r = await client(f).runReal({ seed: 7, p_original: 0.14, p_ai: 0.61, evil: 1, diversion_share: 0.3 }, { onStatus: (s) => phases.push(s.phase), timeoutMs: 2000 });
+    ok(r.source === 'live' && r.network === 'real' && r.runId === RID && r.index.version === 2 && r.index.tag === 'live' && r.index.scenarios.length === 3, `runReal live：source=live、network=real、runId、index v2（${r.source} ${r.reason || ''}）`);
+    ok(Number.isFinite(r.elapsedMs) && r.elapsedMs >= 0 && r.reason === undefined && r.engine === ENGINE, `runReal live：elapsedMs=${Math.round(r.elapsedMs)}、engine、没有 reason`);
+    ok(/^Cloud · live · \d+\.\d s$/.test(sourceLabel(r, 'en')) && /^云端现场 · 用时 \d+\.\d s$/.test(sourceLabel(r, 'zh')) && realSourceLabel(r, 'en') === sourceLabel(r, 'en'), `runReal live 文案：${sourceLabel(r, 'en')} / ${sourceLabel(r, 'zh')}`);
+    const body = f.posts()[0].body;
+    ok(body === '{"network":"real","seed":7,"p_original":0.14,"p_ai":0.61}', `POST 体只有 network + seed + p_original + p_ai：${body}`);
+    ok(['health', 'submit', 'queued', 'running', 'complete', 'done'].every((p) => phases.includes(p)), `runReal onStatus：${phases.join(' → ')}`);
+    ok(f.calls.every((c) => !c.url.startsWith('/sumo/public/')), 'runReal 成功时不去取预跑文件');
+    const g = fake({ index: realLive });
+    await client(g).runReal({ p_ai: NaN, seed: 'x', scenarios: ['ai', 'closure', 'baseline'] }, { timeoutMs: 2000 });
+    ok(g.posts()[0].body === '{"network":"real","scenarios":["ai","baseline"]}', `不是有限数的字段不发；scenarios 只留 baseline/original/ai：${g.posts()[0].body}`);
+    const h = fake({ index: realLive });
+    await client(h).runReal({}, { timeoutMs: 2000 });
+    ok(h.posts()[0].body === '{"network":"real"}', '什么都不传 → 只发 {network:\'real\'}（默认值由 serve.py 定）');
+  }
+
+  // ---- 12. runReal 失败 → 预跑结果 + 原因短码 ----
+  for (const [name, o, reason, extra] of [
+    ['查活连不上', { health: () => { throw new TypeError('fetch failed'); } }, 'health_down', { detail: 'network', noPost: true }],
+    ['查活 503 sumo_starting', { health: () => json(503, { ok: false, error: 'sumo_starting', msg: '启动中' }) }, 'health_down', { detail: 'sumo_starting', noPost: true }],
+    ['查活 502 sumo_down', { health: () => json(502, { ok: false, error: 'sumo_down', msg: '没有响应' }) }, 'health_down', { detail: 'sumo_down', noPost: true }],
+    ['查活卡住', { health: hang }, 'health_down', { detail: 'timeout', noPost: true, ms: 150 }],
+    ['POST 429 sumo_rate', { post: () => json(429, { ok: false, error: 'sumo_rate', msg: '每分钟最多 3 次' }) }, 'sumo_rate', { text: '每分钟最多 3 次' }],
+    ['POST 429 sumo_busy', { post: () => json(429, { ok: false, error: 'sumo_busy', msg: '正忙' }) }, 'sumo_busy', { text: '正忙' }],
+    ['POST 400 参数越界', { post: () => json(400, { ok: false, error: 'bad_request', msg: '参数不对（p_ai must be a number in [0, 1]）' }) }, 'bad_params', { text: 'p_ai' }],
+    ['POST 卡住', { post: hang }, 'timeout', { ms: 300 }],
+    ['运行 failed', { polls: ['running', 'failed'] }, 'sumo_failed', { text: FAIL_TEXT, liveRunId: true }],
+    ['一直 running', { polls: ['running'] }, 'timeout', { ms: 120, liveRunId: true }],
+    ['轮询卡住', { poll: hang }, 'timeout', { ms: 150, liveRunId: true }],
+    ['轮询 404（容器重启）', { poll: () => json(404, { ok: false, error: 'not_found', msg: '没有这个运行' }) }, 'not_found', { liveRunId: true }],
+    ['轮询连不上 3 次', { poll: () => { throw new TypeError('fetch failed'); } }, 'network', { liveRunId: true }],
+    ['云端 index 不是 v2 真实路网', { index: () => json(200, idx('live')) }, 'bad_response', { liveRunId: true }],
+  ]) {
+    const f = fake({ index: realLive, ...o });
+    const t0 = Date.now();
+    const r = await client(f).runReal({ p_ai: 0.53 }, { timeoutMs: extra.ms || 2000 });
+    ok(r.reason === reason && (!extra.detail || r.detail === extra.detail) && (!extra.noPost || f.posts().length === 0)
+      && (!extra.text || String(r.error).includes(extra.text)) && (!extra.liveRunId || r.liveRunId === RID),
+      `runReal ${name} → baked，reason=${r.reason}${r.detail ? `（detail ${r.detail}）` : ''}${r.error ? `，error「${String(r.error).slice(0, 36)}」` : ''}`);
+    neverLiveReal(r, `runReal ${name}`);
+    if (extra.ms) ok(Date.now() - t0 < 1500, `runReal ${name}：按 timeoutMs 收住（${Date.now() - t0} ms）`);
+  }
+  {
+    const ctl = new AbortController();
+    const f = fake({ polls: ['running'], index: realLive });
+    const r = await client(f, { pollMs: 20 }).runReal({}, { signal: ctl.signal, timeoutMs: 2000, onStatus: (s) => { if (s.phase === 'running') ctl.abort(); } });
+    ok(r.reason === 'cancelled' && r.liveRunId === RID, `runReal 用户取消 → baked，reason=${r.reason}`);
+    neverLiveReal(r, 'runReal 取消');
+    const pre = new AbortController(); pre.abort();
+    const g = fake({ index: realLive });
+    const r2 = await client(g).runReal({}, { signal: pre.signal });
+    ok(r2.reason === 'cancelled' && g.calls.every((c) => !c.url.startsWith('/api/')), 'runReal 已取消的 signal：一个云端请求都不发');
+    const h = fake({ health: hang, index: realLive });
+    const hc = new AbortController();
+    setTimeout(() => hc.abort(), 30);
+    const r3 = await client(h).runReal({}, { signal: hc.signal, timeoutMs: 2000 });
+    ok(r3.reason === 'cancelled' && r3.source === 'baked', `查活途中取消 → reason=cancelled（不是 health_down）：${r3.reason}`);
+  }
+  {
+    const f = fake({ health: () => { throw new TypeError('fetch failed'); }, realDown: true });
+    const r = await client(f).runReal({});
+    ok(r.source === 'none' && r.network === 'real' && r.reason === 'health_down' && r.index === null && typeof r.bakedError === 'string'
+      && sourceLabel(r, 'en') === realLabels.en.none && sourceLabel(r, 'zh') === realLabels.zh.none, `云端和真实路网预跑都拿不到 → source=none，文案「${sourceLabel(r, 'en')}」`);
+  }
+
+  // ---- 13. loadReal：/sumo/public/real/index.json，只下载一次、失败不缓存、格式不对就抛 ----
+  {
+    const f = fake();
+    const s = client(f);
+    const a = await s.loadReal();
+    const b = await s.loadReal();
+    ok(a.source === 'baked' && a.network === 'real' && a.index.version === 2 && a.index.works.link === WORKS.link && a.engine === ENGINE && a === b,
+      'loadReal → {source:baked, network:real, index v2}，文件里写的 source=live 盖不过 baked');
+    ok(f.calls.filter((c) => c.url === '/sumo/public/real/index.json').length === 1 && f.calls.every((c) => !c.url.startsWith('/api/')), 'loadReal 只下载一次 index.json，不碰云端');
+    ok(sourceLabel(a, 'en') === 'SUMO · pre-computed' && sourceLabel(a, 'zh') === 'SUMO · 预先跑好', `loadReal 的文案：${sourceLabel(a, 'en')} / ${sourceLabel(a, 'zh')}`);
+    let down = true;
+    const g = fake();
+    const flaky = { fetch: (u, i) => (down && String(u).includes('/real/') ? Promise.reject(new TypeError('fetch failed')) : g.fetch(u, i)) };
+    const s2 = client(flaky);
+    let threw = null;
+    try { await s2.loadReal(); } catch (e) { threw = e.code; }
+    down = false;
+    const again = await s2.loadReal();
+    ok(threw === 'network' && again.index.version === 2, `真实路网预跑第一次连不上 → 抛 ${threw}；恢复后能拿到（失败不缓存）`);
+    const h = fake({ realFiles: { 'index.json': idx('v1') } });
+    let bad = null;
+    try { await client(h).loadReal(); } catch (e) { bad = e.code; }
+    ok(bad === 'baked_missing', '预跑 index 不是 version 2 / network real → 抛 baked_missing，不拿合成 2×2 的冒充');
+  }
+
+  // ---- 14. realManifest / realChunk：两种来源的地址、sha256、非法输入 ----
+  {
+    const f = fake({ index: realLive });
+    const s = client(f);
+    const codeOf = async (p) => { try { await p; return 'no-throw'; } catch (e) { return e.code; } };
+    const baked = await s.loadReal();
+    const m = await s.realManifest(baked, 'original');
+    ok(f.calls.at(-1).url === '/sumo/public/real/original/manifest.json' && m.scenario === 'original' && m.chunks.length === 1, '预跑 manifest → /sumo/public/real/original/manifest.json');
+    const c = await s.realChunk(baked, 'original', m.chunks[0]);
+    ok(f.calls.at(-1).url === '/sumo/public/real/original/frames-000.json' && c.frames[0].q === 12.5, '预跑块 → /sumo/public/real/original/frames-000.json（sha256 按对象 JSON 文本核对）');
+    const ref = { source: 'baked', reason: 'sumo_rate' }; // runReal 的回退结果本身就能当 ref
+    await s.realManifest(ref, 'ai');
+    ok(f.calls.at(-1).url === '/sumo/public/real/ai/manifest.json', 'runReal 回退结果 {source:baked} 直接当 ref 用');
+    const live = await s.runReal({}, { timeoutMs: 2000 });
+    const lm = await s.realManifest(live, 'ai');
+    ok(f.calls.at(-1).url === `/api/sumo/v1/runs/${RID}/ai/manifest.json` && lm.scenario === 'ai', '云端 manifest → /api/sumo/v1/runs/<id>/ai/manifest.json');
+    const lc = await s.realChunk({ source: 'live', runId: RID }, 'baseline', { file: 'frames-000.json', sha256: RCHUNK_SHA });
+    ok(f.calls.at(-1).url === `/api/sumo/v1/runs/${RID}/baseline/frames-000.json` && lc.frames.length === 1, '云端块 → /api/sumo/v1/runs/<id>/baseline/frames-000.json，sha256 核对通过');
+    ok(await codeOf(s.realChunk(live, 'baseline', { file: 'frames-000.json', sha256: '0'.repeat(64) })) === 'bad_chunk', 'sha256 对不上 → 抛 bad_chunk');
+    const desc = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    let noCrypto = 'skip';
+    if (desc && desc.configurable) {
+      Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true, writable: true });
+      try { noCrypto = await codeOf(s.realChunk(live, 'baseline', { file: 'frames-000.json', sha256: '0'.repeat(64) })); } finally { Object.defineProperty(globalThis, 'crypto', desc); }
+    }
+    ok(noCrypto === 'no-throw' || noCrypto === 'skip', `没有 WebCrypto（http 页面）→ 跳过核对，不让页面挂（${noCrypto}）`);
+    ok(await codeOf(s.realManifest(baked, 'closure')) === 'bad_params' && await codeOf(s.realManifest(baked, 'guided')) === 'bad_params', '合成 2×2 的情景名（closure / guided）→ 抛 bad_params');
+    ok(await codeOf(s.realChunk(baked, 'ai', '../index.json')) === 'bad_params' && await codeOf(s.realChunk(baked, 'ai', 'frames-1.json')) === 'bad_params', '块文件名不合规 → 抛 bad_params，不发请求');
+    ok(await codeOf(s.realManifest({ source: 'live', runId: '../../x' }, 'ai')) === 'no_replay' && await codeOf(s.realManifest({ source: 'none' }, 'ai')) === 'no_replay'
+      && await codeOf(s.realManifest(undefined, 'ai')) === 'no_replay', '伪造 runId / source=none / 空 ref → no_replay');
+    const n = f.calls.length;
+    await codeOf(s.realManifest({ source: 'none' }, 'ai'));
+    ok(f.calls.length === n, 'no_replay 不发请求');
+    ok(await codeOf(s.realManifest({ source: 'baked' }, 'baseline')) === 'no-throw' && (await s.realManifest({ source: 'baked' }, 'baseline')).scenario === 'baseline', 'baseline 情景也能取');
+  }
+
+  // ---- 15. 真实路网文案：状态条 + 4 条说明，中英都有；预跑永远不是 live ----
+  {
+    ok(realLabels.en.live === 'Cloud · live · {s} s' && realLabels.zh.live === '云端现场 · 用时 {s} s', `live 文案：${realLabels.en.live} / ${realLabels.zh.live}`);
+    ok(realLabels.en.baked === 'SUMO · pre-computed' && realLabels.zh.baked === 'SUMO · 预先跑好', `baked 文案：${realLabels.en.baked} / ${realLabels.zh.baked}`);
+    const en = realLabels.en.caveats.join(' | '), zh = realLabels.zh.caveats.join(' | ');
+    ok(/OpenStreetMap/.test(en) && /SCATS/.test(en) && /08:00/.test(en) && /[Ss]ignal timing/.test(en) && /turn shares/.test(en) && /not measured/.test(en), `en 说明：${en}`);
+    ok(/OpenStreetMap/.test(zh) && /SCATS/.test(zh) && /08:00/.test(zh) && /配时/.test(zh) && /转向/.test(zh) && /不是实测/.test(zh), `zh 说明：${zh}`);
+    ok(realLabels.en.caveats.length === realLabels.zh.caveats.length && realLabels.en.caveats.length >= 4, `中英说明条数一致（${realLabels.en.caveats.length}）`);
+    ok(realLabels.en.note === 'SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed' && realLabels.zh.note.includes('OSM'), `面板备注：${realLabels.en.note}`);
+    ok(Object.isFrozen(realLabels) && Object.isFrozen(realLabels.en.caveats) && Object.isFrozen(REAL_SCENARIOS) && Object.isFrozen(REAL_DEFAULTS), 'realLabels / REAL_SCENARIOS / REAL_DEFAULTS 冻结');
+    ok(JSON.stringify(REAL_SCENARIOS) === '["baseline","original","ai"]' && REAL_DEFAULTS.p_original === 0.14 && REAL_DEFAULTS.p_ai === 0.53, 'REAL_SCENARIOS 和默认绕行比例 0.14 / 0.53 按 contract v2');
+    const forged = { network: 'real', source: 'baked', elapsedMs: 1234, runId: RID };
+    ok(sourceLabel(forged, 'en') === 'SUMO · pre-computed' && realSourceLabel(forged, 'zh') === 'SUMO · 预先跑好', '反向：baked 结果就算带了 elapsedMs / runId，文案也还是「pre-computed」');
+    ok(realSourceLabel({ network: 'real', source: 'live' }, 'en') === realLabels.en.none && realSourceLabel(undefined, 'zh') === realLabels.zh.none, '反向：live 但没有用时 / 空值 → 不显示「Cloud · live」');
+    ok(sourceLabel({ source: 'baked' }, 'en') === labels.en.baked, '没有 network=real 的结果照旧用合成 2×2 的文案（不影响旧接口）');
+    const codes = ['health_down', 'sumo_rate', 'sumo_busy', 'timeout', 'sumo_failed', 'network', 'not_found', 'cancelled', 'bad_params', 'bad_response', 'bad_chunk'];
+    ok(codes.every((c) => labels.zh.reasons[c] && labels.en.reasons[c] && reasonLabel(c, 'en') === labels.en.reasons[c]), 'runReal 会给出的每个 reason 都有中英文案');
   }
 } catch (e) {
   F++;

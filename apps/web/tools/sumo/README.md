@@ -92,9 +92,56 @@ curl http://127.0.0.1:8021/sumo/v1/runs \
 
 原理和输出依据：[SUMO 安全检查](https://sumo.dlr.de/docs/Simulation/Safety.html)、[路口与路权](https://sumo.dlr.de/docs/Simulation/Intersections.html)、[行人模型](https://sumo.dlr.de/docs/Simulation/Pedestrians.html)、[FCD 轨迹坐标](https://sumo.dlr.de/docs/Simulation/Output/FCDOutput.html)、[行程指标](https://sumo.dlr.de/docs/Simulation/Output/TripInfo.html)、[E2 排队检测](https://sumo.dlr.de/docs/Simulation/Output/Lanearea_Detectors_%28E2%29.html)。
 
+## 真实 CBD 路网（contract v2，`build_real.py`）
+
+第 2 步地图上的车改由 SUMO 在**真实路网**上算：`build_real.py` 读 `apps/roads/public/cbd/` 的 `network.json`（OSM 路段）、`signals.json`（SCATS 路口）、`flows.json`（工作日 08:00 各路段车流），在 Elizabeth–Spring × Bourke–La Trobe 这块（外扩 35 m，含 La Trobe / Little Lonsdale / Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition 16 个路口和施工点人行灯 2935）跑三个情景：
+
+| id | 施工 | 绕行比例 | 说明 |
+|---|---|---|---|
+| `baseline` | 无 | 0 | 对照 |
+| `original` | Lonsdale 西行 `l595594354_9756035316`（42 m）封右侧车道，剩一条限速 30 km/h | `p_original`，默认 0.14 | 引擎对「ROADWORK AHEAD」的读法 |
+| `ai` | 同上 | `p_ai`，默认 0.53 | 引擎对「USE RUSSELL / SAVE 9 MIN」的读法 |
+
+目录格式（烘焙副本和在线运行的输出一样）：`index.json` + `<id>/manifest.json` + `<id>/frames-NNN.json`，字段见 `docs/contract.md` 的 contract v2。要点：位置是**车身中心**（已从 FCD 的车头换算）、经纬度 ×1e6 取整；`angle_deg` 是 SUMO 约定（0 = 北、顺时针），页面坐标（x 东、y 北）里朝向 = `[sin a, cos a]`；每帧 `tls` 是全部 23 个控制器的原始灯色串，信号头 `signal_heads[].idx` 指向串里的位置（有 `G/g` 算绿，否则有 `y/Y` 算黄，否则红）；`q` 是施工段起点往上游、断档 ≤ 60 m 的连续排队米数（车速 < 1.5 m/s）。回放 t = 0 对应 08:00:00 之后 `clock0_s` = 180 s；展示 720 s（08:03–08:15），每块 60 帧、约 0.5–0.6 MB（硬上限 1.5 MB）。
+
+```bash
+# 烘焙副本（apps/sumo/public/real/，输出目录必须为空；约 5 s）
+rm -rf apps/sumo/public/real
+/tmp/rippletwin-sumo-venv/bin/python apps/web/tools/sumo/build_real.py --seed 42 \
+  --output apps/sumo/public/real --work-dir /tmp/sumo-real-raw-42
+# 只建缓存（路网 + 需求），镜像构建时预热用
+/tmp/rippletwin-sumo-venv/bin/python apps/web/tools/sumo/build_real.py --prepare-only
+```
+
+`requirements.txt` 之外第一次建缓存还要 `numpy scipy`（SUMO 自带的 `routeSampler.py` 要）。Python 接口：`build_real.build(args)`（`args.seed / p_original / p_ai / scenarios / output / work_dir`，失败抛异常）和 `build_real.validate_real(payload)`（白名单 `seed` 0–2147483647 整数、`p_original` / `p_ai` 0–1、`scenarios` ⊆ `baseline / original / ai` 非空不重复；可带 `"network": "real"`；其他字段一律 `ValueError`）。改了 `build_real.py` 就要重烘，`test_sumo_real.py` 会对 `generator_sha256`。
+
+| 环境变量 | 默认 | 说明 |
+|---|---|---|
+| `SUMO_ROADS_DIR` | 仓库的 `apps/roads/public/cbd` | 容器里是 `/app/roads/public/cbd` |
+| `SUMO_REAL_CACHE` | 系统临时目录下 `rippletwin-sumo-real-cache/` | 按「本脚本 + SUMO 版本 + 三个输入文件 + 2935 绿信比」的哈希分目录，原子改名，多进程安全 |
+| `SUMO_REAL_JOBS` | `min(3, CPU 数)` | 三个情景同时跑几个 SUMO |
+| `SUMO_REAL_SOURCE` | macOS arm64 上是 `local-macos-arm64`，否则 `<平台>-<架构>` | 写进 `index.params.source`；云端设成 `cloud` 之类 |
+
+**实测耗时**（Apple 芯片，seed 42，三个情景）：缓存冷 7.9 s（其中建路网 + routeSampler 约 2.5–3.5 s）；缓存热、单核串行 4.4 s（每个 SUMO 0.8–0.9 s，其余是解析 FCD 和写 JSON）；缓存热、3 个并行 2.8 s。输出 40 个文件、共 20 MB，最大一个 0.62 MB。
+
+**需求**：108 条路段都有 SCATS 计数（61 条实测，其余插值），routeSampler 选出 79 条路线、约 8 000 辆/小时；每个 seed 按泊松到达重新抽出发时刻（三个情景同一批车、同一个绕行抽签数，所以比例高的情景绕行车只多不少）。只有小汽车。**信号**：SCATS 没有配时，全部用 netconvert 默认的 90 s 定周期；2935 人行灯给 Lonsdale 车流的绿 + 黄占 70%（60 s 绿 / 3 s 黄 / 27 s 红，`--green-2935` 可改，只给烘焙用，不进 API）。灯色按程序算，跟 TraCI 对过（400 s × 23 个灯全一致）。**安全**：车道上的碰撞直接失败；路口内部的「碰撞」（OSM 合并出来的大路口内部车道几何重叠，SUMO 默认根本不查）以 `warn` 记录、不改动力学，单独报在 `metrics.junction_collisions`；瞬移（300 s 卡死）如实报在 `teleports`。
+
+**指标**：`mean_timeloss_s` = 计划在展示窗口里出发的同一批车，到窗口结束时累计的损失时间（含等着进路网）；`mean_extra_s` = 同一批车比 `baseline` 多出的；`works_traffic_extra_s` = 其中原路线穿过施工段的车（指示牌管的就是它们）；`detour_vehicles` / `eligible_vehicles` = 窗口里实际绕行的 / 有资格绕行的（Russell 之前在 Lonsdale 西行、要穿过施工段）；`per_minute.halting` = 每分钟平均停着（< 0.1 m/s）的车数，`per_minute.harsh` = 每分钟踩到 4.5 m/s² 急刹的次数。
+
+**2935 绿信比敏感性**（seed 1–3 平均，180 s 预热 + 720 s 展示；x = 全体每车多出秒数，w = 穿施工段的车每车多出秒数；全部 0 瞬移）：
+
+| 2935 绿 + 黄 | 原方案 最长 / 平均排队 m | AI 方案 最长 / 平均排队 m | 原方案 x / w | AI 方案 x / w |
+|---|---|---|---|---|
+| 60% | 243 / 90 | 135 / 47 | +10.6 / +57 | +8.4 / +37 |
+| 65% | 208 / 77 | 133 / 41 | +7.8 / +43 | +7.7 / +32 |
+| **70%（默认）** | 189 / 58 | 135 / 37 | +6.2 / +28 | +6.5 / +27 |
+
+排队 AI 方案一直短（最长约少 30%，平均少 35–50%）；延误要看 2935 的配时：70% 时两种方案差不多（绕行本身多走几个灯），绿越短 AI 方案省得越多。烘焙用的 seed 42（70%）恰好是 AI 方案延误略高的一次：原方案 +2.5 s / +15 s，AI 方案 +4.3 s / +21 s，排队 168 / 38 m 对 127 / 31 m。原型在 50% 时研究区边上堵死、有瞬移，91%（netconvert 默认）时施工几乎看不出。这是模型之间的交叉检验，不是实测。
+
 ## 验证
 
 ```bash
+python3 apps/web/tests/test_sumo_real.py   # 烘焙副本的形状 / 哈希 / 范围；设 SUMO_PY=<venv 的 python> 再真跑两次查可复现
 python3 apps/web/tests/test_sumo_backend.py
 # 服务启动后：提交真实任务并检验所有轨迹块和接口
 python3 apps/web/tools/sumo/smoke.py

@@ -88,6 +88,11 @@ try {
       ['GET', `/api/sumo/v1/runs/${ID}/guided/frames-123.json`, `/sumo/v1/runs/${ID}/guided/frames-123.json`],
       ['GET', `/api/sumo/v1/runs/${ID}/footpath/manifest.json`, `/sumo/v1/runs/${ID}/footpath/manifest.json`],
       ['GET', `/api/sumo/v1/runs/${ID}/frame?scenario=closure&t=118.9`, `/sumo/v1/runs/${ID}/frame`],
+      // 真实路网（contract v2）：情景 original / ai
+      ['GET', `/api/sumo/v1/runs/${ID}/original/manifest.json`, `/sumo/v1/runs/${ID}/original/manifest.json`],
+      ['GET', `/api/sumo/v1/runs/${ID}/original/frames-014.json`, `/sumo/v1/runs/${ID}/original/frames-014.json`],
+      ['GET', `/api/sumo/v1/runs/${ID}/ai/manifest.json`, `/sumo/v1/runs/${ID}/ai/manifest.json`],
+      ['GET', `/api/sumo/v1/runs/${ID}/ai/frames-000.json`, `/sumo/v1/runs/${ID}/ai/frames-000.json`],
     ];
     for (const [method, path, up] of cases) {
       const stub = fakeStub();
@@ -112,6 +117,9 @@ try {
       `/api/sumo/v1/runs/${ID}/closure/frames-0001.json`, `/api/sumo/v1/runs/${ID}/unknown/manifest.json`, `/api/sumo/v1/runs/${ID}/closure/other.json`,
       `/api/sumo/v1/runs/${ID}/index.json.bak`, `/api/sumo/v1/runs/${ID}/index.json/`, `/api/sumo/v1/runs/${ID}/../../../etc/passwd`,
       `/api/sumo/v1/runs/${ID}/%2e%2e/job.json`, `/api/sumo/v1/runs/${ID}/closure%2fmanifest.json`, '/api/sumo/v1/health%00', '/sumo/v1/health', '/api/sumox/v1/health',
+      // 真实路网情景名只认小写全名
+      `/api/sumo/v1/runs/${ID}/AI/manifest.json`, `/api/sumo/v1/runs/${ID}/aix/manifest.json`, `/api/sumo/v1/runs/${ID}/originals/manifest.json`,
+      `/api/sumo/v1/runs/${ID}/xai/frames-000.json`, `/api/sumo/v1/runs/${ID}/ai/frames-00.json`, `/api/sumo/v1/runs/${ID}/original/index.json`, `/api/sumo/v1/runs/${ID}/real/manifest.json`,
     ];
     for (const path of bad) {
       const stub = fakeStub();
@@ -156,7 +164,8 @@ try {
 
   // ---- 5. 缓存头：完成后的 index / manifest / frames 的 200 缓存一天，其余 no-store ----
   {
-    const immut = [`/api/sumo/v1/runs/${ID}/index.json`, `/api/sumo/v1/runs/${ID}/closure/manifest.json`, `/api/sumo/v1/runs/${ID}/guided/frames-002.json`];
+    const immut = [`/api/sumo/v1/runs/${ID}/index.json`, `/api/sumo/v1/runs/${ID}/closure/manifest.json`, `/api/sumo/v1/runs/${ID}/guided/frames-002.json`,
+      `/api/sumo/v1/runs/${ID}/original/manifest.json`, `/api/sumo/v1/runs/${ID}/ai/frames-009.json`];
     for (const p of immut) {
       const res = await run(p, {}, fakeStub());
       ok(res.status === 200 && res.headers.get('cache-control') === IMMUTABLE, `${p.replace(ID, '<id>')} → cache-control: ${res.headers.get('cache-control')}`);
@@ -196,6 +205,24 @@ try {
       ok(stub.seen[1].method === 'POST' && stub.seen[1].text === body && stub.seen[1].headers.get('content-type') === 'application/json' && !stub.seen[1].headers.has('origin'),
         'POST 的请求体、content-type 原样到容器，Origin 已删');
       ok(RL.keys.length === 1 && RL.keys[0] === '203.0.113.7', `限流键 = CF-Connecting-IP（${RL.keys[0]}）`);
+    }
+    // 真实路网（contract v2）：新字段原样到容器，Worker 不挑字段、不改写
+    {
+      const real = JSON.stringify({ network: 'real', seed: 7, p_original: 0.14, p_ai: 0.53, scenarios: ['baseline', 'original', 'ai'] });
+      const stub = fakeStub({ active: 0 });
+      const res = await run('/api/sumo/v1/runs', post({ body: real }), stub, { SUMO_RL: fakeRL(true) });
+      ok(res.status === 202 && stub.seen.length === 2 && stub.seen[1].url.pathname === '/sumo/v1/runs' && stub.seen[1].text === real,
+        `真实路网 POST：{network:'real', seed, p_original, p_ai, scenarios} 一个字节不改到容器（${stub.seen[1] && stub.seen[1].text.length} 字节）`);
+      const busy = fakeStub({ active: 2 });
+      ok((await isErr(await run('/api/sumo/v1/runs', post({ body: real }), busy, {}), 429, 'sumo_busy')) && busy.seen.length === 1, '真实路网 POST 也过忙闸：active_jobs = 2 → 429 sumo_busy');
+      const limited = fakeStub();
+      ok((await isErr(await run('/api/sumo/v1/runs', post({ body: real }), limited, { SUMO_RL: fakeRL(false) }), 429, 'sumo_rate')) && limited.seen.length === 0, '真实路网 POST 也限流：命中 → 429 sumo_rate，容器没收到');
+      const bigReal = JSON.stringify({ network: 'real', seed: 1, p_original: 0.1, p_ai: 0.5, scenarios: Array(400).fill('ai') });
+      ok(bigReal.length > MAX_BODY && (await isErr(await run('/api/sumo/v1/runs', post({ body: bigReal }), fakeStub(), {}), 413, 'too_big')), `真实路网 POST 也受 ${MAX_BODY} 字节上限（${bigReal.length} 字节 → 413）`);
+      const bad = fakeStub({ reply: () => new Response(JSON.stringify({ error: 'p_ai must be a number in [0, 1]' }), { status: 400, headers: J }) });
+      const rb = await run('/api/sumo/v1/runs', post({ body: JSON.stringify({ network: 'real', p_ai: 2 }) }), bad, {});
+      const bb = await rb.clone().json();
+      ok((await isErr(rb, 400, 'bad_request')) && bb.msg.includes('p_ai must be a number in [0, 1]'), `serve.py 拒真实路网参数 → 400 bad_request，原因留在 msg：${bb.msg}`);
     }
     // 请求体太大：不限流计数、不碰容器
     {
