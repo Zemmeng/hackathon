@@ -89,6 +89,10 @@ check("2.5 「每车多等」旁的车数写明是主进口道的", "${L('main a
 check("2.6 步骤条：路口仿真 / 影响 / 改进（Junction sim / Impact / Improve）",
       all(x in BODY for x in ['data-zh="路口仿真">Junction sim', 'data-zh="影响">Impact', 'data-zh="改进">Improve'])
       and not re.search(r"Stress test|Ripple trace|>Repair<|压力测试|涟漪追踪|\"修复\"", BODY))
+check("2.6（审查）第 3 步面板小标题跟步骤条一样叫「影响 / Impact」，反向：页面上不再有「Ripple trace / 涟漪追踪」",
+      "L('Impact · network','影响 · 路网')" in ENG and not re.search(r"Ripple trace|涟漪追踪", PAGE))
+check("2.5（审查）参数角标写「T12（信任度是假设值）」，反向：不再写「T12 sources / 有出处」",
+      "L('Parameters · T12 (trust is assumed)','参数 · T12（信任度是假设值）')" in ENG and not re.search(r"T12 sources|T12 with sources|有出处", PAGE))
 check("2.6 路口回放的按钮：看改过的布局（v2 是预设布局，不是生成的）", "L('See the revised layout →','看改过的布局 →')" in APP and "Generate a safer layout" not in APP)
 check("2.6 反向：页面上不再说「智能体」（会让人以为用了 AI）", "智能体" not in APP and "Agents involved" not in APP and "AGENT IMPACT" not in APP)
 

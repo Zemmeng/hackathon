@@ -75,6 +75,17 @@ function aiPersonaHTML(t,p){
     <div class="ai-adv">→ ${esc(aiAdvice(r))}</div><q class="ai-why" data-aiwhy="${esc(t)}"></q>${p.fallback?`<span class="small muted">${L('Reader error → keyword rules','读屏出错 → 改用关键词规则')}</span>`:''}`
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
+// One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
+function aiTileHTML(t,p,sel){
+  const nm=esc(aiWho(t)),r=p&&p.reading;
+  const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
+  const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
+    :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+  const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
+  return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
+}
 function aiTime(t){const d=new Date(t);return Number.isNaN(d.getTime())?'—':d.toTimeString().slice(0,8);}
 // One call-log row (every string through esc())
 function aiLogRowHTML(e){
@@ -96,7 +107,7 @@ function aiLogJSON(log,meta){
 }
 /* pure:end */
 
-const AI={log:[],open:false,timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
+const AI={log:[],open:false,sel:'',timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
 
 // Subscribe once the backend is up: snapshot + subscribe in the same tick, so no call is missed
 BE.ready.then(()=>{
@@ -131,10 +142,13 @@ const AI_NO={err:['No readings — the engine could not score this plan.','没�
   bad:['No readings — fix the sign text in step 1 first.','没有读数 —— 先回第 1 步把屏上文字改合规范。'],
   wait:['Readings appear once the engine has scored this plan.','引擎算完这个方案后，这里显示各类路人的读数。']};
 function aiHTML(rd,st){
-  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  const so=rd&&st==='ok'?aiSrcOf(rd):null;
+  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
-  const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
-    <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
+  const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+    ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
+    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }
@@ -156,6 +170,10 @@ function aiRender(){
   const d=el.querySelector('#aiLogBox');if(d)d.addEventListener('toggle',()=>{AI.open=d.open;});
   const nr=el.querySelector('.ai-rows');if(nr)nr.scrollTop=keepScroll;
   const b=el.querySelector('#aiDl');if(b)b.onclick=aiDownload;
+  el.querySelectorAll('[data-aip]').forEach(x=>x.onclick=()=>{
+    AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();
+    const d=el.querySelector('#aiDetail');if(d)d.scrollIntoView({block:'nearest',behavior:'smooth'}); // bring the opened card into view
+  });
 }
 // JSON built here and handed to the browser as a file: no upload, no network
 function aiDownload(){

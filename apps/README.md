@@ -1,6 +1,6 @@
 # apps/ —— 各模块的代码放这里
 
-kickoff 前这个目录只有这份 README。模块全部开赛后手工建（赛前的 `starters/` 已按 D-0929-1311 删掉，`new-app.sh` 随之停用）。
+kickoff 前这个目录只有这份 README。模块全部开赛后手工建（赛前的 `starters/` 已按 D-0929-1311 删掉）。
 
 ## 规则
 
@@ -24,13 +24,13 @@ kickoff 前这个目录只有这份 README。模块全部开赛后手工建（�
 
 | 类型 | 从哪起 | 谁分配 |
 |---|---|---|
-| Worker（`wrangler dev`） | **8788** 起（8787 原是 starter-worker，已删） | lead 手工分配，写进 `.claude/launch.json` |
+| Worker（`wrangler dev`） | **8788** 起（8787 原是 starter-worker，已删） | lead 手工分配，写进本表 |
 | Python 服务 | 8000 | lead 手工分配 |
 | 静态页（`python3 -m http.server`） | 4174 起（4173 原是 starter-static，已删） | 要单独预览某模块的 `public/` 就照 `sim` 那条手动加 |
 
 ## 加新模块（只能 lead 在 `lead/*` 分支执行）
 
-`new-app.sh` 已停用（它只会复制 `starters/`，D-0929-1311 删了）。手工建：`apps/<模块名>/` 放下一节要求的文件 → 登记表加一行 → `.github/CODEOWNERS` 加 `/apps/<模块名>/ @<handle>` → 要本地预览再往 `.claude/launch.json` 加一条。
+手工建：`apps/<模块名>/` 放下一节要求的文件 → 登记表加一行 → `.github/CODEOWNERS` 加 `/apps/<模块名>/ @<handle>` → 要本地预览就在模块的 README 里记下启动命令和端口。
 
 ## 每个模块必须有
 

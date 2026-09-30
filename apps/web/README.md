@@ -10,8 +10,8 @@ Owner: @unicornnnnnny
 
 ## 怎么跑
 
-- 带引擎（推荐）：preview 工具起 `site`（全站同源，8790），开 http://localhost:8790/web/public/ ；或手动 `python3 -m http.server 8000 -d apps`，开 http://localhost:8000/web/public/ （从 `apps/` 起，路径和线上一样）
-- 只看页面：`python3 -m http.server 4175 -d apps/web/public`（launch.json 的 `web`）或双击 `public/index.html`，引擎连不上，显示预设数字
+- 带引擎（推荐）：起 `site`（全站同源，8790），开 http://localhost:8790/web/public/ ；或手动 `python3 -m http.server 8000 -d apps`，开 http://localhost:8000/web/public/ （从 `apps/` 起，路径和线上一样）
+- 只看页面：`python3 -m http.server 4175 -d apps/web/public`，或双击 `public/index.html`，引擎连不上，显示预设数字
 - 改了 `src/` 之后：`python3 apps/web/build.py` 重新生成 `public/index.html`（测试会检查两者一致；Mac 自带 python3 3.9 能跑）
 
 ## 怎么部署

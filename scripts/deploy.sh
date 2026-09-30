@@ -2,7 +2,7 @@
 # deploy.sh —— 一条命令部署并自动线上冒烟。与技术栈无关：调各模块自己的 npm run deploy 或 deploy.sh。
 #
 # 🔒 只有 hackathon.conf 的 DEPLOYER 能跑（DEPLOYER 不在时 BACKUP_LEAD 可以备份部署，会打 ⚠️ 并在 deploy.log 标「备份部署」）；
-#    AI 执行前必须先问人（.claude/settings.json 里是 ask）。
+#    AI 执行前必须先问人。
 # 用途：前置检查全过才部署：
 #   [1/6] git config hack.me 等于 DEPLOYER（或 BACKUP_LEAD → ⚠️ 备份部署）
 #   [2/6] 工作区干净（没有未提交 / 未跟踪的文件）

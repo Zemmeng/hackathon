@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -196,6 +196,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 .btn.ghost{background:var(--raised);color:var(--fg);border-color:var(--line-2)}
 .btn.danger{background:var(--risk-tint);color:var(--risk);border-color:var(--risk)}
 .cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
+.cta-act:empty{display:none}
+.cta-act .btn{width:100%}
 .cta .note{font:400 9.5px/1.3 var(--f-mono);color:var(--fg-3);text-align:center}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .metric{background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
@@ -408,9 +410,11 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
 
 /* layer rail */
-.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button{width:36px;height:36px;border-radius:12px;transition:background .18s,color .18s}
+.rail button svg{width:17px;height:17px}
+.rail .sep{width:20px;margin:2px 0}
 .rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
-.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.rail button[data-tip]:hover::after{left:46px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
 
 /* map HUDs */
 .wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
@@ -491,7 +495,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
 .app.no-time .timeline{display:none}
 
-/* data credits (OSM / DataVic / City of Melbourne): bottom-right of the open map on desktop, a footer line on phones */
+/* data credits (OSM / DataVic / City of Melbourne): plain text centred along the foot of the open map on desktop (no frame,
+   09-30 ask; a soft halo in the shell colour keeps it legible over imagery). It gets its own band (--cr-h): the scale bar,
+   weather chip, probe and toast sit above it, so it never runs into them however it wraps. A footer line on phones */
 .credits{font:400 10.5px/1.45 var(--f-body);color:var(--fg-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
 .credits a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
 .credits a:hover{color:var(--fg)}
@@ -502,13 +508,14 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
-  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px;--cr-h:30px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
-  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -520,10 +527,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
   .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
   .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
-  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 44px)}
-  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
-  .credits{position:fixed;z-index:4;right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 300px);justify-content:flex-end;padding:5px 11px;border-radius:12px}
-  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + var(--cr-h) + 44px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + var(--cr-h) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .credits{position:fixed;z-index:4;left:calc(var(--safe-l) + (100vw - var(--safe-l) - var(--safe-r))/2);transform:translateX(-50%);bottom:calc(var(--safe-b) + 2px);width:max-content;max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 24px);justify-content:center;text-align:center;text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + var(--cr-h) + 48px)}
   .swipe .tag{top:calc(var(--safe-t) + 60px)}
 }
 /* narrower desktops: fewer HUDs, a slimmer panel */
@@ -541,10 +548,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
@@ -664,6 +671,26 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+/* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
+.ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ai-tile:hover{border-color:var(--fg-3)}
+.ai-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ai-tile.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),inset 0 1px 0 var(--hl-edge)}
+.ai-tile:disabled{cursor:default;opacity:.7}
+.ai-th{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ai-th .eyebrow{font-size:11px;letter-spacing:.06em;color:var(--fg-2)}
+.ai-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--works)}
+.ai-dot.ok{background:var(--accent)}
+.ai-dot.risk{background:var(--risk)}
+.ai-ns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.ai-n{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ai-n b{font:700 19px/1 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ai-n b small{font-size:10px;font-weight:400;color:var(--fg-3);margin-left:1px}
+.ai-n em{font-style:normal;font-size:10.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-tadv{font-size:11.5px;color:var(--fg-2);overflow-wrap:anywhere}
+.ai-tnote{font-size:11.5px;color:var(--fg-3)}
+.ai-detail .ai-p{border-color:var(--accent)}
 .ai-log{border:1px solid var(--line);border-radius:6px;background:var(--raised);min-width:0}
 .ai-log summary{cursor:pointer;padding:9px 12px;font:600 11px/1.2 var(--f-mono);letter-spacing:.04em}
 .ai-log-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 12px 8px}
@@ -738,7 +765,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   <section class="panel" id="panel" aria-live="polite"></section>
   <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
 
-  <div class="credits glass" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
+  <div class="credits" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -829,6 +856,11 @@ function inConvex(P,x,y){for(let i=0,n=P.length;i<n;i++){const a=P[i],b=P[(i+1)%
    World: Swanston St × La Trobe St, Melbourne CBD (local metres, x east, y north)
    ============================================================ */
 const WORLD={x0:-320,x1:320,y0:-300,y1:300};
+/* The whole Hoddle Grid (Spencer–Spring × Flinders–La Trobe) plus ~150 m, in page units (T27); north to Franklin St (y 450,
+   ~210 m past La Trobe — the La Trobe 17:00 detours run along it; north of La Trobe the page is stretched ×1.85, so no further).
+   Only decides how far the view pans, how far it zooms out and where the engine's lines are drawn; imagery, weather and the
+   micro-model stay on WORLD */
+const CITY={x0:-1150,x1:750,y0:-950,y1:450};
 const ORIGIN={lat:-37.8098,lon:144.9652};
 const MLAT=111320,MLON=111320*Math.cos(ORIGIN.lat*Math.PI/180);
 const toLL=(x,y)=>[ORIGIN.lat+y/MLAT,ORIGIN.lon+x/MLON];
@@ -1750,6 +1782,276 @@ class Sim{
   meanDelay(){return this.stats.done?this.stats.delay/this.stats.done:0;}
 }
 
+/* grid:begin */
+// Step 2 micro-simulation of a 2×2 grid of real signalised junctions (SCATS 2913 Little Lonsdale × Swanston,
+// 2912 Little Lonsdale × Russell, 2904 Lonsdale × Swanston, 2903 Lonsdale × Russell). Pure, no DOM: tests/grid_glue.mjs
+// runs this block in node. Page units throughout (1 m ≈ GRID_K units); speeds in page units / s.
+// ASSUMPTIONS (not measured): streets are straight axis-aligned lines at the median page coordinate of their links in
+// GRID_BOX; lane count per direction = the entry link's `lanes`; 90 s two-phase cycle at every junction (EW green 0–40,
+// amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound Lonsdale green wave at 11 m/s; 15 % of cars
+// turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
+// IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
+const GRID_BOX={x0:-100,x1:300,y0:-300,y1:0};
+const GRID_K=0.862;
+const GRID_EW=['Lonsdale Street','Little Lonsdale Street'],GRID_NS=['Swanston Street','Russell Street'];
+const GRID_FALLBACK={'Lonsdale Street':-200,'Little Lonsdale Street':-100,'Swanston Street':0,'Russell Street':200};
+const GRID_JN=[['2913','Little Lonsdale Street','Swanston Street'],['2912','Little Lonsdale Street','Russell Street'],
+  ['2904','Lonsdale Street','Swanston Street'],['2903','Lonsdale Street','Russell Street']];
+const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
+const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
+  cycle:90,stopD:8,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
+// Lateral offset (left of travel) of lane k; k = 0 is the kerb lane
+function gridOff(D,k){return 1.8+3.2*(D.lanes-1-k);}
+function gridPt(D,off,s){const hx=D.h[0],hy=D.h[1];return[D.ox+hx*s-hy*off,D.oy+hy*s+hx*off];}
+// Signal state of junction j for an axis ('EW' | 'NS') at sim time t
+function gridSigState(spec,j,axis,t){
+  const c=GRID_P.cycle,tl=(((t-spec.junctions[j].off)%c)+c)%c;
+  if(axis==='EW')return tl<40?'G':tl<43?'A':'R';
+  return tl>=45&&tl<80?'G':tl>=80&&tl<83?'A':'R';
+}
+// network.json links + flows.json + hour + closes {link, lanes} → the grid the sim runs on
+function gridSpec(links,flows,hour,closes){
+  const B=GRID_BOX,F=(flows&&flows.days&&flows.days.wd)||flows||{},hr=clamp(Math.floor(+hour||0),0,23);
+  const inB=(p,m)=>p[0]>=B.x0-m&&p[0]<=B.x1+m&&p[1]>=B.y0-m&&p[1]<=B.y1+m;
+  const L=[];
+  for(const l of links||[]){
+    const ew=GRID_EW.includes(l.name);if(!ew&&!GRID_NS.includes(l.name))continue;
+    const g=l.geometry;if(!Array.isArray(g)||g.length<2)continue;
+    const P=g.map(p=>geoToWorld(p[0],p[1]));if(!P.some(p=>inB(p,60)))continue;
+    const dx=P[P.length-1][0]-P[0][0],dy=P[P.length-1][1]-P[0][1];
+    const dir=Math.abs(dx)>=Math.abs(dy)?(dx>=0?'E':'W'):(dy>=0?'N':'S');
+    if(ew!==(dir==='E'||dir==='W'))continue;
+    L.push({l,P,dir});
+  }
+  const C={};
+  for(const n of GRID_EW.concat(GRID_NS)){
+    const ew=GRID_EW.includes(n),v=[];
+    for(const q of L)if(q.l.name===n)for(const p of q.P)if(inB(p,0))v.push(ew?p[1]:p[0]);
+    v.sort((a,b)=>a-b);C[n]=v.length?v[v.length>>1]:GRID_FALLBACK[n];
+  }
+  const junctions=GRID_JN.map(([id,ew,ns])=>({id,ew,ns,x:C[ns],y:C[ew],off:((B.x1-C[ns])/GRID_K/11)%GRID_P.cycle}));
+  const dirs=[];
+  for(const n of GRID_EW.concat(GRID_NS)){
+    const ew=GRID_EW.includes(n);
+    for(const d of ew?['E','W']:['N','S']){
+      const h=GRID_H[d],ox=d==='E'?B.x0:d==='W'?B.x1:C[n],oy=d==='N'?B.y0:d==='S'?B.y1:C[n];
+      const sOf=p=>(p[0]-ox)*h[0]+(p[1]-oy)*h[1];
+      const cs=L.filter(q=>q.l.name===n&&q.dir===d).map(q=>{const ss=q.P.map(sOf);return{q,a:Math.min(...ss),b:Math.max(...ss)};});
+      const e=cs.filter(c=>c.a<=1&&c.b>=-1).sort((u,w)=>w.b-u.b)[0]||cs.filter(c=>c.a>=0).sort((u,w)=>u.a-w.a)[0];
+      const car=!!(e&&e.a<=40),tram=n==='Swanston Street';
+      if(!car&&!tram)continue; // no car link on this side and no tram: nothing drives this way
+      const lanes=car?clamp(Math.round(+e.q.l.lanes||1),1,3):1;
+      const f=car?F[e.q.l.id]:null,v=Array.isArray(f)?+f[hr]:NaN;
+      dirs.push({street:n,dir:d,axis:ew?'EW':'NS',h,ox,oy,len:ew?B.x1-B.x0:B.y1-B.y0,lanes,entry:car?e.q.l.id:null,
+        vph:car?(isFinite(v)&&v>=0?v:GRID_P.fallback):0,src:car?(isFinite(v)?'flows':'fallback'):'none',tram,jn:[]});
+    }
+  }
+  const sAt=(D,x,y)=>(x-D.ox)*D.h[0]+(y-D.oy)*D.h[1];
+  for(const D of dirs){
+    junctions.forEach((J,j)=>{if((D.axis==='EW'?J.ew:J.ns)!==D.street)return;const s=sAt(D,J.x,J.y);D.jn.push({j,s,stop:s-GRID_P.stopD,left:-1,sE:0});});
+    D.jn.sort((a,b)=>a.s-b.s);
+  }
+  for(const D of dirs)for(const q of D.jn){
+    const J=junctions[q.j],cross=D.axis==='EW'?J.ns:J.ew,E=dirs.findIndex(x=>x.dir===GRID_LEFT[D.dir]&&x.street===cross&&x.entry);
+    if(E>=0){q.left=E;q.sE=sAt(dirs[E],J.x,J.y);}
+  }
+  let close=null;
+  if(closes&&closes.link){
+    const q=L.find(z=>z.l.id===closes.link),di=q?dirs.findIndex(x=>x.street===q.l.name&&x.dir===q.dir&&x.entry):-1;
+    if(di>=0){
+      const D=dirs[di],ss=q.P.map(p=>sAt(D,p[0],p[1])),s0=clamp(Math.min(...ss),0,D.len),s1=clamp(Math.max(...ss),0,D.len);
+      if(s1-s0>1){
+        const n=clamp(Math.round(+closes.lanes||1),1,D.lanes);
+        close={di,link:closes.link,s0,s1,n,all:n>=D.lanes,force:-1};
+        if(close.all){
+          D.jn.forEach((j,i)=>{if(j.stop<s0-5&&j.left>=0)close.force=i;}); // everyone turns left at the last junction before the works
+          for(const X of dirs)for(const j of X.jn)if(j.left===di&&j.sE<s0)j.left=-1; // no turning into the closed street upstream
+        }
+      }
+    }
+  }
+  return{box:B,hour:hr,junctions,dirs,close};
+}
+class GridSim{
+  constructor(spec,opts={}){
+    this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
+    this.agents=[];this.events=[];this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
+    this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
+    const cl=spec.close;this.lanes=[];
+    this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){
+      let rate=D.entry?Math.min(D.vph/D.lanes,GRID_P.cap):0;
+      if(cl&&cl.di===di&&k<cl.n&&cl.s0<45)rate=0; // works right at the box edge: nobody enters the closed lane
+      const ln={di,D,k,off:gridOff(D,k),cars:[],rate,pend:0,tpend:0,next:Infinity,tnext:Infinity};
+      if(rate>0)ln.next=this._exp(rate);
+      if(D.tram&&k===D.lanes-1)ln.tnext=this.R()*GRID_P.tramHw;
+      a.push(ln);this.lanes.push(ln);
+    }return a;});
+    this.resetStats();
+  }
+  _exp(rate){return this.t-Math.log(1-this.R())*3600/(rate*((this.wx&&this.wx.rate)||1));}
+  resetStats(){
+    this.events=[];this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
+    this.minute.fill(0);this.risk.fill(0);this.riskVer++;this.redRun=0;
+    this.entry=this.spec.dirs.map(D=>({id:D.entry,street:D.street,dir:D.dir,vph:D.vph,arr:0,ins:0,div:0}));
+  }
+  setWeather(k,env){this.wxk=k;this.wx=WXP[k]||WXP.clear;this.env=env;}
+  step(dt){if(!(dt>0))return;const n=Math.max(1,Math.ceil(dt/GRID_P.dt-1e-9)),h=dt/n;for(let i=0;i<n;i++)this._step(h);}
+  _idm(c,gap,dv){
+    const P=GRID_P,w=this.wx,v=c.v,ss=P.s0+Math.max(0,v*P.T*w.T+v*dv/(2*Math.sqrt(P.a*P.b*w.b)));
+    return P.a*(1-Math.pow(v/c.v0,4)-Math.pow(ss/Math.max(gap,.05),2));
+  }
+  _insert(ln,type){
+    const P=GRID_P,[len,wid]=type==='tram'?P.tram:P.car,last=ln.cars[ln.cars.length-1];
+    if(last&&last.s-last.len<len+P.s0+1)return false;
+    const v0=(type==='tram'?P.vT:P.v0)*this.wx.v,D=ln.D;
+    const c={id:this.nid++,kind:'veh',type,x:0,y:0,hx:D.h[0],hy:D.h[1],v:last?Math.min(v0*.8,last.v+1):v0*.8,acc:0,len,wid,trail:[],
+      tag:null,blocked:false,ln,s:len,dist:0,t0:this.t,v0,turn:null,arc:null,dl:0,wall:Infinity,tt:-1};
+    if(type==='car'){
+      for(let i=0;i<D.jn.length;i++)if(D.jn[i].left>=0&&this.R()<P.turn){c.turn=i;break;}
+      const cl=this.spec.close;if(cl&&cl.all&&cl.di===ln.di&&(c.turn===null||c.turn>cl.force))c.turn=cl.force;
+    }
+    ln.cars.push(c);this._pos(c);return true;
+  }
+  _exitBlocked(c,ln,q){
+    const P=GRID_P,el=this.dl[q.left][0],r=Math.max(2,P.stopD-el.off),si=q.sE+ln.off+r-Math.PI/2*r;
+    let L=null,F=null;for(const o of el.cars){if(o.s>si)L=o;else{F=o;break;}}
+    if(L){const g=L.s-L.len-si;if(g<P.s0||(L.v<1&&g<c.len+P.s0))return true;}
+    if(F&&si-c.len-F.s<P.s0*.5+F.v*.8)return true;
+    return false;
+  }
+  _turn(c,ln,q){
+    const P=GRID_P,D=ln.D,E=this.spec.dirs[q.left],el=this.dl[q.left][0],r=Math.max(2,P.stopD-el.off),alen=Math.PI/2*r;
+    const sEnd=q.sE+ln.off+r,P0=gridPt(D,ln.off,q.stop);
+    c.arc={x:P0[0],y:P0[1],h1:D.h,h2:E.h,r,alen,sEnd};
+    c.s=sEnd-alen+(c.s-q.stop);c.turn=null;c.ln=el;c.dl=0;
+    this._put(el,c);
+  }
+  _put(ln,c){const a=ln.cars;let i=0;while(i<a.length&&a[i].s>c.s)i++;a.splice(i,0,c);ln.fix=true;}
+  _splat(x,y,w){
+    const i0=Math.floor((x-WORLD.x0)/RISK_CELL),j0=Math.floor((WORLD.y1-y)/RISK_CELL);
+    for(let j=j0-3;j<=j0+3;j++)for(let i=i0-3;i<=i0+3;i++){if(i<0||j<0||i>=RNX||j>=RNY)continue;this.risk[j*RNX+i]+=w*Math.exp(-((i-i0)**2+(j-j0)**2)/4);}
+    this.riskVer++;
+  }
+  _step(dt){
+    const P=GRID_P,S=this.spec,t=this.t,cl=S.close;
+    const sig=S.junctions.map((J,j)=>({EW:gridSigState(S,j,'EW',t),NS:gridSigState(S,j,'NS',t)}));
+    // 1 arrivals (Poisson per lane) and trams; enter when the first metres of the lane are free
+    for(const ln of this.lanes){
+      const E=this.entry[ln.di];
+      while(ln.next<=t){ln.pend++;E.arr++;ln.next=this._exp(ln.rate)+(ln.next-t);}
+      while(ln.tnext<=t){ln.tpend++;ln.tnext+=P.tramHw;}
+      if(ln.pend&&cl&&cl.all&&cl.di===ln.di&&cl.force<0){E.div+=ln.pend;this.stats.noRoute+=ln.pend;ln.pend=0;}
+      if(ln.tpend&&this._insert(ln,'tram'))ln.tpend--;
+      else if(ln.pend&&this._insert(ln,'car')){ln.pend--;E.ins++;}
+    }
+    // 2 zipper: the car in the target lane just behind the one waiting at the works lets it in
+    const yieldTo=new Map();
+    if(cl&&!cl.all){
+      const L=this.dl[cl.di],tl=L[cl.n];let W=null;
+      for(let k=0;k<cl.n;k++){const c=L[k].cars.find(o=>o.s<cl.s0);if(c&&c.s>cl.s0-8&&c.v<1.5&&(!W||c.s>W.s))W=c;}
+      if(W&&tl)for(const o of tl.cars)if(o.s<W.s-W.len+.5){if(o.s>W.s-W.len-30)yieldTo.set(o,W.s-W.len);break;}
+    }
+    // 3 accelerations (IDM against leader, signal stop line, block-the-box, works)
+    for(const ln of this.lanes){
+      const D=ln.D,cars=ln.cars;
+      for(let i=0;i<cars.length;i++){
+        const c=cars[i],ld=i>0?cars[i-1]:null;let acc=this._idm(c,1e4,0),wall=Infinity,q=null,qi=-1;c.held=false;
+        for(let m=0;m<D.jn.length;m++)if(D.jn[m].stop>c.s){q=D.jn[m];qi=m;break;}
+        const turning=q&&c.turn===qi;
+        if(ld&&!(turning&&ld.s-ld.len>q.stop))acc=Math.min(acc,this._idm(c,ld.s-ld.len-c.s,c.v-ld.v));
+        if(q&&q.stop-c.s<120){
+          const st=sig[q.j][D.axis];let stop=st==='R'||(st==='A'&&q.stop-c.s>=c.v*c.v/(2*P.bStop));
+          if(!stop)stop=turning?this._exitBlocked(c,ln,q):!!(ld&&ld.s>q.stop&&ld.v<1&&ld.s-ld.len<q.s+P.stopD+c.len+P.s0);
+          if(stop){wall=q.stop;acc=Math.min(acc,this._idm(c,q.stop-c.s+.9*P.s0,c.v));c.held=true;}
+        }
+        if(cl&&cl.di===ln.di&&ln.k<cl.n&&c.s<cl.s0-5&&cl.s0-5-c.s<150){
+          const w=cl.s0-5;wall=Math.min(wall,w);acc=Math.min(acc,this._idm(c,w-c.s+.9*P.s0,c.v));if(w-c.s<3)c.held=true;
+        }
+        const yw=yieldTo.get(c);if(yw!==undefined&&yw>c.s)acc=Math.min(acc,this._idm(c,yw-c.s,c.v));
+        c.acc=acc;c.wall=wall;
+      }
+    }
+    // 4 move; hard walls and no-overlap are enforced, stop-line crossings reported
+    for(const ln of this.lanes){
+      const D=ln.D,cars=ln.cars;
+      for(let i=0;i<cars.length;i++){
+        const c=cars[i],s0=c.s,v1=c.v;let v=c.v+c.acc*dt;if(v<0)v=0;let s=c.s+Math.max(0,(c.v+v)/2*dt);
+        if(s>c.wall-.01){s=Math.max(c.s,c.wall-.01);v=0;}
+        if(i>0){const ld=cars[i-1],mx=ld.s-ld.len-.05;if(s>mx){s=mx;v=Math.min(v,ld.v);}}
+        c.s=s;c.v=v;c.dist+=Math.max(0,s-s0);
+        const ra=(v-v1)/dt;c.acc=ra;
+        if(ra<P.harsh){if(!c.hb){c.hb=true;this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);}}
+        else if(ra>-1)c.hb=false;
+        for(const q of D.jn)if(s0<q.stop&&s>=q.stop){if(sig[q.j][D.axis]==='R')this.redRun++;if(this.onCross)this.onCross(c,ln,q,t);}
+      }
+    }
+    // 5 exits and left turns
+    for(const ln of this.lanes){
+      const D=ln.D,cars=ln.cars;
+      for(let i=0;i<cars.length;i++){
+        const c=cars[i];
+        if(c.s>=D.len){cars.splice(i,1);i--;this.stats.done++;this.stats.delay+=Math.max(0,(t+dt-c.t0)-c.dist/c.v0);continue;}
+        if(c.turn!==null&&c.s>=D.jn[c.turn].stop){cars.splice(i,1);i--;this._turn(c,ln,D.jn[c.turn]);}
+      }
+    }
+    // 6 merge out of closed lanes before the works (gap ≥ s0 + 0.8 v both ways)
+    if(cl&&!cl.all){
+      const L=this.dl[cl.di],tl=L[cl.n];
+      for(let k=0;k<cl.n&&tl;k++){const ln=L[k];
+        for(let i=0;i<ln.cars.length;i++){
+          const c=ln.cars[i];if(c.s>=cl.s0||c.s<cl.s0-80)continue;
+          let ld=null,fo=null;for(const o of tl.cars){if(o.s>c.s)ld=o;else{fo=o;break;}}
+          const slow=c.v<1,gA=ld?ld.s-ld.len-c.s:1e9,gB=fo?c.s-c.len-fo.s:1e9;
+          const okA=gA>=(slow?.8*P.s0:P.s0+c.v*.8),okB=gB>=(slow?.3+(fo?fo.v:0)*.8:P.s0+(fo?fo.v:0)*.8);
+          if(okA&&okB){ln.cars.splice(i,1);i--;c.dl=ln.off-tl.off;c.ln=tl;this._put(tl,c);this.stats.merges++;}
+        }
+      }
+    }
+    // 7 re-assert no overlap where cars were inserted
+    for(const ln of this.lanes){if(!ln.fix)continue;ln.fix=false;const a=ln.cars;for(let i=1;i<a.length;i++){const mx=a[i-1].s-a[i-1].len-.05;if(a[i].s>mx){a[i].s=mx;a[i].v=Math.min(a[i].v,a[i-1].v);}}}
+    // 8 positions, trails, agent list
+    this.t=t+dt;const ag=[];const k=Math.exp(-3*dt);
+    for(const ln of this.lanes)for(const c of ln.cars){
+      c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
+      if(this.t-c.tt>=.4){c.tt=this.t;c.trail.push(c.x,c.y);if(c.trail.length>24)c.trail.splice(0,2);}
+      ag.push(c);
+    }
+    this.agents=ag;
+  }
+  _pos(c){
+    const ln=c.ln,D=ln.D,m=c.s-c.len/2,a=c.arc;
+    if(a&&m<a.sEnd){
+      const u=m-(a.sEnd-a.alen);
+      if(u<=0){c.x=a.x+a.h1[0]*u;c.y=a.y+a.h1[1]*u;c.hx=a.h1[0];c.hy=a.h1[1];}
+      else{const th=u/a.r,co=Math.cos(th),si=Math.sin(th);
+        c.x=a.x+a.r*(a.h2[0]*(1-co)+a.h1[0]*si);c.y=a.y+a.r*(a.h2[1]*(1-co)+a.h1[1]*si);
+        c.hx=a.h1[0]*co+a.h2[0]*si;c.hy=a.h1[1]*co+a.h2[1]*si;}
+      return;
+    }
+    if(a&&c.s-c.len>=a.sEnd)c.arc=null;
+    const p=gridPt(D,ln.off+c.dl,m);c.x=p[0];c.y=p[1];c.hx=D.h[0];c.hy=D.h[1];
+  }
+  signalHeads(){
+    const S=this.spec,out=[];
+    for(const D of S.dirs)for(const q of D.jn){const p=gridPt(D,gridOff(D,0)+2.6,q.stop);
+      out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:S.junctions[q.j].id,dir:D.dir});}
+    return out;
+  }
+  // Contiguous slow (v < 2) queue upstream of s0 on direction di, metres (max over its lanes)
+  queueAt(di,s0){
+    let best=0;
+    for(const ln of this.dl[di]){let cur=s0;for(const c of ln.cars){if(c.s>=s0)continue;if(c.v<GRID_P.slow&&cur-c.s<12)cur=c.s-c.len;else break;}best=Math.max(best,s0-cur);}
+    return best/GRID_K;
+  }
+  works(){
+    const cl=this.spec.close;if(!cl)return{polys:[],queue_m:0};
+    const D=this.spec.dirs[cl.di],polys=[];
+    for(let k=0;k<cl.n;k++){const o=gridOff(D,k);polys.push([gridPt(D,o-1.6,cl.s0),gridPt(D,o-1.6,cl.s1),gridPt(D,o+1.6,cl.s1),gridPt(D,o+1.6,cl.s0)]);}
+    return{polys,queue_m:this.queueAt(cl.di,cl.s0)};
+  }
+}
+/* grid:end */
+
 /* ============================================================
    App: view, rendering pipeline, workflow and UI
    ============================================================ */
@@ -1802,7 +2104,7 @@ function microOn(){
 function updateScene(){
   const el=$('#sceneName'),micro=microOn();if(!el)return;
   const st=shortSt(EP.street)||L('Unnamed road','无名道路'),on=engOn()&&!micro;
-  const t=micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
+  const t=gridShown()?L('Swanston / Russell × Lonsdale / Little Lonsdale · Melbourne CBD','Swanston / Russell × Lonsdale / Little Lonsdale · 墨尔本 CBD'):micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
   if(el.textContent!==t)el.textContent=t;
   cv.setAttribute('aria-label',micro?L('Map of Swanston St and La Trobe St with simulated road users and weather layers','Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层'):on?L(`Map of the ${st} ${dirL(EP.dir)} works at ${engHour(EP.hour)} on real CBD streets, with the engine's queue and detours`,`${st} ${dirL(EP.dir)} 施工地图（${engHour(EP.hour)}）：真实 CBD 路网上引擎算出的排队和绕行`):L('Map of the Melbourne CBD','墨尔本 CBD 地图'));
 }
@@ -1812,10 +2114,12 @@ function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.cont
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 /* the view may pan until the map's edge meets the edge of the part the glass leaves open (insets), not the canvas edge —
    otherwise the east / south end of the map can never come out from under the panels; a map smaller than that part is centred in it */
-function setView(cx,cy,s){V.s=clamp(s,1.1,14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
-  const x0=WORLD.x0+hw-I.l/V.s,x1=WORLD.x1-hw+I.r/V.s,y0=WORLD.y0+hh-I.b/V.s,y1=WORLD.y1-hh+I.t/V.s;
+// Smallest zoom: the whole CITY fits the part of the map the glass leaves open (T27; ~0.5 on a 1440 desktop, ~0.2 on a phone)
+function cityMinS(){const I=GL.ins,vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b);return Math.min(1.1,vw/(CITY.x1-CITY.x0),vh/(CITY.y1-CITY.y0));}
+function setView(cx,cy,s){V.s=clamp(s,cityMinS(),14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
+  const x0=CITY.x0+hw-I.l/V.s,x1=CITY.x1-hw+I.r/V.s,y0=CITY.y0+hh-I.b/V.s,y1=CITY.y1-hh+I.t/V.s;
   V.cx=x0>x1?(x0+x1)/2:clamp(cx,x0,x1);V.cy=y0>y1?(y0+y1)/2:clamp(cy,y0,y1);V.ver++;}
-function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,cityMinS(),14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
@@ -1825,13 +2129,43 @@ function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Mat
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
-function drawTag(c,px,py,dx,dy,text,color,T){
-  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19,ex=px+dx,ey=py+dy,bx=dx<0?ex-w:ex,by=ey-h/2;
-  c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();
-  c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();
-  c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();
-  c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);c.restore();
+// Tag placement (T27): with the whole CBD in view, more tags share less room (375 px: the works tag ran under the zoom buttons
+// and off the screen). While TAGS.on (engLabels), a tag tries its own spot, then mirrored and farther ones, each slid onto the
+// open map, and takes the one that covers the least of the map controls and of the tags already drawn this frame.
+// Other callers draw exactly where they ask.
+const TAGS={on:false,boxes:[],q:[],obst:[],t:0},TAG_TRY=[[1,1],[-1,1],[1,-1],[-1,-1],[1,1.8],[-1,1.8],[1,-1.8],[-1,-1.8]];
+function tagObst(){ // the glass controls over the canvas, in canvas px; re-read at most twice a second
+  const now=performance.now();if(now-TAGS.t<500)return TAGS.obst;TAGS.t=now;const r0=cv.getBoundingClientRect();
+  TAGS.obst=[...document.querySelectorAll('header.top,#rail,#wx,#basemap,.zoom,#legend,#probe,#credits,#panelOpen')].map(e=>e.getBoundingClientRect())
+    .filter(r=>r.width&&r.height).map(r=>[r.left-r0.left,r.top-r0.top,r.width,r.height]);
+  return TAGS.obst;
 }
+function tagSpot(px,py,dx,dy,w,h){
+  const I=GL.ins,x0=I.l+4,x1=V.w-I.r-4,y0=I.t+4,y1=V.h-I.b-4,obs=tagObst();
+  const ov=(a,b)=>Math.max(0,Math.min(a[0]+a[2],b[0]+b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[1]+a[3],b[1]+b[3])-Math.max(a[1],b[1]));
+  let best=null,bs=Infinity;
+  TAG_TRY.forEach(([sx,sy],i)=>{
+    const ddx=dx*sx,ax=ddx<0?px+ddx-w:px+ddx,ay=py+dy*sy-h/2,b=[clamp(ax,x0,Math.max(x0,x1-w)),clamp(ay,y0,Math.max(y0,y1-h)),w,h];
+    let sc=(Math.abs(b[0]-ax)+Math.abs(b[1]-ay))*.5+i*.1;for(const o of obs)sc+=ov(b,o);for(const o of TAGS.boxes)sc+=ov(b,o);
+    if(sc<bs){bs=sc;best=b;}
+  });
+  TAGS.boxes.push(best);return best;
+}
+function drawTag(c,px,py,dx,dy,text,color,T){
+  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19;
+  const[bx,by]=TAGS.on?tagSpot(px,py,dx,dy,w,h):[dx<0?px+dx-w:px+dx,py+dy-h/2];
+  // the leader runs from the point to the nearest side of the box (the side it points from when the box sits where asked)
+  const ex=px<bx?bx:px>bx+w?bx+w:px,ey=ex===px?(py<by?by:by+h):by+h/2,t=[c,px,py,ex,ey,bx,by,w,h,text,color,T];c.restore();
+  if(TAGS.on)TAGS.q.push(t);else{tagInk(t,1);tagInk(t,2);}
+}
+// pass 1 = leader and dot, pass 2 = box and text; tagFlush() inks every leader first so no dot lands on another tag's text
+function tagInk([c,px,py,ex,ey,bx,by,w,h,text,color,T],pass){
+  c.save();
+  if(pass===1){c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();}
+  else{c.font=`500 10px ${FONT_MONO}`;c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);}
+  c.restore();
+}
+function tagFlush(){const q=TAGS.q;TAGS.on=false;TAGS.q=[];for(const p of[1,2])for(const t of q)tagInk(t,p);}
 function colOf(t){return(t==='car'||t==='unf')?TK.aCar:t==='bike'?TK.aBike:t==='ped'?TK.aPed:t==='wc'?TK.aWc:t==='bus'?TK.aBus:TK.aTram;}
 const PAT={};
 function makePatterns(){
@@ -1841,12 +2175,16 @@ function makePatterns(){
 
 /* ---------- base map ---------- */
 function renderBase(){
-  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0);if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
+  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0)+cityKey();if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
+  /* T27: the whole CBD (6c-city.js) first, then the fine window clipped to WORLD on top, then a dashed seam round it */
+  bctx.fillStyle=VEC[TK.light?'light':'dark'].land;bctx.fillRect(0,0,V.w,V.h);const city=cityDraw(bctx,V);
+  bctx.save();bctx.beginPath();bctx.rect(V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);bctx.clip();
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
   emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
+  bctx.restore();if(city)citySeam(bctx,V,TK.light);
 }
 
 /* ---------- overlays ---------- */
@@ -1909,7 +2247,8 @@ function drawEvents(sim){
 }
 const riskCv=document.createElement('canvas');riskCv.width=RNX;riskCv.height=RNY;const riskG=riskCv.getContext('2d');let riskVer=-1,riskSim=null;
 function drawRisk(sim){
-  if(!sim)return;if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
+  if(!sim||sim.isGrid)return; // the 2×2 grid sim's risk field is not on the La Trobe WORLD raster
+ if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
   ctx.save();ctx.globalAlpha=.75;ctx.imageSmoothingEnabled=true;ctx.drawImage(riskCv,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);ctx.restore();
 }
 function drawReticle(ev){
@@ -1918,7 +2257,7 @@ function drawReticle(ev){
   for(let k=0;k<3;k++){const f=((t*.8)+k/3)%1;ctx.globalAlpha=1-f;ctx.beginPath();ctx.arc(px,py,6+f*40,0,7);ctx.stroke();}ctx.restore();
 }
 function fogRings(sim){
-  if(!sim||S.wx!=='fog'||!S.layers.weather)return;
+  if(!sim||sim.isGrid||S.wx!=='fog'||!S.layers.weather)return; // reads LAYOUTS[sim.layout]: La Trobe scene only
   let car=sim.agents.find(a=>a.tag==='D-42');if(!car)car=sim.agents.find(a=>(a.p.id==='WB'||a.p.id==='WBU')&&a.x>10&&a.x<170);
   const Z=LAYOUTS[sim.layout];ctx.save();ctx.setLineDash([6,5]);ctx.lineWidth=1.5;
   if(car){const r=WX.visibility(car.x,car.y);ctx.strokeStyle=TK.light?'#1d2a2e':'#fff';ctx.beginPath();ctx.arc(V.X(car.x),V.Y(car.y),r*V.s,0,7);ctx.stroke();ctx.setLineDash([]);drawTag(ctx,V.X(car.x),V.Y(car.y-r),30,-16,`${L('SIGHT RANGE','视距')} ${r.toFixed(0)} m`,TK.light?'#1d2a2e':'#FFFFFF');ctx.setLineDash([6,5]);}
@@ -1936,8 +2275,9 @@ function drawGrid(){
   ctx.restore();
 }
 function drawScale(){
-  const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
+  const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-(GL.ins.cr||0)-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -1973,37 +2313,55 @@ function render(dt){
   renderBase();
   ctx.setTransform(V.dpr,0,0,V.dpr,0,0);ctx.clearRect(0,0,V.w,V.h);ctx.drawImage(base,0,0,V.w,V.h);
   WX.dim=S.step===3?.35:1;
-  if(S.layers.weather)WX.drawGround(ctx,V);
-  if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
-  const micro=microOn();
+  const fine=V.s>=1,wx=S.layers.weather&&fine; // T27: zoomed out to the city, the fine window's layers step aside
+  if(wx)WX.drawGround(ctx,V);
+  if(S.layers.risk&&S.step>=2&&S.sim&&fine)drawRisk(S.sim);
+  const micro=microOn(),walkers=micro&&fine;
   if(S.step===4){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter){drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter)drawWorks('after');if(walkers&&S.simAfter){drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
   }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
-  else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
-  if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
+  else{const grid=gridShown();engDraw('now');if(micro&&!grid)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}if(grid&&fine)drawJunctions(S.sim);}
+  if(wx)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
-  if(S.layers.weather)WX.drawNotes(ctx,V,TK);
-  if(S.step===1&&S.layers.works&&micro)planNotes();
-  if(S.step<=2&&micro)fogRings(S.sim);
+  if(wx)WX.drawNotes(ctx,V,TK);
+  if(S.step===1&&S.layers.works&&walkers)planNotes();
+  if(S.step<=2&&walkers&&wx)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
   if(S.step===4&&S.simAfter&&S.layers.works&&micro)drawDeltas();
   engLabels();
-  if(S.layers.grid)drawGrid();
+  if(S.layers.grid&&fine)drawGrid();
   drawScale();
-  if(S.layers.weather)WX.drawFlash(ctx,V);
+  if(wx)WX.drawFlash(ctx,V);
 }
 
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
+/* 2×2 junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs the
+   plan's own four junctions instead of the scripted La Trobe scene. Missing file or a throw → the La Trobe scene, as before. */
+function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<120)s.step(.05);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
+function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
+function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 4 个路口（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the 2×2 grid sim
+function drawJunctions(sim){
+  if(!sim||!sim.isGrid)return;ctx.save();
+  if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}
+  const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
+  for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
+  ctx.restore();
+}
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
-  if(n===2){S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}
+  if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();}
+    else{S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}}
   if(n===3){
     if(!S.stress||!S.stress.critical){S.stress=S.stress&&S.stress.script?S.stress:newStress('before');let guard=0;while((!S.stress.critical||!S.stress.critical.frozen)&&guard++<3000)S.stress.step(.05);S.clock=CLOCK_EVENT+(S.stress.t-45);}
     else{let g2=0;while(!S.stress.critical.frozen&&g2++<200)S.stress.step(.05);}
@@ -2061,21 +2419,21 @@ function renderPanel(){
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
   }else if(S.step===2){
-    const crit=S.sim&&S.sim.critical;
+    const crit=S.sim&&S.sim.critical,grid=gridShown();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${grid?gridNote():L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
+    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: trace the ripple →','下一步：追踪涟漪 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · R-03','影响 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="stack"><span class="eyebrow">${L('Road users involved','涉及的道路使用者')}</span><div class="agents3">
@@ -2115,6 +2473,7 @@ function updateLive(force){
   const P=$('#panel'),sim=S.sim,set=(k,v)=>{const e=P.querySelector(`[data-live="${k}"]`);if(e&&e.textContent!==String(v))e.textContent=v;};
   if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
+    if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
     set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
@@ -2196,6 +2555,7 @@ function rebuildWorld(nw,g,imgs){
 const nextTask=()=>new Promise(r=>setTimeout(r,0));
 function loadBuildings(){
   return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(async d=>{
+    cityData(d); // the whole-CBD layer draws every footprint (6c-city.js); the fine window clips its copy to WORLD
     const nw=d?buildWorldReal(d,geoToWorld):null;
     if(!nw||nw.buildings.length<REAL_MIN)return false;
     await nextTask();const g=buildGrids(nw);
@@ -2229,7 +2589,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(gridShown())gridFly(.7);else if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -2245,7 +2605,7 @@ function bindInput(){
   window.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;if(e.key===' '&&e.target===document.body){S.playing=!S.playing;e.preventDefault();}const n=+e.key;if(n>=1&&n<=6&&!e.metaKey&&!e.ctrlKey)setWeather(WX_KINDS[n-1]);});
   new ResizeObserver(()=>{resize();}).observe($('#map'));new ResizeObserver(()=>{sizeHist();}).observe(hc);
 }
-function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,1.1,14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
+function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,cityMinS(),14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
 
 /* ---------- main loop ---------- */
 let last=performance.now(),uiT=0,histT=0,legT=0,probeKey='';
@@ -2266,15 +2626,16 @@ function loop(now){
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
     document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));}
   if(legT>.5){legT=0;updateLegendLive();}
+  {const pb=$('#probe'),hide=V.s<1;if(pb&&pb.hidden!==hide)pb.hidden=hide;} // T27: lat/lon readout only in the fine zooms
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
 }
 
 /* ---------- boot ---------- */
 function boot(){
-  const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
+  document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark'; // dark unless the viewer picked light with the toggle (not the OS setting)
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
-  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
+  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
@@ -2351,6 +2712,38 @@ function formFromPlan(plan){
   if(ws.closes)out.foot=ws.closes.footpath||'none';
   return out;
 }
+// Page units per real metre: geoToWorld() draws 1 m of the Hoddle grid as ~0.862 units (network.json south of La Trobe:
+// east–west 0.8645, north–south 0.8600). The scale bar and anything given in metres go through it (T27)
+const K_UPM=0.862;
+const unitV=(a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;return[dx/l,dy/l];};
+// Links by the node they end at — upstreamPath() walks it
+function upstreamIndex(links){const m=new Map();for(const l of links){const a=m.get(l.to);if(a)a.push(l);else m.set(l.to,[l]);}return m;}
+// The queue's road (T27): from the works link's start, walk upstream along links of the same street (the one that carries on
+// straightest), adding their real length len_m, until maxM metres or the street runs out in the network. pts = page points
+// from the works start going upstream; cum = metres at each point; reach = metres the street allows (the sum of the links'
+// len_m); end = the cross street where it runs out (null if it didn't). A line drawn on it is never longer than those links.
+function upstreamPath(byTo,link,maxM){
+  const P0=linkPts(link);if(!P0)return{pts:[],cum:[],reach:0,end:null,ids:[]};
+  const pts=[P0[0]],cum=[0],ids=[];let cur=link,m=0,dir=unitV(P0[0],P0[P0.length-1]),ran=true;
+  for(let guard=0;m<maxM&&guard<80;guard++){
+    const ups=(byTo.get(cur.from)||[]).filter(u=>u.name===link.name&&u.from!==cur.to&&u.id!==cur.id);
+    let U=null,best=0,G=null;
+    for(const u of ups){const g=linkPts(u);if(!g)continue;const d=unitV(g[0],g[g.length-1]),dot=d[0]*dir[0]+d[1]*dir[1];if(dot>best){best=dot;U=u;G=g;}}
+    if(!U){ran=false;break;} // no same-street link carrying on: the street ends here in the network
+    let tot=0;for(let i=1;i<G.length;i++)tot+=Math.hypot(G[i][0]-G[i-1][0],G[i][1]-G[i-1][1]);
+    let acc=0;for(let i=G.length-1;i>0;i--){acc+=Math.hypot(G[i][0]-G[i-1][0],G[i][1]-G[i-1][1]);pts.push(G[i-1]);cum.push(m+(tot?acc/tot:1)*(+U.len_m||0));}
+    m+=+U.len_m||0;ids.push(U.id);dir=unitV(G[0],G[G.length-1]);cur=U;
+  }
+  let end=null;if(!ran)for(const u of byTo.get(cur.from)||[])if(u.name&&u.name!==link.name){end=u.name;break;}
+  return{pts,cum,reach:m,end,ids}; // ids: the links walked, whose len_m add up to reach
+}
+// Links drawn as this plan's ripple (T27 + T28): ≥ 2 vehicle-minutes over the same hour without the works (extra_min), not the
+// works link itself. sev 2 = red (a queue on it, or ≥ 60), 1 = amber (≥ 10), 0 = faint. Background queues (Flinders / King St
+// every morning) have extra_min ≈ 0 and are left out, however long they are against free flow
+function rippleLinks(links,worksId){const out=[];for(const l of links||[]){const ex=+l.extra_min;if(!(ex>=2)||l.id===worksId)continue;out.push({id:l.id,ex,sev:ex>=60?2:ex>=10?1:0});}return out;}
+// Point m metres up the path (clamped to its end), and the path from the works start to that point
+function pathAt(p,m){const{pts,cum}=p;if(!pts.length)return null;if(m<=0)return pts[0];for(let i=1;i<pts.length;i++)if(cum[i]>=m){const t=(m-cum[i-1])/((cum[i]-cum[i-1])||1);return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];}return pts[pts.length-1];}
+function pathSub(p,m){const out=[p.pts[0]];for(let i=1;i<p.pts.length&&p.cum[i]<m;i++)out.push(p.pts[i]);const e=pathAt(p,m);if(e&&out.length&&(e[0]!==out[out.length-1][0]||e[1]!==out[out.length-1][1]))out.push(e);return out;}
 /* pure:end */
 
 const BE={api:null,err:null};
@@ -2408,7 +2801,7 @@ function engLoadPlan(plan){Object.assign(EP,formFromPlan(plan));}
 let candCache=null;
 function engCands(){
   const net=engNet();if(!net)return[];if(candCache&&candCache.net===net)return candCache.list;
-  const list=[];for(const l of net.links.values()){const pts=linkPts(l);if(!pts)continue;if(pts.every(p=>p[0]<WORLD.x0-80||p[0]>WORLD.x1+80||p[1]<WORLD.y0-80||p[1]>WORLD.y1+80))continue;list.push({id:l.id,pts,hw:l.highway});}
+  const list=[];for(const l of net.links.values()){const pts=linkPts(l);if(!pts)continue;if(pts.every(p=>p[0]<CITY.x0||p[0]>CITY.x1||p[1]<CITY.y0||p[1]>CITY.y1))continue;list.push({id:l.id,pts,hw:l.highway});}
   candCache={net,list};return list;
 }
 const geoCache=new Map();
@@ -2433,6 +2826,7 @@ async function engRun(){
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
   EP.busy=false;engRenderOut();
   if(S.step===3)renderPanel();
+  if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();
 }
 async function engStep4(){
@@ -2476,7 +2870,7 @@ function engBadges(f,s){
   if(f.blocked_vph>0)b.push(`<span class="pill risk">${fmtN(f.blocked_vph)} ${L('veh/h stuck','辆/时 无路可走')}</span>`);
   const rs=aiPlanSrc(s,f); // this plan's persona readings, not the calibration anchors in f.reading_src (9-ai.js)
   b.push(`<span class="pill ${rs.tone}">${L('Sign reading','读屏')} · ${esc(aiSrcLabel(rs.src))}</span>`);
-  b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 sources','参数 · 有出处')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
+  b.push(f.params==='params'?`<span class="pill">${L('Parameters · T12 (trust is assumed)','参数 · T12（信任度是假设值）')}</span>`:`<span class="pill warn">${L('Parameters are assumptions','参数为假设值')}</span>`);
   return`<div class="chips eng-badges">${b.join('')}</div>`;
 }
 // Worst queue anywhere this hour: on the closed street, or (full closure) on the streets the detours pile onto
@@ -2589,7 +2983,7 @@ function engBind1(){
 // Step 3, network tab: where the queue goes, who is hit and why (why = T5 reading, always set with textContent)
 function engTabs3(){
   if(!BE.api)return'';
-  return`<div class="eng-seg" role="tablist" aria-label="${L('Ripple view','涟漪视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
+  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
 function engHeadline(s){
@@ -2600,8 +2994,8 @@ function engHeadline(s){
 }
 function engPanel3(){
   const s=EP.badText||(EP.runErr&&!EP.busy)?null:EP.sum;
-  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
-  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
+  if(EP.runErr&&!EP.busy&&!EP.badText)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  if(!s)return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}${EP.badText?`<div class="card eng-note warn"><b>${L('Fix the sign text in step 1 first','先回第 1 步把屏上文字改合规范')}</b></div>`:`<div class="card eng-note"><b>${L('Calculating…','计算中…')}</b></div>`}`;
   const tot=s.routes.reduce((a,r)=>a+(r.share||0),0)||1;
   const routes=s.routes.map(r=>{const stay=r.id==='stay',w=(r.share/tot*100).toFixed(0);return`<div class="eng-route${stay?' stay':''}"><span class="nm">${stay?L('Stay on ','留在 ')+esc(shortSt(r.name)):esc(shortSt(r.name))}</span><span class="track"><i style="width:${w}%"></i></span><span class="n">${pctS(r.share)}</span><span class="t">${(+r.now_min).toFixed(1)} ${L('min','分')}${r.now_min>r.usual_min+.05?`<s>${(+r.usual_min).toFixed(1)}</s>`:''}</span></div>`;}).join('');
   const mix=EP.mix,mixTxt=mix?TYPES4.map(t=>`${Math.round((mix[t]&&mix[t].value||0)*100)}`).join(' / '):'';
@@ -2610,7 +3004,7 @@ function engPanel3(){
     return`<div class="eng-type"><i class="dot" style="background:${TYPE_C[t]}"></i><div class="grow"><b>${L(TYPE_L[t][0],TYPE_L[t][1])}</b> <span class="mono small muted">${fmtN(b.vehicles)} ${L('veh','辆')}${r?` · ${L('mix','占比')} ${Math.round(r[0]*100)}–${Math.round(r[1]*100)}%`:''}</span><small data-why="${t}"></small></div><div class="eng-tv"><b>+${(+(b.per_capita_min||0)).toFixed(1)}</b><span>${L('min each','分钟/人')}</span><span>${pctS(x.detour)} ${L('detour','绕行')}</span></div></div>`;}).join('');
   const hot=(s.hot||[]).map((h,i)=>`<div class="eng-hot" data-hot="${i}" tabindex="0"><span class="rk">${i+1}</span><span class="grow">${esc(shortSt(h.name)||L('Unnamed road','无名道路'))}</span><span class="val">+${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}${h.queue_m>0?` · ${fmtN(h.queue_m)} m`:''}</span></div>`).join('');
   const f=s.flags;
-  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · network','涟漪追踪 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · network','影响 · 路网')}</span>${engStatusPill()}</div>${engTabs3()}
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
@@ -2619,7 +3013,7 @@ function engPanel3(){
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
   ${hot?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Worst links · on the map','最堵的路段 · 地图上')}</span><span class="eyebrow">${L('extra this hour','这一小时多出')}</span></div><div class="list">${hot}</div></div>`:''}
-  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(aiPlanSrc(s,f).src))}. Behaviour parameters: ${f.params==='params'?'T12 with sources':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(aiPlanSrc(s,f).src))}。行为参数：${f.params==='params'?'T12，有出处':'默认假设值'}。`)}</p>
+  <p class="legend-src">${L(`Flows: T3 network + hourly counts. Sign reading: ${esc(aiSrcLabel(aiPlanSrc(s,f).src))}. Behaviour parameters: ${f.params==='params'?'T12 (trust is an assumed value)':'assumed defaults'}.`,`车流：T3 路网 + 逐时流量。读屏：${esc(aiSrcLabel(aiPlanSrc(s,f).src))}。行为参数：${f.params==='params'?'T12（信任度是假设值）':'默认假设值'}。`)}</p>
   <div class="cta"><button type="button" class="btn" id="repairBtn">${L('Find a better plan →','找更好的方案 →')}</button></div>`;
 }
 function engTransit3(s){
@@ -2715,18 +3109,20 @@ function engAlts(plan,s){
     EP.alts=(a.alts||[]).map(r=>({id:r.id,name:r.name,polys:r.links.filter(id=>!stay.has(id)).map(engGeo).filter(Boolean)}));
   }catch(e){EP.alts=[];console.warn('detour paths unavailable',e);}
 }
-// Frame the work zone, its queue and every detour taking ≥ 5 % (clamped to the drawn world), sized to the part of the map the
+// Frame the work zone, its queue and every detour taking ≥ 1 % (clamped to CITY), sized to the part of the map the
 // glass leaves open (insets()); flyTo() then centres it there. No other junction is pulled in (T20 addendum 1)
 function engFit(){
-  if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],WORLD.x0,WORLD.x1));ys.push(clamp(p[1],WORLD.y0,WORLD.y1));};
+  if(!EP.pts)return null;const xs=[],ys=[],add=p=>{xs.push(clamp(p[0],CITY.x0,CITY.x1));ys.push(clamp(p[1],CITY.y0,CITY.y1));};
   EP.pts.forEach(add);const s=engSumFor('now'),sh=new Map(((s&&s.routes)||[]).map(r=>[r.id,r.share||0]));
-  if(s&&s.queue_m>0)add(engUp(Math.min(s.queue_m,engWorldReach())));
-  for(const r of EP.alts)if((sh.get(r.id)||0)>=.05)for(const P of r.polys)P.forEach(add);
+  if(s&&s.queue_m>0)engSub(Math.min(s.queue_m,engReach())).forEach(add);
+  // every detour drawn clearly (≥ 1 %) is framed: with sign readings the three Lonsdale detours sit at 4–5 %, and a line cut at
+  // the window edge reads as a bug (T27 acceptance) — the old ≥ 5 % cut them off
+  for(const r of EP.alts)if((sh.get(r.id)||0)>=.01)for(const P of r.polys)P.forEach(add);
   // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
   // desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
   const mob=!matchMedia('(min-width: 821px)').matches,lg=document.getElementById('legend'),mt=mob?96:0,mb=mob?104:(lg&&lg.offsetHeight?lg.offsetHeight+52:0);
   const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
-  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),1.1,3.6);
+  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),cityMinS(),3.6);
   return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
 }
 function engFly(d){const f=engFit();if(f)flyTo(f[0],f[1],f[2],d);}
@@ -2736,7 +3132,17 @@ function engOffset(P,off){
   return out;
 }
 function engLine(P,off){const Q=engOffset(P,off);ctx.beginPath();Q.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));}
-function engUp(m){const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1;return[a[0]-(b[0]-a[0])/l*m,a[1]-(b[1]-a[1])/l*m];}
+// The works street upstream of the works, cached per link (T27): the queue, the signs and their tags sit on it
+const NET_UP=new WeakMap();
+function engPath(){
+  const net=engNet();if(!net||!EP.link)return null;if(EP.pathFor===EP.link)return EP.path;
+  let ix=NET_UP.get(net);if(!ix){ix=upstreamIndex(net.links.values());NET_UP.set(net,ix);}
+  const l=net.links.get(EP.link);EP.path=l?upstreamPath(ix,l,3000):null;EP.pathFor=EP.link;return EP.path;
+}
+// Point m metres upstream of the works start, along the street; straight back along the works link only if there is no path
+function engUp(m){const p=engPath();if(p&&p.pts.length>1)return pathAt(p,Math.max(0,m));const P=EP.pts,a=P[0],b=P[P.length-1],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,u=m*K_UPM;return[a[0]-(b[0]-a[0])/l*u,a[1]-(b[1]-a[1])/l*u];}
+// The street from the works start to m metres upstream (works start first)
+function engSub(m){const p=engPath();return p&&p.pts.length>1?pathSub(p,Math.max(0,m)):[engUp(0),engUp(m)];}
 // Numbers that belong to what is on screen: none while the sign text is invalid or the last run failed
 function engSumFor(which){if(EP.badText||EP.runErr)return null;return which==='before'?(EP.cmp&&EP.cmp.before)||EP.sum:which==='after'?(EP.cmp&&EP.cmp.after)||EP.sum:EP.sum;}
 // Walk-link geometry for the pedestrian detour, fetched only once a plan closes a footpath (same file the engine reads)
@@ -2766,13 +3172,12 @@ function engDraw(which){
   if(s&&S.step!==2){
     const faint=S.step===1,share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));
     for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.005)continue;ctx.globalAlpha=faint?.55:.85;ctx.strokeStyle=TK.accent;ctx.lineWidth=(2+10*sh)*k;for(const P of r.polys){engLine(P,off);ctx.stroke();}}
-    for(const l of s.raw.links){
-      const ex=(l.v||0)*(l.delay_s||0)/60;if(!(ex>=2)&&!(l.queue_m>0))continue;if(l.id===EP.link)continue;const P=engGeo(l.id);if(!P)continue;
-      const sev=l.queue_m>0||ex>=60?2:ex>=10?1:0;
+    for(const{id,sev}of rippleLinks(s.raw.links,EP.link)){ // extra_min (T28), not v·delay_s against free flow
+      const P=engGeo(id);if(!P)continue;
       ctx.globalAlpha=(faint?.5:.9)*(sev?1:.7);ctx.strokeStyle=sev===2?TK.risk:TK.works;ctx.lineWidth=(sev===2?5:sev?3.6:2.6)*k;engLine(P,off);ctx.stroke();
     }
-    if(s.queue_m>0){const q=engUp(Math.min(s.queue_m,engWorldReach())),p0=engUp(0);ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine([q,p0],off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine([q,p0],off);ctx.stroke();ctx.setLineDash([]);}
-    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,which==='before'?TK.risk:TK.accent);}
+    if(s.queue_m>0){const Q=engSub(Math.min(s.queue_m,engReach())).reverse();ctx.globalAlpha=.85;ctx.strokeStyle=TK.risk;ctx.lineWidth=7*k;engLine(Q,off);ctx.stroke();ctx.globalAlpha=1;ctx.strokeStyle=TK.light?'#fff':'#1b0507';ctx.lineWidth=1.2;ctx.setLineDash([2,5]);engLine(Q,off);ctx.stroke();ctx.setLineDash([]);}
+    if(S.step===4&&EP.cmp){const vis=engVisible(),q=engUp(Math.min(s.queue_m,vis));drawTag(ctx,V.X(q[0]),V.Y(q[1]),engDx(V.X(q[0]),24),which==='before'?-40:40,`${which==='before'?L('BEFORE','修改前'):L('AFTER','修改后')} · ${engQueueTxt(s,vis)}`,which==='before'?TK.risk:TK.accent);}
   }
   if(s&&S.step!==2){engTransitDraw(s,S.step===1);engPedDraw(s,S.step===1);}
   ctx.globalAlpha=1;ctx.strokeStyle=TK.works;ctx.lineWidth=9*k;engLine(EP.pts,off);ctx.stroke();
@@ -2787,23 +3192,35 @@ function engDraw(which){
 function engLabels(){
   if(!engOn()||!EP.pts||!S.layers.works||!TK.works||S.step===2||S.step===4||(S.step===3&&EP.tab3!=='net'))return;
   const s=engSumFor('now'),off=engOffset(EP.pts,3.5),a=off[0],b=off[off.length-1],mx=V.X((a[0]+b[0])/2),my=V.Y((a[1]+b[1])/2),vis=engVisible();
+  // each tag goes clear of the map controls, of the works itself and of the tags before it (5-app.js tagSpot); inked together at the end
+  const wx=off.map(p=>V.X(p[0])),wy=off.map(p=>V.Y(p[1])),wx0=Math.min(...wx)-8,wy0=Math.min(...wy)-8;
+  TAGS.boxes=[[wx0,wy0,Math.max(...wx)+8-wx0,Math.max(...wy)+8-wy0]];TAGS.q=[];TAGS.on=true;
   // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
   drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
-  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m${s.queue_m>vis?' →':''}`,TK.risk);}
+  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis),TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}
   }
   if(S.step===3&&s){
     const share=new Map((s.routes||[]).map(r=>[r.id,r.share||0]));let k2=0;
-    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
-    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<WORLD.x0||c[0]>WORLD.x1||c[1]<WORLD.y0||c[1]>WORLD.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.queue_m>0?TK.risk:TK.works);}}
+    for(const r of EP.alts){const sh=share.get(r.id)||0;if(sh<.05||k2>=2||!r.polys.length)continue;const P=r.polys[Math.min(r.polys.length-1,1)],c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;drawTag(ctx,V.X(c[0]),V.Y(c[1]),k2?-50:50,k2?40:-36,`${L('DETOUR','绕行')} ${shortSt(r.name).toUpperCase()} ${pctS(sh)}`,TK.accent);k2++;}
+    let n=0;for(const h of s.hot||[]){if(h.id===EP.link||n>=3)continue;const P=engGeo(h.id);if(!P)continue;const c=P[Math.floor(P.length/2)];if(c[0]<CITY.x0||c[0]>CITY.x1||c[1]<CITY.y0||c[1]>CITY.y1)continue;const o=[[46,-44],[-46,46],[50,40]][n++];drawTag(ctx,V.X(c[0]),V.Y(c[1]),o[0],o[1],`${shortSt(h.name).toUpperCase()} +${fmtN(h.extra_min)} ${L('veh·min','车·分钟')}`,h.extra_min>=60?TK.risk:TK.works);}}
+  tagFlush();
 }
-// How far upstream stays on the drawn map: a queue longer than that stops at the map's edge (its tag says "→"), instead of
-// running on under the glass panels
-function engWorldReach(){let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>=WORLD.x0&&p[0]<=WORLD.x1&&p[1]>=WORLD.y0&&p[1]<=WORLD.y1)lo=mid;else hi=mid;}return lo;}
+// How far upstream the queue can be drawn: along its street to where the street runs out in the network, and inside CITY.
+// The engine's queue is a point queue on the works link (engine assign.js) — it is drawn back along the street as far as the
+// street goes, never stretched further; the tag keeps the engine's number and says where the line stops
+function engReach(){
+  const p=engPath(),R=p&&p.pts.length>1?p.reach:2000,inC=q=>q[0]>=CITY.x0&&q[0]<=CITY.x1&&q[1]>=CITY.y0&&q[1]<=CITY.y1;
+  if(inC(engUp(R)))return R;let lo=0,hi=R;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(inC(engUp(mid)))lo=mid;else hi=mid;}return lo;
+}
+function engQueueTxt(s,vis){
+  const p=engPath(),cut=s.queue_m>engReach()+1,end=p&&p.end?shortSt(p.end):null;
+  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
+}
 // How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
 function engVisible(){
-  const x0=Math.max(WORLD.x0,V.wx(24)),x1=Math.min(WORLD.x1,V.wx(V.w-24)),y0=Math.max(WORLD.y0,V.wy(V.h-24)),y1=Math.min(WORLD.y1,V.wy(70));
+  const x0=Math.max(CITY.x0,V.wx(24)),x1=Math.min(CITY.x1,V.wx(V.w-24)),y0=Math.max(CITY.y0,V.wy(V.h-24)),y1=Math.min(CITY.y1,V.wy(70));
   let lo=0,hi=2000;for(let i=0;i<24;i++){const mid=(lo+hi)/2,p=engUp(mid);if(p[0]>x0&&p[0]<x1&&p[1]>y0&&p[1]<y1)lo=mid;else hi=mid;}return Math.max(0,lo-4);
 }
 // Tag offset that keeps the box on screen: point it back toward the middle of the view
@@ -2818,7 +3235,7 @@ function engBindMap(){
   cv.addEventListener('dblclick',cancel);
   cv.addEventListener('pointerup',e=>{
     lift(e);const d=down;down=null;if(!d||d[2]!==e.pointerId||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
-    if(S.step!==1||!BE.api)return;
+    if(S.step!==1||!BE.api||V.s<1)return; // zoomed out, the pick tolerance (≥ 14 px) spans whole blocks: don't move the works
     const x=V.wx(e.offsetX),y=V.wy(e.offsetY),tol=Math.max(9,14/V.s);
     pending=setTimeout(()=>{ // wait out a double-click (that one zooms)
       pending=0;const id=pickLink(engCands(),x,y,tol);
@@ -2826,6 +3243,55 @@ function engBindMap(){
       if(engSetLink(id)){EP.preset='custom';renderPanel();engChanged(0);toast(L(`Work zone moved to ${shortSt(EP.street)||'this road'} ${dirL(EP.dir)}`,`施工区挪到 ${shortSt(EP.street)||'这条路'} ${dirL(EP.dir)}`));}
     },280);
   });
+}
+
+/* ============================================================
+   Whole-CBD layer (T27, docs/arch/T26-T27-web-PRD.md §3). The fine window (WORLD: orthophoto, weather, the junction
+   micro-model) stays as it is. Around it the whole Hoddle Grid (+~150 m, CITY in 1-world.js) is drawn from the real data:
+   the road network the engine runs on (flat carriageways; a two-way street's pair of links drawn once) and every building
+   footprint (flat — no extrusion, no edge). Pre-rendered once per theme to an off-screen canvas: a full redraw is ~46 ms,
+   pasting the cache ~2 ms, and the base map is redrawn on every frame of a drag. renderBase() pastes it under the fine window.
+   ============================================================ */
+const CITY_PX=1.6; // canvas pixels per page unit in the cache (≈ 6 Mpx)
+const CITYL={bld:null,cv:{}};
+// buildings.json as loadBuildings() fetched it (the fine window clips its own copy to WORLD)
+function cityData(d){if(d&&Array.isArray(d.buildings)){CITYL.bld=d.buildings;CITYL.cv={};baseKey='';}}
+// Carriageway width in page units by road class — the city layer is context, the fine window has the detailed streets
+const CITY_W={trunk:20,primary:20,secondary:17,tertiary:14,unclassified:10,residential:9,living_street:6};
+function cityKey(){return(engNet()?'n':'')+(CITYL.bld?'b':'');}
+function cityCanvas(light){
+  const net=engNet(),key=(light?'L':'D')+cityKey();if(!net&&!CITYL.bld)return null;
+  if(CITYL.cv[key])return CITYL.cv[key];
+  // streets palette; in the dark theme the carriageways are lifted above the roofs so the roads read first (09-29 ask)
+  const v=VEC[light?'light':'dark'],pal=light?v:{...v,bldg:'#161E23',road:'#34414A',casing:'#252F37'},w=Math.round((CITY.x1-CITY.x0)*CITY_PX),h=Math.round((CITY.y1-CITY.y0)*CITY_PX);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
+  const X=x=>(x-CITY.x0)*CITY_PX,Y=y=>(CITY.y1-y)*CITY_PX;
+  g.fillStyle=pal.land;g.fillRect(0,0,w,h);
+  if(CITYL.bld){
+    g.fillStyle=pal.bldg;g.beginPath();
+    for(const b of CITYL.bld){const fp=b&&b.footprint;if(!Array.isArray(fp)||fp.length<3)continue;
+      fp.forEach((q,i)=>{const p=geoToWorld(+q[0],+q[1]);if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});g.closePath();}
+    g.fill('nonzero');
+  }
+  if(net){
+    const seen=new Set(),runs=[];
+    for(const l of net.links.values()){const k=l.from<l.to?l.from+'|'+l.to:l.to+'|'+l.from;if(seen.has(k))continue;seen.add(k);const P=linkPts(l);if(P)runs.push([P,CITY_W[l.highway]||10]);}
+    g.lineCap='round';g.lineJoin='round';
+    for(const pass of[0,1]){g.strokeStyle=pass?pal.road:pal.casing;
+      for(const[P,wd]of runs){g.lineWidth=(wd+(pass?0:2.4))*CITY_PX;g.beginPath();P.forEach((p,i)=>{if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});g.stroke();}}
+  }
+  CITYL.cv[key]=c;return c;
+}
+// Paste the city under the fine window; false while neither the network nor the buildings have arrived
+function cityDraw(c,V){
+  const cvs=cityCanvas(TK.light);if(!cvs)return false;
+  c.save();c.imageSmoothingEnabled=true;c.drawImage(cvs,V.X(CITY.x0),V.Y(CITY.y1),(CITY.x1-CITY.x0)*V.s,(CITY.y1-CITY.y0)*V.s);c.restore();return true;
+}
+// The seam: a thin dashed line round the fine window, so the change of detail (orthophoto, weather, the junction model) reads
+// as a boundary on purpose rather than a glitch
+function citySeam(c,V,light){
+  c.save();c.strokeStyle=light?'rgba(80,98,106,.5)':'rgba(176,196,206,.34)';c.lineWidth=1;c.setLineDash([6,5]);
+  c.strokeRect(Math.round(V.X(WORLD.x0))+.5,Math.round(V.Y(WORLD.y1))+.5,Math.round((WORLD.x1-WORLD.x0)*V.s),Math.round((WORLD.y1-WORLD.y0)*V.s));c.restore();
 }
 
 /* ============================================================
@@ -2841,7 +3307,7 @@ function engBindMap(){
    · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
    ============================================================ */
 const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
-function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b'),cr:px('--cr-h')};return GL.ins;}
 function insets(){return GL.ins;}
 /* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
 function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
@@ -3024,19 +3490,29 @@ function clashHTML(){
   const st=CL.st,b=st&&st.best;
   if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
   else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
-  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<p class="small muted">${CL.stErr?L('Stagger failed — try again (button at the bottom of the panel).','错开没算成，再点一次面板底部的按钮。'):L(`“Stagger by ${n} day${n===1?'':'s'}” at the bottom of the panel moves ${title} later, re-scored by the engine day by day.`,`面板底部的「错开 ${n} 天」把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
   return`${head}${metrics}${sub}${why}${act}${more}`;
+}
+// The stagger button lives in the panel's sticky footer next to "Find a better plan" (09-30: always in reach, no scrolling),
+// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet
+function clashBtnHTML(){
+  const x=CL.other,st=CL.st;
+  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0))return'';
+  const n=clashDays(x.ws);
+  return`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button>`;
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
-  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
+  a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }
 // Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
 function clashMount(){
   const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
   const box=document.createElement('div');box.id='clashBox';box.className='stack';
   const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(cta){const a=document.createElement('div');a.id='clashAct';a.className='cta-act';cta.prepend(a);} // slot for the stagger button
   if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
   clashRender();
 }
@@ -3363,6 +3839,17 @@ function aiPersonaHTML(t,p){
     <div class="ai-adv">→ ${esc(aiAdvice(r))}</div><q class="ai-why" data-aiwhy="${esc(t)}"></q>${p.fallback?`<span class="small muted">${L('Reader error → keyword rules','读屏出错 → 改用关键词规则')}</span>`:''}`
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
+// One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
+function aiTileHTML(t,p,sel){
+  const nm=esc(aiWho(t)),r=p&&p.reading;
+  const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
+  const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
+    :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+  const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
+  return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
+}
 function aiTime(t){const d=new Date(t);return Number.isNaN(d.getTime())?'—':d.toTimeString().slice(0,8);}
 // One call-log row (every string through esc())
 function aiLogRowHTML(e){
@@ -3384,7 +3871,7 @@ function aiLogJSON(log,meta){
 }
 /* pure:end */
 
-const AI={log:[],open:false,timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
+const AI={log:[],open:false,sel:'',timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
 
 // Subscribe once the backend is up: snapshot + subscribe in the same tick, so no call is missed
 BE.ready.then(()=>{
@@ -3419,10 +3906,13 @@ const AI_NO={err:['No readings — the engine could not score this plan.','没�
   bad:['No readings — fix the sign text in step 1 first.','没有读数 —— 先回第 1 步把屏上文字改合规范。'],
   wait:['Readings appear once the engine has scored this plan.','引擎算完这个方案后，这里显示各类路人的读数。']};
 function aiHTML(rd,st){
-  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  const so=rd&&st==='ok'?aiSrcOf(rd):null;
+  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
-  const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
-    <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
+  const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+    ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
+    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }
@@ -3444,6 +3934,10 @@ function aiRender(){
   const d=el.querySelector('#aiLogBox');if(d)d.addEventListener('toggle',()=>{AI.open=d.open;});
   const nr=el.querySelector('.ai-rows');if(nr)nr.scrollTop=keepScroll;
   const b=el.querySelector('#aiDl');if(b)b.onclick=aiDownload;
+  el.querySelectorAll('[data-aip]').forEach(x=>x.onclick=()=>{
+    AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();
+    const d=el.querySelector('#aiDetail');if(d)d.scrollIntoView({block:'nearest',behavior:'smooth'}); // bring the opened card into view
+  });
 }
 // JSON built here and handed to the browser as a file: no upload, no network
 function aiDownload(){

@@ -51,7 +51,7 @@ function microOn(){
 function updateScene(){
   const el=$('#sceneName'),micro=microOn();if(!el)return;
   const st=shortSt(EP.street)||L('Unnamed road','无名道路'),on=engOn()&&!micro;
-  const t=micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
+  const t=gridShown()?L('Swanston / Russell × Lonsdale / Little Lonsdale · Melbourne CBD','Swanston / Russell × Lonsdale / Little Lonsdale · 墨尔本 CBD'):micro?L('Swanston St × La Trobe St · Melbourne CBD','Swanston St × La Trobe St · 墨尔本 CBD'):on?L(`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · Melbourne CBD`,`${st} ${dirL(EP.dir)} · ${engHour(EP.hour)} · 墨尔本 CBD`):L('Melbourne CBD','墨尔本 CBD');
   if(el.textContent!==t)el.textContent=t;
   cv.setAttribute('aria-label',micro?L('Map of Swanston St and La Trobe St with simulated road users and weather layers','Swanston St 与 La Trobe St 路口地图，含模拟道路使用者与天气图层'):on?L(`Map of the ${st} ${dirL(EP.dir)} works at ${engHour(EP.hour)} on real CBD streets, with the engine's queue and detours`,`${st} ${dirL(EP.dir)} 施工地图（${engHour(EP.hour)}）：真实 CBD 路网上引擎算出的排队和绕行`):L('Map of the Melbourne CBD','墨尔本 CBD 地图'));
 }
@@ -61,10 +61,12 @@ function syncMicro(){const on=microOn(),app=$('#app');if(app&&app.classList.cont
 const V={cx:-22,cy:-6,s:3.6,w:800,h:600,dpr:1,ver:0,X(x){return this.w/2+(x-this.cx)*this.s;},Y(y){return this.h/2-(y-this.cy)*this.s;},wx(p){return this.cx+(p-this.w/2)/this.s;},wy(p){return this.cy-(p-this.h/2)/this.s;}};
 /* the view may pan until the map's edge meets the edge of the part the glass leaves open (insets), not the canvas edge —
    otherwise the east / south end of the map can never come out from under the panels; a map smaller than that part is centred in it */
-function setView(cx,cy,s){V.s=clamp(s,1.1,14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
-  const x0=WORLD.x0+hw-I.l/V.s,x1=WORLD.x1-hw+I.r/V.s,y0=WORLD.y0+hh-I.b/V.s,y1=WORLD.y1-hh+I.t/V.s;
+// Smallest zoom: the whole CITY fits the part of the map the glass leaves open (T27; ~0.5 on a 1440 desktop, ~0.2 on a phone)
+function cityMinS(){const I=GL.ins,vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b);return Math.min(1.1,vw/(CITY.x1-CITY.x0),vh/(CITY.y1-CITY.y0));}
+function setView(cx,cy,s){V.s=clamp(s,cityMinS(),14);const I=GL.ins,hw=V.w/2/V.s,hh=V.h/2/V.s;
+  const x0=CITY.x0+hw-I.l/V.s,x1=CITY.x1-hw+I.r/V.s,y0=CITY.y0+hh-I.b/V.s,y1=CITY.y1-hh+I.t/V.s;
   V.cx=x0>x1?(x0+x1)/2:clamp(cx,x0,x1);V.cy=y0>y1?(y0+y1)/2:clamp(cy,y0,y1);V.ver++;}
-function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,1.1,14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
+function flyTo(cx,cy,s,d=.9,raw){if(!raw){const I=insets();s=clamp(s,cityMinS(),14);cx+=(I.r-I.l)/(2*s);cy+=(I.t-I.b)/(2*s);}S.fly={a:[V.cx,V.cy,V.s],b:[cx,cy,s],t:0,d:matchMedia('(prefers-reduced-motion: reduce)').matches?.01:d};}
 function stepFly(dt){const f=S.fly;f.t+=dt;const k=smooth(Math.min(1,f.t/f.d)),ls1=Math.log(f.a[2]),ls2=Math.log(f.b[2]);setView(lerp(f.a[0],f.b[0],k),lerp(f.a[1],f.b[1],k),Math.exp(lerp(ls1,ls2,k)));if(f.t>=f.d)S.fly=null;}
 const HOME={cx:-22,cy:-6,s:3.6};
 
@@ -74,13 +76,43 @@ function resize(){readInsets();const r=$('#map').getBoundingClientRect();V.w=Mat
 
 /* ---------- drawing helpers ---------- */
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
-function drawTag(c,px,py,dx,dy,text,color,T){
-  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19,ex=px+dx,ey=py+dy,bx=dx<0?ex-w:ex,by=ey-h/2;
-  c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();
-  c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();
-  c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();
-  c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);c.restore();
+// Tag placement (T27): with the whole CBD in view, more tags share less room (375 px: the works tag ran under the zoom buttons
+// and off the screen). While TAGS.on (engLabels), a tag tries its own spot, then mirrored and farther ones, each slid onto the
+// open map, and takes the one that covers the least of the map controls and of the tags already drawn this frame.
+// Other callers draw exactly where they ask.
+const TAGS={on:false,boxes:[],q:[],obst:[],t:0},TAG_TRY=[[1,1],[-1,1],[1,-1],[-1,-1],[1,1.8],[-1,1.8],[1,-1.8],[-1,-1.8]];
+function tagObst(){ // the glass controls over the canvas, in canvas px; re-read at most twice a second
+  const now=performance.now();if(now-TAGS.t<500)return TAGS.obst;TAGS.t=now;const r0=cv.getBoundingClientRect();
+  TAGS.obst=[...document.querySelectorAll('header.top,#rail,#wx,#basemap,.zoom,#legend,#probe,#credits,#panelOpen')].map(e=>e.getBoundingClientRect())
+    .filter(r=>r.width&&r.height).map(r=>[r.left-r0.left,r.top-r0.top,r.width,r.height]);
+  return TAGS.obst;
 }
+function tagSpot(px,py,dx,dy,w,h){
+  const I=GL.ins,x0=I.l+4,x1=V.w-I.r-4,y0=I.t+4,y1=V.h-I.b-4,obs=tagObst();
+  const ov=(a,b)=>Math.max(0,Math.min(a[0]+a[2],b[0]+b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[1]+a[3],b[1]+b[3])-Math.max(a[1],b[1]));
+  let best=null,bs=Infinity;
+  TAG_TRY.forEach(([sx,sy],i)=>{
+    const ddx=dx*sx,ax=ddx<0?px+ddx-w:px+ddx,ay=py+dy*sy-h/2,b=[clamp(ax,x0,Math.max(x0,x1-w)),clamp(ay,y0,Math.max(y0,y1-h)),w,h];
+    let sc=(Math.abs(b[0]-ax)+Math.abs(b[1]-ay))*.5+i*.1;for(const o of obs)sc+=ov(b,o);for(const o of TAGS.boxes)sc+=ov(b,o);
+    if(sc<bs){bs=sc;best=b;}
+  });
+  TAGS.boxes.push(best);return best;
+}
+function drawTag(c,px,py,dx,dy,text,color,T){
+  T=T||TK;c.save();c.font=`500 10px ${FONT_MONO}`;const tw=c.measureText(text).width,w=tw+14,h=19;
+  const[bx,by]=TAGS.on?tagSpot(px,py,dx,dy,w,h):[dx<0?px+dx-w:px+dx,py+dy-h/2];
+  // the leader runs from the point to the nearest side of the box (the side it points from when the box sits where asked)
+  const ex=px<bx?bx:px>bx+w?bx+w:px,ey=ex===px?(py<by?by:by+h):by+h/2,t=[c,px,py,ex,ey,bx,by,w,h,text,color,T];c.restore();
+  if(TAGS.on)TAGS.q.push(t);else{tagInk(t,1);tagInk(t,2);}
+}
+// pass 1 = leader and dot, pass 2 = box and text; tagFlush() inks every leader first so no dot lands on another tag's text
+function tagInk([c,px,py,ex,ey,bx,by,w,h,text,color,T],pass){
+  c.save();
+  if(pass===1){c.strokeStyle=color;c.lineWidth=1;c.beginPath();c.moveTo(px,py);c.lineTo(ex,ey);c.stroke();c.fillStyle=color;c.beginPath();c.arc(px,py,2.6,0,Math.PI*2);c.fill();}
+  else{c.font=`500 10px ${FONT_MONO}`;c.fillStyle=T.glass;c.strokeStyle=color;rr(c,bx,by,w,h,3);c.fill();c.stroke();c.fillStyle=T.fg;c.textBaseline='middle';c.textAlign='left';c.fillText(text,bx+7,by+h/2+.5);}
+  c.restore();
+}
+function tagFlush(){const q=TAGS.q;TAGS.on=false;TAGS.q=[];for(const p of[1,2])for(const t of q)tagInk(t,p);}
 function colOf(t){return(t==='car'||t==='unf')?TK.aCar:t==='bike'?TK.aBike:t==='ped'?TK.aPed:t==='wc'?TK.aWc:t==='bus'?TK.aBus:TK.aTram;}
 const PAT={};
 function makePatterns(){
@@ -90,12 +122,16 @@ function makePatterns(){
 
 /* ---------- base map ---------- */
 function renderBase(){
-  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0);if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
+  const key=S.basemap+TK.mapMode+(S.layers.labels?1:0)+cityKey();if(baseVer===V.ver&&baseKey===key)return;baseVer=V.ver;baseKey=key;
   bctx.setTransform(V.dpr,0,0,V.dpr,0,0);
+  /* T27: the whole CBD (6c-city.js) first, then the fine window clipped to WORLD on top, then a dashed seam round it */
+  bctx.fillStyle=VEC[TK.light?'light':'dark'].land;bctx.fillRect(0,0,V.w,V.h);const city=cityDraw(bctx,V);
+  bctx.save();bctx.beginPath();bctx.rect(V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);bctx.clip();
   if(S.basemap==='streets')drawVector(bctx,V,W,VEC[TK.light?'light':'dark']);
   else{const img=imagery(S.basemap);bctx.fillStyle='#1d1d1a';bctx.fillRect(0,0,V.w,V.h);bctx.imageSmoothingEnabled=true;bctx.imageSmoothingQuality='high';bctx.drawImage(img,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);}
   emphasizeRoads(bctx,V,W,S.basemap,TK.light);
   if(S.layers.labels)drawLabels(bctx,V,W,S.basemap==='streets'?VEC[TK.light?'light':'dark']:{label:'#EEF2F4',halo:'rgba(8,10,12,.82)',poi:'#D5DEE3'});
+  bctx.restore();if(city)citySeam(bctx,V,TK.light);
 }
 
 /* ---------- overlays ---------- */
@@ -158,7 +194,8 @@ function drawEvents(sim){
 }
 const riskCv=document.createElement('canvas');riskCv.width=RNX;riskCv.height=RNY;const riskG=riskCv.getContext('2d');let riskVer=-1,riskSim=null;
 function drawRisk(sim){
-  if(!sim)return;if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
+  if(!sim||sim.isGrid)return; // the 2×2 grid sim's risk field is not on the La Trobe WORLD raster
+ if(riskSim!==sim||riskVer!==sim.riskVer){riskSim=sim;riskVer=sim.riskVer;const img=riskG.createImageData(RNX,RNY);for(let q=0;q<RNX*RNY;q++){const v=sim.risk[q];if(v<.05)continue;const c=RAMPS.risk(Math.min(1,v/3)),o=q*4;img.data[o]=c[0];img.data[o+1]=c[1];img.data[o+2]=c[2];img.data[o+3]=Math.min(230,60+v*90);}riskG.putImageData(img,0,0);}
   ctx.save();ctx.globalAlpha=.75;ctx.imageSmoothingEnabled=true;ctx.drawImage(riskCv,V.X(WORLD.x0),V.Y(WORLD.y1),(WORLD.x1-WORLD.x0)*V.s,(WORLD.y1-WORLD.y0)*V.s);ctx.restore();
 }
 function drawReticle(ev){
@@ -167,7 +204,7 @@ function drawReticle(ev){
   for(let k=0;k<3;k++){const f=((t*.8)+k/3)%1;ctx.globalAlpha=1-f;ctx.beginPath();ctx.arc(px,py,6+f*40,0,7);ctx.stroke();}ctx.restore();
 }
 function fogRings(sim){
-  if(!sim||S.wx!=='fog'||!S.layers.weather)return;
+  if(!sim||sim.isGrid||S.wx!=='fog'||!S.layers.weather)return; // reads LAYOUTS[sim.layout]: La Trobe scene only
   let car=sim.agents.find(a=>a.tag==='D-42');if(!car)car=sim.agents.find(a=>(a.p.id==='WB'||a.p.id==='WBU')&&a.x>10&&a.x<170);
   const Z=LAYOUTS[sim.layout];ctx.save();ctx.setLineDash([6,5]);ctx.lineWidth=1.5;
   if(car){const r=WX.visibility(car.x,car.y);ctx.strokeStyle=TK.light?'#1d2a2e':'#fff';ctx.beginPath();ctx.arc(V.X(car.x),V.Y(car.y),r*V.s,0,7);ctx.stroke();ctx.setLineDash([]);drawTag(ctx,V.X(car.x),V.Y(car.y-r),30,-16,`${L('SIGHT RANGE','视距')} ${r.toFixed(0)} m`,TK.light?'#1d2a2e':'#FFFFFF');ctx.setLineDash([6,5]);}
@@ -185,8 +222,9 @@ function drawGrid(){
   ctx.restore();
 }
 function drawScale(){
-  const target=110/V.s,pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
+  const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-(GL.ins.cr||0)-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -222,37 +260,55 @@ function render(dt){
   renderBase();
   ctx.setTransform(V.dpr,0,0,V.dpr,0,0);ctx.clearRect(0,0,V.w,V.h);ctx.drawImage(base,0,0,V.w,V.h);
   WX.dim=S.step===3?.35:1;
-  if(S.layers.weather)WX.drawGround(ctx,V);
-  if(S.layers.risk&&S.step>=2&&S.sim)drawRisk(S.sim);
-  const micro=microOn();
+  const fine=V.s>=1,wx=S.layers.weather&&fine; // T27: zoomed out to the city, the fine window's layers step aside
+  if(wx)WX.drawGround(ctx,V);
+  if(S.layers.risk&&S.step>=2&&S.sim&&fine)drawRisk(S.sim);
+  const micro=microOn(),walkers=micro&&fine;
   if(S.step===4){
     const sx=S.swipe*V.w;
-    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
-    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter){drawWorks('after');drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
+    ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter)drawWorks('after');if(walkers&&S.simAfter){drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
   }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
-  else{engDraw('now');if(micro){drawWorks('before');drawAgents(S.sim);drawEvents(S.sim);}}
-  if(S.layers.weather)WX.drawAtmos(ctx,V,dt);
+  else{const grid=gridShown();engDraw('now');if(micro&&!grid)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}if(grid&&fine)drawJunctions(S.sim);}
+  if(wx)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
-  if(S.layers.weather)WX.drawNotes(ctx,V,TK);
-  if(S.step===1&&S.layers.works&&micro)planNotes();
-  if(S.step<=2&&micro)fogRings(S.sim);
+  if(wx)WX.drawNotes(ctx,V,TK);
+  if(S.step===1&&S.layers.works&&walkers)planNotes();
+  if(S.step<=2&&walkers&&wx)fogRings(S.sim);
   if(S.step===2&&S.sim&&S.sim.critical)drawReticle(S.sim.critical);
   if(S.step===4&&S.simAfter&&S.layers.works&&micro)drawDeltas();
   engLabels();
-  if(S.layers.grid)drawGrid();
+  if(S.layers.grid&&fine)drawGrid();
   drawScale();
-  if(S.layers.weather)WX.drawFlash(ctx,V);
+  if(wx)WX.drawFlash(ctx,V);
 }
 
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
+/* 2×2 junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs the
+   plan's own four junctions instead of the scripted La Trobe scene. Missing file or a throw → the La Trobe scene, as before. */
+function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<120)s.step(.05);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
+function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
+function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 4 个路口（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the 2×2 grid sim
+function drawJunctions(sim){
+  if(!sim||!sim.isGrid)return;ctx.save();
+  if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}
+  const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
+  for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
+  ctx.restore();
+}
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
-  if(n===2){S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}
+  if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();}
+    else{S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}}
   if(n===3){
     if(!S.stress||!S.stress.critical){S.stress=S.stress&&S.stress.script?S.stress:newStress('before');let guard=0;while((!S.stress.critical||!S.stress.critical.frozen)&&guard++<3000)S.stress.step(.05);S.clock=CLOCK_EVENT+(S.stress.t-45);}
     else{let g2=0;while(!S.stress.critical.frozen&&g2++<200)S.stress.step(.05);}
@@ -310,21 +366,21 @@ function renderPanel(){
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
   }else if(S.step===2){
-    const crit=S.sim&&S.sim.critical;
+    const crit=S.sim&&S.sim.critical,grid=gridShown();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${grid?gridNote():L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
     <div class="metrics">
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit?'':'disabled'}>${crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
+    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: trace the ripple →','下一步：追踪涟漪 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
     const ev=S.event;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Ripple trace · R-03','涟漪追踪 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Impact · R-03','影响 · R-03')}</span><span class="pill risk">${L('Critical','严重')} · TTC ${ev?ev.ttc.toFixed(2):'—'} s</span></div>${engTabs3()}
     <h2>${L('One barrier, three road users, one hidden conflict','一道护栏、三类道路使用者、一个隐藏冲突')}</h2>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Causal chain','因果链')}</span><span class="eyebrow">${L('replay −6 s → +2 s','回放 −6 s → +2 s')}</span></div><div class="chain" id="chain">${S.nodes.map((c,k)=>`<div class="c" data-k="${k}" tabindex="0"><div class="rail2"><span class="badge" style="--bc:${c.c}">${k+1}</span>${k<4?'<span class="ln"></span>':''}</div><div class="tx"><b${k===3?' style="color:var(--risk)"':''}>${c.t}</b><span>${c.s}</span></div></div>`).join('')}</div></div>
     <div class="stack"><span class="eyebrow">${L('Road users involved','涉及的道路使用者')}</span><div class="agents3">
@@ -364,6 +420,7 @@ function updateLive(force){
   const P=$('#panel'),sim=S.sim,set=(k,v)=>{const e=P.querySelector(`[data-live="${k}"]`);if(e&&e.textContent!==String(v))e.textContent=v;};
   if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
+    if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
     set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
@@ -445,6 +502,7 @@ function rebuildWorld(nw,g,imgs){
 const nextTask=()=>new Promise(r=>setTimeout(r,0));
 function loadBuildings(){
   return fetch('/roads/public/cbd/buildings.json').then(r=>r.ok?r.json():null).then(async d=>{
+    cityData(d); // the whole-CBD layer draws every footprint (6c-city.js); the fine window clips its copy to WORLD
     const nw=d?buildWorldReal(d,geoToWorld):null;
     if(!nw||nw.buildings.length<REAL_MIN)return false;
     await nextTask();const g=buildGrids(nw);
@@ -478,7 +536,7 @@ function bindInput(){
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('pointerleave',()=>{S.mouse=null;});
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
-  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
+  $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(gridShown())gridFly(.7);else if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
   document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
@@ -494,7 +552,7 @@ function bindInput(){
   window.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;if(e.key===' '&&e.target===document.body){S.playing=!S.playing;e.preventDefault();}const n=+e.key;if(n>=1&&n<=6&&!e.metaKey&&!e.ctrlKey)setWeather(WX_KINDS[n-1]);});
   new ResizeObserver(()=>{resize();}).observe($('#map'));new ResizeObserver(()=>{sizeHist();}).observe(hc);
 }
-function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,1.1,14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
+function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,cityMinS(),14);setView(wx-(px-V.w/2)/s,wy+(py-V.h/2)/s,s);}
 
 /* ---------- main loop ---------- */
 let last=performance.now(),uiT=0,histT=0,legT=0,probeKey='';
@@ -515,15 +573,16 @@ function loop(now){
   if(uiT>.25){uiT=0;updateLive();$('#clock').textContent=fmtClock(S.clock);const pb=$('#play'),icn=S.playing?PAUSE:PLAY;if(pb.dataset.i!==String(S.playing)){pb.innerHTML=icn;pb.dataset.i=String(S.playing);pb.setAttribute('aria-label',S.playing?L('Pause simulation','暂停仿真'):L('Play simulation','播放仿真'));}
     document.querySelectorAll('#speed button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.speed===S.speed)));}
   if(legT>.5){legT=0;updateLegendLive();}
+  {const pb=$('#probe'),hide=V.s<1;if(pb&&pb.hidden!==hide)pb.hidden=hide;} // T27: lat/lon readout only in the fine zooms
   if(S.mouse){const x=V.wx(S.mouse[0]),y=V.wy(S.mouse[1]),key=`${x.toFixed(1)},${y.toFixed(1)},${S.wx},${(WX.t*2)|0}`;if(key!==probeKey){probeKey=key;const ll=toLL(x,y);$('#pLat').textContent=dms(ll[0],'N','S');$('#pLon').textContent=dms(ll[1],'E','W');const p=WX.probe(x,y);$('#pVal').textContent=p?`${p.v} · ${p.n}`:L('outside the scene','场景范围外');}}
   requestAnimationFrame(loop);
 }
 
 /* ---------- boot ---------- */
 function boot(){
-  const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
+  document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark'; // dark unless the viewer picked light with the toggle (not the OS setting)
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
-  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
+  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
