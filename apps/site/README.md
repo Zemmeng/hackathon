@@ -97,10 +97,9 @@ git pull && bash scripts/check.sh --e2e
 
 ## 怎么跑
 
-- Claude 会话里：preview 工具启动 `site`（`.claude/launch.json`，端口 8790）
 - 手动：`cd apps/site && npm ci && npm run dev`，浏览器开 http://localhost:8790
 - `npm run dev` 先 build 一次。改了别的模块的 `public/` → 重启 dev；**新加的文件要先 `git add` 才会被拷**（build 会打印「N 个没 git add 的文件没拷」）
-- 只改某个模块自己的页面时，用那个模块自己的 launch.json 条目更快；site 用来查「挂到一个网址下以后，路径还对不对」
+- 只改某个模块自己的页面时，起那个模块自己的静态服务器更快（端口见 `apps/README.md` 登记表）；site 用来查「挂到一个网址下以后，路径还对不对」
 
 ## 怎么测
 

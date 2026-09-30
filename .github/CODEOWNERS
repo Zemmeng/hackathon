@@ -11,10 +11,6 @@
 # ---- 独占区：全部归 lead ----
 # 有 backup lead 时加在每行末尾，例如：/README.md @Zemmeng @<backup-lead>
 /README.md                    @Zemmeng
-/CLAUDE.md                    @Zemmeng
-/AGENTS.md                    @Zemmeng
-/CONTRIBUTING.md              @Zemmeng
-/KICKOFF.md                   @Zemmeng
 /hackathon.conf               @Zemmeng
 /docs/1-brief.md              @Zemmeng
 /docs/2-plan.md               @Zemmeng
@@ -23,7 +19,6 @@
 /handoff/README.md            @Zemmeng
 /docs/llm-apis/README.md      @Zemmeng
 /docs/llm-apis/TEMPLATE.md    @Zemmeng
-/.claude/                     @Zemmeng
 /.github/                     @Zemmeng
 /.githooks/                   @Zemmeng
 /scripts/                     @Zemmeng

@@ -358,7 +358,7 @@ elif sub == 'hygiene':
 
 # ---------------------------------------------------------------- [7] RULES
 elif sub == 'rules':
-    FILES = ['README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'KICKOFF.md']
+    FILES = ['README.md']
     BEGIN, END = re.compile(r'<!--\s*RULES:BEGIN\s*-->'), re.compile(r'<!--\s*RULES:END\s*-->')
     blocks = {}
     for f in FILES:
@@ -369,7 +369,7 @@ elif sub == 'rules':
         nb, ne = len(BEGIN.findall(t)), len(END.findall(t))
         if nb == 0 or ne == 0:
             miss = ' 和 '.join(x for x, n in (('<!-- RULES:BEGIN -->', nb), ('<!-- RULES:END -->', ne)) if n == 0)
-            emit('E', '%s 缺 %s 标记（从 README.md 复制整块，四处逐字相同）' % (f, miss))
+            emit('E', '%s 缺 %s 标记（三条硬规矩那一块，README.md 里要恰好一对）' % (f, miss))
             continue
         if nb > 1 or ne > 1:
             emit('E', '%s 里有 %d 个 BEGIN、%d 个 END（每个文件恰好一对）' % (f, nb, ne))
@@ -392,7 +392,7 @@ elif sub == 'rules':
             a, b = blocks[ref], blocks[f]
             if a != b:
                 n = next((i for i in range(min(len(a), len(b))) if a[i] != b[i]), min(len(a), len(b)))
-                emit('E', '%s 的 RULES 块与 %s 不一致（块内第 %d 行起；改完四处同步）' % (f, ref, n + 1))
+                emit('E', '%s 的 RULES 块与 %s 不一致（块内第 %d 行起）' % (f, ref, n + 1))
     emit('OK', '%d 处 RULES 块逐字一致' % len(names))
 
 # ---------------------------------------------------------------- [8] 交接单
@@ -615,9 +615,7 @@ run_selftest() {
     printf '# demo\n\nOwner: @alice\n' >apps/demo/README.md
     printf '#!/usr/bin/env bash\necho "1 passed, 0 failed"\n' >apps/demo/test.sh
     chmod +x apps/demo/test.sh
-    for f in README.md CONTRIBUTING.md AGENTS.md KICKOFF.md; do
-      printf '# %s\n\n<!-- RULES:BEGIN -->\n1. 规则一\n2. 规则二\n<!-- RULES:END -->\n' "$f" >"$f"
-    done
+    printf '# README.md\n\n<!-- RULES:BEGIN -->\n1. 规则一\n2. 规则二\n<!-- RULES:END -->\n' >README.md
     gq add -A && gq commit -qm init
   }
   run_case() {  # run_case <说明> <期望：green 或汇总节里要出现的前缀，如 "[3] 分支与越界 ❌"> <仓库目录>
@@ -670,8 +668,8 @@ run_selftest() {
   run_case "分支名不合约定：fix-readme 上有改动 → [3] ❌" "[3] 分支与越界 ❌ 分支名 fix-readme 不符合" "$T/badname"
 
   ( mkrepo "$T/rules" && gq checkout -q -b lead/rules &&
-    printf '# AGENTS.md\n\n1. 规则一\n2. 规则二\n' >AGENTS.md ) >/dev/null 2>&1
-  run_case "RULES 标记缺失：AGENTS.md 删了 BEGIN/END → [7] ❌" "[7] RULES 块一致 ❌ AGENTS.md 缺" "$T/rules"
+    printf '# README.md\n\n1. 规则一\n2. 规则二\n' >README.md ) >/dev/null 2>&1
+  run_case "RULES 标记缺失：README.md 删了 BEGIN/END → [7] ❌" "[7] RULES 块一致 ❌ README.md 缺" "$T/rules"
 
   # docs/llm-apis/：每人只建 / 改自己的卡（文件名以「分支 handle-」开头），卡里不许有 key 的值
   ( mkrepo "$T/card" && gq checkout -q -b alice/demo/T6-card && mkdir -p docs/llm-apis &&
