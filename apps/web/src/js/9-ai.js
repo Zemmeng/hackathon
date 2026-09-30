@@ -121,7 +121,7 @@ function aiRenderSoon(){clearTimeout(AI.timer);AI.timer=setTimeout(aiRender,120)
 
 // Step 3: renderPanel() → aiMount() after the network panel is built; the section goes under "Who is hit · and why"
 function aiMount(){
-  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net'||!BE.api)return;
+  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net'||EP.view3!=='traffic'||!BE.api)return; // 03 Impact · Traffic tab
   const old=document.getElementById('aiBox');if(old)old.remove();
   const box=document.createElement('div');box.id='aiBox';box.className='stack ai-box';
   const who=P.querySelector('.eng-types'),sec=who&&who.closest('.stack');

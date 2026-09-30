@@ -61,7 +61,7 @@ function applyGlass(){
 
 /* ---------- compact analysis panel ---------- */
 const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
-const SEC_FOLD='#clashBox,.eng-where,#cmp4'; // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
+const SEC_FOLD='.eng-where'; // 6-step UI: nearby works and compare have their own tab / step now // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -71,7 +71,7 @@ function compactPanel(){
   tools.innerHTML=`<div class="seg-mode" role="group" aria-label="${L('Panel detail','面板详略')}"><button type="button" data-mode="compact" aria-pressed="${GL.mode==='compact'}">${L('Compact','简洁')}</button><button type="button" data-mode="full" aria-pressed="${GL.mode==='full'}">${L('Details','详细')}</button></div><button type="button" class="panel-hide" aria-label="${L('Hide panel — show the whole map','收起面板，看完整地图')}" title="${L('Hide panel','收起面板')}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/><path d="M11 3v10" opacity=".45"/></svg></button>`;
   tools.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{GL.mode=b.dataset.mode;GL.open.clear();ls.set('rt-panel',GL.mode);compactPanel();});
   tools.querySelector('.panel-hide').onclick=()=>setPanelMin(true);
-  const tab=(S.step===3&&typeof EP!=='undefined')?EP.tab3:'';let n=0;
+  const tab=(S.step===3&&typeof EP!=='undefined')?EP.tab3+EP.view3:S.step===1||S.step===4?S.ui+(typeof EP!=='undefined'?EP.tab1:''):'';let n=0;
   for(const sec of[...P.children]){
     if(sec===tools||!sec.classList.contains('stack'))continue;
     const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;

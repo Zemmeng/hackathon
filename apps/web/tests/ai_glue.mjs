@@ -33,7 +33,7 @@ ok(G.aiSrcLabel('llm', 842.4) === 'LLM · live · 842 ms' && G.aiSrcLabel('file'
 ok(G.aiSrcLabel('mixed') === 'Mixed sources' && G.aiSrcLabel(null) === 'Unknown' && G.aiSrcLabel('deepseek-x') === 'deepseek-x', 'mixed / 空 / 不认识的原样（调用方再 esc）');
 ok(['file', 'kv', 'llm'].every(k => G.aiSrcTone(k) === 'ok') && G.aiSrcTone('rule') === 'warn' && G.aiSrcTone('error') === 'risk' && G.aiSrcTone('mixed') === 'warn', '颜色：大模型绿、规则黄、出错红');
 ok(G.aiExplainLabel('llm') === 'AI explanation · LLM' && G.aiExplainLabel('kv') === 'AI explanation · LLM cached' && G.aiExplainLabel('rule') === 'AI explanation · rules' && G.aiExplainTone('rule') === 'warn', '第 4 步解读的来源：大模型 / 缓存 / 规则');
-ok(!/'Sign reading · estimate'|LLM reader pending|大模型读屏待接/.test(eng) && (eng.match(/esc\(aiSrcLabel\(rs\.src\)\)/g) || []).length === 1 && (eng.match(/esc\(aiSrcLabel\(aiPlanSrc\(s,f\)\.src\)\)/g) || []).length === 2, '6-engine.js 的 pill 和图例（中英）都换成 aiSrcLabel(aiPlanSrc(…))，不再印原始 reading_src');
+ok(!/'Sign reading · estimate'|LLM reader pending|大模型读屏待接/.test(eng) && (eng.match(/esc\(aiSrcLabel\(rs\.src\)\)/g) || []).length === 1 && (eng.match(/esc\(aiSrcLabel\(aiPlanSrc\(s,f\)\.src\)\)/g) || []).length === 3, '6-engine.js 的 pill、图例（中英）和「依据假设」页都用 aiSrcLabel(aiPlanSrc(…))，不再印原始 reading_src');
 ok(!/aiSrcLabel\(f\.reading_src\)|aiSrcTone\(f\.reading_src\)/.test(eng), '反向：pill / 图例不再用 flags.reading_src（那是 8 条校准读数的来源，不是屏上这套方案的）');
 ok(!/engBadges\([^)s]*\.flags\)|engBadges\(f\)/.test(eng), '每处 engBadges() 都带上 summary（按这份方案的读数算来源）');
 

@@ -18,7 +18,7 @@ let W=buildWorld(),G=buildGrids(W);const WX=new Weather(W,G);
 const TK={};
 function readTokens(){const cs=getComputedStyle(document.documentElement);for(const k of['bg','panel','raised','line','line-2','fg','fg-2','fg-3','accent','on-accent','works','risk','delta','glass','glass-line','tint','tint-line','works-tint','risk-tint','a-car','a-bike','a-ped','a-wc','a-bus','a-tram','map-mode'])TK[k.replace(/-(\w)/g,(m,c)=>c.toUpperCase())]=cs.getPropertyValue('--'+k).trim();TK.light=TK.mapMode==='light';}
 
-const S={step:1,wx:'clear',basemap:'imagery',layers:{agents:true,weather:true,risk:false,works:true,grid:true,labels:true},playing:true,speed:2,clock:0,swipe:.5,slow:0,alertShown:false,replayT:0,chainHover:-1,sim:null,simAfter:null,stress:null,event:null,nodes:[],mouse:null,fly:null};
+const S={step:1,wx:'clear',ui:0,basemap:'imagery',layers:{agents:true,weather:true,risk:false,works:true,grid:true,labels:true},playing:true,speed:2,clock:0,swipe:.5,slow:0,alertShown:false,replayT:0,chainHover:-1,sim:null,simAfter:null,stress:null,event:null,nodes:[],mouse:null,fly:null};
 const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
@@ -342,7 +342,7 @@ function gridBindMap(){
 }
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
-  S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
+  if(UI_STEP[S.ui]!==n)S.ui=UI_STEP.indexOf(n);S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
   if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();}
     else{S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}}
@@ -386,21 +386,23 @@ const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fil
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
   const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();
-  if(S.step===1){
-    const eng=!!BE.api&&!!EP.link;
-    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan 03','施工方案 03')}</span>${engStatusPill()}</div>
+  if(S.step===1&&S.ui===0){ // 00 Overview
+    P.innerHTML=overviewHTML()+navHTML();
+    P.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{if(BE.api)engPreset(b.dataset.preset);goUi(1);});
+  }else if(S.step===1){ // 01 Configure: Site / Signs / Checks
+    const eng=!!BE.api&&!!EP.link,t=EP.tab1;
+    const tabs1=`<div class="eng-seg eng-seg3" role="tablist" aria-label="${L('Plan setup','方案设置')}">${[['site',L('Site','施工信息')],['signs',L('Signs','设备诱导')],['checks',L('Checks','约束检查')]].map(([k,n])=>`<button type="button" role="tab" data-tab1="${k}" aria-selected="${t===k}">${n}</button>`).join('')}</div>`;
+    P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan · draft','施工方案 · 草稿')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    ${engPanel1()}
-    ${microOn()?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
+    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engOutSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engOutSec()):engOfflineCard()}
+    ${microOn()&&t==='site'?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
-    <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note note-more">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
-    $('#runBtn').onclick=()=>goStep(2);
-    P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
+    ${navHTML()}`;
+    P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
     engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown();
@@ -411,8 +413,7 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: see the impact →','下一步：看影响 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
-    $('#traceBtn').onclick=()=>goStep(3);
+    ${navHTML()}`;
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
@@ -424,10 +425,12 @@ function renderPanel(){
       <div><b style="color:var(--a-bike)"><i class="dot" style="background:var(--a-bike)"></i>C-17</b><span>${L('Cyclist','骑行者')}</span><small>${ev&&ev.cv?(ev.cv*3.6).toFixed(0):'19'} km/h ${L('at merge','并道时')}</small></div>
       <div><b style="color:var(--a-car)"><i class="dot" style="background:var(--a-car)"></i>D-42</b><span>${L('Unfamiliar driver','不熟路的司机')}</span><small>${ev&&ev.dv?(ev.dv*3.6).toFixed(0):'48'} km/h ${L('at conflict','冲突时')}</small></div>
       <div><b style="color:var(--a-bus)"><i class="dot" style="background:var(--a-bus)"></i>BUS 250</b><span>${L('12.5 m rigid','12.5 m 单节公交')}</span><small>${ev&&ev.bmin<-.5?(-ev.bmin).toFixed(1)+L(' m/s² braking',' m/s² 减速'):L('follows 34 m back','跟随在后方 34 m')}</small></div></div></div>
-    <div class="cta"><button type="button" class="btn" id="repairBtn">${L('See the revised layout →','看改过的布局 →')}</button></div>`;
-    $('#repairBtn').onclick=()=>goStep(4);engBindTabs3();
+    ${navHTML()}`;engBindTabs3();
     P.querySelectorAll('.chain .c').forEach(el=>{const k=+el.dataset.k;el.onmouseenter=el.onfocus=()=>{S.chainHover=k;el.classList.add('on');};el.onmouseleave=el.onblur=()=>{S.chainHover=-1;el.classList.remove('on');};el.onclick=()=>{const nd=S.nodes[k];flyTo(nd.x,nd.y,Math.max(V.s,7),.6);};});
-  }else{
+  }else if(S.ui===5){ // 05 Export
+    P.innerHTML=`${BE.api?'<div id="cmp4" class="stack cmp4"></div>':''}<div id="copyFallback"></div>${navHTML(`<button type="button" class="btn ghost" id="copyBtn">${L('Copy playbook','复制处置手册')}</button>`,L('Model estimates on real CBD flows · not field-validated','真实 CBD 车流上的模型估算 · 未经实地验证'))}`;
+    $('#copyBtn').onclick=copyPlaybook;engRender4();
+  }else{ // 04 Compare
     const micro=microOn();
     P.innerHTML=`${engPanel4()}${micro?`<div class="stack"><div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Junction layout v2 · La Trobe × Swanston','路口方案 v2 · La Trobe × Swanston')}</span><span class="eyebrow">${L('micro-model','微观仿真')}</span></div><div class="stack" style="gap:8px">
       <div class="row"><span class="delta">Δ1</span><span class="small">${L('Shift barrier B-12 8 m west and narrow it by 0.9 m','护栏 B-12 西移 8 m，并收窄 0.9 m')}</span></div>
@@ -435,10 +438,41 @@ function renderPanel(){
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Conflicts in this run · before vs v2','本次仿真冲突数 · 原方案 vs v2')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span></span></div></div>`:''}
-    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Model estimates on real CBD flows · not field-validated','真实 CBD 车流上的模型估算 · 未经实地验证')}</span><div id="copyFallback"></div></div>`;
-    $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
+    ${navHTML(`<button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe','滑动对比')}</button>`)}`;
+    engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
+  P.querySelectorAll('.cta [data-go]').forEach(b=>b.onclick=()=>goUi(+b.dataset.go));
   updateLive(true);
+}
+// ---- 6-step workbench (09-30, from the team template apps/web/templates/workflow-preview): Overview → Configure → Simulate →
+// Impact → Compare → Export. S.ui is the step on screen; S.step (1–4) stays the map / engine / simulation mode under it
+const UI_STEP=[1,1,2,3,4,4],UI_NEXT=[['Set up the plan →','配置施工 →'],['Save & simulate →','保存并进入仿真 →'],['See the impact →','查看影响分析 →'],['Compare plans →','比较方案 →'],['Confirm & export →','确认方案并导出 →'],null];
+function goUi(n){n=clamp(n,0,5);S.ui=n;const st=UI_STEP[n];if(S.step===st){updateSteps();renderPanel();}else goStep(st);}
+// the foot of every step: ← Back · (extra) · Next →
+function navHTML(extra='',note=''){const n=S.ui,nx=UI_NEXT[n];return`<div class="cta"><div class="row nav-row">${n>0?`<button type="button" class="btn ghost nav-back" data-go="${n-1}">← ${L('Back','上一步')}</button>`:''}${extra}${nx?`<button type="button" class="btn nav-next" data-go="${n+1}">${L(nx[0],nx[1])}</button>`:''}</div>${note?`<span class="note">${note}</span>`:''}</div>`;}
+function worksDates(){const loc=LANG.cur==='zh'?'zh-CN':'en-AU',o={day:'numeric',month:'short'},d=x=>new Date(x+'T00:00:00').toLocaleDateString(loc,o);return`${d(WORKS_TIME.from)} – ${d(WORKS_TIME.to)}`;}
+// 00 Overview: where the next works go, the plans to pick up (the two demo plans) and the data under the map
+function overviewHTML(){
+  const n=typeof engNet==='function'&&engNet(),row=(k,v)=>`<div><i class="dot" style="background:var(--accent)"></i><span class="grow">${k}</span><span class="val">${v}</span></div>`;
+  const kpi=(k,v,u)=>`<div class="metric"><span class="eyebrow">${k}</span><div class="v">${v}<small>${u}</small></div></div>`;
+  const plans=[['lonsdale',L('Lonsdale St · 1 lane closed','Lonsdale St · 封一条道'),L(`weekday 08:00 · ${worksDates()}`,`工作日 08:00 · ${worksDates()}`)],['latrobe',L('La Trobe St · 1 lane closed','La Trobe St · 封一条道'),L(`weekday 17:00 · ${worksDates()}`,`工作日 17:00 · ${worksDates()}`)]];
+  return`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Planning workspace','规划工作台')}</span>${engStatusPill()}</div>
+  <div class="stack"><h2>${L('Start from the network, plan the next works','从路网开始，规划下一处施工')}</h2><p class="muted small">${L('Pick a street on the map, then set up, simulate, compare and export the plan.','在地图上选路段，然后配置、仿真、比较、导出方案。')}</p></div>
+  <div class="metrics">${kpi(L('Work zone','施工范围'),esc(shortSt(EP.street)||'—'),dirL(EP.dir))}${kpi(L('Scored hour','评价时段'),engHour(EP.hour),'– '+engHour(EP.hour+1))}</div>
+  <div class="stack"><div class="row between"><span class="eyebrow">${L('Pick up a plan','继续一个方案')}</span></div><div class="ov-plans">${plans.map(([k,t,d])=>`<button type="button" class="card ov-plan" data-preset="${k}" aria-pressed="${EP.preset===k}"><b>${t}</b><small>${d}</small></button>`).join('')}</div></div>
+  <div class="stack"><div class="row between"><span class="eyebrow">${L('Data under the map','地图背后的数据')}</span><span class="eyebrow">${L('real','真实')}</span></div><div class="list eng-evd">
+    ${row(L('Roads','路网'),n?`${fmtN(n.links.size)} ${L('CBD links','个路段')}`:'—')}${row(L('Traffic','车流'),L('SCATS hourly counts','SCATS 逐时流量'))}${row(L('Trams & buses','电车公交'),L('PTV timetable','PTV 时刻表'))}${row(L('People on foot','行人'),L('City of Melbourne counts','墨尔本市计数'))}</div></div>`;
+}
+// 01 Configure · Checks: what has to hold before simulating — every line is the plan's current state
+function checksHTML(){
+  const s=EP.sum,row=(ok,k,v)=>`<div><i class="dot" style="background:${ok==null?'var(--fg-3)':ok?'var(--accent)':'var(--risk)'}"></i><span class="grow">${k}</span><span class="val">${v}</span></div>`;
+  const foot={none:L('open','照常'),left:L('works side closed','施工侧封'),both:L('both sides closed','两侧都封')}[EP.foot]||'—',ran=s&&!EP.busy&&!EP.runErr;
+  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before simulating','仿真前检查')}</span></div><div class="list eng-evd">
+    ${row(!!EP.link,L('Work zone','施工区'),EP.link?`${esc(shortSt(EP.street))} ${dirL(EP.dir)}`:L('not placed','还没放'))}
+    ${row(true,L('Works period','施工期'),`${worksDates()} · ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}`)}
+    ${row(EP.foot==='none'?true:null,L('Footpath','人行道'),foot)}
+    ${row(!EP.badText,L('Sign text','屏上文字'),EP.badText?L('fix it in Signs','去「设备诱导」改'):L('passes the VMS rules','符合 VMS 规范'))}
+    ${row(ran?true:EP.runErr?false:null,L('Engine','引擎'),EP.runErr?L('could not score','算不了'):ran?L(`scored at ${engHour(EP.hour)}`,`已按 ${engHour(EP.hour)} 算好`):L('calculating…','计算中…'))}</div></div>`;
 }
 function copyPlaybook(){
   const ex=engPlaybook(),micro=microOn(),eng=engOn();
@@ -464,7 +498,7 @@ function updateLive(force){
   }
   if(S.step===4&&S.simAfter){set('liveB',S.sim.stats.conflicts);set('liveA',S.simAfter.stats.conflicts);}
 }
-function updateSteps(){document.querySelectorAll('#stepper button').forEach(b=>{const n=+b.dataset.step;if(n===S.step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.classList.toggle('done',n<S.step);});}
+function updateSteps(){document.querySelectorAll('#stepper button').forEach(b=>{const n=+b.dataset.ui;if(n===S.ui)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');b.classList.toggle('done',n<S.ui);});}
 
 /* ---------- weather & legend ---------- */
 function rampCss(k){
@@ -585,7 +619,7 @@ function bindInput(){
   cv.addEventListener('wheel',e=>{e.preventDefault();S.fly=null;zoomAt(e.offsetX,e.offsetY,V.s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)));},{passive:false});
   cv.addEventListener('dblclick',e=>zoomAt(e.offsetX,e.offsetY,V.s*1.8));
   $('#zoomIn').onclick=()=>flyTo(V.cx,V.cy,V.s*1.6,.35,true);$('#zoomOut').onclick=()=>flyTo(V.cx,V.cy,V.s/1.6,.35,true);$('#zoomHome').onclick=()=>{if(gridShown())gridFly(.7);else if(engOn()&&!microOn())engFly(.7);else flyTo(HOME.cx,HOME.cy,HOME.s,.7);}; // the engine's works zone, or the micro-model junction
-  document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goStep(+b.dataset.step));
+  document.querySelectorAll('#stepper button').forEach(b=>b.onclick=()=>goUi(+b.dataset.ui));
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
   document.querySelectorAll('#speed button').forEach(b=>b.onclick=()=>{S.speed=+b.dataset.speed;S.playing=true;});

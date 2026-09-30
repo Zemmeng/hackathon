@@ -157,8 +157,8 @@ check("反向：「Reword」换成直白的「Edit sign」；第 1 步按钮说�
       "Reword" not in ENGJS + CMPJS and "L('Edit sign','改字')" in ENGJS and "Micro-simulation of the La Trobe × Swanston junction" not in APP)
 
 CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
-check("简洁模式默认收起「车往哪走」「叠加检查」「方案对比」（SEC_FOLD），标题行直接写要点：叠加检查写冲突成本，方案对比写倾向哪套",
-      "const SEC_FOLD='#clashBox,.eng-where,#cmp4';" in GLASS and "hd.textContent=row?L('Leaning: ','倾向：')+cmpLabel(row)" in CMPJS and 'class="row between cmp-head"' in CMPJS and "!sec.matches(SEC_FOLD)&&(" in GLASS and 'class="stack eng-where"' in ENGJS
+check("简洁模式默认收起「车往哪走」（SEC_FOLD）；叠加检查、方案对比有自己的页签 / 步骤，标题行仍写要点：叠加检查写冲突成本，方案对比写倾向哪套",
+      "const SEC_FOLD='.eng-where';" in GLASS and "hd.textContent=row?L('Leaning: ','倾向：')+cmpLabel(row)" in CMPJS and 'class="row between cmp-head"' in CMPJS and "!sec.matches(SEC_FOLD)&&(" in GLASS and 'class="stack eng-where"' in ENGJS
       and "r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`" in CLASHJS)
 check("人行道照常时行人只占一行；第 1 步人行道选项写短（Works side closed / Both sides closed）",
       "L('Footpath open · no detour','人行道照常 · 不用绕')" in ENGJS and "L('Works side closed','施工侧封')" in ENGJS and "Works-side footpath closed" not in ENGJS)
