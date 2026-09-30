@@ -1800,8 +1800,9 @@ class Sim{
 // Step 2 micro-simulation. COMPUTED: a 4×4 grid of real signalised junctions (GRID_SIM) — La Trobe / Little Lonsdale /
 // Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition, 16 SCATS sites. SHOWN: only the 2×2 around the
 // works (GRID_BOX: 2913 Little Lonsdale × Swanston, 2912 Little Lonsdale × Russell, 2904 Lonsdale × Swanston, 2903 Lonsdale ×
-// Russell) — `agents`, signalHeads(), harsh-braking counts and the risk field cover that 2×2 only; the outer ring exists so
-// cars reach it in signal platoons and a queue can spill back past it (`all` holds every car). Pure, no DOM:
+// Russell) — `agents`, harsh-braking counts and the risk field cover that 2×2 only; the outer ring exists so cars reach it
+// in signal platoons and a queue can spill back past it. The page draws every car (`all`) and signalHeads() of all 16
+// junctions (T38: an outer junction drawn empty read as a broken sim). Pure, no DOM:
 // tests/grid_glue.mjs runs this block in node. Page units throughout (1 m ≈ GRID_K units); speeds in page units / s.
 // ASSUMPTIONS (not measured): streets are straight axis-aligned lines at the median page coordinate of their links in
 // GRID_SIM; lane count per direction = the entry link's `lanes`; 90 s two-phase cycle at every junction (EW green 0–40,
@@ -2119,7 +2120,7 @@ class GridSim{
     }
     // 7 re-assert no overlap where cars were inserted
     for(const ln of this.lanes){if(!ln.fix)continue;ln.fix=false;const a=ln.cars;for(let i=1;i<a.length;i++){const mx=a[i-1].s-a[i-1].len-.05;if(a[i].s>mx){a[i].s=mx;a[i].v=Math.min(a[i].v,a[i-1].v);}}}
-    // 8 positions, trails, agent lists: `all` = the whole 4×4, `agents` = what the page draws (the 2×2 in GRID_VIEW)
+    // 8 positions, trails, agent lists: `all` = the whole 4×4 (what the page draws), `agents` = the 2×2 in GRID_VIEW (stats)
     this.t=t+dt;const ag=[],all=[];const k=Math.exp(-3*dt);
     for(const ln of this.lanes)for(const c of ln.cars){
       c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
@@ -2141,10 +2142,10 @@ class GridSim{
     if(a&&c.s-c.len>=a.sEnd)c.arc=null;
     const p=gridPt(D,ln.off+c.dl,m);c.x=p[0];c.y=p[1];c.hx=D.h[0];c.hy=D.h[1];
   }
-  signalHeads(){ // the 2×2 shown only
+  signalHeads(){ // all 16 junctions; `shown` = one of the 2×2 at the works
     const S=this.spec,out=[];
-    for(const D of S.dirs)for(const q of D.jn){if(!S.junctions[q.j].shown)continue;const p=gridPt(D,gridOff(D,0)+2.6,q.stop);
-      out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:S.junctions[q.j].id,dir:D.dir});}
+    for(const D of S.dirs)for(const q of D.jn){const J=S.junctions[q.j],p=gridPt(D,gridOff(D,0)+2.6,q.stop);
+      out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:J.id,dir:D.dir,shown:J.shown});}
     return out;
   }
   // Contiguous slow (v < 2) queue upstream of s0 on direction di, metres (max over its lanes); runs on into the outer ring
@@ -2326,10 +2327,11 @@ function planNotes(){
 }
 function drawAgents(sim,alpha=1){
   if(!sim||!S.layers.agents)return;ctx.save();ctx.lineWidth=1.2;
-  for(const a of sim.agents){if(a.kind!=='veh'||a.trail.length<4)continue;ctx.globalAlpha=alpha*.35;ctx.strokeStyle=colOf(a.type);ctx.beginPath();for(let k=0;k<a.trail.length;k+=2){const px=V.X(a.trail[k]),py=V.Y(a.trail[k+1]);k?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.lineTo(V.X(a.x),V.Y(a.y));ctx.stroke();}
+  const list=sim.isGrid&&sim.all?sim.all:sim.agents; // T38: the grid sim draws all 16 junctions, not just the 2×2 at the works
+  for(const a of list){if(a.kind!=='veh'||a.trail.length<4)continue;ctx.globalAlpha=alpha*.35;ctx.strokeStyle=colOf(a.type);ctx.beginPath();for(let k=0;k<a.trail.length;k+=2){const px=V.X(a.trail[k]),py=V.Y(a.trail[k+1]);k?ctx.lineTo(px,py):ctx.moveTo(px,py);}ctx.lineTo(V.X(a.x),V.Y(a.y));ctx.stroke();}
   ctx.globalAlpha=alpha;
   const heat=S.layers.weather&&S.wx==='heat';
-  for(const pass of['ped','bike','veh'])for(const a of sim.agents){const k=a.kind==='ped'?'ped':a.type==='bike'?'bike':'veh';if(k!==pass)continue;
+  for(const pass of['ped','bike','veh'])for(const a of list){const k=a.kind==='ped'?'ped':a.type==='bike'?'bike':'veh';if(k!==pass)continue;
     if(heat&&a.kind==='ped'){const t=WX.sample('heat',a.x,a.y);if(t>55){ctx.fillStyle='rgba(255,106,61,.35)';ctx.beginPath();ctx.arc(V.X(a.x),V.Y(a.y),Math.max(4,.9*V.s),0,7);ctx.fill();}}
     drawBody(a);
     if(a.blocked){const px=V.X(a.x),py=V.Y(a.y);ctx.strokeStyle=TK.risk;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px-5,py-5);ctx.lineTo(px+5,py+5);ctx.moveTo(px+5,py-5);ctx.lineTo(px-5,py+5);ctx.stroke();}
@@ -2340,7 +2342,7 @@ function drawAgents(sim,alpha=1){
 function drawBody(a){
   const px=V.X(a.x),py=V.Y(a.y);if(px<-60||py<-60||px>V.w+60||py>V.h+60)return;
   if(a.type==='ped'||a.type==='wc'){const r=Math.max(a.type==='wc'?2.6:1.9,.34*V.s);ctx.fillStyle=colOf(a.type);ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.strokeStyle=TK.light?'rgba(255,255,255,.85)':'rgba(0,0,0,.55)';ctx.lineWidth=a.type==='wc'?1.5:.8;ctx.stroke();return;}
-  const L=Math.max(a.len*V.s,a.type==='bike'?4.5:7),Wd=Math.max(a.wid*V.s,a.type==='bike'?2.4:3.6);
+  const z=V.s<1?.55:1,L=Math.max(a.len*V.s,(a.type==='bike'?4.5:7)*z),Wd=Math.max(a.wid*V.s,(a.type==='bike'?2.4:3.6)*z);
   ctx.save();ctx.translate(px,py);ctx.rotate(Math.atan2(-a.hy,a.hx));
   if(a.acc<-3&&a.type!=='bike'){ctx.fillStyle='rgba(255,40,50,.9)';ctx.shadowColor='#ff2a3a';ctx.shadowBlur=8;ctx.fillRect(-L/2-1.5,-Wd/2,2.5,Wd);ctx.shadowBlur=0;}
   ctx.fillStyle=colOf(a.type);ctx.strokeStyle=TK.light?'rgba(255,255,255,.9)':'rgba(0,0,0,.6)';ctx.lineWidth=1;rr(ctx,-L/2,-Wd/2,L,Wd,Math.min(2,Wd/2));ctx.fill();ctx.stroke();
@@ -2429,13 +2431,13 @@ function render(dt){
   const fine=V.s>=1,wx=S.layers.weather&&fine; // T27: zoomed out to the city, the fine window's layers step aside
   if(wx)WX.drawGround(ctx,V);
   if(S.layers.risk&&S.step>=2&&S.sim&&fine)drawRisk(S.sim);
-  const micro=microOn(),walkers=micro&&fine;
+  const micro=microOn(),walkers=micro&&(fine||gridShown()); // T38: the grid sim keeps its cars when zoomed out (T27 hid them below 1×)
   if(S.step===4){
     const sx=S.swipe*V.w;
     ctx.save();ctx.beginPath();ctx.rect(0,0,sx,V.h);ctx.clip();engDraw('before');if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}ctx.restore();
     ctx.save();ctx.beginPath();ctx.rect(sx,0,V.w-sx,V.h);ctx.clip();engDraw('after');if(micro&&S.simAfter)drawWorks('after');if(walkers&&S.simAfter){drawAgents(S.simAfter);drawEvents(S.simAfter);}ctx.restore();
   }else if(S.step===3){engDraw('now');if(micro)drawWorks('before');}
-  else{const grid=gridShown();engDraw('now');if(micro&&!grid)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}if(grid&&fine)drawJunctions(S.sim);}
+  else{const grid=gridShown();engDraw('now');if(micro&&!grid)drawWorks('before');if(walkers){drawAgents(S.sim);drawEvents(S.sim);}if(grid)drawJunctions(S.sim);}
   if(wx)WX.drawAtmos(ctx,V,dt);
   if(S.step===3&&!(engOn()&&EP.tab3==='net'))drawReplay(dt);
   clashDraw(); // T21: dashes the nearby works' links; draws only in step 3 · network tab
@@ -2461,11 +2463,21 @@ function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()]
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
 function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
-function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4×4 junctions computed, the 2×2 at the works shown (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 算 4×4 个路口，显示施工处 2×2（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
-// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the grid sim's shown 2×2
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null,hr=engHour(EP.hour);return L(`Micro-sim · 16 junctions (La Trobe – Little Bourke × Elizabeth – Exhibition), weekday ${hr} flows · counts below cover the 2×2 at the works · signal timing and turn shares are assumed`,`微观仿真 · 16 个路口（La Trobe – Little Bourke × Elizabeth – Exhibition），工作日 ${hr} 车流 · 下面的计数只算施工处 2×2 · 信号配时和转弯比例是假设值`)+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch, T38: halo + pulsing outline + a label so the closure stands out among 16 junctions)
+// and signal heads (green / amber / red) of all 16 junctions
 function drawJunctions(sim){
   if(!sim||!sim.isGrid)return;ctx.save();
-  if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}
+  if(S.layers.works){
+    const w=sim.works(),polys=((w&&w.polys)||[]).filter(p=>p&&p.length>=3),pulse=.5+.5*Math.sin(performance.now()/380);let cx=0,cy=0,n=0;
+    const path=poly=>{ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();};
+    for(const poly of polys){
+      path(poly);ctx.lineJoin='round';ctx.strokeStyle=TK.works;ctx.globalAlpha=.18+.22*pulse;ctx.lineWidth=Math.max(10,4*V.s);ctx.stroke();ctx.globalAlpha=1;
+      ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=2;ctx.stroke();
+      for(const p of poly){cx+=p[0];cy+=p[1];n++;}
+    }
+    if(n){const cl=sim.spec.close,px=V.X(cx/n),py=V.Y(cy/n);drawTag(ctx,px,py,0,-34,L(`WORKS · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'all lanes':(cl?cl.n:1)+((cl?cl.n:1)>1?' lanes':' lane')} closed`,`施工 · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'全封':'封 '+(cl?cl.n:1)+' 条道'}`),TK.works);}
+  }
   const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
   for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
   ctx.restore();
@@ -2588,7 +2600,7 @@ function updateLive(force){
   if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
     if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
-    set('agents',sim.agents.length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
+    set('agents',(sim.isGrid&&sim.all?sim.all:sim.agents).length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
   }
@@ -2696,10 +2708,12 @@ function drawHist(){
   for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
     const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/3);c.fillStyle=v>=2?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
-  for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(`17:${String(k*10).padStart(2,'0')}`.replace('17:60','18:00'),x,bot+4);}
+  const H=clockHour();for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(k===6?`${String((H+1)%24).padStart(2,'0')}:00`:`${String(H).padStart(2,'0')}:${String(k*10).padStart(2,'0')}`,x,bot+4);}
   const px=S.clock/3600*hw;c.fillStyle=TK.accent;c.fillRect(px-1,top-2,2,bot-top+4);
 }
-const fmtClock=s=>{s=Math.floor(s);return`17:${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
+// The 1 h sim window's hour: the plan's hour on the step-2 grid sim (T38; it runs that hour's flows), else the La Trobe scene's 17:00
+function clockHour(){return gridShown()?clamp(Math.floor(+EP.hour||0),0,23):17;}
+const fmtClock=s=>{s=Math.floor(s);return`${String(clockHour()).padStart(2,'0')}:${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 
 /* ---------- input ---------- */
 function bindInput(){

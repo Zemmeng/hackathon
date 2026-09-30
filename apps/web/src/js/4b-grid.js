@@ -2,8 +2,9 @@
 // Step 2 micro-simulation. COMPUTED: a 4×4 grid of real signalised junctions (GRID_SIM) — La Trobe / Little Lonsdale /
 // Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition, 16 SCATS sites. SHOWN: only the 2×2 around the
 // works (GRID_BOX: 2913 Little Lonsdale × Swanston, 2912 Little Lonsdale × Russell, 2904 Lonsdale × Swanston, 2903 Lonsdale ×
-// Russell) — `agents`, signalHeads(), harsh-braking counts and the risk field cover that 2×2 only; the outer ring exists so
-// cars reach it in signal platoons and a queue can spill back past it (`all` holds every car). Pure, no DOM:
+// Russell) — `agents`, harsh-braking counts and the risk field cover that 2×2 only; the outer ring exists so cars reach it
+// in signal platoons and a queue can spill back past it. The page draws every car (`all`) and signalHeads() of all 16
+// junctions (T38: an outer junction drawn empty read as a broken sim). Pure, no DOM:
 // tests/grid_glue.mjs runs this block in node. Page units throughout (1 m ≈ GRID_K units); speeds in page units / s.
 // ASSUMPTIONS (not measured): streets are straight axis-aligned lines at the median page coordinate of their links in
 // GRID_SIM; lane count per direction = the entry link's `lanes`; 90 s two-phase cycle at every junction (EW green 0–40,
@@ -321,7 +322,7 @@ class GridSim{
     }
     // 7 re-assert no overlap where cars were inserted
     for(const ln of this.lanes){if(!ln.fix)continue;ln.fix=false;const a=ln.cars;for(let i=1;i<a.length;i++){const mx=a[i-1].s-a[i-1].len-.05;if(a[i].s>mx){a[i].s=mx;a[i].v=Math.min(a[i].v,a[i-1].v);}}}
-    // 8 positions, trails, agent lists: `all` = the whole 4×4, `agents` = what the page draws (the 2×2 in GRID_VIEW)
+    // 8 positions, trails, agent lists: `all` = the whole 4×4 (what the page draws), `agents` = the 2×2 in GRID_VIEW (stats)
     this.t=t+dt;const ag=[],all=[];const k=Math.exp(-3*dt);
     for(const ln of this.lanes)for(const c of ln.cars){
       c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
@@ -343,10 +344,10 @@ class GridSim{
     if(a&&c.s-c.len>=a.sEnd)c.arc=null;
     const p=gridPt(D,ln.off+c.dl,m);c.x=p[0];c.y=p[1];c.hx=D.h[0];c.hy=D.h[1];
   }
-  signalHeads(){ // the 2×2 shown only
+  signalHeads(){ // all 16 junctions; `shown` = one of the 2×2 at the works
     const S=this.spec,out=[];
-    for(const D of S.dirs)for(const q of D.jn){if(!S.junctions[q.j].shown)continue;const p=gridPt(D,gridOff(D,0)+2.6,q.stop);
-      out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:S.junctions[q.j].id,dir:D.dir});}
+    for(const D of S.dirs)for(const q of D.jn){const J=S.junctions[q.j],p=gridPt(D,gridOff(D,0)+2.6,q.stop);
+      out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:J.id,dir:D.dir,shown:J.shown});}
     return out;
   }
   // Contiguous slow (v < 2) queue upstream of s0 on direction di, metres (max over its lanes); runs on into the outer ring

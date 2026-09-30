@@ -70,8 +70,8 @@ check("缩放下限 = 刚好装下 CITY（cityMinS），平移夹到 CITY", "V.s
       and "s=clamp(s,cityMinS(),14);cx+=" in APP and "function zoomAt(px,py,s){const wx=V.wx(px),wy=V.wy(py);s=clamp(s,cityMinS(),14);" in APP)
 check("反向：视图里不再有写死的缩放下限 1.1", not re.search(r"clamp\(s,1\.1,14\)", APP))
 rd = fn(APP, "render")
-check("缩放 < 1：天气、微观仿真的小人和事件、经纬网都不画",
-      "fine=V.s>=1" in rd and "wx=S.layers.weather&&fine" in rd and "walkers=micro&&fine" in rd and "S.layers.grid&&fine" in rd
+check("缩放 < 1：天气、La Trobe 微观场景的小人和事件、经纬网都不画（T38：第 2 步网格仿真的车照画）",
+      "fine=V.s>=1" in rd and "wx=S.layers.weather&&fine" in rd and "walkers=micro&&(fine||gridShown())" in rd and "S.layers.grid&&fine" in rd
       and not re.search(r"if\(S\.layers\.weather\)WX\.", rd))
 check("缩放 < 1：经纬度探针隐藏", "hide=V.s<1" in APP)
 check("反向：缩放 < 1 时点地图不挪施工区", "if(S.step!==1||!BE.api||V.s<1)return;" in ENG)
