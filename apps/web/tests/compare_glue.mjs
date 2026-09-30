@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,cmpClashOther,cmpClashWhen,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, cmpClashOther, cmpClashWhen, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -70,6 +70,22 @@ const R = (md, q, car, hire, flags = {}) => ({ s: { mean_delay_s: md, queue_m: q
   ok(cmpSameAs([R(60, 300, 900, null), { ...R(60, 300, 900, 200), s: null }, R(60, 300, 900, 200)]).every(x => x === null), '没有租金或没算出来 → 不参与比较');
   ok(cmpSpan('2026-10-07', '2026-10-09', false) === '7–9 Oct' && cmpSpan('2026-10-07', '2026-10-09', true) === '10/7–9', '重叠日期：英文日在前（墨尔本读法），中文 10/7–9');
   ok(cmpSpan('2026-09-30', '2026-10-02', false) === '30 Sep – 2 Oct' && cmpSpan('2026-09-30', '2026-10-02', true) === '9/30–10/2' && cmpSpan('2026-10-07', '2026-10-07', false) === '7 Oct' && cmpSpan(null, null, true) === '', '跨月、同一天、没有日期');
+}
+
+// 2c T46（lead 拍板）：04 叠加一行跟着 03 的「错开 N 天」走（纯函数）—— 用 03 的 stagger().worksite，行名写挪后的日期 + 已错开 N 天
+{
+  const hr = h => String(h).padStart(2, '0') + ':00';
+  const x = { o: { id: 'W-X', title: 'X' }, ws: { id: 'W-X', links: ['x'], time: { from: '2026-10-07', to: '2026-10-12', hours: [7, 19] } }, r: { cost: 900, hours: [8, 17], overlap: { from: '2026-10-07', to: '2026-10-09', days: 3 } } };
+  const moved = { ...x.ws, time: { ...x.ws.time, from: '2026-10-10', to: '2026-10-15' } };
+  const st = { best: { days: 3, cost: 0, overlap_days: 0, reliable: true }, worksite: moved };
+  const y = cmpClashOther(x, st);
+  ok(y.ws === moved && y.days === 3 && y.o === x.o && y.r === x.r && x.ws.time.from === '2026-10-07', '03 错开了（可信）→ 04 用 03 挪好的同一个 worksite，记下 N；03 挑的那处施工本身不改');
+  ok(cmpClashOther(x, null) === x && cmpClashOther(x, { best: null, worksite: null }) === x && cmpClashOther(x, { ...st, best: { ...st.best, reliable: false } }) === x && cmpClashOther(null, st) === null,
+    '没错开 / 错开没找到可信的（03 写「没找到可信的错开方案」、日期不变）/ 没有同期施工 → 原样，不挪');
+  ok(cmpClashWhen(x, false, hr) === '7–9 Oct · 08:00 & 17:00' && cmpClashWhen(x, true, hr) === '10/7–9 · 08:00 & 17:00', '没错开：行名照旧（重叠日期 · 采样小时）');
+  ok(cmpClashWhen(y, false, hr) === '10–15 Oct · staggered 3 days' && cmpClashWhen(y, true, hr) === '10/10–15 · 已错开 3 天', '错开后：行名写那处施工挪后的日期 + staggered 3 days / 已错开 3 天（不再重叠就不写采样小时）');
+  const y1 = cmpClashOther(x, { best: { days: 1, cost: 400, overlap_days: 2, reliable: true }, worksite: { ...x.ws, time: { ...x.ws.time, from: '2026-10-08', to: '2026-10-13' } } });
+  ok(cmpClashWhen(y1, false, hr) === '8–13 Oct · 08:00 & 17:00 · staggered 1 day', '错开后还有重叠：采样小时照写，1 天用单数');
 }
 
 // 3 真路网：页面默认方案（只写 ROADWORK / AHEAD）→ 顾问 → 逐套 run() → pack.js 执行包
@@ -143,6 +159,59 @@ if (typeof be.options !== 'function') {
       const curC = planFrom({ ...EP, f1: cf[0].join('\n'), f2: (cf[1] || []).join('\n') }).worksites[0];
       const rc = await be.clash(curC, other.ws);
       ok(cells[2] === rc.cost && rc.cost < other.r.cost, `表单改成 C 的屏上文字后 03 页叠加 +${rc.cost}，和对比表 C 列一样，也比只写 ROADWORK / AHEAD 少`);
+
+      // T46（lead 拍板）：03 点「错开 N 天」之后，04 的叠加一行按错开后的那处施工算，03 和 04 一个说法。跑页面上真的 03
+      // （8-clash.js 整个文件：clashRun / clashStagger / clashHTML）和 04（8-compare.js 的 cmpClashUpdate / cmpClashRow），
+      // 格式化函数用 6-engine.js 真的那几行，DOM 换成桩（getElementById → null）；cmpRender 桩只做真 cmpRender 里和这一行有关的事
+      {
+        const ENG = readFileSync(WEB + 'src/js/6-engine.js', 'utf8'), CLS = readFileSync(WEB + 'src/js/8-clash.js', 'utf8'), CMS = readFileSync(WEB + 'src/js/8-compare.js', 'utf8');
+        const fmt = ENG.slice(ENG.indexOf('const esc='), ENG.indexOf('const TYPES4=')), rowFns = CMS.slice(CMS.indexOf('async function cmpClashUpdate()'), CMS.indexOf('// Independent of scoring'));
+        const pend = [], drain = async () => { while (pend.length) await pend.shift(); };
+        const c = { planFrom, cmpSpan, cmpBest, cmpClashOther, cmpClashWhen, console, EP: { ...EP }, BE: { api: be }, S: { ui: 4 }, LANG: { cur: 'en' },
+          CP: { key: 'k1', busy: false, rows: kits, cl: null }, document: { getElementById: () => null }, engOn: () => true, engNet: () => be.engine.net };
+        c.L = (en, zh) => (c.LANG.cur === 'zh' ? zh : en);
+        c.cmpRender = () => { pend.push(c.cmpClashUpdate()); };
+        vm.createContext(c);
+        vm.runInContext(fmt + '\n' + CLS + '\n' + rowFns + '\n;globalThis.T46={CL};', c);
+        const CL = c.T46.CL;
+        const costs = () => c.CP.cl.cells.map(r => (r && r !== 'err' ? r.cost : r));
+        const row = () => c.cmpClashRow(() => '');
+        const nums04 = () => [...row().matchAll(/<span class="cmp-num"[^>]*>([^<]+)<\/span>/g)].map(m => +m[1].replace(/[+,]/g, ''));
+        const show = async () => { await c.cmpClashUpdate(); await drain(); }; // 翻到 04：renderPanel → cmpRender → cmpClashUpdate
+
+        CL.m = W; CL.src = 'seed'; CL.listP = Promise.resolve(W.SEEDS); // 演示登记表（不联网）
+        CL.key = JSON.stringify(c.clashCur()); await c.clashRun();      // 03 打开：clashMount() 做的就是这两步
+        ok(CL.other && CL.other.o.id === other.o.id && CL.other.r.cost === other.r.cost, `T46：03 挑中 ${CL.other && CL.other.o.id}，叠加 +${CL.other && CL.other.r.cost}`);
+        await show();
+        const before = costs(), row0 = row(), span0 = cmpSpan(other.r.overlap.from, other.r.overlap.to, false);
+        ok(before.join() === cells.join() && row0.includes(`${span0} · 08:00 & 17:00`) && !row0.includes('staggered'),
+          `T46：没错开时 04 照旧 —— 逐格 ${before.join(' / ')}，行名「${span0} · 08:00 & 17:00」`);
+
+        c.S.ui = 3; await c.clashStagger(); await drain(); // 在 03 点「错开 N 天」
+        const st = CL.st, b = st && st.best, n = b && b.days;
+        ok(b && b.reliable && n >= 1 && st.worksite && st.worksite.time.from > other.ws.time.from && !/No reliable stagger/.test(c.clashHTML()),
+          `T46：03 错开 ${n} 天 → 叠加 ${b && b.cost}（原来 +${other.r.cost}），那处施工挪到 ${st && st.worksite.time.from} → ${st && st.worksite.time.to}`);
+        c.S.ui = 4; await show(); // 翻到 04
+        const m03 = /Stagger by \+(\d+) days? → clash cost ([\d,]+) veh·min/.exec(c.clashHTML()), v03 = m03 && +m03[2].replace(/,/g, ''), after = costs(), n04 = nums04();
+        ok(c.CP.cl.other.ws === st.worksite && c.CP.cl.other.days === n, 'T46：04 用的就是 03 挪好的那一个 worksite（同一个对象，日期一样），N 一样');
+        ok(m03 && +m03[1] === n && after[0] === b.cost && after[1] === b.cost && n04[0] === v03 && n04[1] === v03,
+          `T46：04 == 03 —— 03 屏上「错开 +${n} 天 → 叠加 ${m03 && m03[2]}」，04 表里 A、B 两格 ${n04.slice(0, 2).join(' / ')}（错开前是 ${before.slice(0, 2).join(' / ')}）`);
+        ok(after.every(v => typeof v === 'number') && after[0] !== before[0], `T46 反向断言：错开后 04 不再写错开前的 +${before[0]}（逐格 ${after.join(' / ')}）`);
+        const span1 = cmpSpan(st.worksite.time.from, st.worksite.time.to, false), row1 = row();
+        c.LANG.cur = 'zh'; const row1zh = row(); c.LANG.cur = 'en';
+        ok(row1.includes(`${span1}${b.overlap_days ? ' · 08:00 & 17:00' : ''} · staggered ${n} day`) && !row1.includes(span0) && row1zh.includes(`${cmpSpan(st.worksite.time.from, st.worksite.time.to, true)}`) && row1zh.includes(`已错开 ${n} 天`),
+          `T46：04 行名写挪后的日期 + 已错开 N 天（「${span1} · staggered ${n} day${n === 1 ? '' : 's'}」），不再是原来的 ${span0}`);
+
+        await c.clashRun(); await show(); // 03 重算（CL.st 清掉，页面上没有单独的「撤销」按钮，只有这一条路）
+        ok(!CL.st && costs().join() === before.join() && row().includes(`${span0} · 08:00 & 17:00`) && !row().includes('staggered'), 'T46：03 的错开没了 → 04 回到原来的日期和数');
+
+        await c.clashStagger(); await drain(); // 已经翻到 04 了，03 的错开才算完：clashStagger 结尾的 cmpRender() 让 04 跟上
+        ok(c.CP.cl.other.ws === CL.st.worksite && costs()[0] === CL.st.best.cost && row().includes(`staggered ${CL.st.best.days} day`), 'T46：错开算完时人已经在 04 → 04 自己跟上，不用再翻一次页');
+
+        Object.assign(c.EP, { f1: cf[0].join('\n'), f2: (cf[1] || []).join('\n') }); c.CP.key = 'k2'; await show(); // 回 01 改了方案、没再进 03
+        ok(c.CP.cl.other && c.CP.cl.other.ws.time.from === other.ws.time.from && c.CP.cl.other.days == null && c.CP.cl.other.o.id === other.o.id && !row().includes('staggered') && costs().join() === cells.join(),
+          `T46 反向断言：方案改了（03 的错开是上一个方案的）→ 04 不套用，按那处施工原来的日期现挑现算（逐格 ${costs().join(' / ')}，和没错开时一样）`);
+      }
     }
   }
   if (existsSync(packUrl)) {

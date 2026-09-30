@@ -2,7 +2,8 @@
 // westbound through the works link, a bus, two signal heads, two chunks) drives SumoReplay through the surface the page
 // draws from (all / agents, signalHeads, works, stats, minute, clock, loop, wait-for-chunk). When the baked copy exists
 // (apps/sumo/public/real/index.json) its files are checked too: format, chunk sizes and sha256, the 16 junctions' signal
-// heads, headings along the direction of travel and axis-aligned with the Hoddle grid.
+// heads, headings along the direction of travel and axis-aligned with the Hoddle grid. T46: harsh braking marks and the
+// timeline from the 1 s samples (a second in-memory replay; on the baked copy, recounted straight from the samples).
 // Called by tests/test_sumo_wire.py; one ✅ / ❌ line per assertion, no network access.
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -21,7 +22,7 @@ const WXP={clear:{v:1,T:1,b:1,ped:1,bike:1,wob:0,rate:1}};
 const WORLD={x0:-320,x1:320,y0:-300,y1:300};const RISK_CELL=4,RNX=(WORLD.x1-WORLD.x0)/RISK_CELL,RNY=(WORLD.y1-WORLD.y0)/RISK_CELL;`;
 const ctx = {}; vm.createContext(ctx);
 vm.runInContext(stubs + '\n' + block('6-engine.js', 'pure') + '\n' + block('4b-grid.js', 'grid') + '\n' + block('4c-sumo.js', 'sumo') +
-  '\n;globalThis.X={geoToWorld,gridSpec,GridSim,GRID_K,SumoReplay,SUMO_LINK,sumoHeadState};', ctx);
+  '\n;globalThis.X={geoToWorld,gridSpec,GridSim,GRID_K,GRID_P,GRID_VIEW,gridIn,SumoReplay,SUMO_LINK,sumoHeadState};', ctx);
 const X = ctx.X;
 const net = JSON.parse(readFileSync(APPS + 'roads/public/cbd/network.json', 'utf8'));
 const flows = JSON.parse(readFileSync(APPS + 'roads/public/cbd/flows.json', 'utf8'));
@@ -82,14 +83,14 @@ ok(R.signalHeads()[0].state === 'A', 'amber while its links show y');
 ok(near(R.works().queue_m, 31.2 * 0.5, 1e-3) && R.works().polys === polys, `works(): queue from the frames' q, linear (${R.works().queue_m.toFixed(2)} m), closure polygon passed through`);
 R.step(10); ok(R.signalHeads()[0].state === 'R' && R.signalHeads()[1].state === 'G', 'red / green after the switch');
 { const c0 = R.all.find(o => o.id === 'c0'); ok(c0 && c0.v === 0 && c0.acc === 0, 'car 0 stands at the works (v 0)'); }
-ok(R.stats.harsh === 2 && R.minute[3] === 2 && R.minute.reduce((s, v) => s + v, 0) === 2 && R.stats.conflicts === 0 && R.stats.critical === 0,
-  `stats: harsh = per_minute.harsh summed to this minute (${R.stats.harsh}), minute[] at 08:03 (clock0 ${CL0} s), conflicts / critical 0`);
+ok(R.stats.harsh === 1 && R.minute[3] === 1 && R.minute.reduce((s, v) => s + v, 0) === 1 && R.stats.conflicts === null && R.stats.critical === null,
+  `stats (T46): harsh = braking episodes found in the samples so far, 2×2 only (car 0 stopping at the works, 8 m/s² → ${R.stats.harsh}), minute[] at 08:03 (clock0 ${CL0} s); conflicts / critical null — not computed, never 0`);
 ok(near(R.clock(), CL0 + R.t), `clock() = clock0_s + t (${R.clock().toFixed(1)} s past 08:00)`);
 R.step(100); ok(R.t === 59 && R.all.length === 4, `second chunk not in yet: holds at the last loaded sample (t ${R.t}), no loop; the bus has left`);
 R.addChunk(1, chunks[1]); ok(R.complete && R.nLoaded === 120, 'second chunk in: complete');
-R.step(3); ok(near(R.t, 62) && R.stats.harsh === 5 && R.minute[4] === 3, `plays on into it (t ${R.t}), harsh 2 + 3 = ${R.stats.harsh}`);
-R.step(60); ok(R.t < 10 && R.stats.harsh === 2 && R.all.every(c => c.trail.length <= 4), `loops at the end (t ${R.t.toFixed(1)}), stats and trails start again`);
-R.seek(40); ok(R.t === 40 && R.all.every(c => c.trail.length <= 2) && R.stats.harsh === 2, 'seek(t) jumps there (histogram click)');
+R.step(3); ok(near(R.t, 62) && R.stats.harsh === 1 && R.minute[4] === 0, `plays on into it (t ${R.t}), nobody else brakes: harsh ${R.stats.harsh}`);
+R.step(60); ok(R.t < 10 && R.stats.harsh === 0 && R.events.length === 0 && R.all.every(c => c.trail.length <= 4), `loops at the end (t ${R.t.toFixed(1)}), stats, marks and trails start again`);
+R.seek(40); ok(R.t === 40 && R.all.every(c => c.trail.length <= 2) && R.stats.harsh === 1 && R.events.length === 1, 'seek(t) jumps there (histogram click), with the counts and marks of that moment');
 ok(R.metrics.mean_extra_s === 12.5 && R.metrics.detour_vehicles === 7, 'metrics: manifest metrics over the index entry');
 { const [p, q] = [at(0), at(L0)], M2 = Object.assign({}, MAN, { works: { link: X.SUMO_LINK, lane_shape_e6: [[Math.round(p[1] * 1e6), Math.round(p[0] * 1e6)], [Math.round(q[1] * 1e6), Math.round(q[0] * 1e6)]] } });
   const P = new X.SumoReplay(IDX, 'original', M2, { spec, polys }).works().polys, c = P[0] && P[0].reduce((s, v) => [s[0] + v[0] / P[0].length, s[1] + v[1] / P[0].length], [0, 0]), [lat, lon] = at(L0 / 2), m = X.geoToWorld(lat, lon);
@@ -101,6 +102,52 @@ ok(X.sumoHeadState('rrgr', [0, 2]) === 'G' && X.sumoHeadState('rYr', [1]) === 'A
   'head colour: any G/g → green, else any y/Y → amber, else red');
 let threw = false; try { new X.SumoReplay(IDX, 'original', { agents: 1 }, {}); } catch (e) { threw = true; }
 ok(threw, 'reverse: a malformed manifest throws (the page then keeps the grid sim)');
+
+// ---- T46: harsh braking marks and the timeline from the 1 s samples ----------------------------------------------------------
+// Four cars on Lonsdale St westbound, 3 minutes (3 chunks): "in" brakes 10 → 5 → 0 m/s (5 m/s², one episode) at t 10 inside the
+// 2×2, pulls away at t 41 and brakes again at t 49 (second episode, same car); "out" drives the same speeds 500 m further east,
+// outside GRID_VIEW; "mild" slows 8 → 5 m/s (3 m/s², under the 3.5 threshold) inside it; "late" appears at t 125 east of the
+// 2×2, drives in at t 136 (08:05:16) and brakes 10 → 4 m/s at t 150.
+{
+  const V = X.GRID_VIEW, inV = p => X.gridIn(V, p[0], p[1]);
+  const vIn = t => t <= 10 ? 10 : t === 11 ? 5 : t <= 40 ? 0 : t <= 49 ? 10 : 5;
+  const SP = { in: [vIn, -60, 0, 60], out: [vIn, -560, 0, 60], mild: [t => t <= 30 ? 8 : 5, -100, 0, 50], late: [t => t <= 150 ? 10 : 4, -295, 125, 179] };
+  const ids = Object.keys(SP), sOf = {};
+  for (const k of ids) { const [v, s0, t0, t1] = SP[k], s = {}; s[t0] = s0; for (let t = t0 + 1; t <= t1; t++) s[t] = s[t - 1] + (v(t - 1) + v(t)) / 2; sOf[k] = s; }
+  const geo = (k, t) => at(sOf[k][t]), page = (k, t) => { const [lat, lon] = geo(k, t); return X.geoToWorld(Math.round(lat * 1e6) / 1e6, Math.round(lon * 1e6) / 1e6); };
+  const fr2 = t => ({ t, a: ids.map((k, i) => { const [v, , t0, t1] = SP[k]; if (t < t0 || t > t1) return null; const [lat, lon] = geo(k, t); return [i, Math.round(lon * 1e6), Math.round(lat * 1e6), ANG, Math.round(v(t) * 100)]; }).filter(Boolean), tls: {}, q: 0 });
+  const ch2 = [0, 60, 120].map(s0 => ({ frames: Array.from({ length: 60 }, (_, k) => fr2(s0 + k)) }));
+  const M2 = Object.assign({}, MAN, { duration_s: 180, agents: ids.map(id => ({ id, type: 'car', length_m: 4.6, width_m: 1.8 })),
+    chunks: ch2.map((_, k) => ({ file: `frames-00${k}.json`, start: 60 * k, end: 60 * k + 59 })), per_minute: { halting: [0, 0, 0], harsh: [9, 9, 9] } });
+  ok(inV(page('in', 10)) && inV(page('in', 49)) && inV(page('mild', 30)) && inV(page('late', 150)) && !inV(page('late', 135)) && inV(page('late', 136))
+    && ids.every(k => k === 'out' || k === 'late' || inV(page(k, SP[k][2]))) && Array.from({ length: 61 }, (_, t) => page('out', t)).every(p => !inV(p)),
+    'T46 fixture: "in" / "mild" drive inside GRID_VIEW, "out" never enters it, "late" enters it at t 136');
+  const R2 = new X.SumoReplay(IDX, 'original', M2, { spec, polys });
+  let scans = 0; const scan0 = R2._harsh; R2._harsh = function (n) { scans++; return scan0.call(this, n); };
+  ch2.forEach((c, k) => R2.addChunk(k, c));
+  ok(scans === 3 && R2.nScan === 180 && R2.evAll.length === 3, `T46: found while the chunks are added (${scans} scans, one per chunk, ${R2.evAll.length} events in all)`);
+  for (let i = 0; i < 400; i++) R2.step(0.45);
+  ok(scans === 3, 'T46: playing (400 steps, one loop) scans nothing again — step() only moves pointers');
+  R2.seek(179);
+  const E = R2.evAll, e0 = E[0], p10 = page('in', 10);
+  ok(E.every(e => e.kind === 'harsh' && e.sev === 0 && e.type === 'car' && inV([e.x, e.y])) && E.map(e => e.t).join() === '10,49,150',
+    `T46: three harsh braking events, all in GRID_VIEW, at t ${E.map(e => e.t).join(' / ')} ("in" twice: two episodes; "out" outside, "mild" under 3.5 m/s² — none)`);
+  ok(e0 && near(e0.x, p10[0], 1e-3) && near(e0.y, p10[1], 1e-3), `T46: the mark sits where the drop starts (the t 10 sample of "in": ${e0 && e0.x.toFixed(1)}, ${e0 && e0.y.toFixed(1)})`);
+  { const gs = new X.GridSim(spec, { seed: 4218 }); while (gs.t < 400 && !gs.events.some(e => e.kind === 'harsh')) gs.step(0.25);
+    const g = gs.events.find(e => e.kind === 'harsh'), keys = o => Object.keys(o).sort().join();
+    ok(g && keys(g) === keys(e0) && typeof e0.t === 'number' && typeof e0.x === 'number', `T46: same event shape as the grid sim's harsh braking (${e0 && keys(e0)}), so drawEvents draws it unchanged`); }
+  ok(R2.stats.harsh === 3 && R2.stats.conflicts === null && R2.stats.critical === null && R2.events.length === 1 && R2.events[0].t === 150,
+    `T46: at t 179 harsh ${R2.stats.harsh}; marks older than 2 minutes dropped (${R2.events.length} kept), the count keeps them; conflicts / critical null`);
+  const sum = a => Array.from(a).reduce((x, y) => x + y, 0);
+  ok(R2.mSeen[3] === 2 && R2.mHit[3] === 1 && R2.mSeen[5] === 1 && R2.mHit[5] === 1 && sum(R2.mSeen) === 3 && sum(R2.mHit) === 2,
+    `T46 timeline: vehicles into GRID_VIEW per entry minute — 08:03 ${R2.mSeen[3]} (of them braked ${R2.mHit[3]}: "in" once, although twice), 08:05 ${R2.mSeen[5]} / ${R2.mHit[5]} ("late"); "out" not counted`);
+  ok(R2.bins && R2.bins.m0 === 3 && R2.bins.n === 2, `T46: 2-minute bars from the replay's first minute (08:0${R2.bins && R2.bins.m0}), on the hour axis of the page clock`);
+  R2.seek(100); ok(R2.stats.harsh === 2 && R2.mSeen[5] === 0 && R2.events.length === 2, 'T46: seek back to t 100 → counts and marks of that moment ("late" not there yet)');
+  R2.seek(140); ok(R2.mSeen[5] === 1 && R2.mHit[5] === 0, 'T46: t 140 — "late" has entered, not braked yet: the bar fills as the replay plays');
+  R2.seek(150); ok(R2.mHit[5] === 1 && R2.stats.harsh === 3 && R2.events[R2.events.length - 1].t === 150, 'T46: t 150 — its braking counts and its mark appears as it brakes');
+  { const O = new X.SumoReplay(IDX, 'original', M2, { spec, polys }); O.addChunk(2, ch2[2]); O.addChunk(1, ch2[1]); const n1 = O.evAll.length; O.addChunk(0, ch2[0]);
+    ok(n1 === 0 && O.evAll.map(e => `${e.t}:${e.x}:${e.y}`).join() === E.map(e => `${e.t}:${e.x}:${e.y}`).join(), 'T46: chunks out of order → scanned once they join up from t 0, same events'); }
+}
 
 // ---- the baked copy, once the backend has written it ---------------------------------------------------------------------
 const REAL = APPS + 'sumo/public/real/';
@@ -115,7 +162,8 @@ else {
     for (const c of man.chunks) { const f = dir + c.file; if (statSync(f).size >= 1.5e6) big.push(c.file); if (c.sha256 && createHash('sha256').update(readFileSync(f)).digest('hex') !== c.sha256) badSha.push(c.file); }
     ok(man.version === 2 && man.scenario === sc.id && !big.length && !badSha.length, `${sc.id}: ${man.chunks.length} chunks, each < 1.5 MB, sha256 match${big.length ? ' — big ' + big : ''}${badSha.length ? ' — sha ' + badSha : ''}`);
     const Rr = new X.SumoReplay(idx, sc.id, man, { spec, polys });
-    man.chunks.forEach((c, k) => Rr.addChunk(k, JSON.parse(readFileSync(dir + c.file, 'utf8'))));
+    const raw = man.chunks.map(c => JSON.parse(readFileSync(dir + c.file, 'utf8')));
+    raw.forEach((d, k) => Rr.addChunk(k, d));
     let n = 0, bad = 0, axis = 0, mv = 0, along = 0, maxCars = 0, heads16 = 0;
     const prev = new Map();
     for (let t = 0; t < Math.min(Rr.nLoaded - 1, 600); t++) {
@@ -135,6 +183,21 @@ else {
     ok(mv > 50 && along / mv > 0.95, `${sc.id}: heading follows the movement between samples for ${(100 * along / Math.max(1, mv)).toFixed(1)} % of ${mv} moving samples (angle convention and centre positions right)`);
     ok(axis / n > 0.8, `${sc.id}: ${(100 * axis / n).toFixed(0)} % of headings lie along the page axes (Hoddle grid streets)`);
     ok(heads16 === 16, `${sc.id}: signal heads at ${heads16} of the 16 grid junctions`);
+    // T46: harsh braking on the real run — recounted here straight from the samples (m/s, the same rule), all marks in the 2×2
+    { const VW = X.GRID_VIEW, inV = p => X.gridIn(VW, p[0], p[1]), last = new Map(), hb = new Map(); let n2 = 0;
+      for (const d of raw) for (const f of d.frames) for (const r of f.a) {
+        const p = X.geoToWorld(r[2] / 1e6, r[1] / 1e6), v = r[4] / 100, q = last.get(r[0]);
+        if (q && q.t === f.t - 1) { const a = v - q.v; if (a < -3.5) { if (!hb.get(r[0])) { hb.set(r[0], 1); if (inV(q.p)) n2++; } } else if (a > -1 / X.GRID_K) hb.set(r[0], 0); } else hb.set(r[0], 0);
+        last.set(r[0], { t: f.t, v, p });
+      }
+      Rr.seek(Rr.nLoaded - 1);
+      const E = Rr.evAll, sum = a => Array.from(a).reduce((x, y) => x + y, 0), B = Rr.bins, bars = [];
+      for (let m0 = B.m0; m0 < 60; m0 += B.n) { let se = 0, hi = 0; for (let m = m0; m < m0 + B.n && m < 60; m++) { se += Rr.mSeen[m]; hi += Rr.mHit[m]; } if (se) bars.push([hi, se]); }
+      ok(E.length > 0 && E.every(e => e.kind === 'harsh' && inV([e.x, e.y]) && e.t >= 0 && e.t < Rr.nLoaded) && Rr.stats.harsh === E.length && Math.abs(E.length - n2) <= 2,
+        `${sc.id} (T46): ${E.length} harsh braking marks (> 3.5 m/s² over 1 s), all inside GRID_VIEW; recounted from the samples: ${n2} (float32 speeds: a drop of exactly 3.5 may fall either side)`);
+      ok(sum(Rr.mSeen) === Rr.vIn.length && sum(Rr.mHit) === Rr.vHit.length && Rr.vHit.length > 0 && bars.length === 6 && bars.every(([h, s]) => h > 0 && h <= s),
+        `${sc.id} (T46): timeline, 2-minute bars from 08:0${B.m0} — ${bars.map(([h, s]) => `${h}/${s}`).join(' · ')} vehicles braked / entered the 2×2; ${Rr.vHit.length} of ${Rr.vIn.length} in all, each once`);
+      ok(Rr.stats.conflicts === null && Rr.stats.critical === null, `${sc.id} (T46): conflicts / critical not computed (null), never 0`); }
   }
 }
 console.log(`${pass} passed, ${fail} failed`);

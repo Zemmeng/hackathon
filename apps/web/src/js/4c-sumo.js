@@ -9,6 +9,16 @@
 // passes the one it already runs. Positions are linear between samples; the heading is SUMO's angle turned through the
 // local map of geoToWorld (page x / y are fitted to the Hoddle grid, not due east / north). Plays to the last loaded sample
 // and waits there while later chunks load; loops once all are in. Pure, no DOM: tests/sumo_glue.mjs runs this block in node.
+// Safety marks (T46, lead's call): the v2 samples carry no lane, so there is no leader and no gap — conflicts / critical (TTC)
+// are not computed (stats null, the page shows —), only harsh braking, by the grid sim's rule (4b-grid.js): one vehicle's
+// speed drops faster than GRID_P.harsh (3.5 m/s²) between consecutive 1 s samples → one event per braking episode (it ends
+// once the deceleration eases below 1 page unit / s², as there), at the first sample of the drop, counted only inside the
+// 2×2 the grid sim counts (GRID_VIEW); sim.events, kind 'harsh', so the page's map marks (and their 60 s fade) need no SUMO
+// branch. Found once per sample as chunks arrive (addChunk, in time order); step() / seek() only move pointers along the
+// sorted lists.
+// Timeline, like the grid sim (mSeen / mHit per minute of the hour): each vehicle once, in the minute it first enters
+// GRID_VIEW; hit = it braked harshly there. The replay is 12 minutes (08:03–08:15), so bins = 2-minute bars starting at its
+// first minute (6 bars; the grid sim's 10-minute bars would give two, one of them half empty).
 const SUMO_LINK='l595594354_9756035316';
 // SUMO angle (0 = north, clockwise) at lat / lon → unit heading in page coordinates
 function sumoHead(lat,lon,p,a){
@@ -43,7 +53,11 @@ class SumoReplay{
     this.frames=[];this.nLoaded=0;this.nChunks=M.chunks.length;this.chunksIn=0;
     this.t=0;this.cars=new Map();this.all=[];this.agents=this.all;this.events=[];this.critical=null;
     this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.minute=new Float32Array(60);this.tlsNow={};this.q=0;
-    this.pm=((M.per_minute&&M.per_minute.harsh)||[]).map(v=>+v||0);
+    // T46 harsh braking: evAll (events), vIn (first entry into GRID_VIEW per vehicle), vHit (first harsh braking there), all by t;
+    // per vehicle: last sample scanned (frame, v, x, y), braking episode on, index into vIn
+    const nA=this.meta.length;this.evAll=[];this.vIn=[];this.vHit=[];this.nScan=0;
+    this._lf=new Int32Array(nA).fill(-1);this._lv=new Float32Array(nA);this._lx=new Float32Array(nA);this._ly=new Float32Array(nA);this._hb=new Uint8Array(nA);this._in=new Int32Array(nA).fill(-1);
+    this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);this.bins={m0:Math.floor(this.clock0/60),n:2};
     this.resetStats();
   }
   get metrics(){const s=(this.index.scenarios||[]).find(x=>x.id===this.scenario);return Object.assign({},s&&s.metrics,this.man.metrics);}
@@ -61,22 +75,50 @@ class SumoReplay{
       this.frames[fi]={ids:ids.subarray(0,j),x:x.subarray(0,j),y:y.subarray(0,j),hx:hx.subarray(0,j),hy:hy.subarray(0,j),v:v.subarray(0,j),tls:f.tls||null,q:+f.q||0};
     }
     this.chunksIn++;while(this.frames[this.nLoaded])this.nLoaded++;
+    this._harsh(this.nLoaded);this._stats();
     if(this.nLoaded&&this.all.length===0)this._pose();
+  }
+  // T46: harsh braking in GRID_VIEW over frames nScan … n − 1 (loaded, contiguous from 0), each sample once, in time order
+  _harsh(n){
+    const P=GRID_P,V=GRID_VIEW,dt=this.dt,mOf=u=>clamp(Math.floor((this.clock0+u)/60),0,59);
+    for(let i=this.nScan;i<n;i++){
+      const F=this.frames[i],t=i*dt;
+      for(let j=0;j<F.ids.length;j++){
+        const id=F.ids[j],x=F.x[j],y=F.y[j],v=F.v[j];
+        if(this._lf[id]===i-1){const a=(v-this._lv[id])/dt; // page units / s², as GRID_P.harsh
+          if(a<P.harsh){if(!this._hb[id]){this._hb[id]=1;const px=this._lx[id],py=this._ly[id],t0=t-dt;
+            if(gridIn(V,px,py)){this.evAll.push({t:t0,x:px,y:py,kind:'harsh',sev:0,type:this.meta[id].type});
+              const e=this.vIn[this._in[id]];if(e&&e.h<0){e.h=t0;this.vHit.push({t:t0,m:e.m});}}}}
+          else if(a>-1)this._hb[id]=0;}
+        else this._hb[id]=0; // first sample, or back after a gap: no deceleration to read
+        if(this._in[id]<0&&gridIn(V,x,y)){this._in[id]=this.vIn.length;this.vIn.push({t,m:mOf(t),h:-1});}
+        this._lf[id]=i;this._lv[id]=v;this._lx[id]=x;this._ly[id]=y;
+      }
+    }
+    this.nScan=Math.max(this.nScan,n);
   }
   // Wall-clock second of the hour the replay is at (08:00:00 + clock0_s + t)
   clock(){return clamp(this.clock0+this.t,0,3599);}
   resetStats(){
-    this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};this.minute.fill(0);this.risk.fill(0);this.riskVer++;this._m=-1;
-    this._stats();
+    this.stats={conflicts:null,critical:null,harsh:0,delay:0,done:0,noRoute:0,merges:0};this.risk.fill(0);this.riskVer++; // null: not computed (no lanes)
+    this._pt=Infinity;this._stats();
   }
-  // harsh = hard-braking events SUMO counted per minute (per_minute.harsh), summed up to the minute the replay is in
+  // Counts up to the replay's moment t (T46): harsh = events so far (in GRID_VIEW), minute[] = those per minute of the hour,
+  // mSeen / mHit = vehicles into GRID_VIEW / of them braked harshly, per entry minute; events = the last evKeep s. Pointers
+  // only move forward; a loop or a seek back starts them again from 0
   _stats(){
-    const m=Math.floor(this.t/60);if(m===this._m)return;this._m=m;let h=0;this.minute.fill(0);
-    for(let k=0;k<=m&&k<this.pm.length;k++){h+=this.pm[k];const c=clamp(Math.floor((this.clock0+k*60)/60),0,59);this.minute[c]+=this.pm[k];}
-    this.stats.harsh=h;
+    const t=this.t,E=this.evAll,S=this.vIn,H=this.vHit,mOf=u=>clamp(Math.floor((this.clock0+u)/60),0,59);
+    if(t<this._pt){this._pe=this._ps=this._ph=this._lo=0;this.events=[];this.minute.fill(0);this.mSeen.fill(0);this.mHit.fill(0);}
+    this._pt=t;
+    while(this._pe<E.length&&E[this._pe].t<=t)this.minute[mOf(E[this._pe++].t)]++;
+    while(this._ps<S.length&&S[this._ps].t<=t)this.mSeen[S[this._ps++].m]++;
+    while(this._ph<H.length&&H[this._ph].t<=t)this.mHit[H[this._ph++].m]++;
+    let lo=this._lo;while(lo<this._pe&&t-E[lo].t>GRID_P.evKeep)lo++;
+    if(lo!==this._lo||this.events.length!==this._pe-lo){this._lo=lo;this.events=E.slice(lo,this._pe);}
+    this.stats.harsh=this._pe;
   }
   setWeather(){} // SUMO ran in clear weather; the page's weather layer is drawn over it unchanged
-  seek(t){const end=Math.max(0,(this.nLoaded-1)*this.dt);this.t=clamp(+t||0,0,end);for(const c of this.cars.values())c.trail.length=0;this._m=-1;this._stats();this._pose();}
+  seek(t){const end=Math.max(0,(this.nLoaded-1)*this.dt);this.t=clamp(+t||0,0,end);for(const c of this.cars.values())c.trail.length=0;this._stats();this._pose();}
   step(dt){
     if(!(dt>0)||!this.nLoaded)return;
     const end=(this.nLoaded-1)*this.dt;this.t+=dt;

@@ -59,6 +59,21 @@ function cmpSpan(from,to,zh){
   if(zh)return from===to?`${m0}/${d0}`:one?`${m0}/${d0}–${d1}`:`${m0}/${d0}–${m1}/${d1}`;
   return from===to?`${d0} ${M[m0-1]}`:one?`${d0}–${d1} ${M[m0-1]}`:`${d0} ${M[m0-1]} – ${d1} ${M[m1-1]}`;
 }
+// 04 "Nearby works" follows 03 (T46, lead): once 03 has staggered the other works ("Stagger by N days" gave a reliable
+// be.stagger() best), every plan is scored against the same shifted works 03 shows (stagger().worksite), not the register's
+// dates. x = 03's pick { o, ws, r }, st = its be.stagger() result (CL.st). No stagger, or none reliable (03 keeps the dates) → x
+function cmpClashOther(x,st){
+  const b=st&&st.best;
+  return x&&b&&b.reliable&&st.worksite?{...x,ws:st.worksite,days:b.days,overlapDays:b.overlap_days}:x;
+}
+// Under the row name, after the street: overlap dates · sampled hours; once staggered, the other works' shifted dates
+// (· hours if they still overlap) · "staggered N days". hour = engHour
+function cmpClashWhen(x,zh,hour){
+  const hrs=x.r.hours.map(hour).join(' & ');
+  if(x.days==null)return`${cmpSpan(x.r.overlap.from,x.r.overlap.to,zh)} · ${hrs}`;
+  const t=x.ws.time,n=x.days;
+  return`${cmpSpan(t.from,t.to,zh)}${x.overlapDays>0&&hrs?' · '+hrs:''} · ${zh?`已错开 ${n} 天`:`staggered ${n} day${Math.abs(n)===1?'':'s'}`}`;
+}
 // be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
 function cmpFromOptions(res){
   return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
@@ -152,13 +167,18 @@ async function cmpUpdate(){
 
 // 04 Compare, "Nearby works" row (T43): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
 // clashPick in 8-clash.js), by be.clash(). Filled in after the table is on screen, cell by cell; never holds the table up.
-// CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r }, cells: [clash result | 'err'], err }
+// CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r, days? }, cells: [clash result | 'err'], err }
+// T46: 03 staggered the other works → other.ws is 03's shifted works and other.days its N (cmpClashOther); the key carries N,
+// so staggering in 03 re-scores this row, and 03 dropping the stagger (re-scored, CL.st = null) puts the original dates back
 async function cmpClashUpdate(){
-  if(S.ui!==4||CP.busy||CP.rows.length<2||!engOn()||EP.badText||(CP.cl&&CP.cl.key===CP.key))return;
-  const st=CP.cl={key:CP.key,other:undefined,cells:[],err:false},alive=()=>CP.cl===st;
+  if(S.ui!==4||CP.busy||CP.rows.length<2||!engOn()||EP.badText)return;
+  const cur=clashCur(),in3=CL.m&&CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err; // 03 already picked it for this same plan
+  const x3=in3?cmpClashOther(CL.other,CL.st):null,key=CP.key+(x3&&x3.days!=null?`|+${x3.days}`:'');
+  if(CP.cl&&CP.cl.key===key)return;
+  const st=CP.cl={key,other:undefined,cells:[],err:false},alive=()=>CP.cl===st;
   try{
-    const cur=clashCur();let x;
-    if(CL.m&&CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other; // 03 already picked it for this same plan
+    let x;
+    if(in3)x=x3; // 03's pick, shifted if 03 staggered it
     else{const sc=await clashPick(cur,alive);if(!sc)return;x=sc[0]||null;}
     st.other=x;cmpRender();
     for(let i=0;x&&i<CP.rows.length;i++){
@@ -174,7 +194,7 @@ function cmpClashRow(rc){
   let wlab='…';
   if(c&&c.err)wlab='—';
   else if(x===null)wlab=L('no other registered works overlap','登记表里没有同期的其他施工');
-  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpSpan(x.r.overlap.from,x.r.overlap.to,LANG.cur==='zh')} · ${x.r.hours.map(engHour).join(' & ')}`;}
+  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpClashWhen(x,LANG.cur==='zh',engHour)}`;}
   const cell=i=>{
     if(c&&c.err)return'—';
     if(x===null)return L('none','无');

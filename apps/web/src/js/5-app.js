@@ -429,6 +429,35 @@ async function sumoRerun(){
   }catch(e){if(tok!==SU.tok)return;SU.failed=true;console.info('SUMO unavailable, keeping the browser grid sim:',sumoErr(e));}
   renderPanel();
 }
+// T47: step 3 shows the SUMO run from step 2 (the one on screen: live or pre-computed, with its seed) above the engine's
+// numbers, so a SUMO run is visibly used and the two models are not confused (engine: whole CBD, 1 h; SUMO: 16 junctions, ~12 min)
+function sumoImpactHTML(){
+  if(EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';
+  const idx=SU.index,src=SU.src||{};
+  if(!idx||!Array.isArray(idx.scenarios))return`<div class="card eng-note sumo-impact"><b>${L('SUMO','SUMO')}</b><span>${L('Run SUMO in step 2 to see its result for this plan here, next to the engine estimate.','在第 2 步跑一次 SUMO，这里会并排显示它对这个方案的结果。')}</span></div>`;
+  const m=id=>(idx.scenarios.find(x=>x.id===id)||{}).metrics||null,n=v=>v!=null&&isFinite(+v),r=v=>n(v)?fmtN(Math.round(+v)):'—';
+  const live=src.source==='live'&&isFinite(src.elapsedMs),sd=isFinite(src.seed)?src.seed:idx.seed;
+  const tag=live?L(`Cloud SUMO · computed live · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`,`云端 SUMO · 现场计算 · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`):L(`SUMO · pre-computed · seed ${sd}`,`SUMO · 预先跑好 · seed ${sd}`);
+  const row=(id,name)=>{const x=m(id);if(!x)return'';const ex=n(x.works_traffic_extra_s)?x.works_traffic_extra_s:x.mean_extra_s;
+    return`<tr${id===SU.scen?' class="cur"':''}><th scope="row">${name}</th><td>${r(x.works_queue_max_m)} / ${r(x.works_queue_mean_m)} m</td><td>${n(ex)?(ex>0?'+':'')+Math.round(ex)+' s':'—'}</td><td>${r(x.detour_vehicles)}</td></tr>`;};
+  return`<div class="stack sumo-impact"><div class="row between"><span class="eyebrow">${L('SUMO · this run from step 2','SUMO · 第 2 步这一次的结果')}</span><span class="pill${live?' ok':''}">${tag}</span></div>
+    <div class="sumo-imp-wrap"><table class="sumo-imp"><thead><tr><th></th><th>${L('Works queue max / mean','施工排队 最长 / 平均')}</th><th>${L('Extra per vehicle through the works','过施工段每车多花')}</th><th>${L('Detoured','绕行的车')}</th></tr></thead>
+    <tbody>${row('original',L('Original · ROADWORK AHEAD','原方案 · ROADWORK AHEAD'))}${row('ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL'))}</tbody></table></div>
+    <p class="small eng-assume">${L('Why the engine says more: SUMO covers the 16 junctions around the works for ~12 minutes with signal 2935 assumed 70% green; the engine below covers the whole CBD for a full hour at 50% green, so its queue keeps growing through the hour. Both are models — a cross-check, not measured proof.','为什么引擎的数大：SUMO 只算施工附近 16 个路口、约 12 分钟，2935 信号按 70% 绿灯假设；下面的引擎算整个 CBD、整整 1 小时、50% 绿灯，排队会在这一小时里一直变长。两个都是模型，是交叉验证，不是实测证据。')}</p></div>`;
+}
+// T47: pick the seed BEFORE the run — on 01 Configure, right above 「Save & simulate」; entering step 2 runs SUMO with it
+function sumoPreHTML(){
+  if(!BE.api||EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';
+  return`<div class="stack sumo-pre"><span class="eyebrow">${L('SUMO · step 2 runs in the cloud with this seed','SUMO · 第 2 步用这个种子在云端算')}</span>
+    <div class="row sumo-seed"><label class="eyebrow" for="sumoSeedPre">${L('Seed','种子')}</label><input id="sumoSeedPre" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"><button type="button" class="btn ghost" id="sumoDicePre">${L('Random','随机')}</button></div>
+    <p class="small muted">${L('Same seed, same run (42 matches the pre-computed copy); change it to see how much the result varies.','同一个种子结果一样（42 和预先跑好的那份一致）；换种子看结果波动多大。')}</p></div>`;
+}
+function sumoPreBind(){
+  const si=$('#sumoSeedPre');if(!si)return;
+  const set=()=>{const v=Math.floor(+si.value);if(isFinite(v)&&v>=0&&v<=2147483647)SU.seed=v;else si.value=SU.seed;};
+  si.onchange=set;si.oninput=set;
+  const dz=$('#sumoDicePre');if(dz)dz.onclick=()=>{SU.seed=Math.floor(Math.random()*2147483647);si.value=SU.seed;};
+}
 const sumoReason=k=>SU.mod&&typeof SU.mod.reasonLabel==='function'?SU.mod.reasonLabel(k,LANG.cur):k;
 function sumoNote(){const R=S.sim,v=(/(\d+\.\d+\.\d+)/.exec((R.index&&R.index.engine)||'')||[0,'1.27.1'])[1],h=String(R.hour).padStart(2,'0'),A=R.index&&R.index.assumptions,as=A&&(LANG.cur==='zh'?A.zh:A.en);
   return`<p class="eng-assume"${Array.isArray(as)&&as.length?` title="${esc(as.join(' · '))}"`:''}>${L(`SUMO ${v} · real CBD network (OSM) + SCATS ${h}:00 flows · signal timing and turn shares assumed`,`SUMO ${v} · 真实 CBD 路网（OSM）+ SCATS ${h}:00 车流 · 信号配时和转弯比例是假设值`)}</p>`;}
@@ -453,7 +482,12 @@ function sumoTiles(){const m=S.sim.metrics,ex=m.mean_extra_s,dv=m.detour_vehicle
   return`<div class="metric"><span class="eyebrow">${L('Vehicles on map','地图上的车')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Works queue now','施工排队（现在）')}</span><div class="v" style="color:var(--works)"><span data-live="gq">0</span><small>m</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Extra time per vehicle','每车多花时间')}</span><div class="v">${okN(ex)?(ex>0?'+':'')+Math.round(ex):'—'}<small>${L('s vs no works','秒 · 比不施工')}</small></div></div>
-      <div class="metric"><span class="eyebrow">${L('Detoured vehicles','绕行的车')}</span><div class="v">${okN(dv)?fmtN(dv):'—'}<small>${L('this run','本次')}</small></div></div>`;}
+      <div class="metric"><span class="eyebrow">${L('Detoured vehicles','绕行的车')}</span><div class="v">${okN(dv)?fmtN(dv):'—'}<small>${L('this run','本次')}</small></div></div>
+      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; ${fmtN(-GRID_P.harsh/GRID_K*10)/10} m/s² · 2×2</small></div></div>
+      <div class="metric"><span class="eyebrow">${L('Conflicts · critical','冲突 · 严重')}</span><div class="v" style="color:var(--fg-3)">—<small>${L('SUMO: not computed','SUMO 不算冲突')}</small></div></div>`;}
+// T46: the replay's map marks (4c-sumo.js) — harsh braking only; conflicts / critical need the lanes the v2 samples lack: —, never 0
+function sumoEvLegend(){const n=(S.sim.bins&&S.sim.bins.n)||2;
+  return`<div class="eng-legend ev-legend"><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span style="opacity:.6"><i class="ev-dia" style="background:var(--works)"></i>${L('Conflict','冲突')} — <i class="ev-dia" style="background:var(--risk)"></i>${L('Critical','严重')} — · ${L('SUMO: not computed','SUMO 不算冲突')}</span><span>${L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per ${n} min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 ${n} 分钟车辆占比`)}</span></div>`;}
 function sumoBind(){
   document.querySelectorAll('[data-sumo]').forEach(b=>b.onclick=()=>sumoScen(b.dataset.sumo));
   const si=$('#sumoSeed'),seedIn=()=>{const v=Math.floor(+(si&&si.value));if(isFinite(v)&&v>=0&&v<=2147483647)SU.seed=v;else if(si)si.value=SU.seed;};
@@ -522,11 +556,11 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
-    ${navHTML()}`;
+    ${typeof sumoPreHTML==='function'?sumoPreHTML():''}${navHTML()}`;
     P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
     const bi=$('#budgetIn');if(bi)bi.oninput=()=>{EP.budget=Math.max(0,+bi.value||0);};
     P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
-    engBind1();vlMount();
+    engBind1();vlMount();sumoPreBind();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown(),su=grid&&!!S.sim.isSumo,wait=sumoWaiting();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
@@ -536,7 +570,7 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; ${grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'} m/s²</small></div></div>`}</div>
-    ${grid&&!su&&!wait?`<div class="eng-legend ev-legend"><span><i class="ev-dia" style="background:var(--works)"></i>${L('Conflict','冲突')}</span><span><i class="ev-dia" style="background:var(--risk)"></i>${L('Critical','严重')}</span><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span>${L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per 10 min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 10 分钟车辆占比`)}</span></div>`:''}
+    ${grid&&!su&&!wait?`<div class="eng-legend ev-legend"><span><i class="ev-dia" style="background:var(--works)"></i>${L('Conflict','冲突')}</span><span><i class="ev-dia" style="background:var(--risk)"></i>${L('Critical','严重')}</span><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span>${L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per 10 min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 10 分钟车辆占比`)}</span></div>`:''}${su?sumoEvLegend():''}
     ${navHTML()}`;if(su||wait)sumoBind();
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -632,7 +666,7 @@ function updateLive(force){
   if(S.step===1&&sim&&microOn()){const c=sim.counts();set('popTotal',L(`${c.total} live`,`实时 ${c.total} 个`));const rows=[[L('Drivers','驾驶员'),c.veh,'var(--a-car)'],[L('Cyclists','骑行者'),c.bike,'var(--a-bike)'],[L('Pedestrians','行人'),c.ped,'var(--a-ped)'],[L('Trams','有轨电车'),c.tram,'var(--a-tram)'],[L('Buses','公交'),c.bus,'var(--a-bus)']];const mx=Math.max(1,...rows.map(r=>r[1]));const el=$('#popBars');if(el)el.innerHTML=rows.map(([n,v,col])=>`<div class="b"><i class="dot" style="background:${col}"></i><span>${n}</span><span class="track"><i style="width:${(v/mx*100).toFixed(0)}%;background:${col}"></i></span><span class="n">${v}</span></div>`).join('');}
   if(S.step===2&&sim){
     if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
-    set('agents',(sim.isGrid&&sim.all?sim.all:sim.agents).length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
+    set('agents',(sim.isGrid&&sim.all?sim.all:sim.agents).length);set('conf',sim.stats.conflicts==null?'—':sim.stats.conflicts);set('crit',sim.stats.critical==null?'—':sim.stats.critical);set('harsh',sim.stats.harsh); // null = not computed (SUMO, T46)
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     if(SU.busy)set('suEl',Math.round((performance.now()-SU.t0)/1000));
     const lb=$('#stLabel');if(lb){const txt=sim.isSumo?L('SUMO · real CBD network','SUMO · 真实 CBD 路网'):sumoWaiting()?L('SUMO · computing in the cloud','SUMO · 云端计算中'):crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
@@ -738,27 +772,30 @@ const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
 function sizeHist(){const r=hc.getBoundingClientRect();hw=r.width;hh=r.height;const d=Math.min(2,devicePixelRatio||1);hc.width=Math.max(1,Math.round(hw*d));hc.height=Math.max(1,Math.round(hh*d));hctx.setTransform(d,0,0,d,0,0);}
 function drawHist(){
   if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,sim=S.sim,live=sim?sim.minute:null;
-  const sumo=!!(sim&&sim.isSumo&&live),aria=sim&&sim.mSeen?L('Share of vehicles into the works junctions that braked harshly or were in a conflict, per 10 minutes. Click to jump.','每 10 分钟驶入施工处路口的车里，急刹或卷入冲突的占比。点击可跳转。'):sumo?L('Harsh braking per minute in the SUMO run. Click to jump.','SUMO 仿真每分钟急刹次数，点击可跳转。'):L('Conflicts per minute, 17:00 to 18:00. Click to jump.','17:00–18:00 每分钟冲突数，点击可跳转');
+  const su=sim&&sim.isSumo&&sim.bins?sim.bins.n:0,aria=su?L(`Share of vehicles into the works junctions that braked harshly, per ${su} minutes (SUMO: conflicts not computed). Click to jump.`,`每 ${su} 分钟驶入施工处路口的车里，急刹的占比（SUMO 不算冲突）。点击可跳转。`):sim&&sim.mSeen?L('Share of vehicles into the works junctions that braked harshly or were in a conflict, per 10 minutes. Click to jump.','每 10 分钟驶入施工处路口的车里，急刹或卷入冲突的占比。点击可跳转。'):L('Conflicts per minute, 17:00 to 18:00. Click to jump.','17:00–18:00 每分钟冲突数，点击可跳转');
   if(hc.getAttribute('aria-label')!==aria)hc.setAttribute('aria-label',aria);
-  if(sim&&sim.mSeen)histShare(c,sim,top,bot);
-  else{ // SUMO replay (T40): harsh braking per minute over the real network; La Trobe scene: conflicts per minute. Both scale to
-        // the busiest minute so far (at least 3, the old full height), so minutes can be told apart
-    let top1=0;if(live)for(let m=0;m<60;m++)top1=Math.max(top1,live[m]);const mx=Math.max(3,top1),hi=sumo?Math.max(2,top1*.67):2;
+  if(sim&&sim.mSeen)histShare(c,sim,top,bot); // 4×4 grid sim, and the SUMO replay since T46
+  else{ // La Trobe scene: conflicts per minute, scaled to the busiest minute so far (at least 3, the old full height), so
+        // minutes can be told apart
+    let top1=0;if(live)for(let m=0;m<60;m++)top1=Math.max(top1,live[m]);const mx=Math.max(3,top1);
     for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
-      const v=live?live[m]:0;if(v>0){const lh=(bot-top)*v/mx;c.fillStyle=v>=hi?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}}
+      const v=live?live[m]:0;if(v>0){const lh=(bot-top)*v/mx;c.fillStyle=v>=2?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
   const H=clockHour();for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(k===6?`${String((H+1)%24).padStart(2,'0')}:00`:`${String(H).padStart(2,'0')}:${String(k*10).padStart(2,'0')}`,x,bot+4);}
   const px=S.clock/3600*hw;c.fillStyle=TK.accent;c.fillRect(px-1,top-2,2,bot-top+4);
 }
 // T44 step 2 (4×4): one bar per 10 minutes, all the same height = the vehicles that entered the 2×2 in them; red = the share
 // that braked harshly or were in a conflict there, grey = the rest (through without either). Each part carries its share.
+// T46: the SUMO replay (12 minutes) sets sim.bins {m0, n}: n-minute bars from minute m0 (2 minutes from 08:03, 6 bars), each
+// over its own minutes on the hour axis the clock hand runs along. A label too wide for its slot drops to whole percent, then goes
 function histShare(c,sim,top,bot){
-  const n=6,W=hw/n,bw=Math.min(W*.42,96),H=bot-top;
+  const B=sim.bins||{m0:0,n:10},mw=hw/60,W=B.n*mw,bw=Math.min(W*(B.n<10?.7:.42),96),H=bot-top;
   c.fillStyle=TK.line;c.fillRect(0,Math.round(top+H/2),hw,1); // 50 %
   c.font=`500 9.5px ${FONT_MONO}`;c.textAlign='center';c.textBaseline='middle';
-  for(let b=0;b<n;b++){
-    let seen=0,hit=0;for(let m=b*10;m<b*10+10;m++){seen+=sim.mSeen[m];hit+=sim.mHit[m];}if(!(seen>0))continue;
-    const p=Math.min(1,hit/seen),x=b*W+(W-bw)/2,cx=x+bw/2,hr=H*p,inRed=hr>=13,pct=v=>`${(v*100).toFixed(1)}%`;
+  const pct=v=>{for(const d of[1,0]){const s=`${(v*100).toFixed(d)}%`;if(c.measureText(s).width<=W-2)return s;}return'';};
+  for(let m0=B.m0-Math.ceil(B.m0/B.n)*B.n;m0<60;m0+=B.n){
+    let seen=0,hit=0;for(let m=Math.max(0,m0);m<Math.min(60,m0+B.n);m++){seen+=sim.mSeen[m];hit+=sim.mHit[m];}if(!(seen>0))continue;
+    const p=Math.min(1,hit/seen),x=m0*mw+(W-bw)/2,cx=x+bw/2,hr=H*p,inRed=hr>=13;
     c.globalAlpha=.45;c.fillStyle=TK.fg3;c.fillRect(x,top,bw,H-hr);c.globalAlpha=.9;c.fillStyle=TK.risk;c.fillRect(x,bot-hr,bw,hr);c.globalAlpha=1;
     if(inRed){c.fillStyle=TK.fg;c.fillText(pct(p),cx,bot-hr/2);}else{c.fillStyle=TK.risk;c.fillText(pct(p),cx,bot-hr-7);} // a thin red part: its share just above it
     const g1=inRed?bot-hr:bot-hr-14;if(g1-top>=12){c.fillStyle=TK.fg;c.fillText(pct(1-p),cx,(top+g1)/2);}
