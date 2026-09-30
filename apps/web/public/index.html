@@ -1802,6 +1802,8 @@ class Sim{
 // amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound Lonsdale green wave at 11 m/s; 15 % of cars
 // turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
 // IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
+// Stop lines sit just behind the zebra 2-basemap.js draws (GRID_W); nobody enters a junction unless all of the vehicle fits
+// past the far zebra; left turns go straight past the stop line, then a quarter circle of radius ≤ rTurn into the kerb lane.
 const GRID_BOX={x0:-100,x1:300,y0:-300,y1:0};
 const GRID_K=0.862;
 const GRID_EW=['Lonsdale Street','Little Lonsdale Street'],GRID_NS=['Swanston Street','Russell Street'];
@@ -1810,7 +1812,11 @@ const GRID_JN=[['2913','Little Lonsdale Street','Swanston Street'],['2912','Litt
   ['2904','Lonsdale Street','Swanston Street'],['2903','Lonsdale Street','Russell Street']];
 const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
 const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
-  cycle:90,stopD:8,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
+  cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
+// Street widths (page units) as 1-world.js draws them. 2-basemap.js puts the zebra w/2 + 0.4 … w/2 + 4.0 from the crossing
+// street's centre line and the stop line at w/2 + 4.6 … w/2 + 5.0, so a junction's stop line is w/2 + stopGap before it and
+// its far-side zebra ends w/2 + 4 after it
+const GRID_W={'Lonsdale Street':30,'Little Lonsdale Street':10,'Swanston Street':30,'Russell Street':30}; // a street not listed counts as 30 wide
 // Lateral offset (left of travel) of lane k; k = 0 is the kerb lane
 function gridOff(D,k){return 1.8+3.2*(D.lanes-1-k);}
 function gridPt(D,off,s){const hx=D.h[0],hy=D.h[1];return[D.ox+hx*s-hy*off,D.oy+hy*s+hx*off];}
@@ -1859,12 +1865,15 @@ function gridSpec(links,flows,hour,closes){
   }
   const sAt=(D,x,y)=>(x-D.ox)*D.h[0]+(y-D.oy)*D.h[1];
   for(const D of dirs){
-    junctions.forEach((J,j)=>{if((D.axis==='EW'?J.ew:J.ns)!==D.street)return;const s=sAt(D,J.x,J.y);D.jn.push({j,s,stop:s-GRID_P.stopD,left:-1,sE:0});});
+    junctions.forEach((J,j)=>{if((D.axis==='EW'?J.ew:J.ns)!==D.street)return;const s=sAt(D,J.x,J.y),d=(GRID_W[D.axis==='EW'?J.ns:J.ew]||30)/2+GRID_P.stopGap;
+      D.jn.push({j,s,d,stop:s-d,left:-1,sE:0,dE:0,r:0,a0:0});});
     D.jn.sort((a,b)=>a.s-b.s);
   }
   for(const D of dirs)for(const q of D.jn){
     const J=junctions[q.j],cross=D.axis==='EW'?J.ns:J.ew,E=dirs.findIndex(x=>x.dir===GRID_LEFT[D.dir]&&x.street===cross&&x.entry);
-    if(E>=0){q.left=E;q.sE=sAt(dirs[E],J.x,J.y);}
+    // left turn into the exit's kerb lane: straight on past the stop line, then a quarter circle of radius r (≤ rTurn) from a0
+    if(E>=0){const eo=gridOff(dirs[E],0);q.left=E;q.sE=sAt(dirs[E],J.x,J.y);q.dE=dirs[E].jn.find(x=>x.j===q.j).d;
+      q.r=clamp(q.d-eo,2,GRID_P.rTurn);q.a0=q.s-eo-q.r;}
   }
   let close=null;
   if(closes&&closes.link){
@@ -1883,6 +1892,8 @@ function gridSpec(links,flows,hour,closes){
   }
   return{box:B,hour:hr,junctions,dirs,close};
 }
+// Where a vehicle's rear will come to rest: here if (almost) stopped, v² / 2|a| ahead if braking, never if not braking
+function gridStopsAt(o){return o.s-o.len+(o.v<1?0:o.acc<0?o.v*o.v/(-2*o.acc):1e9);}
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
@@ -1924,17 +1935,18 @@ class GridSim{
     ln.cars.push(c);this._pos(c);return true;
   }
   _exitBlocked(c,ln,q){
-    const P=GRID_P,el=this.dl[q.left][0],r=Math.max(2,P.stopD-el.off),si=q.sE+ln.off+r-Math.PI/2*r;
+    const P=GRID_P,el=this.dl[q.left][0],r=q.r,si=q.sE+ln.off+r-Math.PI/2*r;
     let L=null,F=null;for(const o of el.cars){if(o.s>si)L=o;else{F=o;break;}}
-    if(L){const g=L.s-L.len-si;if(g<P.s0||(L.v<1&&g<c.len+P.s0))return true;}
+    if(L){const g=L.s-L.len-si;if(g<P.s0||(L.v<1&&g<c.len+P.s0))return true;
+      if(gridStopsAt(L)<q.sE+q.dE+c.len+P.s0)return true;} // room for all of it past the exit zebra
     if(F&&si-c.len-F.s<P.s0*.5+F.v*.8)return true;
     return false;
   }
   _turn(c,ln,q){
-    const P=GRID_P,D=ln.D,E=this.spec.dirs[q.left],el=this.dl[q.left][0],r=Math.max(2,P.stopD-el.off),alen=Math.PI/2*r;
-    const sEnd=q.sE+ln.off+r,P0=gridPt(D,ln.off,q.stop);
+    const D=ln.D,E=this.spec.dirs[q.left],el=this.dl[q.left][0],r=q.r,alen=Math.PI/2*r;
+    const sEnd=q.sE+ln.off+r,P0=gridPt(D,ln.off,q.a0);
     c.arc={x:P0[0],y:P0[1],h1:D.h,h2:E.h,r,alen,sEnd};
-    c.s=sEnd-alen+(c.s-q.stop);c.turn=null;c.ln=el;c.dl=0;
+    c.s=sEnd-alen+(c.s-q.a0);c.turn=null;c.ln=el;c.dl=0;
     this._put(el,c);
   }
   _put(ln,c){const a=ln.cars;let i=0;while(i<a.length&&a[i].s>c.s)i++;a.splice(i,0,c);ln.fix=true;}
@@ -1968,11 +1980,15 @@ class GridSim{
       for(let i=0;i<cars.length;i++){
         const c=cars[i],ld=i>0?cars[i-1]:null;let acc=this._idm(c,1e4,0),wall=Infinity,q=null,qi=-1;c.held=false;
         for(let m=0;m<D.jn.length;m++)if(D.jn[m].stop>c.s){q=D.jn[m];qi=m;break;}
-        const turning=q&&c.turn===qi;
-        if(ld&&!(turning&&ld.s-ld.len>q.stop))acc=Math.min(acc,this._idm(c,ld.s-ld.len-c.s,c.v-ld.v));
-        if(q&&q.stop-c.s<120){
+        const turning=q&&c.turn===qi,tq=c.turn!==null?D.jn[c.turn]:null,inTurn=!!tq&&c.s>=tq.stop; // inTurn: past the stop line, not yet at a0
+        if(ld&&!(turning&&ld.s-ld.len>q.stop)&&!(inTurn&&ld.s-ld.len>tq.a0))acc=Math.min(acc,this._idm(c,ld.s-ld.len-c.s,c.v-ld.v));
+        if(q&&!inTurn&&q.stop-c.s<120){
           const st=sig[q.j][D.axis];let stop=st==='R'||(st==='A'&&q.stop-c.s>=c.v*c.v/(2*P.bStop));
-          if(!stop)stop=turning?this._exitBlocked(c,ln,q):!!(ld&&ld.s>q.stop&&ld.v<1&&ld.s-ld.len<q.s+P.stopD+c.len+P.s0);
+          // keep the box clear: go only if the leader (where it will stop, if it is braking) leaves room for all of this vehicle
+          // past the far zebra; a leader pulling away on green does not hold the queue
+          // (cars ahead that turn off at this junction do not count: they leave the lane)
+          if(!stop&&!turning){let o=null;for(let k=i-1;k>=0;k--)if(cars[k].turn!==qi){o=cars[k];break;}if(o&&o.s>q.stop)stop=gridStopsAt(o)<q.s+q.d+c.len+P.s0;}
+          if(!stop&&turning)stop=this._exitBlocked(c,ln,q);
           if(stop){wall=q.stop;acc=Math.min(acc,this._idm(c,q.stop-c.s+.9*P.s0,c.v));c.held=true;}
         }
         if(cl&&cl.di===ln.di&&ln.k<cl.n&&c.s<cl.s0-5&&cl.s0-5-c.s<150){
@@ -2002,7 +2018,7 @@ class GridSim{
       for(let i=0;i<cars.length;i++){
         const c=cars[i];
         if(c.s>=D.len){cars.splice(i,1);i--;this.stats.done++;this.stats.delay+=Math.max(0,(t+dt-c.t0)-c.dist/c.v0);continue;}
-        if(c.turn!==null&&c.s>=D.jn[c.turn].stop){cars.splice(i,1);i--;this._turn(c,ln,D.jn[c.turn]);}
+        if(c.turn!==null&&c.s>=D.jn[c.turn].a0){cars.splice(i,1);i--;this._turn(c,ln,D.jn[c.turn]);}
       }
     }
     // 6 merge out of closed lanes before the works (gap ≥ s0 + 0.8 v both ways)
