@@ -68,7 +68,7 @@ check("2.3 #engMore 放假设说明、公交行人、读屏 / 参数徽章（徽
 check("2.3 engRenderOut 两块一起刷新", "['engOut',engOutHTML],['engMore',engMoreHTML]" in ENG)
 
 # 2.4 取景让开图例
-fit = fn(ENG, "engFit")
+fit = fn(ENG, "engFit") + fn(ENG, "fitView")  # T49：取景算法抽成 fitView()
 check("2.4 桌面取景把左下图例（折起）的高度算进下边留白", "getElementById('legend')" in fit and "offsetHeight" in fit)
 check("2.4 图例每次打开都先折起", "$('#legend').classList.add('collapsed')" in APP)
 

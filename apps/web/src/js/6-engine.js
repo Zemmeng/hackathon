@@ -497,11 +497,16 @@ function engFit(){
   // every detour drawn clearly (≥ 1 %) is framed: with sign readings the three Lonsdale detours sit at 4–5 %, and a line cut at
   // the window edge reads as a bug (T27 acceptance) — the old ≥ 5 % cut them off
   for(const r of EP.alts)if((sh.get(r.id)||0)>=.01)for(const P of r.polys)P.forEach(add);
-  // phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
-  // desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
+  return fitView(Math.min(...xs)-40,Math.max(...xs)+40,Math.min(...ys)-40,Math.max(...ys)+60,3.6);
+}
+// [cx, cy, scale] that fits the world box x0–x1 × y0–y1 in the open map, for flyTo(): clear of the glass insets and
+// (T49: shared by engFit and gridFit) —
+// phones have no glass insets, but the weather bar sits on top of the map and the legend at its foot: keep clear of both
+// desktop: the weather legend (folded) and the credits line sit at the foot of the open map — keep the framing above them
+function fitView(x0,x1,y0,y1,maxS){
   const mob=!matchMedia('(min-width: 821px)').matches,lg=document.getElementById('legend'),mt=mob?96:0,mb=mob?104:(lg&&lg.offsetHeight?lg.offsetHeight+52:0);
   const I=insets(),vw=Math.max(120,V.w-I.l-I.r),vh=Math.max(120,V.h-I.t-I.b-mt-mb);
-  const x0=Math.min(...xs)-40,x1=Math.max(...xs)+40,y0=Math.min(...ys)-40,y1=Math.max(...ys)+60,sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),cityMinS(),3.6);
+  const sc=clamp(Math.min(vw/(x1-x0),vh/(y1-y0)),cityMinS(),maxS);
   return[(x0+x1)/2,(y0+y1)/2+(mt-mb)/(2*sc),sc];
 }
 function engFly(d){const f=engFit();if(f)flyTo(f[0],f[1],f[2],d);}

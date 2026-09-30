@@ -63,7 +63,7 @@ check("B4 闪电标签没有随机的 kA 强度，闪电次数不上屏", "kA" n
 check("B5 打开页面默认晴天，不读也不写 localStorage 的 rt-wx", "rt-wx" not in PAGE and re.search(r"S=\{step:1,wx:'clear'", APP) is not None)
 
 # ---- 补充 1：地图对准 Lonsdale ----
-fit = fn(ENG, "engFit")
+fit = fn(ENG, "engFit") + fn(ENG, "fitView")  # T49：取景算法抽成 fitView()，engFit 调它
 check("1 engFit 不再把路口 (0,0) 硬框进去", "xs=[0]" not in fit and "const xs=[],ys=[]" in fit)
 check("1 engFit 按玻璃没挡住的区域（insets()）定缩放", "insets()" in fit and "V.w-I.l-I.r" in fit and "V.h-I.t-I.b" in fit)
 check("1 engFit 框进排队线（沿真路、截到路网 / CITY 边，T27）和画出来的绕行（占比 ≥ 1%，T27 起；原来 ≥ 5%）", "engSub(Math.min(s.queue_m,engReach()))" in fit and ">=.01" in fit)

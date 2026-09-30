@@ -284,5 +284,10 @@ check("T48：logo 两层都内嵌为 PNG（页面仍是单文件）：路 + Twin
       and '--logo-ripple:url("data:image/png;base64,' in CSS_ALL and "background:var(--fg);-webkit-mask:var(--logo-ripple)" in CSS_ALL
       and "mask:var(--logo-ripple) left center/contain no-repeat}" in CSS_ALL)
 
+# 13. T49（@unicornnnnnny 10-01）：第 2 步镜头框住整个 4×4（16 个路口），不再只框施工处 2×2；「再点缩小」和 ⌖ 也回到 4×4
+check("T49：gridFly 用 gridFit() 框 16 个路口（S.sim.spec.junctions）+ 一圈斑马线余量，按 fitView 让开面板；没 spec 才退回 2×2",
+      "function gridFit(){" in app_js and "S.sim.spec.junctions" in app_js and "return fitView(Math.min(...xs)-m,Math.max(...xs)+m,Math.min(...ys)-m,Math.max(...ys)+m,3);" in app_js
+      and "const f=gridFit();if(f)flyTo(f[0],f[1],f[2],d);else flyTo((GRID_BOX.x0" in app_js and "function fitView(x0,x1,y0,y1,maxS){" in ENG)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

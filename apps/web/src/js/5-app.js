@@ -316,7 +316,14 @@ function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,c
 function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
 function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();s.clock0=CLOCK_EVENT-s.t;return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
-function gridFly(d){S.gridJ=null;flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
+// Step 2 framing (T49): the whole 4×4 the sim runs — all 16 junctions (Elizabeth–Exhibition × La Trobe–Little Bourke) and
+// their crossings — clear of the panels (fitView); no spec yet → the 2×2 at the works as before
+function gridFit(){
+  const J=(S.sim&&S.sim.spec&&S.sim.spec.junctions)||[];if(!J.length)return null;
+  const xs=J.map(j=>j.x),ys=J.map(j=>j.y),m=34; // m: half a street + the zebra, so the edge streets show whole
+  return fitView(Math.min(...xs)-m,Math.max(...xs)+m,Math.min(...ys)-m,Math.max(...ys)+m,3);
+}
+function gridFly(d){S.gridJ=null;const f=gridFit();if(f)flyTo(f[0],f[1],f[2],d);else flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;if(S.sim&&S.sim.isSumo&&sumoWant())return; // engine plan changed while on step 2 (T40: the SUMO replay only depends on the works link)
   const was=gridShown(),g=gridOn()&&newGrid();if(!g){if(S.sim&&S.sim.isSumo&&SU.grid){SU.tok++;S.sim=SU.grid;renderPanel();}return;}g.clock0=S.clock-g.t;S.sim=g;if(!was)gridFly(.7);renderPanel();sumoStart();}
 function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null,hr=engHour(EP.hour);return L(`Micro-sim · 16 junctions (La Trobe – Little Bourke × Elizabeth – Exhibition), weekday ${hr} flows · counts below cover the 2×2 at the works · signal timing and turn shares are assumed`,`微观仿真 · 16 个路口（La Trobe – Little Bourke × Elizabeth – Exhibition），工作日 ${hr} 车流 · 下面的计数只算施工处 2×2 · 信号配时和转弯比例是假设值`)+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
