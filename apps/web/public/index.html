@@ -467,7 +467,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -2960,7 +2960,7 @@ function engPanel1(){
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
     <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
-    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works-side footpath closed','施工侧人行道封闭')],['both',L('Both footpaths closed','两侧人行道都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
+    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
   <div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
@@ -2987,7 +2987,7 @@ function engBind1(){
 // Step 3, network tab: where the queue goes, who is hit and why (why = T5 reading, always set with textContent)
 function engTabs3(){
   if(!BE.api)return'';
-  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
+  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network','路网')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay','路口回放')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
 function engHeadline(s){
@@ -3012,7 +3012,7 @@ function engPanel3(){
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
-  <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
+  <div class="stack eng-where"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
@@ -3029,7 +3029,7 @@ function engTransit3(s){
 }
 function engPeds3(s){
   if(!hasPeds(s))return'';const p=s.peds;
-  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath open · no walking detour','人行道照常通行 · 行人不用绕')}</b></div></div>`;
+  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${L('Footpath open · no detour','人行道照常 · 不用绕')}</span></div>`;
   const sensorTxt=p.sensor?L(`nearest counter ${esc(p.sensor.name)}: ${fmtN(p.sensor.ped_h)}/h`,`最近的计数器 ${esc(p.sensor.name)}：每小时 ${fmtN(p.sensor.ped_h)} 人`):'';
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
   <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
@@ -3359,7 +3359,8 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox'; // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
+const SEC_FOLD='#clashBox,.eng-where'; // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -3374,7 +3375,7 @@ function compactPanel(){
     if(sec===tools||!sec.classList.contains('stack'))continue;
     const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
     const key=`${S.step}${tab}:${n++}`;
-    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!sec.matches(SEC_FOLD)&&(sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280)));
     const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
     sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
     head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
@@ -3479,7 +3480,7 @@ function clashHTML(){
   if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
   const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
   const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
-  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow"${r.flags.reliable&&r.cost>0?' style="color:var(--risk)"':''}>${r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`:L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
   <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
   const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable&&x.r.cost>0?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
   // Not reliable: negative delay (baseline over capacity, #58) or failed sign readings — never show a number
@@ -3507,7 +3508,8 @@ function clashBtnHTML(){
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;compactPanel();} // signature guard: same state → keep the DOM;
+  // the section fills in after the panel was laid out (async engine calls): let the brief / full folding see it (7-glass.js)
   const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
   a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }

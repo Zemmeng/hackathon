@@ -145,14 +145,21 @@ check("第一次打开是深色：<html data-theme=\"dark\">（脚本跑之前�
 # 09-30 tutor：右侧文字太多（limit the words）—— 简洁模式只留数字、按钮和一行假设；来源脚注、每套方案的 AI 解读、倾向的理由放「详细」
 ENGJS = (SRC / "js" / "6-engine.js").read_text(encoding="utf-8")
 CMPJS = (SRC / "js" / "8-compare.js").read_text(encoding="utf-8")
-check("简洁模式隐藏来源脚注（.legend-src）、每套方案的 AI 解读（.cmp-explain）和倾向的理由（.cmp-lean-why），详细模式照旧都在",
-      ".panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why{display:none}" in CSS
+check("简洁模式隐藏来源脚注（.legend-src）、每套方案的 AI 解读（.cmp-explain）、倾向的理由（.cmp-lean-why）、重复的来源徽章（.eng-badges）和第 1 步的公交行人小行（.eng-impacts），详细模式照旧都在",
+      ".panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts{display:none}" in CSS
       and "w.className='cmp-lean-why'" in CMPJS and 'class="cmp-explain"' in CMPJS)
 check("假设说明缩成一行，但意思不丢：读懂比例 · 绕行比例 · 路线选择模型 · 信任度是假设值",
       "of drivers understand the sign · `" in ENGJS and "(route-choice model; trust in signs is an assumed value)" in ENGJS
       and "arrive, ${fmtN(l.cap)} veh/h get past" in ENGJS and "the route-choice model's per-driver-type parameters" not in ENGJS)
 check("反向：「Reword」换成直白的「Edit sign」；第 1 步按钮说明不再写死 La Trobe × Swanston（第 2 步已是 4 个路口）",
       "Reword" not in ENGJS + CMPJS and "L('Edit sign','改字')" in ENGJS and "Micro-simulation of the La Trobe × Swanston junction" not in APP)
+
+CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
+check("简洁模式默认收起「车往哪走」和「叠加检查」（SEC_FOLD），标题行直接写要点：叠加检查写冲突成本",
+      "const SEC_FOLD='#clashBox,.eng-where';" in GLASS and "!sec.matches(SEC_FOLD)&&(" in GLASS and 'class="stack eng-where"' in ENGJS
+      and "r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`" in CLASHJS)
+check("人行道照常时行人只占一行；第 1 步人行道选项写短（Works side closed / Both sides closed）",
+      "L('Footpath open · no detour','人行道照常 · 不用绕')" in ENGJS and "L('Works side closed','施工侧封')" in ENGJS and "Works-side footpath closed" not in ENGJS)
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

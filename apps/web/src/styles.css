@@ -457,7 +457,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}

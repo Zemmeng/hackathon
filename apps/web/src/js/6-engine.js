@@ -304,7 +304,7 @@ function engPanel1(){
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
     <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
-    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works-side footpath closed','施工侧人行道封闭')],['both',L('Both footpaths closed','两侧人行道都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
+    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
   <div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
@@ -331,7 +331,7 @@ function engBind1(){
 // Step 3, network tab: where the queue goes, who is hit and why (why = T5 reading, always set with textContent)
 function engTabs3(){
   if(!BE.api)return'';
-  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
+  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network','路网')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay','路口回放')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
 function engHeadline(s){
@@ -356,7 +356,7 @@ function engPanel3(){
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
-  <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
+  <div class="stack eng-where"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
@@ -373,7 +373,7 @@ function engTransit3(s){
 }
 function engPeds3(s){
   if(!hasPeds(s))return'';const p=s.peds;
-  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath open · no walking detour','人行道照常通行 · 行人不用绕')}</b></div></div>`;
+  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${L('Footpath open · no detour','人行道照常 · 不用绕')}</span></div>`;
   const sensorTxt=p.sensor?L(`nearest counter ${esc(p.sensor.name)}: ${fmtN(p.sensor.ped_h)}/h`,`最近的计数器 ${esc(p.sensor.name)}：每小时 ${fmtN(p.sensor.ped_h)} 人`):'';
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
   <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
