@@ -1,0 +1,313 @@
+<div id="rt-current-ui-flow" aria-label="RippleTwin 现有前端的完整流程改版示意">
+  <div id="cw-shell" aria-live="polite"></div>
+  <div class="cw-toast" id="cw-toast" role="status" hidden></div>
+</div>
+<style>
+#rt-current-ui-flow{--cw-bg:light-dark(#e9ecee,#11161b);--cw-panel:light-dark(#ffffff,#11161c);--cw-raised:light-dark(#f1f4f5,#1e242b);--cw-text:light-dark(#18232b,#eef1f4);--cw-muted:light-dark(#52616e,#a5b0ba);--cw-line:light-dark(#cbd4d9,#424b53);--cw-amber:light-dark(#f5b347,#ffb84c);--cw-on-amber:#231606;--cw-cyan:light-dark(#087d71,#75d7bc);--cw-red:light-dark(#b82d44,#fb7589);--cw-soft:light-dark(#fff2d8,#352b1a);--cw-shadow:light-dark(#26324122,#00000055);--rt-bg:var(--cw-bg);--rt-panel:var(--cw-panel);--rt-text:var(--cw-text);--rt-muted:var(--cw-muted);--rt-border:var(--cw-line);--rt-brand:var(--cw-cyan);--rt-brand-soft:light-dark(#e1f4ed,#19372e);--rt-orange:var(--cw-amber);--rt-orange-soft:var(--cw-soft);--rt-red:var(--cw-red);--rt-blue:var(--cw-cyan);--rt-blue-soft:light-dark(#dff0ed,#183830);--rt-road:light-dark(#dae0e4,#303b44);--rt-building:light-dark(#bdc6ca,#232b30);--rt-building-detail:light-dark(#a8b4bb,#46515a);--rt-park:light-dark(#bbcbbb,#243b32);--rt-map-bg:light-dark(#d0d7d9,#131c23);--rt-shadow:var(--cw-shadow);--rt-radius:12px;font:13px/1.55 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--cw-text);isolation:isolate;position:relative}
+#rt-current-ui-flow *{box-sizing:border-box}
+#rt-current-ui-flow [hidden]{display:none!important}
+#rt-current-ui-flow button,#rt-current-ui-flow input,#rt-current-ui-flow select,#rt-current-ui-flow textarea{font:inherit;color:inherit}
+#rt-current-ui-flow button{cursor:var(--cursor-interaction,pointer);border:0;background:none}
+#rt-current-ui-flow button:focus-visible,#rt-current-ui-flow input:focus-visible,#rt-current-ui-flow select:focus-visible,#rt-current-ui-flow textarea:focus-visible{outline:2px solid var(--cw-amber);outline-offset:3px}
+#rt-current-ui-flow h1,#rt-current-ui-flow h2,#rt-current-ui-flow h3,#rt-current-ui-flow p{margin:0}
+#rt-current-ui-flow h1{font-size:19px;font-weight:500;line-height:1.45}
+#rt-current-ui-flow h2{font-size:16px;font-weight:500}
+#rt-current-ui-flow h3{font-size:13px;font-weight:500}
+#rt-current-ui-flow svg.lucide{width:16px;height:16px;flex:none;vertical-align:middle;stroke-width:1.7}
+#rt-current-ui-flow .cw-app{background:var(--cw-bg);border:1px solid var(--cw-line);border-radius:20px;padding:12px;box-shadow:0 12px 35px var(--cw-shadow)}
+#rt-current-ui-flow .cw-glass{background:var(--cw-panel);border:1px solid var(--cw-line);border-radius:17px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--cw-text) 13%,transparent),0 6px 20px var(--cw-shadow)}
+#rt-current-ui-flow .cw-top{display:flex;gap:16px;align-items:center;padding:12px 15px;flex-wrap:wrap}
+#rt-current-ui-flow .cw-brand{display:flex;gap:9px;align-items:center;font-size:18px;font-weight:500;letter-spacing:-.4px}
+#rt-current-ui-flow .cw-brand>span{display:grid;place-items:center;width:27px;height:27px;border:1px solid var(--cw-line);border-radius:50%;color:var(--cw-amber)}
+#rt-current-ui-flow .cw-scene{font-size:12px;color:var(--cw-muted);display:flex;gap:9px;align-items:center;min-width:0}
+#rt-current-ui-flow .cw-scene strong{font-weight:400;color:var(--cw-text)}
+#rt-current-ui-flow .cw-top-end{margin-left:auto;display:flex;gap:9px;align-items:center}
+#rt-current-ui-flow .cw-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--cw-line);border-radius:20px;padding:3px 8px;font-size:11px;color:var(--cw-muted);white-space:normal}
+#rt-current-ui-flow .cw-badge.good{color:var(--cw-cyan);background:color-mix(in srgb,var(--cw-cyan) 10%,var(--cw-panel))}
+#rt-current-ui-flow .cw-badge.amber{color:var(--cw-amber);background:var(--cw-soft)}
+#rt-current-ui-flow .cw-theme{display:grid;place-items:center;width:31px;height:31px;border:1px solid var(--cw-line);border-radius:50%;color:var(--cw-amber)}
+#rt-current-ui-flow .cw-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:8px;margin:10px 0}
+#rt-current-ui-flow .cw-step{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 5px;border-radius:22px;color:var(--cw-muted);font-size:12px;white-space:nowrap}
+#rt-current-ui-flow .cw-step span{font-size:11px;opacity:.8;font-variant-numeric:tabular-nums}
+#rt-current-ui-flow .cw-step[aria-current="step"]{background:var(--cw-amber);color:var(--cw-on-amber);box-shadow:0 2px 7px var(--cw-shadow)}
+#rt-current-ui-flow .cw-context{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:5px 7px 14px}
+#rt-current-ui-flow .cw-context p{font-size:12px;color:var(--cw-muted);margin-top:3px}
+#rt-current-ui-flow .cw-workspace{display:grid;grid-template-columns:minmax(0,1fr) 344px;gap:13px;align-items:stretch}
+#rt-current-ui-flow .cw-map-column{min-width:0;display:flex;flex-direction:column;gap:12px}
+#rt-current-ui-flow .cw-map-stage{position:relative;flex:1;min-height:470px;border-radius:17px;overflow:clip;border:1px solid var(--cw-line);background:var(--rt-map-bg)}
+#rt-current-ui-flow .cw-map-stage .rt-map{border:0;border-radius:0;background:transparent;height:100%;min-height:inherit;display:flex;flex-direction:column}
+#rt-current-ui-flow .cw-map-stage .rt-map-toolbar{position:relative;z-index:3;background:var(--cw-panel);padding:12px;gap:8px;font-size:11px;min-height:43px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#rt-current-ui-flow .cw-map-stage .rt-map-toolbar strong{display:flex;align-items:center;gap:7px;font-weight:400}
+#rt-current-ui-flow .cw-map-stage .rt-map-surface{flex:1;height:auto;min-height:390px;position:relative;container-type:inline-size;overflow:clip;background:var(--rt-map-bg)}
+#rt-current-ui-flow .cw-map-stage .rt-map-legend{background:var(--cw-panel);padding:9px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:11px;color:var(--cw-muted)}
+#rt-current-ui-flow .rt-map-legend>span{display:inline-flex;align-items:center;gap:5px}
+#rt-current-ui-flow .rt-map-geometry{position:absolute;inset:0;transform-origin:center;transition:transform .2s ease}
+#rt-current-ui-flow .rt-map-art{position:absolute;inset:0;width:100%;height:100%}
+#rt-current-ui-flow .rt-map-art .rt-route{fill:none;stroke:var(--cw-cyan);stroke-width:3;stroke-dasharray:7 5;vector-effect:non-scaling-stroke}
+#rt-current-ui-flow .rt-map-art .rt-queue{fill:none;stroke:var(--cw-red);stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rt-current-ui-flow .rt-map-art .rt-workline{stroke:var(--cw-amber);stroke-width:8;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rt-current-ui-flow .rt-map-art .rt-workcaps{stroke:var(--cw-panel);stroke-width:2;vector-effect:non-scaling-stroke}
+#rt-current-ui-flow .rt-map-art .rt-trafficline{stroke:var(--cw-cyan);stroke-width:3;opacity:.7;vector-effect:non-scaling-stroke}
+#rt-current-ui-flow .rt-block{position:absolute;background:var(--rt-building);border:1px solid var(--rt-building-detail);border-radius:2px;box-shadow:7px 8px 0 color-mix(in srgb,var(--cw-bg) 65%,transparent)}
+#rt-current-ui-flow .rt-block::after{content:"";position:absolute;inset:5px;border-top:1px solid var(--rt-building-detail);border-left:1px solid var(--rt-building-detail)}
+#rt-current-ui-flow .rt-block.park{background:var(--rt-park);box-shadow:none;border-radius:5px}
+#rt-current-ui-flow .rt-street-h{position:absolute;left:0;right:0;height:17px;transform:translateY(-50%);background:var(--rt-road);border-top:1px solid var(--rt-building-detail);border-bottom:1px solid var(--rt-building-detail)}
+#rt-current-ui-flow .rt-street-v{position:absolute;top:0;bottom:0;width:18px;transform:translateX(-50%);background:var(--rt-road);border-left:1px solid var(--rt-building-detail);border-right:1px solid var(--rt-building-detail)}
+#rt-current-ui-flow .rt-road-label{position:absolute;font-size:11px;white-space:nowrap;color:var(--cw-text);text-shadow:0 1px 2px var(--cw-bg);pointer-events:none}
+#rt-current-ui-flow .rt-road-label.horizontal{left:4%;margin-top:3px}
+#rt-current-ui-flow .rt-road-label.vertical{top:80%;transform:rotate(-90deg);transform-origin:0 0;margin-left:-7px}
+#rt-current-ui-flow .rt-landmark{position:absolute;font-size:11px;color:var(--cw-muted);text-align:center;transform:translate(-50%,-50%);line-height:1.4}
+#rt-current-ui-flow .rt-map-pin{position:absolute;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--cw-amber);color:var(--cw-on-amber);font-size:11px;box-shadow:0 0 0 3px var(--cw-soft);transform:translate(-50%,-50%);z-index:2}
+#rt-current-ui-flow .rt-map-pin.secondary{background:var(--cw-cyan)}
+#rt-current-ui-flow .rt-vms{position:absolute;transform:translate(-50%,-50%);background:var(--cw-panel);color:var(--cw-amber);border:1px solid var(--cw-amber);padding:2px 5px;border-radius:4px;font-size:11px;z-index:2}
+#rt-current-ui-flow .rt-map-pill{position:absolute;display:flex;align-items:center;gap:5px;background:var(--cw-panel);border:1px solid var(--cw-line);box-shadow:0 3px 12px var(--cw-shadow);border-radius:5px;padding:6px 8px;font-size:11px;white-space:nowrap;z-index:2}
+#rt-current-ui-flow .rt-map-pill.works{left:34%;top:59%;color:var(--cw-amber);border-color:var(--cw-amber)}
+#rt-current-ui-flow .rt-map-pill.queue{right:8%;top:43%;color:var(--cw-red);border-color:var(--cw-red)}
+#rt-current-ui-flow .rt-map-pill.detour{left:23%;top:25%;color:var(--cw-cyan)}
+#rt-current-ui-flow .rt-map-schematic{position:absolute;bottom:12px;left:12px;background:var(--cw-panel);color:var(--cw-muted);padding:4px 7px;border-radius:4px;font-size:11px}
+#rt-current-ui-flow .rt-map-zoom{position:absolute;right:12px;bottom:12px;z-index:4;display:grid;gap:1px;border:1px solid var(--cw-line);border-radius:20px;padding:3px;background:var(--cw-panel)}
+#rt-current-ui-flow .rt-map-zoom button{width:31px;height:31px;color:var(--cw-text)}
+#rt-current-ui-flow .rt-swatch{width:13px;height:3px;background:var(--cw-amber)}
+#rt-current-ui-flow .rt-swatch.red{background:var(--cw-red)}
+#rt-current-ui-flow .rt-swatch.blue{background:var(--cw-cyan)}
+#rt-current-ui-flow .cw-map-hud{position:absolute;top:53px;left:12px;right:12px;z-index:4;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;pointer-events:none}
+#rt-current-ui-flow .cw-map-hud>*{pointer-events:auto}
+#rt-current-ui-flow .cw-pills{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid var(--cw-line);border-radius:24px;background:var(--cw-panel);flex-wrap:wrap}
+#rt-current-ui-flow .cw-pills button{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;font-size:11px;border-radius:18px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-pills button[aria-pressed="true"]{color:var(--cw-on-amber);background:var(--cw-amber)}
+#rt-current-ui-flow .cw-rail{position:absolute;left:10px;top:39%;z-index:4;display:grid;gap:5px;padding:5px;border:1px solid var(--cw-line);border-radius:22px;background:var(--cw-panel)}
+#rt-current-ui-flow .cw-rail button{height:30px;width:30px;display:grid;place-items:center;border-radius:50%;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-rail button[aria-pressed="true"]{background:var(--cw-amber);color:var(--cw-on-amber)}
+#rt-current-ui-flow .cw-panel{padding:17px;min-width:0;display:flex;flex-direction:column;gap:14px}
+#rt-current-ui-flow .cw-panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#rt-current-ui-flow .cw-eyebrow{font-size:11px;color:var(--cw-amber);letter-spacing:.08em;text-transform:uppercase}
+#rt-current-ui-flow .cw-muted{color:var(--cw-muted)}
+#rt-current-ui-flow .cw-small{font-size:11px;line-height:1.6}
+#rt-current-ui-flow .cw-intro{font-size:12px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-box{background:var(--cw-raised);border:1px solid var(--cw-line);border-radius:12px;padding:13px}
+#rt-current-ui-flow .cw-stack{display:grid;gap:11px}
+#rt-current-ui-flow .cw-kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#rt-current-ui-flow .cw-kpi{padding:12px;border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-raised)}
+#rt-current-ui-flow .cw-kpi span{font-size:11px;color:var(--cw-muted);display:block}
+#rt-current-ui-flow .cw-kpi strong{display:block;font-size:23px;font-weight:500;font-variant-numeric:tabular-nums;margin-top:4px}
+#rt-current-ui-flow .cw-kpi small{font-size:11px;color:var(--cw-muted);margin-left:3px}
+#rt-current-ui-flow .cw-button{display:inline-flex;justify-content:center;align-items:center;gap:8px;background:var(--cw-raised);border:1px solid var(--cw-line);padding:10px 14px;border-radius:23px;font-size:12px;min-height:39px;text-align:center;white-space:normal}
+#rt-current-ui-flow .cw-button.primary{background:var(--cw-amber);border-color:var(--cw-amber);color:var(--cw-on-amber);font-weight:500}
+#rt-current-ui-flow .cw-button.block{width:100%}
+#rt-current-ui-flow .cw-tabs{display:flex;gap:4px;padding:4px;border:1px solid var(--cw-line);border-radius:20px;flex-wrap:wrap;background:var(--cw-raised)}
+#rt-current-ui-flow .cw-tabs button{flex:1;padding:6px 5px;border-radius:18px;color:var(--cw-muted);font-size:11px;white-space:nowrap}
+#rt-current-ui-flow .cw-tabs button[aria-selected="true"]{background:var(--cw-text);color:var(--cw-panel)}
+#rt-current-ui-flow .cw-field{display:block;font-size:11px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-field>span{display:block;margin-bottom:5px}
+#rt-current-ui-flow .cw-field input,#rt-current-ui-flow .cw-field select,#rt-current-ui-flow .cw-field textarea{display:block;width:100%;min-width:0;padding:8px 9px;border:1px solid var(--cw-line);border-radius:8px;background:var(--cw-raised);color:var(--cw-text);font-size:12px}
+#rt-current-ui-flow .cw-field textarea{resize:vertical;min-height:82px}
+#rt-current-ui-flow .cw-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#rt-current-ui-flow .cw-check{display:flex;gap:8px;align-items:flex-start;font-size:12px;margin:6px 0}
+#rt-current-ui-flow input[type="checkbox"],#rt-current-ui-flow input[type="range"]{accent-color:var(--cw-amber)}
+#rt-current-ui-flow .cw-check input{margin:4px 0 0}
+#rt-current-ui-flow .cw-row{display:flex;gap:9px;align-items:center;justify-content:space-between;font-size:12px}
+#rt-current-ui-flow .cw-row+.cw-row{border-top:1px solid var(--cw-line);padding-top:9px;margin-top:9px}
+#rt-current-ui-flow .cw-row strong{font-weight:500;font-variant-numeric:tabular-nums}
+#rt-current-ui-flow .cw-runline{display:flex;gap:9px;align-items:center;padding:9px 0;font-size:12px}
+#rt-current-ui-flow .cw-runline span{margin-left:auto;font-size:11px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-runline svg{color:var(--cw-cyan)}
+#rt-current-ui-flow .cw-timeline{display:flex;gap:10px;align-items:center;padding:12px;flex-wrap:wrap}
+#rt-current-ui-flow .cw-timeline input{flex:1;min-width:95px}
+#rt-current-ui-flow .cw-clock{font-size:15px;font-variant-numeric:tabular-nums;line-height:1.35}
+#rt-current-ui-flow .cw-clock small{display:block;font-size:11px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-note{color:var(--cw-muted);font-size:11px;padding:0 4px}
+#rt-current-ui-flow .cw-footer{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 3px 0;flex-wrap:wrap}
+#rt-current-ui-flow .cw-footer .primary{margin-left:auto;min-width:177px}
+#rt-current-ui-flow .cw-footer-status{display:flex;align-items:center;gap:7px;color:var(--cw-muted);font-size:11px}
+#rt-current-ui-flow .cw-details{font-size:12px;border-top:1px solid var(--cw-line);padding-top:11px}
+#rt-current-ui-flow .cw-details summary{color:var(--cw-text);cursor:var(--cursor-interaction,pointer)}
+#rt-current-ui-flow .cw-details p{margin-top:9px;color:var(--cw-muted);font-size:11px}
+#rt-current-ui-flow .cw-list{margin:0;padding-left:18px;color:var(--cw-muted);font-size:12px;display:grid;gap:7px}
+#rt-current-ui-flow .cw-callout{border-left:3px solid var(--cw-amber);padding:4px 0 4px 11px;font-size:12px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-project{display:block;width:100%;text-align:left;font-size:12px;padding:10px 0;border-bottom:1px solid var(--cw-line)}
+#rt-current-ui-flow .cw-project small{display:block;font-size:11px;color:var(--cw-muted);margin-top:4px}
+#rt-current-ui-flow .cw-diff{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+#rt-current-ui-flow .cw-diff div{background:var(--cw-raised);border:1px solid var(--cw-line);border-radius:10px;padding:11px}
+#rt-current-ui-flow .cw-diff small{font-size:11px;color:var(--cw-muted);display:block}
+#rt-current-ui-flow .cw-diff b{font-size:19px;font-weight:500;display:block;margin-top:3px;font-variant-numeric:tabular-nums}
+#rt-current-ui-flow .cw-table-wrap{border:1px solid var(--cw-line);border-radius:14px;overflow:clip;background:var(--cw-panel)}
+#rt-current-ui-flow .cw-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}
+#rt-current-ui-flow .cw-table td,#rt-current-ui-flow .cw-table th{padding:10px 6px;border-bottom:1px solid var(--cw-line);text-align:center;font-weight:400;overflow-wrap:anywhere}
+#rt-current-ui-flow .cw-table td:first-child,#rt-current-ui-flow .cw-table th:first-child{text-align:left;width:26%;padding-left:12px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-table .cw-rec{background:var(--cw-soft)}
+#rt-current-ui-flow .cw-table th strong{display:block;font-size:13px;font-weight:500;margin-top:5px}
+#rt-current-ui-flow .cw-table th small{font-size:11px;color:var(--cw-muted);display:block;margin-top:4px}
+#rt-current-ui-flow .cw-table .cw-num{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums}
+#rt-current-ui-flow .cw-table .cw-button{font-size:11px;padding:7px 9px;min-height:34px}
+#rt-current-ui-flow .cw-table-caption{font-size:11px;color:var(--cw-muted);padding:9px 12px}
+#rt-current-ui-flow[data-step="4"] .cw-map-stage{min-height:230px;flex:none}
+#rt-current-ui-flow[data-step="4"] .cw-map-stage .rt-map-surface{min-height:165px}
+#rt-current-ui-flow[data-step="4"] .cw-map-hud,#rt-current-ui-flow[data-step="4"] .cw-rail{display:none}
+#rt-current-ui-flow[data-step="4"] .rt-landmark,#rt-current-ui-flow[data-step="4"] .rt-road-label.vertical{display:none}
+#rt-current-ui-flow .cw-paper{padding:23px;background:var(--cw-panel);border:1px solid var(--cw-line);border-radius:14px;min-width:0}
+#rt-current-ui-flow .cw-paper-top{display:flex;gap:12px;justify-content:space-between;border-bottom:1px solid var(--cw-line);padding-bottom:13px;margin-bottom:16px}
+#rt-current-ui-flow .cw-paper h2{font-size:20px;margin:6px 0}
+#rt-current-ui-flow .cw-paper .cw-box{margin-top:14px}
+#rt-current-ui-flow .cw-paper .cw-map-stage{min-height:200px;margin:16px 0;flex:none}
+#rt-current-ui-flow .cw-paper .rt-map-surface{min-height:155px}
+#rt-current-ui-flow .cw-paper .rt-landmark,#rt-current-ui-flow .cw-paper .rt-road-label.vertical{display:none}
+#rt-current-ui-flow .cw-paper .rt-map-toolbar{display:none}
+#rt-current-ui-flow .cw-report-rows{margin-top:12px}
+#rt-current-ui-flow .cw-report-foot{display:flex;gap:8px;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid var(--cw-line);font-size:11px;color:var(--cw-muted)}
+#rt-current-ui-flow .cw-success{padding:11px;border:1px solid var(--cw-cyan);border-radius:10px;font-size:12px;color:var(--cw-cyan)}
+#rt-current-ui-flow .cw-toast{position:absolute;left:18px;right:18px;bottom:18px;z-index:20;background:var(--cw-panel);border:1px solid var(--cw-amber);border-radius:12px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 8px 30px var(--cw-shadow);font-size:12px}
+#rt-current-ui-flow .cw-mobile-options{display:none}
+#rt-current-ui-flow .cw-option{border:1px solid var(--cw-line);border-radius:12px;background:var(--cw-panel);padding:13px}
+#rt-current-ui-flow .cw-option+.cw-option{margin-top:10px}
+#rt-current-ui-flow .cw-option.selected{border-color:var(--cw-amber)}
+#rt-current-ui-flow[data-panel="left"] .cw-workspace{grid-template-columns:344px minmax(0,1fr)}
+#rt-current-ui-flow[data-panel="left"] .cw-side{grid-column:1;grid-row:1}
+#rt-current-ui-flow[data-panel="left"] .cw-map-column{grid-column:2;grid-row:1}
+@container (max-width:400px){#rt-current-ui-flow .rt-landmark,#rt-current-ui-flow .rt-road-label.vertical:nth-of-type(2n){display:none}#rt-current-ui-flow .rt-map-pill.works{left:20%;font-size:11px;padding:5px}#rt-current-ui-flow .rt-map-pill.detour{left:18%}#rt-current-ui-flow .rt-road-label.horizontal{left:14%}}
+@media (min-width:700px) and (max-width:900px){#rt-current-ui-flow .cw-workspace{grid-template-columns:minmax(0,1fr) 300px;gap:10px}#rt-current-ui-flow[data-panel="left"] .cw-workspace{grid-template-columns:300px minmax(0,1fr)}#rt-current-ui-flow .cw-panel{padding:14px}#rt-current-ui-flow .cw-scene{display:none}#rt-current-ui-flow .cw-step{font-size:11px;gap:5px}#rt-current-ui-flow .cw-map-hud{right:8px;left:8px}#rt-current-ui-flow .cw-map-hud .cw-pills:last-child{display:none}}
+@media (max-width:699px){#rt-current-ui-flow .cw-app{padding:9px;border-radius:15px}#rt-current-ui-flow .cw-top{gap:9px;padding:10px}#rt-current-ui-flow .cw-scene{display:none}#rt-current-ui-flow .cw-brand{font-size:17px}#rt-current-ui-flow .cw-steps{gap:4px;padding:6px;grid-template-columns:repeat(3,minmax(0,1fr))}#rt-current-ui-flow .cw-step{padding:8px 4px;font-size:11px;min-height:38px}#rt-current-ui-flow .cw-context{align-items:flex-start;padding:4px 3px 12px}#rt-current-ui-flow .cw-context h1{font-size:18px}#rt-current-ui-flow .cw-context>.cw-badge{max-width:100px}#rt-current-ui-flow .cw-workspace,#rt-current-ui-flow[data-panel="left"] .cw-workspace{grid-template-columns:minmax(0,1fr)}#rt-current-ui-flow[data-panel="left"] .cw-side,#rt-current-ui-flow[data-panel="left"] .cw-map-column{grid-column:auto;grid-row:auto}#rt-current-ui-flow .cw-map-stage{min-height:350px}#rt-current-ui-flow .cw-map-stage .rt-map-surface{min-height:280px}#rt-current-ui-flow .cw-fields{grid-template-columns:1fr 1fr}#rt-current-ui-flow .cw-field input,#rt-current-ui-flow .cw-field select,#rt-current-ui-flow .cw-field textarea{font-size:16px}#rt-current-ui-flow .cw-footer-status{order:3;width:100%}#rt-current-ui-flow .cw-footer .primary{min-width:0}#rt-current-ui-flow .cw-map-hud .cw-pills:last-child{display:none}#rt-current-ui-flow .cw-table-wrap{display:none}#rt-current-ui-flow .cw-mobile-options{display:block}#rt-current-ui-flow .cw-paper{padding:15px}#rt-current-ui-flow .cw-diff{grid-template-columns:1fr 1fr 1fr}#rt-current-ui-flow .cw-diff div{padding:8px}#rt-current-ui-flow .cw-diff b{font-size:17px}}
+@media (max-width:390px){#rt-current-ui-flow .cw-fields{grid-template-columns:minmax(0,1fr)}#rt-current-ui-flow .cw-top-end{gap:5px}#rt-current-ui-flow .cw-top-end .cw-badge{max-width:80px;font-size:11px}#rt-current-ui-flow .cw-map-hud .cw-pills button{padding:5px 7px}#rt-current-ui-flow .cw-context{flex-wrap:wrap}#rt-current-ui-flow .cw-steps{gap:3px}#rt-current-ui-flow .cw-step{gap:4px}#rt-current-ui-flow .cw-footer .cw-button{width:100%}#rt-current-ui-flow .cw-diff{grid-template-columns:minmax(0,1fr)}#rt-current-ui-flow .cw-diff div{display:flex;align-items:center;justify-content:space-between}}
+@media (prefers-reduced-motion:reduce){#rt-current-ui-flow .rt-map-geometry{transition:none}}
+#rt-current-ui-flow[data-step="4"] .rt-map-zoom,#rt-current-ui-flow .cw-paper .rt-map-zoom{display:none}
+#rt-current-ui-flow[data-step="4"] .rt-map-pill.queue,#rt-current-ui-flow .cw-paper .rt-map-pill.queue{top:7%;right:5%}
+#rt-current-ui-flow[data-step="4"] .rt-map-pill.works,#rt-current-ui-flow .cw-paper .rt-map-pill.works{top:65%;left:40%;padding:4px 6px}
+#rt-current-ui-flow[data-step="4"] .rt-map-schematic,#rt-current-ui-flow .cw-paper .rt-map-schematic{bottom:3px}
+@container (max-width:400px){#rt-current-ui-flow .rt-vms+.rt-vms{top:78%!important}}
+#rt-current-ui-flow[data-step="4"] .rt-road-label.horizontal,#rt-current-ui-flow .cw-paper .rt-road-label.horizontal{display:none}
+#rt-current-ui-flow[data-step="4"] .rt-road-label.horizontal[style*="top:14%"],#rt-current-ui-flow[data-step="4"] .rt-road-label.horizontal[style*="top:53%"],#rt-current-ui-flow .cw-paper .rt-road-label.horizontal[style*="top:14%"],#rt-current-ui-flow .cw-paper .rt-road-label.horizontal[style*="top:53%"]{display:block}
+@media (pointer:coarse){#rt-current-ui-flow .cw-step,#rt-current-ui-flow .cw-theme,#rt-current-ui-flow .cw-pills button,#rt-current-ui-flow .cw-rail button,#rt-current-ui-flow .rt-map-zoom button,#rt-current-ui-flow .cw-tabs button,#rt-current-ui-flow .cw-button{min-height:44px}#rt-current-ui-flow .cw-theme,#rt-current-ui-flow .cw-rail button,#rt-current-ui-flow .rt-map-zoom button{min-width:44px}#rt-current-ui-flow .cw-check{min-height:44px;align-items:center}}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('rt-current-ui-flow');
+  const shell=root.querySelector('#cw-shell');
+  const defaults={projectName:'Lonsdale St 道路养护',goal:'balanced',step:0,tab:'site',analysis:'traffic',option:'B',theme:'dark',weather:'clear',basemap:'streets',closure:'1',start:'2026-10-05',end:'2026-10-09',from:'07:00',to:'19:00',message:'ROADWORK AHEAD\nUSE RUSSELL ST',budget:'3500',vms:'1',upstream:'300',footpath:true,transit:true,emergency:true,ran:false,replay:'original',minute:15,zoom:1,worksLayer:true,flowLayer:true,reason:'综合交通改善与设备投入，选用方案 B。',report:true,inventory:true,drawing:true,exported:false};
+  let state={...defaults};
+  const design={panel:'right',compare:'table'};
+  const steps=['路况总览','配置施工','仿真评估','影响分析','比较方案','确认导出'];
+  const titles=['从路网开始，规划下一处施工','配置施工范围、设备与约束','评估施工对交通的影响','理解影响，再决定优化方向','比较收益与代价，选定实施方案','确认方案，预览交付材料'];
+  const subtitles=['Melbourne CBD · 历史典型日 · 示例路况','Lonsdale St 西行 · 同一维修任务 · 方案 v1','无施工基准 / 原方案 / 候选 A / 候选 B','机动车、公共交通、行人与施工叠加分别查看','同一交通时段、同一施工周期、同一评价口径','方案图、交通评估、设备费用与依据保存在同一版本'];
+  const options={original:{name:'原方案',desc:'现有设备与引导配置',delay:3.8,queue:680,transit:2.9,cost:2800,vms:1},A:{name:'方案 A',desc:'调整现有 VMS 位置',delay:3.1,queue:510,transit:2.4,cost:2800,vms:1},B:{name:'方案 B',desc:'增加上游 VMS 引导',delay:2.1,queue:340,transit:1.7,cost:3200,vms:2}};
+  const icon=n=>'<i data-lucide="'+n+'" aria-hidden="true"></i>';
+  const escape=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>'$'+Number(v).toLocaleString('en-AU');
+  function restore(snapshot){
+    const s=snapshot?.privateContent?.state;
+    if(s)for(const k of Object.keys(defaults))if(typeof s[k]===typeof defaults[k])state[k]=s[k];
+    state.step=Math.max(0,Math.min(5,Math.round(state.step)));state.minute=Math.max(0,Math.min(59,state.minute));state.zoom=Math.max(1,Math.min(1.5,state.zoom));
+    if(!options[state.option])state.option='B';if(!options[state.replay]||state.replay==='A')state.replay='original';
+    if(!['site','equipment','constraints'].includes(state.tab))state.tab='site';if(!['traffic','overlap','evidence'].includes(state.analysis))state.analysis='traffic';
+    if(!['balanced','transit','budget'].includes(state.goal))state.goal='balanced';
+    if(!['dark','light'].includes(state.theme))state.theme='dark';
+    const d=snapshot?.privateContent?.design;if(d&&['left','right'].includes(d.panel))design.panel=d.panel;if(d&&['table','cards'].includes(d.compare))design.compare=d.compare;
+  }
+  restore(window.openai?.widgetState);
+  function save(){window.openai?.setWidgetState?.({modelContent:{page:steps[state.step],selectedOption:state.option,design:{...design}},privateContent:{state:{...state},design:{...design}}})?.catch(()=>{});}
+  function icons(){globalThis.lucide?.createIcons({attrs:{width:16,height:16}});}
+  function button(label,action,primary=false,block=false){return '<button type="button" class="cw-button '+(primary?'primary ':'')+(block?'block':'')+'" data-action="'+action+'">'+label+'</button>';}
+  function go(label,step,primary=false,block=false){return '<button type="button" class="cw-button '+(primary?'primary ':'')+(block?'block':'')+'" data-go="'+step+'">'+label+'</button>';}
+  function field(label,key,type='text'){return '<label class="cw-field"><span>'+label+'</span><input type="'+type+'" data-field="'+key+'" value="'+escape(state[key])+'"></label>';}
+  function check(label,key){return '<label class="cw-check"><input type="checkbox" data-field="'+key+'" '+(state[key]?'checked':'')+'><span>'+label+'</span></label>';}
+  function kpi(label,value,unit=''){return '<div class="cw-kpi"><span>'+label+'</span><strong>'+value+'<small>'+unit+'</small></strong></div>';}
+  function tabs(items,selected,attr){return '<div class="cw-tabs" role="tablist" aria-label="'+(attr==='tab'?'施工配置':'影响分析')+'">'+items.map(([id,label])=>'<button type="button" role="tab" id="cw-'+attr+'-'+id+'" aria-controls="cw-'+attr+'-panel" aria-selected="'+(selected===id)+'" data-'+attr+'="'+id+'">'+label+'</button>').join('')+'</div>';}
+  function map(mode='home',compact=false) {
+    const xs=[12,27,43,59,75,90], ys=[14,33,53,73,91];
+    const xEdges=[-3,...xs,105], yEdges=[-8,...ys,110];
+    let blocks='';
+    for(let x=0;x<xEdges.length-1;x++) for(let y=0;y<yEdges.length-1;y++){
+      const left=xEdges[x]+2.1, top=yEdges[y]+3.6, width=xEdges[x+1]-xEdges[x]-4.2, height=yEdges[y+1]-yEdges[y]-7.2;
+      const park=(x===5&&y===0)||(x===1&&y===4);
+      blocks+='<div class="rt-block '+(park?'park':'')+'" style="left:'+left+'%;top:'+top+'%;width:'+width+'%;height:'+height+'%"></div>';
+      if(!park && width>10 && height>10) blocks+='<div class="rt-block" style="left:'+(left+width*.48)+'%;top:'+(top+height*.47)+'%;width:'+(width*.46)+'%;height:'+(height*.45)+'%"></div>';
+    }
+    const namesH=['La Trobe St','Little Lonsdale St','Lonsdale St','Little Bourke St','Bourke St'];
+    const namesV=['Queen St','Elizabeth St','Swanston St','Russell St','Exhibition St','Spring St'];
+    const roads=ys.map(y=>'<div class="rt-street-h" style="top:'+y+'%"></div>').join('')+xs.map(x=>'<div class="rt-street-v" style="left:'+x+'%"></div>').join('');
+    const labels=ys.map((y,i)=>'<span class="rt-road-label horizontal" style="top:'+y+'%">'+namesH[i]+'</span>').join('')+xs.map((x,i)=>'<span class="rt-road-label vertical" style="left:'+x+'%">'+namesV[i]+'</span>').join('');
+    const guided=mode==='guided'||mode==='export';
+    const showQueue=mode==='sim'||guided;
+    const optionA=(state.step===4||state.step===5)&&state.option==='A';
+    const queueEnd=guided?710:optionA?800:900;
+    let marks='<line class="rt-workline" x1="444" y1="530" x2="574" y2="530"/>';
+    for(let x=450;x<577;x+=18) marks+='<line class="rt-workcaps" x1="'+x+'" y1="521" x2="'+(x+6)+'" y2="539"/>';
+    if(showQueue) marks+='<path class="rt-queue" d="M590 530 H'+queueEnd+'"/>';
+    if(guided) marks+='<path class="rt-route" d="M920 520 H750 V330 H270 V520 H130"/>';
+    if(mode==='home') marks+='<path class="rt-trafficline" d="M70 133 H260 M600 143 H880 M770 915 H970 M277 580 V700"/>';
+    if(mode==='sim'||guided) {
+      for(let i=0;i<12;i++) {
+        const xpos=100+((i*67+state.minute*3)%820);
+        marks+='<rect x="'+xpos+'" y="'+(i%2?720:903)+'" width="13" height="6" rx="2" fill="var(--rt-text)" opacity=".55"/>';
+      }
+      const n=guided?6:optionA?9:13;
+      for(let i=0;i<n;i++) marks+='<rect x="'+(600+i*19)+'" y="535" width="12" height="5" rx="1.5" fill="var(--rt-red)"/>';
+    }
+    return '<div class="rt-map"><div class="rt-map-toolbar"><strong>'+icon('map-pinned')+'Melbourne CBD</strong><span class="rt-map-mode">'+(mode==='home'?'历史典型日 · 08:00 · 示例':mode==='edit'?'施工范围与设备布置':'方案影响 · 示例回放')+'</span></div><div class="rt-map-surface '+(compact?'compact':'')+'" role="group" aria-label="墨尔本 CBD 示意路网，Lonsdale Street 施工范围'+(guided?'及建议绕行路线':'')+'，非测绘地图"><div class="rt-map-geometry" style="transform:scale('+state.zoom+')">'+blocks+roads+'<svg class="rt-map-art" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">'+marks+'</svg>'+labels+'<span class="rt-landmark" style="left:35%;top:23%">Melbourne<br>Central</span><span class="rt-landmark" style="left:51%;top:23%">State<br>Library</span><span class="rt-landmark" style="left:82%;top:5%">Carlton Gardens</span><span class="rt-map-pin" style="left:43%;top:53%">01</span>'+(mode==='home'?'<span class="rt-map-pin secondary" style="left:59%;top:14%">02</span>':'')+'<span class="rt-vms" style="left:'+(optionA?86:80)+'%;top:56%">VMS 1</span>'+(guided?'<span class="rt-vms" style="left:91%;top:56%">VMS 2</span>':'')+'<span class="rt-map-pill works">'+icon('traffic-cone')+'施工区 · 西行 '+escape(state.closure)+' 车道</span>'+(showQueue?'<span class="rt-map-pill queue">排队 '+(guided?'340':optionA?'510':'680')+' m</span>':'')+(guided?'<span class="rt-map-pill detour">'+icon('corner-down-left')+'建议绕行</span>':'')+'</div><span class="rt-map-schematic">示意路网 · 不按比例</span><div class="rt-map-zoom"><button type="button" data-action="zoom-in" aria-label="放大示意地图">'+icon('plus')+'</button><button type="button" data-action="zoom-out" aria-label="缩小示意地图">'+icon('minus')+'</button></div></div><div class="rt-map-legend"><span><i class="rt-swatch"></i>施工区</span>'+(showQueue?'<span><i class="rt-swatch red"></i>新增排队</span>':'')+(guided?'<span><i class="rt-swatch blue"></i>引导路线</span>':'')+'<span style="margin-left:auto">'+(mode==='home'?'2 个项目 · 示例':'Lonsdale St · 西行')+'</span></div></div>';
+  }
+  function mapStage(mode){
+    const weather=[['clear','sun','晴天'],['rain','cloud-rain','降雨'],['fog','haze','雾天']];
+    return '<section class="cw-map-stage" aria-label="施工范围与影响地图">'+map(mode)+'<div class="cw-map-hud"><div class="cw-pills" aria-label="天气场景">'+weather.map(([v,i,l])=>'<button type="button" data-weather="'+v+'" aria-pressed="'+(state.weather===v)+'">'+icon(i)+l+'</button>').join('')+'</div><div class="cw-pills" aria-label="底图模式"><button type="button" data-basemap="streets" aria-pressed="'+(state.basemap==='streets')+'">街道</button><button type="button" data-basemap="buildings" aria-pressed="'+(state.basemap==='buildings')+'">建筑</button></div></div><div class="cw-rail" aria-label="地图图层"><button type="button" data-action="works-layer" aria-label="施工图层" aria-pressed="'+state.worksLayer+'">'+icon('triangle-alert')+'</button><button type="button" data-action="flow-layer" aria-label="交通影响图层" aria-pressed="'+state.flowLayer+'">'+icon('route')+'</button><button type="button" data-action="map-home" aria-label="回到施工区域">'+icon('locate-fixed')+'</button></div></section>';
+  }
+  function timeline(){return '<div class="cw-timeline cw-glass">'+button(icon('skip-forward')+'前进 5 分钟','next-frame')+'<div class="cw-clock">08:'+String(state.minute).padStart(2,'0')+'<small>示例回放 · 1 小时窗口</small></div><input type="range" min="0" max="59" data-field="minute" value="'+state.minute+'" aria-label="回放时间"><span class="cw-small cw-muted">09:00</span></div>';}
+  function overview(){return '<div class="cw-panel-head"><span class="cw-eyebrow">PLANNING WORKSPACE</span><span class="cw-badge">历史数据模式</span></div><h2>先定位施工，再开始评估</h2><p class="cw-intro">在现有地图上选择路段，逐步填写维修方案、评估影响和比较备选方案。</p>'+go(icon('plus')+'新建维修方案',1,true,true)+go(icon('history')+'载入历史案例',1,false,true)+'<div class="cw-kpis">'+kpi('施工范围','Lonsdale','西行')+kpi('评价时段','08:00','–09:00')+'</div><div class="cw-box"><h3>当前路况与数据</h3><div class="cw-row"><span>道路 / 车道</span><strong>示意路网</strong></div><div class="cw-row"><span>交通流量</span><strong>占位示例</strong></div><div class="cw-row"><span>施工记录</span><strong>2 个示例项目</strong></div></div><div><h3>继续最近的项目</h3><button type="button" class="cw-project" data-go="1">Lonsdale St · 车道养护<small>草稿 · 10 月 5–9 日 · 等待配置</small></button><button type="button" class="cw-project" data-go="4">Lonsdale St · 引导优化<small>示例结果 · 2 套候选 · 等待选定</small></button></div>';}
+  function configuration(){
+    let content='';
+    if(state.tab==='site')content='<div class="cw-box"><div class="cw-row"><span>已选路段</span><strong>Lonsdale St · 西行</strong></div><p class="cw-small cw-muted" style="margin-top:6px">Swanston St 至 Russell St · 维修范围示意</p></div>'+field('项目名称','projectName')+'<div class="cw-fields">'+field('开始日期','start','date')+field('结束日期','end','date')+field('每日开始','from','time')+field('每日结束','to','time')+'</div><label class="cw-field"><span>车道占用</span><select data-field="closure"><option value="1" '+(state.closure==='1'?'selected':'')+'>封闭 1 条西行车道</option><option value="2" '+(state.closure==='2'?'selected':'')+'>封闭 2 条西行车道</option></select></label>'+check('保留连续行人通道','footpath')+button('下一项：设备与诱导','equipment',false,true);
+    if(state.tab==='equipment')content='<div class="cw-box"><div class="cw-row"><span>临时标志牌</span><strong>4 块 · 示例</strong></div><div class="cw-row"><span>隔离设施</span><strong>40 件 · 示例</strong></div></div><div class="cw-fields">'+field('VMS 信息屏数量','vms','number')+field('上游距离 · m','upstream','number')+'</div><label class="cw-field"><span>VMS 引导文案</span><textarea data-field="message">'+escape(state.message)+'</textarea></label><p class="cw-callout">文案、摆放位置与设备数量共同组成原方案；候选方案需要逐项说明修改内容。</p>'+button('下一项：约束与目标','constraints',false,true);
+    if(state.tab==='constraints')content=field('设备与布置预算上限 · AUD','budget','number')+'<div><h3>必须满足的通行条件</h3>'+check('保留连续行人通道','footpath')+check('保留公交通行条件','transit')+check('保留应急车辆通道','emergency')+'</div><label class="cw-field"><span>优化目标</span><select data-field="goal"><option value="balanced" '+(state.goal==='balanced'?'selected':'')+'>交通影响与成本平衡</option><option value="transit" '+(state.goal==='transit'?'selected':'')+'>公共交通优先</option><option value="budget" '+(state.goal==='budget'?'selected':'')+'>预算优先</option></select></label><div class="cw-box"><h3>评估前检查</h3><div class="cw-runline">'+icon('check')+'施工范围与时段<span>已填写</span></div><div class="cw-runline">'+icon('check')+'设备、文案和预算<span>已填写</span></div><div class="cw-runline">'+icon('info')+'现场安装条件与资料质量<span>待复核</span></div></div><p class="cw-small cw-muted">此处保留完整配置项；示意结果不会随输入重新计算。</p>';
+    return '<div class="cw-panel-head"><span class="cw-eyebrow">ROADWORK PLAN</span><span class="cw-badge amber">草稿 v1</span></div><h2>维修方案设置</h2>'+tabs([['site','施工信息'],['equipment','设备诱导'],['constraints','约束目标']],state.tab,'tab')+'<div class="cw-stack" role="tabpanel" id="cw-tab-panel" aria-labelledby="cw-tab-'+state.tab+'">'+content+'</div>';
+  }
+  function simulation(){const o=options[state.replay];return '<div class="cw-panel-head"><span class="cw-eyebrow">JUNCTION SIMULATION</span><span class="cw-badge '+(state.ran?'good':'')+'">'+(state.ran?'完成状态示意':'待评估')+'</span></div><h2>先运行，再查看影响</h2><p class="cw-intro">保留现有路口回放与时间轴，运行状态、情景范围和结果入口集中在右侧。</p><div class="cw-box"><h3>本次评价范围</h3><div class="cw-row"><span>交通时段</span><strong>08:00–09:00</strong></div><div class="cw-row"><span>交通需求</span><strong>同一组示例输入</strong></div><div class="cw-row"><span>情景</span><strong>无施工 / 原方案 / A / B</strong></div><div class="cw-row"><span>天气条件</span><strong>'+({clear:'晴天',rain:'降雨',fog:'雾天'}[state.weather]||'晴天')+' · 示例</strong></div></div>'+button(state.ran?'重新演示评估':'开始仿真（示意）','run',true,true)+(state.ran?'<div class="cw-success">'+icon('circle-check')+'4 / 4 情景 · 完成状态示意，未调用真实交通模型。</div>':'<p class="cw-small cw-muted">点击后展示完成状态与示例结果；不会连接服务器。</p>')+'<div class="cw-pills" aria-label="回放方案"><button type="button" data-replay="original" aria-pressed="'+(state.replay==='original')+'">原方案</button><button type="button" data-replay="B" aria-pressed="'+(state.replay==='B')+'">候选 B</button></div><div class="cw-kpis">'+kpi('平均新增行程',o.delay,'分钟 / 车')+kpi('最大排队',o.queue,'m')+'</div><details class="cw-details"><summary>查看运行记录与参数</summary><p>路网检查 → 需求与信号检查 → 多情景计算 → 指标汇总。此处为状态与记录的布局示意，真实版本应保留每次运行的参数、版本和失败原因。</p></details>';}
+  function analysis(){let content='';if(state.analysis==='traffic')content='<div class="cw-kpis">'+kpi('原方案新增行程','3.8','分钟 / 车')+kpi('最大排队','680','m')+kpi('公交额外用时','2.9','分钟 / 班')+kpi('行人通道','保留','需现场核验')+'</div><div class="cw-box"><h3>主要影响 · 示例</h3><ul class="cw-list" style="margin-top:9px"><li>排队向上游路口延伸，影响相邻道路进入施工区。</li><li>公交与一般车辆共用剩余通行空间。</li><li>行人连续通道仍需核实现场宽度与安全隔离。</li></ul></div><div class="cw-box"><h3>'+icon('sparkles')+' 分析解释与优化方向</h3><p class="cw-intro" style="margin-top:7px">更早告知施工并在路线决策点前引导分流，是两套候选方案的主要差别。推荐必须同时说明改善幅度、成本与约束。</p></div>';
+    if(state.analysis==='overlap')content='<div class="cw-box"><h3>施工叠加检查 · 示例</h3><div class="cw-row"><span>本项目</span><strong>Lonsdale St</strong></div><div class="cw-row"><span>邻近项目</span><strong>La Trobe St</strong></div><div class="cw-row"><span>时间窗口</span><strong>08:00–09:00</strong></div></div><p class="cw-callout">同一条绕行路可能同时承接两个项目的流量，需要检查是否把拥堵转移到邻近路段。</p><ul class="cw-list"><li>比较独立施工与同时施工的网络影响。</li><li>核对绕行路线与设备资源是否冲突。</li><li>候选措施可包含错峰、调整位置或补充引导。</li></ul><p class="cw-small cw-muted">项目、时段与风险均为展示示例，尚未接入真实施工记录。</p>';
+    if(state.analysis==='evidence')content='<div class="cw-box"><h3>结果可追溯信息</h3><div class="cw-row"><span>路网</span><strong>示意地图</strong></div><div class="cw-row"><span>流量 / 信号</span><strong>占位输入</strong></div><div class="cw-row"><span>设备费用</span><strong>示例单价</strong></div><div class="cw-row"><span>模型与校准</span><strong>未接入</strong></div></div><div class="cw-box"><h3>指标口径</h3><p class="cw-intro" style="margin-top:7px">交通指标比较同一小时；费用覆盖完整 5 日施工期。新增行程相对无施工基准，改善幅度相对原方案。</p></div><ul class="cw-list"><li>真实版本应记录数据日期、覆盖范围与估算比例。</li><li>报告需列出模型假设、校准结果及误差。</li><li>不把语言模型的解释当作仿真证据。</li></ul>';
+    return '<div class="cw-panel-head"><span class="cw-eyebrow">NETWORK IMPACT</span><span class="cw-badge">示例评估</span></div><h2>哪里受影响，为什么</h2>'+tabs([['traffic','交通影响'],['overlap','施工叠加'],['evidence','依据假设']],state.analysis,'analysis')+'<div class="cw-stack" role="tabpanel" id="cw-analysis-panel" aria-labelledby="cw-analysis-'+state.analysis+'">'+content+'</div>';
+  }
+  function comparisons(){const keys=Object.keys(options);const rows=[['新增行程','delay','分钟 / 车'],['最大排队','queue','m'],['公交额外用时','transit','分钟 / 班'],['施工期费用','cost','AUD']];const cards=keys.map(k=>{const o=options[k];return '<section class="cw-option '+(state.option===k?'selected':'')+'"><h3>'+o.name+' · '+o.desc+'</h3>'+rows.map(([l,f,u])=>'<div class="cw-row"><span>'+l+'</span><strong>'+(f==='cost'?money(o[f]):o[f])+' '+u+'</strong></div>').join('')+'<div class="cw-row"><span>连续行人通道</span><strong>保留 · 示例</strong></div><button type="button" class="cw-button block '+(state.option===k?'primary':'')+'" data-option="'+k+'">'+(state.option===k?'已选择':'选择此方案')+'</button></section>';}).join('');
+    const table='<div class="cw-table-wrap"><table class="cw-table" aria-label="原方案与候选方案比较"><thead><tr><th>评价维度</th>'+keys.map(k=>'<th class="'+(k==='B'?'cw-rec':'')+'"><span class="cw-badge">'+(k==='B'?'综合推荐':k==='A'?'同预算':'比较基准')+'</span><strong>'+options[k].name+'</strong><small>'+options[k].desc+'</small></th>').join('')+'</tr></thead><tbody>'+rows.map(([l,f,u])=>'<tr><td>'+l+'<br><small>'+u+'</small></td>'+keys.map(k=>'<td class="'+(k==='B'?'cw-rec':'')+'"><span class="cw-num">'+(f==='cost'?money(options[k][f]):options[k][f])+'</span></td>').join('')+'</tr>').join('')+'<tr><td>行人通道</td>'+keys.map(k=>'<td class="'+(k==='B'?'cw-rec':'')+'">保留</td>').join('')+'</tr><tr><td>选定方案</td>'+keys.map(k=>'<td class="'+(k==='B'?'cw-rec':'')+'"><button type="button" class="cw-button '+(state.option===k?'primary':'')+'" data-option="'+k+'">'+(state.option===k?'已选择':'选择')+'</button></td>').join('')+'</tr></tbody></table><div class="cw-table-caption">交通：08:00–09:00 · 费用：5 日施工期 · 全部为示例值</div></div>';
+    return design.compare==='cards'?'<div>'+cards+'</div>':table+'<div class="cw-mobile-options">'+cards+'</div>';
+  }
+  function choose(){const o=options[state.option];return '<div class="cw-panel-head"><span class="cw-eyebrow">IMPROVE & COMPARE</span><span class="cw-badge good">候选 B 推荐</span></div><h2>推荐理由与方案差异</h2><div class="cw-box"><h3>候选 B：提前加强上游引导</h3><p class="cw-intro" style="margin-top:7px">增加 1 块 VMS，在路线决策点前显示绕行方向；保持维修任务、施工时段和基本通行约束一致。</p></div><div class="cw-kpis">'+kpi('相对原方案节省','1.7','分钟 / 车')+kpi('施工期增加费用','400','AUD')+'</div><div><h3>需要一起权衡</h3><ul class="cw-list" style="margin-top:8px"><li>A：只调整位置，费用保持 $2,800。</li><li>B：交通改善更明显，费用为 $3,200。</li><li>现场能否布置、供应商报价和绕行承载力仍需核实。</li></ul></div><div class="cw-box"><div class="cw-row"><span>当前选择</span><strong>'+o.name+'</strong></div><div class="cw-row"><span>费用</span><strong>'+money(o.cost)+' AUD</strong></div><p class="cw-small cw-muted" style="margin-top:8px">可选择任何候选方案，选定后在下一步记录理由。</p></div>'+button('返回约束，调整后重新评估','adjust',false,true)+'<details class="cw-details"><summary>结果依据与比较限制</summary><p>推荐与数值均为界面示例，尚未校准或运行真实仿真。实际产品需在相同输入、运行设置与比较口径下评估，并展示误差和不确定性。</p></details>';}
+  function report(){const o=options[state.option];return '<article class="cw-paper" aria-label="完整评估报告预览"><div class="cw-paper-top"><strong>RippleTwin</strong><span class="cw-badge">报告预览 · 示例</span></div><span class="cw-eyebrow">LONSDALE STREET / MELBOURNE</span><h2>'+escape(state.projectName)+'影响评估</h2><p class="cw-small cw-muted">'+escape(state.start)+' 至 '+escape(state.end)+' · '+escape(state.from)+'–'+escape(state.to)+' · 方案 v1</p><div class="cw-map-stage">'+map(state.option==='B'?'export':'edit')+'</div><h3>选定：'+o.name+' · '+o.desc+'</h3><div class="cw-diff" style="margin-top:12px"><div><small>新增行程 · 分钟 / 车</small><b>'+o.delay+'</b></div><div><small>最大排队 · m</small><b>'+o.queue+'</b></div><div><small>施工期费用 · AUD</small><b>'+money(o.cost)+'</b></div></div><div class="cw-box"><h3>选定理由</h3><p class="cw-intro" style="margin-top:6px">'+escape(state.reason)+'</p></div><div class="cw-box"><h3>设备与费用 · 示例</h3><div class="cw-report-rows"><div class="cw-row"><span>VMS 信息屏 · '+o.vms+' 块 / 5 日</span><strong>'+money(o.vms*400)+'</strong></div><div class="cw-row"><span>临时标志牌 · 4 块 / 5 日</span><strong>$200</strong></div><div class="cw-row"><span>隔离设施 · 40 件 / 5 日</span><strong>$2,000</strong></div><div class="cw-row"><span>运输与布置</span><strong>$200</strong></div></div></div><details class="cw-details" style="margin-top:14px"><summary>查看数据、假设和实施检查</summary><p>交通、费用与地图均为示例；真实交付需附数据时间范围、运行版本、模型校准、误差、设备清单、交通组织图和人工审阅记录。实际费用应按最终工期重新核算。</p></details><div class="cw-report-foot"><span>附件：方案图 / 对比结果 / 数据依据</span><span>评估摘要 · 示例</span></div></article>';}
+  function delivery(){return '<div class="cw-panel-head"><span class="cw-eyebrow">CONFIRM & EXPORT</span><span class="cw-badge amber">待人工复核</span></div><h2>准备评估与交付包</h2><label class="cw-field"><span>所选方案</span><select data-field="option">'+Object.entries(options).map(([k,o])=>'<option value="'+k+'" '+(state.option===k?'selected':'')+'>'+o.name+' · '+o.desc+'</option>').join('')+'</select></label><label class="cw-field"><span>选定理由</span><textarea data-field="reason">'+escape(state.reason)+'</textarea></label><div><h3>导出内容</h3>'+check('评估报告 · PDF：结论、分析、对比与依据','report')+check('设备费用清单 · CSV：数量、工期与单价','inventory')+check('施工布置图：范围、方向、引导点与版本','drawing')+'</div><div class="cw-box"><h3>交付前确认</h3><ul class="cw-list" style="margin-top:9px"><li>报告和当前选定方案版本一致。</li><li>确认交通数据、费用与模型假设。</li><li>完成现场条件与交通组织专业复核。</li></ul></div>'+(state.exported?'<div class="cw-success">'+icon('circle-check')+'导出交互示意已完成。本预览未生成真实交付文件。</div>':'')+'<p class="cw-small cw-muted">系统内部选定用于记录决策；正式审批与实施由相应责任人员完成。</p>';}
+  function footer(){const prev=state.step>0?go(icon('arrow-left')+'上一步',state.step-1):'<span class="cw-footer-status">'+icon('map-pinned')+'先选路段，再新建维修方案</span>';let next='';if(state.step===0)next=go('新建维修方案'+icon('arrow-right'),1,true);if(state.step===1)next=go('保存并进入仿真'+icon('arrow-right'),2,true);if(state.step===2)next=go('查看影响分析'+icon('arrow-right'),3,true);if(state.step===3)next=go('生成并比较候选方案'+icon('arrow-right'),4,true);if(state.step===4)next=go('确认方案并准备导出'+icon('arrow-right'),5,true);if(state.step===5)next=button(icon('download')+'导出评估包','export',true);return '<footer class="cw-footer">'+prev+'<span class="cw-footer-status">'+icon('shield-check')+(state.step===0?'地图、指标与费用均为示例':state.step===5?'报告与所选方案保持同一版本':'流程 '+state.step+' / 5 · 输入与当前项目关联')+'</span>'+next+'</footer>';}
+  function render(){
+    root.style.colorScheme=state.theme;root.dataset.step=String(state.step);root.dataset.panel=design.panel;
+    const mode=state.step===0?'home':state.step===1?'edit':state.step===3?'sim':state.step===4?(state.option==='B'?'guided':'sim'):(state.replay==='B'?'guided':'sim');
+    const left=state.step===5?report():mapStage(mode)+(state.step===4?comparisons():(state.step===2?timeline():''))+'<p class="cw-note">'+icon('info')+'示意地图与占位数据，仅用于查看界面和完整流程。</p>';
+    shell.innerHTML='<div class="cw-app"><header class="cw-top cw-glass"><button type="button" class="cw-brand" data-go="0" aria-label="RippleTwin 工作台"><span>'+icon('radar')+'</span>RippleTwin</button><div class="cw-scene"><span>SCENE</span><strong>Lonsdale St · 西行 · Melbourne CBD</strong></div><div class="cw-top-end"><span class="cw-badge">流程改版示意</span><button type="button" class="cw-theme" data-action="theme" aria-label="切换明暗主题">'+icon(state.theme==='dark'?'sun':'moon')+'</button></div></header><nav class="cw-steps cw-glass" aria-label="完整施工规划流程">'+steps.map((s,i)=>'<button type="button" class="cw-step" data-go="'+i+'" '+(state.step===i?'aria-current="step"':'')+'><span>'+String(i).padStart(2,'0')+'</span>'+s+'</button>').join('')+'</nav><div class="cw-context"><div><h1>'+titles[state.step]+'</h1><p>'+subtitles[state.step]+'</p></div><span class="cw-badge">项目 RT-001 · 示例</span></div><div class="cw-workspace"><div class="cw-map-column">'+left+'</div><aside class="cw-panel cw-side cw-glass" aria-label="'+steps[state.step]+'面板">'+[overview,configuration,simulation,analysis,choose,delivery][state.step]()+'</aside></div>'+footer()+'</div>';
+    root.querySelectorAll('.rt-map-geometry').forEach(el=>{el.style.filter=state.weather==='fog'?'contrast(.65)':state.weather==='rain'?'saturate(.7)':'none';});
+    root.querySelectorAll('.rt-block,.rt-landmark').forEach(el=>{el.style.opacity=state.basemap==='buildings'?'1':'.65';});
+    root.querySelectorAll('.rt-workline,.rt-workcaps,.rt-map-pin,.rt-map-pill.works').forEach(el=>{el.style.visibility=state.worksLayer?'visible':'hidden';});
+    root.querySelectorAll('.rt-queue,.rt-route,.rt-trafficline,.rt-map-pill.queue,.rt-map-pill.detour').forEach(el=>{el.style.visibility=state.flowLayer?'visible':'hidden';});
+    icons();
+  }
+  function notice(text){const el=root.querySelector('#cw-toast');el.innerHTML='<span>'+escape(text)+'</span>'+button('知道了','dismiss');el.hidden=false;}
+  root.addEventListener('click',event=>{const b=event.target.closest('button');if(!b||!root.contains(b))return;
+    if(b.dataset.go!==undefined){state.step=Number(b.dataset.go);root.querySelector('#cw-toast').hidden=true;render();root.querySelector('.cw-steps').scrollIntoView({block:'start',behavior:'instant'});save();return;}
+    if(b.dataset.tab){state.tab=b.dataset.tab;render();save();return;}
+    if(b.dataset.analysis){state.analysis=b.dataset.analysis;render();save();return;}
+    if(b.dataset.option){state.option=b.dataset.option;state.reason='结合交通影响与设备投入，选用'+options[state.option].name+'。';state.exported=false;render();save();return;}
+    if(b.dataset.weather){state.weather=b.dataset.weather;render();save();return;}
+    if(b.dataset.basemap){state.basemap=b.dataset.basemap;render();save();return;}
+    if(b.dataset.replay){state.replay=b.dataset.replay;render();save();return;}
+    const a=b.dataset.action;
+    if(a==='theme')state.theme=state.theme==='dark'?'light':'dark';
+    if(a==='equipment'||a==='constraints')state.tab=a;
+    if(a==='run')state.ran=true;
+    if(a==='adjust'){state.step=1;state.tab='constraints';}
+    if(a==='next-frame')state.minute=(state.minute+5)%60;
+    if(a==='works-layer')state.worksLayer=!state.worksLayer;
+    if(a==='flow-layer')state.flowLayer=!state.flowLayer;
+    if(a==='zoom-in')state.zoom=Math.min(1.5,state.zoom+.1);
+    if(a==='zoom-out')state.zoom=Math.max(1,state.zoom-.1);
+    if(a==='map-home')state.zoom=1;
+    if(a==='export'){if(!state.report&&!state.inventory&&!state.drawing){notice('请至少选择一项导出内容。');return;}state.exported=true;}
+    if(a==='dismiss'){root.querySelector('#cw-toast').hidden=true;return;}
+    render();save();
+  });
+  root.addEventListener('change',event=>{const e=event.target;const key=e.dataset.field;if(!key)return;if(!(key in defaults))return;state[key]=e.type==='checkbox'?e.checked:e.type==='range'?Number(e.value):e.value;if(key==='option'){state.reason='结合交通影响与设备投入，选用'+options[state.option].name+'。';state.exported=false;}render();save();});
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState;if(saved){restore(saved);render();}});
+  render();
+  if(globalThis.Tweak){const tweak=new globalThis.Tweak({container:root,onChange:()=>{render();save();}});tweak.addSelect(design,'panel',{label:'操作面板位置',options:[{label:'地图左侧 · 面板右侧',value:'right'},{label:'面板左侧 · 地图右侧',value:'left'}]});tweak.addSelect(design,'compare',{label:'完整方案比较',options:[{label:'并排对比表',value:'table'},{label:'逐套完整卡片',value:'cards'}]});}
+})();
+</script>
