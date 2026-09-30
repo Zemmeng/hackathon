@@ -275,5 +275,14 @@ check("T44：02 时间轴改成每 10 分钟一根的 100% 堆叠柱（红 = 急
 check("T44：02 的 4×4 仿真按时钟记分钟（clock0 = 时钟 − 仿真秒数），时间轴柱子和时钟指针对得上",
       "s.clock0=CLOCK_EVENT-s.t;return s;" in app_js and "g.clock0=S.clock-g.t;" in app_js)
 
+# 12. T48（@unicornnnnnny 10-01）：左上角换成团队最后定的 logo —— 「Ripple」跟主题的文字色（深色主题浅色字、浅色主题深色字），其余照原稿；嵌在页面里的 PNG
+CSS_ALL = (SRC / "styles.css").read_text(encoding="utf-8")
+check("T48：顶栏品牌区是新 logo（role=img、aria-label=RippleTwin），原来的圆圈图标和文字去掉了",
+      '<span class="brand-logo" role="img" aria-label="RippleTwin"></span>' in BODY and "brand-name" not in BODY + CSS_ALL and ".brand>svg" not in CSS_ALL)
+check("T48：logo 两层都内嵌为 PNG（页面仍是单文件）：路 + Twin 照原稿；Ripple 是遮罩、用 --fg 填色，深浅主题自动跟着变",
+      '.brand-logo{position:relative;display:block;width:148px;height:30px;background:url("data:image/png;base64,' in CSS_ALL
+      and '--logo-ripple:url("data:image/png;base64,' in CSS_ALL and "background:var(--fg);-webkit-mask:var(--logo-ripple)" in CSS_ALL
+      and "mask:var(--logo-ripple) left center/contain no-repeat}" in CSS_ALL)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
