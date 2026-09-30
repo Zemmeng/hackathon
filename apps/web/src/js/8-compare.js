@@ -99,7 +99,7 @@ function cmpLoad(){
 }
 // The engine's own link records carry len_m / name / lanes / tram, which is all pack.js reads
 function cmpLinks(ws){const net=engNet(),m=new Map();if(!net||!ws)return m;for(const id of ws.links||[]){const l=net.links.get(id);if(l)m.set(id,l);}return m;}
-function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Reword the VMS','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
+function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Edit the sign text','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
 function cmpWhat(r){ // textContent only
   if(r.kind==='move')return(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游');
   const v=cmpVms(r.plan)||L('No VMS','没有 VMS');if(r.kind!=='kit')return v;
@@ -165,7 +165,9 @@ function cmpExplainRender(el){
     }
   });
   const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
-  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.textContent=row?L('Leaning toward ','倾向 ')+cmpLabel(row)+' · '+result.lean.why:'';}
+  // the pick in bold; its reason (model text, often long) only in Details mode (.cmp-lean-why, styles.css)
+  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.replaceChildren();
+    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}}
   if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
 }
 

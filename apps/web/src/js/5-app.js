@@ -361,7 +361,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Micro-simulation of the La Trobe × Swanston junction · scripted road users','La Trobe × Swanston 路口微观仿真 · 预设的道路使用者')}</span></div>`;
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
@@ -374,7 +374,7 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: trace the ripple →','下一步：追踪涟漪 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
+    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: see the impact →','下一步：看影响 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -398,7 +398,7 @@ function renderPanel(){
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Conflicts in this run · before vs v2','本次仿真冲突数 · 原方案 vs v2')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span></span></div></div>`:''}
-    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Engine figures are model estimates on real CBD flows, not field-validated. Weather is illustrative.','引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。天气为示意。')}</span><div id="copyFallback"></div></div>`;
+    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Model estimates on real CBD flows · not field-validated','真实 CBD 车流上的模型估算 · 未经实地验证')}</span><div id="copyFallback"></div></div>`;
     $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);

@@ -148,7 +148,7 @@ function aiHTML(rd,st){
   const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
   const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
     ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
-    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
+    <p class="ai-note">${L(`The LLM only reads the signs · the engine computes every number · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · 数字都由引擎算 · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }

@@ -237,12 +237,12 @@ function engInformed(s){const a=s.approaches&&s.approaches[s.main];if(!a)return 
 function engWhy(s){
   const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),st=esc(shortSt(EP.street)),ap=s.approaches&&s.approaches[s.main],out=[];
   // total flow still using the works section (after detours) against what fits past it: the gap is the queue
-  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
+  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h arrive, ${fmtN(l.cap)} veh/h get past${over?' → the rest queue':' → no queue'}.`,`${st}：来车 ${fmtN(l.v)} 辆/时，只能过 ${fmtN(l.cap)} 辆/时${over?' → 多出的排队':' → 不排队'}。`));}
   // full closure: nothing fits past the works (cap 0) — say where the queue comes from instead of dropping the line (T26 2.5)
-  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} is shut at the works: the ${vol}veh/h on the main approach have to detour${s.blocked_vph>0?`, and ${fmtN(s.blocked_vph)} veh/h have no way round`:''} — the queue builds on the streets they turn into.`,`${st} 施工段全封、过不去：主进口道 ${vol}辆/时只能绕行${s.blocked_vph>0?`，其中 ${fmtN(s.blocked_vph)} 辆/时无路可绕`:''} —— 排队出在它们拐进去的那几条街上。`));}
+  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} fully closed: ${vol}veh/h must detour${s.blocked_vph>0?` (${fmtN(s.blocked_vph)} veh/h have no way round)`:''} → queues on the detour streets.`,`${st} 施工段全封：${vol}辆/时全部绕行${s.blocked_vph>0?`（${fmtN(s.blocked_vph)} 辆/时无路可绕）`:''} → 排队出在绕行的街上。`));}
   // inf = the share who read and understand the sign — not who obey it. Whether they turn is the route-choice model's call, and
   // how far drivers trust signs has no source yet (T12 sign_trust is null): an assumed value (D-0929-1536)
-  out.push(L(`${inf!=null?`About ${pctS(inf)} of drivers read and understand the sign. `:''}Whether they change route comes from the route-choice model's per-driver-type parameters (trust in signs is an assumed value) — this time ${pctS(s.detour_share)} detour.`,`${inf!=null?`约 ${pctS(inf)} 的司机读懂屏上的字；`:''}改不改道由路线选择模型按各类司机的参数算（对标志的信任度是假设值），这次 ${pctS(s.detour_share)} 绕行。`));
+  out.push(L(`${inf!=null?`${pctS(inf)} of drivers understand the sign · `:''}${pctS(s.detour_share)} detour (route-choice model; trust in signs is an assumed value).`,`${inf!=null?`${pctS(inf)} 的司机读懂屏上的字 · `:''}${pctS(s.detour_share)} 绕行（路线选择模型算；对标志的信任度是假设值）。`));
   return`<div class="eng-assume">${out.map(t=>`<p>${t}</p>`).join('')}</div>`;
 }
 const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
@@ -373,7 +373,7 @@ function engTransit3(s){
 }
 function engPeds3(s){
   if(!hasPeds(s))return'';const p=s.peds;
-  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath stays open — close it in step 1 to see the detour','人行道照常通行 —— 在第 1 步把人行道封掉就能看到绕行')}</b></div></div>`;
+  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath open · no walking detour','人行道照常通行 · 行人不用绕')}</b></div></div>`;
   const sensorTxt=p.sensor?L(`nearest counter ${esc(p.sensor.name)}: ${fmtN(p.sensor.ped_h)}/h`,`最近的计数器 ${esc(p.sensor.name)}：每小时 ${fmtN(p.sensor.ped_h)} 人`):'';
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
   <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
@@ -395,14 +395,14 @@ function eng4HTML(){
   const n=a?a.options.length:0,rule=!a||a.src==='rule';
   let h=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
-  const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
+  const kindL={text:L('Edit sign','改字'),move:L('Move sign','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{
     const what=o.kind==='text'&&o.frames?o.frames.map(f=>f.join(' / ')).join('  ▸  '):o.kind==='move'?`${esc(o.equipment||'')} → ${fmtN(o.at_m)} m ${L('upstream','上游')}`:o.kind==='shift'?`${o.days>0?'+':''}${fmtN(o.days)} ${L('days','天')}`:'';
     const d=Number(o.delta_min),hrs=Math.round(Math.abs(d)/60),gain=o.better&&Number.isFinite(d)&&a.flags.ok;
     return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}<small>${a.window.single_hour?L('this hour','这一小时'):L('whole works','全施工期')}</small>`}</span></button>`;}).join('');
   if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
-  <p class="eng-assume">${engWindowTxt(a.window)} ${L(`Advisor: ${a.src==='rule'?'rules (LLM advisor pending)':esc(a.src)}.`,`顾问：${a.src==='rule'?'规则（大模型顾问待接）':esc(a.src)}。`)}</p>`;
+  <p class="eng-assume">${engWindowTxt(a.window)}</p>`;
   const o=a.options[EP.pick];
   if(o){
     const c=EP.cmp;
@@ -413,7 +413,7 @@ function eng4HTML(){
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
       const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better==null?'var(--fg)':better?'var(--accent)':'var(--works)'}">${y}</span></div>`; // better null = neither good nor bad
       h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),null)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
-      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is what the route-choice model predicts drivers do with the changed sign (trust in signs is an assumed value); if fewer follow it, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型按各类司机的参数推算他们看到改后的屏会怎么走（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
+      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is a route-choice model prediction (trust in signs is an assumed value); fewer followers, smaller gain.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型推算（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags,A)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
@@ -423,10 +423,10 @@ function eng4HTML(){
 }
 // "−1,580 veh·h" is summed over every sampled hour of the works; the before/after table is one hour in veh·min (T20 addendum 3)
 function engWindowTxt(w){
-  if(!w||w.single_hour)return L('Savings are for this hour only, in vehicle-hours.','节省量只算这一小时，单位车·时。');
+  if(!w||w.single_hour)return L('Savings: this hour only (veh·h).','节省量只算这一小时（车·时）。');
   const days=Math.round((Date.parse(WORKS_TIME.to)-Date.parse(WORKS_TIME.from))/864e5)+1,per=w.whens%days?0:w.whens/days;
-  return per?L(`Savings are vehicle-hours over the whole works period: ${days} days × ${per} sampled hour${per===1?'':'s'} a day = ${w.whens} hours. The table below is one hour, in vehicle-minutes.`,`节省量是整个施工期的合计（车·时）：${days} 天 × 每天采样 ${per} 个小时 = ${w.whens} 小时。下面的对比表只算一小时，单位车·分钟。`)
-    :L(`Savings are vehicle-hours summed over ${w.whens} sampled hours of the works period. The table below is one hour, in vehicle-minutes.`,`节省量是施工期采样的 ${w.whens} 个小时合计（车·时）。下面的对比表只算一小时，单位车·分钟。`);
+  return per?L(`Savings: whole works, ${days} days × ${per} sampled h = ${w.whens} h (veh·h). Table below: one hour (veh·min).`,`节省量：全施工期 ${days} 天 × 每天采样 ${per} 小时 = ${w.whens} 小时（车·时）；下表只算一小时（车·分钟）。`)
+    :L(`Savings: ${w.whens} sampled hours of the works (veh·h). Table below: one hour (veh·min).`,`节省量：施工期采样的 ${w.whens} 个小时（车·时）；下表只算一小时（车·分钟）。`);
 }
 function engRender4(){
   cmpRender(); // T23: follows the advisor (8-compare.js)

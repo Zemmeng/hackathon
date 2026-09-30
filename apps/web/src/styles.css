@@ -455,6 +455,9 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
 .panel-hide:hover{color:var(--fg)}
 .panel.compact p.muted{display:none}
+/* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
+   the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -661,6 +664,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+.ai-note{margin:0;font-size:11px;line-height:1.4;color:var(--fg-3)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
 .ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
