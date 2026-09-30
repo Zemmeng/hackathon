@@ -17,7 +17,7 @@ import {
   requestsFor, affected, capFactors, windowWhens, transitImpact, isTransit, validatePlan, pedImpact, pedsUnavailable, footpathActive,
   advisorSummary, sampleHours, overlaps, shiftWorksite,
 } from './index.js';
-import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, vmsTextOk, timeErrors, whenErrors, usageOf, sharingWith, vmsRead } from './options.js';
+import { TIERS, VMS_AT_M, WARN_FRAME, daysOf, siteOf, tierNeeds, resolveNeeds, hireOf, stockOf, guidedFrames, delayFrames, vmsTextOk, timeErrors, whenErrors, usageOf, sharingWith, vmsRead } from './options.js';
 import { isActive } from './worksite.js';
 import { requestKey } from './reading.js';
 
@@ -391,7 +391,8 @@ export async function connect(opts = {}) {
     };
   }
 
-  // 按库存出方案（T22，D-0929-2011 ③）：一处施工 → 最省 / 标准 / 引导 3 套交通管理方案，每套都用引擎跑同一个小时，带租金和库存检查。
+  // 按库存出方案（T22，D-0929-2011 ③；T50 改档）：一处施工 → 最省（没有 VMS）/ 标准（两块 VMS 报延误）/ 引导（一块 VMS 点名绕行）3 套交通管理方案，
+  // 每套都用引擎跑同一个小时，带租金和库存检查。
   // 输入：一条施工方案（要给 when，或施工写了 time → 默认开工那天、时段里第一个采样小时），或整份方案 { when, worksites }（配 worksites[0]，
   // 或 opts.worksite 指定哪一条；别的施工原样留着一起算，时间重叠的施工带走的设备先从库存里扣）。不改输入。
   // options() 自己不调大模型（引导那一帧用规则顾问 mockAdvise 的写法）；每套的读数走 run() 同一条读屏链（T5 答案文件 → /api/read → 规则），
@@ -448,28 +449,33 @@ export async function connect(opts = {}) {
 
     const out = [];
     let guide = null; // 由「最省」那套的引擎结果定：最快的绕行叫什么、省几分钟、VMS 摆在拐口前多远
+    let delay = null; // T50 同样由「最省」那套定：走原路每车多等几分钟 → 标准档两块 VMS 的字（delayFrames）
     for (const tier of TIERS.slice(0, count)) {
-      const frames = tier.guided && guide?.frames ? guide.frames : [WARN_FRAME];
+      const frames = tier.guided && guide?.frames ? guide.frames : tier.delay && delay?.frames ? delay.frames : [WARN_FRAME];
       const needs = tierNeeds(tier, ws, site, { vmsAt: guide?.at_m ?? VMS_AT_M, frames });
       const { equipment, short } = resolveNeeds(needs, inv, used0);
       const plan = planWith(equipment);
       const s = await run(plan);
       if (tier.id === 'o1' && count > 1) {
-        const adv = await mockAdvise(advisorSummary(s.raw, [plan.worksites[idx]]));
+        const sum = advisorSummary(s.raw, [plan.worksites[idx]]);
+        const adv = await mockAdvise(sum);
         const sug = (adv?.suggestions || []).find(x => x.kind === 'text' && x.worksite === ws.id);
         const fr = sug ? guidedFrames(sug.frames) : null;
         guide = { frames: fr, at_m: Number.isFinite(sug?.at_m) ? sug.at_m : VMS_AT_M, why: sug?.why ?? null };
+        delay = delayFrames(sum, ws.id);
       }
-      const vms = equipment.find(e => e.type === 'vms');
+      const vmsAll = equipment.filter(e => e.type === 'vms'), vms = vmsAll[0];
+      const textOk = vms ? vmsAll.every(v => vmsTextOk(v.frames)) : null;
       const stock = { ...stockOf(equipment, inv, short, used0), shared_with: shared.map(w => w.id ?? null) };
-      const read = vms ? vmsRead(equipment) : null; // VMS 有没有进读数请求（没被 6 块上限挤掉）
+      const read = vms ? vmsRead(equipment) : null; // 每块 VMS 都进了读数请求（没被 6 块上限挤掉）
       const flags = {
-        ok: s.flags.ok && active && stock.ok && (!vms || (vmsTextOk(vms.frames) && read)),
+        ok: s.flags.ok && active && stock.ok && (!vms || (textOk && read)),
         stock_ok: stock.ok,
-        vms_text_ok: vms ? vmsTextOk(vms.frames) : null,
+        vms_text_ok: textOk,
         vms_read: read,
         guided: Boolean(tier.guided && guide?.frames && vms && read),
-        no_faster_detour: Boolean(tier.guided && !guide?.frames), // 引擎算下来没有哪条绕行更快：引导档的屏上文字和标准档一样
+        no_faster_detour: Boolean(tier.guided && !guide?.frames), // 引擎算下来没有哪条绕行更快：引导档的屏上文字写 ROADWORK / AHEAD
+        no_delay_min: Boolean(tier.delay && !delay), // T50 引擎算下来走原路多等不到 1 分钟（或不施工）：标准档的屏写 ROADWORK / AHEAD
         sign_errors: s.flags.sign_errors, reading_src: s.flags.reading_src, params: s.flags.params, failed: s.flags.failed, missing: s.flags.missing,
         inactive: !active, full_closure: site.full, footpath: site.footpath, no_time: !ws.time, missing_links: site.missing,
         assumed: ['hire.day_rate_aud', 'stock.qty'], // D-0929-1536：租金和库存是假设值，界面标「假设值」
@@ -482,6 +488,7 @@ export async function connect(opts = {}) {
         vs: first ? { id: first.id, delay_min: +(result.delay_min - first.result.delay_min).toFixed(3), affected_min: result.affected_min - first.result.affected_min,
           queue_m: result.queue_m - first.result.queue_m, hire_aud: hire.total_aud - first.hire.total_aud } : null,
         ...(tier.guided ? { guide: { frames: guide?.frames ?? null, at_m: guide?.at_m ?? null, why: guide?.why ?? null } } : {}),
+        ...(tier.delay ? { delay: { min: delay?.min ?? null, frames: delay?.frames ?? null } } : {}),
       });
     }
     return {

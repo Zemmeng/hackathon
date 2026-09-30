@@ -3,7 +3,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { ok, t, done } from './_t.mjs';
 import { connect, PATHS } from '../public/js/backend.js';
-import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS, tierNeeds, vmsRead, guidedFrames, WARN_FRAME } from '../public/js/options.js';
+import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS, tierNeeds, vmsRead, guidedFrames, WARN_FRAME, delayFrames, vms2At, VMS2_AT_M, DELAY_HEAD } from '../public/js/options.js';
 import { signsOn } from '../public/js/reading.js';
 const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -22,6 +22,8 @@ const usedByItem = plan => {
   return m;
 };
 const vmsOf = o => o.plan.worksites[0].equipment.find(e => e.type === 'vms');
+const vmsAll = o => o.plan.worksites[0].equipment.filter(e => e.type === 'vms');
+const pOf = o => { const st = o.result.routes.find(r => r.id === 'stay'); return +(1 - st.share).toFixed(3); }; // 绕行比例 = 1 − 原路份额（T49-b，SUMO 的输入）
 
 const be = await connect({ fetch: fakeFetch, importer: noImporter });
 const LON = be.demo('lonsdale');
@@ -35,8 +37,10 @@ await t('lonsdale：3 套方案的形状', async () => {
   const [o1, o2, o3] = r.options;
   ok(!vmsOf(o1) && !o1.plan.worksites[0].equipment.some(e => e.type === 'arrow') && o1.plan.worksites[0].equipment.some(e => e.type === 'barrier') && o1.plan.worksites[0].equipment.some(e => e.text === 'END ROADWORK'),
     '最省：护栏 + 静态标志（含 END ROADWORK），没有 VMS、没有箭头板');
-  ok(JSON.stringify(vmsOf(o2)?.frames) === '[["ROADWORK","AHEAD"]]' && o2.plan.worksites[0].equipment.some(e => e.type === 'arrow'), '标准：加箭头板 + 一块写 ROADWORK / AHEAD 的 VMS');
-  ok(o3.flags.guided && vmsOf(o3).frames.flat().includes('USE') && vmsOf(o3).at_m === vmsOf(o2).at_m, `引导：同一位置（${vmsOf(o3).at_m} 米）的 VMS 点名最快绕行：${vmsOf(o3).frames.map(f => f.join(' / ')).join(' | ')}`);
+  const want2 = JSON.stringify([DELAY_HEAD, [`${o2.delay.min} MIN`]]);
+  ok(vmsAll(o2).length === 2 && vmsAll(o2).every(v => JSON.stringify(v.frames) === want2) && o2.plan.worksites[0].equipment.some(e => e.type === 'arrow'),
+    `T50 标准：加箭头板 + 两块 VMS 报延误、不点名路线：${vmsAll(o2).map(v => `${v.id} ${v.at_m} 米 ${v.frames.map(f => f.join(' / ')).join(' ▸ ')}`).join('；')}`);
+  ok(vmsAll(o3).length === 1 && o3.flags.guided && vmsOf(o3).frames.flat().includes('USE') && vmsOf(o3).at_m === vmsOf(o2).at_m, `T50 引导：一块 VMS，和标准档第一块同一位置（${vmsOf(o3).at_m} 米），点名最快绕行：${vmsOf(o3).frames.map(f => f.join(' / ')).join(' | ')}`);
   const barrier = o1.plan.worksites[0].equipment.find(e => e.type === 'barrier');
   const unit = INV.items.find(i => i.id === barrier.item).unit_len_m;
   ok(barrier.item === 'barrier_water' && barrier.qty === Math.ceil(r.site.len_m / unit), `护栏件数 = ⌈${r.site.len_m} 米 ÷ 每节 ${unit} 米⌉ = ${barrier.qty}`);
@@ -51,7 +55,7 @@ await t('租金：件数 × 日租价 × 天数，标假设值（反向断言：
   ok(r.options.every(o => o.hire.assumed === true && /assumed/i.test(o.hire.note) && o.flags.assumed.includes('hire.day_rate_aud') && o.flags.assumed.includes('stock.qty')), '每套 hire.assumed = true、note 写明假设值、flags.assumed 列出租金和库存（D-0929-1536）');
   ok(r.options.every(o => o.hire.lines.every(l => l.cost_aud === l.qty * l.day_rate_aud * l.days && l.days === 5) && o.hire.total_aud === o.hire.lines.reduce((s, l) => s + l.cost_aud, 0)), '每行 cost = qty × day_rate × days，total = 各行相加');
   ok(r.options.every(o => { const u = usedByItem(o.plan); return o.hire.lines.length === u.size && o.hire.lines.every(l => u.get(l.item) === l.qty); }), '报价行和方案里的设备一一对上（同一种设备合并成一行）');
-  ok(r.options[1].hire.total_aud > r.options[0].hire.total_aud && r.options[1].vs.hire_aud === r.options[1].hire.total_aud - r.options[0].hire.total_aud, `标准比最省多 A$${r.options[1].vs.hire_aud}（VMS + 箭头板）`);
+  ok(r.options[1].hire.total_aud > r.options[0].hire.total_aud && r.options[1].vs.hire_aud === r.options[1].hire.total_aud - r.options[0].hire.total_aud, `标准比最省多 A$${r.options[1].vs.hire_aud}（两块 VMS + 箭头板）`);
 });
 
 await t('不超库存（反向断言）', async () => {
@@ -104,7 +108,10 @@ await t('END ROADWORK 不占读数名额：VMS 在远处也照样被读到（反
   ok(!vmsRead([...eq, { id: 'X', type: 'sign', at_m: 10, text: 'ROADWORK AHEAD' }]), '上游第 7 块牌把最远的 VMS 挤掉 → vmsRead = false');
   const fp = be.demo('lonsdale'); fp.worksites[0].closes = { lanes: 1, footpath: 'both' };
   const [, o2, o3] = (await be.options(fp)).options;
-  ok(o2.flags.vms_read && o3.flags.vms_read, '两侧人行道：o2、o3 的 VMS 都进了读数请求（flags.vms_read）');
+  ok(o3.flags.vms_read, '两侧人行道：o3 的 VMS 进了读数请求（flags.vms_read）');
+  const seen2 = signsOn({ kmh: 40 }, o2.plan.worksites[0]);
+  ok(!o2.flags.vms_read && !o2.flags.ok && seen2.length === 6 && seen2.some(x => x.kind === 'vms' && x.m === vmsAll(o2)[0].at_m) && !seen2.some(x => x.kind === 'vms' && x.m === vmsAll(o2)[1].at_m),
+    `T50 两侧人行道：标准档上游 7 块牌，最远的 VMS-2（${vmsAll(o2)[1].at_m} 米）被 6 块上限挤掉 → flags.vms_read = false、flags.ok = false，如实报出来（不改读屏规则）`);
   ok(!o3.flags.guided || o3.result.queue_m !== o2.result.queue_m || o3.result.delay_min !== o2.result.delay_min, `两侧人行道：引导档点名了绕行，引擎结果就和标准档不同（o2 ${o2.result.queue_m} 米 · o3 ${o3.result.queue_m} 米）`);
   if (o3.flags.guided) {
     const far = clone(o3.plan); far.worksites[0].equipment.find(e => e.type === 'vms').at_m = 400;
@@ -152,7 +159,9 @@ await t('哪套更少堵：只记录引擎的数，不硬断言', async () => {
     const line = r.options.map(o => `${o.id} 排队 ${o.result.queue_m} 米 · 全网 ${o.result.delay_min} 车·分 · A$${o.hire.total_aud}`).join('；');
     ok(true, `记录 ${name} ${r.when.hour} 点：${line}${r.options[2].flags.no_faster_detour ? '（没有更快的绕行，引导档屏上字同标准档）' : ''}`);
     const [, o2, o3] = r.options;
-    ok(o3.flags.no_faster_detour ? JSON.stringify(vmsOf(o3).frames) === JSON.stringify(vmsOf(o2).frames) && !o3.flags.guided : o3.flags.guided, `${name}：没更快的绕行 ⇔ 引导档不点名（no_faster_detour = ${o3.flags.no_faster_detour}）`);
+    ok(o3.flags.no_faster_detour ? JSON.stringify(vmsOf(o3).frames) === JSON.stringify([WARN_FRAME]) && !o3.flags.guided : o3.flags.guided, `${name}：没更快的绕行 ⇔ 引导档不点名、屏写 ROADWORK / AHEAD（no_faster_detour = ${o3.flags.no_faster_detour}）`);
+    ok(o2.flags.no_delay_min ? vmsAll(o2).every(v => JSON.stringify(v.frames) === JSON.stringify([WARN_FRAME])) && o2.delay.min === null : vmsAll(o2).every(v => JSON.stringify(v.frames) === JSON.stringify([DELAY_HEAD, [`${o2.delay.min} MIN`]])),
+      `${name}：T50 标准档两块 VMS ${o2.flags.no_delay_min ? '走原路多等不到 1 分钟 → 写 ROADWORK / AHEAD（no_delay_min）' : `报 ${o2.delay.min} 分钟`}`);
   }
 });
 
@@ -210,4 +219,48 @@ await t('T41 引导档的 VMS 字过 T5 真实检查：顾问自己的建议不�
   ok(texts.length >= 1 && texts.every(o => o.frames.length <= 2 && o.frames.every(f => f.length <= 3)), `第 4 步顾问的改字建议也是 ≤ 2 帧 × ≤ 3 行（${texts.map(o => o.frames.map(f => f.join(' / ')).join(' ▸ ')).join('；')}）`);
 });
 
+await t('T50 三档：A 最省 < C 引导（一块 VMS 点名绕行）< B 标准（两块 VMS 报延误）；A、B 不再一样', async () => {
+  // 纯函数：delayFrames / vms2At / tierNeeds
+  const sum = (stay, delay_min = 100, worksite = 'W') => ({ approaches: [{ worksite, delay_min, routes: [{ id: 'stay', usual_min: 1.2, now_min: 1.2 + stay }, { id: 'r1', usual_min: 2, now_min: 2 }] }] });
+  ok(JSON.stringify(delayFrames(sum(9.7), 'W')) === JSON.stringify({ min: 10, frames: [['EXPECT', 'DELAYS'], ['10 MIN']] }) && delayFrames(sum(0.4), 'W') === null && delayFrames(sum(9.7), 'X') === null
+    && delayFrames(sum(250), 'W').min === 99 && delayFrames(null, 'W') === null && delayFrames({ approaches: [] }, 'W') === null,
+    'delayFrames：原路多等 9.7 分钟 → EXPECT / DELAYS ▸ 10 MIN；不到 1 分钟 / 别的施工 / 没摘要 → null；封顶 99');
+  const two = { approaches: [sum(3, 50).approaches[0], sum(12, 900).approaches[0]] };
+  ok(delayFrames(two, 'W').min === 12, '几个方向：和顾问一样先看延误最大的那个方向');
+  ok(vms2At(200, 436) === 400 && vms2At(200, null) === VMS2_AT_M && vms2At(300, 1000) === VMS2_AT_M && vms2At(450, 436) === 500 && vms2At(200, 180) === 250,
+    'vms2At：上游路段 436 米 → 400 米；不知道多长 / 够长 → 500 米；至少比第一块远 50 米');
+  const site = { len_m: 43, lanes: 2, close_lanes: 1, full: false, footpath: 'none', missing: [], up_m: 436 };
+  const fr = [['EXPECT', 'DELAYS'], ['10 MIN']];
+  const nB = tierNeeds(TIERS[1], {}, site, { vmsAt: 200, frames: fr }).filter(e => e.type === 'vms'), nC = tierNeeds(TIERS[2], {}, site, { vmsAt: 200, frames: fr }).filter(e => e.type === 'vms');
+  ok(nB.map(e => `${e.id}@${e.at_m}`).join() === 'VMS-1@200,VMS-2@400' && nB.every(e => JSON.stringify(e.frames) === JSON.stringify(fr)) && nC.map(e => e.id).join() === 'VMS-1'
+    && !tierNeeds(TIERS[0], {}, site).some(e => e.type === 'vms'), 'tierNeeds：标准档 VMS-1（200 米）+ VMS-2（400 米）写同样的字；引导档只有 VMS-1；最省没有 VMS');
+
+  // 真路网 Lonsdale 8 点，T5 读屏（网页用的那条链：答案文件没有的走 T5 关键词规则）+ T5 checkSigns
+  if (!has(PATHS.check)) { ok(false, '找不到 apps/api/public/js/check.js'); return; }
+  const bt = await connect({ fetch: fakeFetch, importer: repoImporter });
+  const r = await bt.options(LON), [A, B, C] = r.options;
+  const n = B.delay.min, st = A.result.routes.find(x => x.id === 'stay');
+  ok(Number.isInteger(n) && n >= 1 && Math.abs(n - st.extra_min) <= 0.6, `B 屏上的 N = 最省那套走原路每车多等 ${st.extra_min} 分钟 → ${n} MIN（整分钟、≥ 1）`);
+  ok(vmsAll(B).length === 2 && vmsAll(B)[1].at_m > vmsAll(B)[0].at_m && vmsAll(B).every(v => JSON.stringify(v.frames) === JSON.stringify([DELAY_HEAD, [`${n} MIN`]]) && !v.frames.flat().some(l => /USE|VIA|AVOID|RUSSELL|EXHIBITION|SPRING/.test(l))),
+    `B：两块 VMS（${vmsAll(B).map(v => v.at_m + ' 米').join('、')}）都写 EXPECT / DELAYS ▸ ${n} MIN，不点名任何路`);
+  ok(vmsAll(B)[1].at_m === 400 && vmsAll(B)[1].at_m < 436, 'B 的 VMS-2 在上游 400 米：Exhibition St 拐口（298 米）之前、引擎模拟的上游路段（到 Spring St，436 米）之内');
+  ok(vmsAll(C).length === 1 && C.flags.guided && /^USE$/.test(vmsOf(C).frames[0][0]) && vmsOf(C).frames[1][0] === 'SAVE', `C：一块 VMS 点名最快绕行 + 省几分钟：${vmsOf(C).frames.map(f => f.join(' / ')).join(' ▸ ')}`);
+  const [hA, hB, hC] = r.options.map(o => o.hire.total_aud), vmsRate = INV.items.find(i => i.id === vmsOf(B).item).day_rate_aud;
+  ok(hA < hC && hC < hB && hB - hC === vmsRate * r.days, `租金 A$${hA} < C A$${hC} < B A$${hB}；B − C = 一块 VMS × ${r.days} 天 = A$${vmsRate * r.days}`);
+  ok(r.options.every(o => vmsAll(o).every(v => vmsTextOk(v.frames)) && o.flags.vms_text_ok !== false && o.stock.ok && o.flags.ok) && [...usedByItem(B.plan)].every(([id, q]) => q <= stockOfItem(INV, id)),
+    '三套的 VMS 字都过 vmsTextOk，不超库存，flags.ok');
+  const warns = r.options.flatMap(o => bt.check(o.plan).flatMap(c => [...(c.ok ? [] : [c.error?.code]), ...(c.warnings || []).map(w => w.code)]));
+  ok(warns.length === 0 && r.options.every(o => o.flags.sign_errors.length === 0), `T5 checkSigns 查三套：没有错误、没有「超过 8 个字符」等警告（实际：${JSON.stringify(warns)}）`);
+  const [pA, pB, pC] = r.options.map(pOf);
+  ok(pA < pB && pB < pC, `绕行比例（1 − 原路份额，SUMO 的输入）A ${pA} < B ${pB} < C ${pC}（T5 读屏：B 读出延误 ${n} 分钟，C 读出点名 + 省几分钟）`);
+  // 引擎自带的关键词规则（T5 没加载上时的兜底）只认「N MIN DELAY」，读不出「DELAYS / N MIN」：如实记下来，不为了排序改读屏规则
+  const rm = await be.options(LON);
+  ok(true, `记录：引擎自带规则读屏时 A ${pOf(rm.options[0])} · B ${pOf(rm.options[1])} · C ${pOf(rm.options[2])}（B 的「EXPECT DELAYS / ${n} MIN」这套规则读不出分钟数）`);
+
+  // 库存：VMS 只剩 1 块 → B 只摆 1 块，缺的写进 stock.short（不硬塞）
+  const one = clone(INV); one.items.find(i => i.id === 'vms_a').qty = 1; one.items.find(i => i.id === 'vms_c').qty = 0;
+  const r1 = await (await connect({ fetch: fakeFetch, importer: noImporter, equipment: one })).options(LON), B1 = r1.options[1];
+  ok(vmsAll(B1).length === 1 && B1.stock.short.some(s => s.equipment === 'VMS-2' && s.got === 0) && !B1.flags.ok && r1.options.every(o => [...usedByItem(o.plan)].every(([id, q]) => q <= stockOfItem(one, id))),
+    'VMS 库存只有 1 块：B 只摆 VMS-1，VMS-2 进 stock.short、flags.ok = false；每套件数 ≤ 库存');
+});
 done();

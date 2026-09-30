@@ -5,15 +5,22 @@
 // 设备条目带 item（equipment.json 的 id）和 qty（件数），和 docs/contract.md 的 equipment[].item / qty 同口径，api 的 pack.js 能按同一份方案报价
 import { footpathOf, overlaps } from './worksite.js';
 import { signsOn } from './reading.js';
+import { approaches } from './routes.js';
 
-// 三档：最省 = 护栏 + 静态标志；标准 = 再加箭头板 + 一块写「前方施工」的 VMS；引导 = 同一块 VMS 点名引擎算出的最快绕行
+// 三档（T50，lead 拍板：A、B 原来屏上都是「前方施工」、读数一样，C 和 B 一样贵）：
+//   最省 o1 = 护栏 + 静态标志，没有 VMS
+//   标准 o2 = 再加箭头板 + 两块 VMS 报「走原路要多等 N 分钟」、不点名路线（如 EXPECT / DELAYS ▸ 10 MIN）；三档里最贵
+//   引导 o3 = 箭头板 + 一块 VMS 点名引擎算出的最快绕行和省几分钟（如 USE / RUSSELL ▸ SAVE / 9 MIN）；比标准少租一块 VMS
+// vms = 几块 VMS；delay = 屏上报延误（标准档）；guided = 屏上点名绕行（引导档）
 export const TIERS = [
-  { id: 'o1', label: 'Minimum', label_zh: '最省', vms: false, arrow: false, guided: false },
-  { id: 'o2', label: 'Standard', label_zh: '标准', vms: true, arrow: true, guided: false },
-  { id: 'o3', label: 'Guided', label_zh: '引导绕行', vms: true, arrow: true, guided: true },
+  { id: 'o1', label: 'Minimum', label_zh: '最省', vms: 0, arrow: false, guided: false, delay: false },
+  { id: 'o2', label: 'Standard', label_zh: '标准', vms: 2, arrow: true, guided: false, delay: true },
+  { id: 'o3', label: 'Guided', label_zh: '引导绕行', vms: 1, arrow: true, guided: true, delay: false },
 ];
 export const WARN_FRAME = ['ROADWORK', 'AHEAD'];
+export const DELAY_HEAD = ['EXPECT', 'DELAYS']; // 标准档屏上第一帧；第二帧是「N MIN」（delayFrames）
 export const VMS_AT_M = 300; // 找不到更快的绕行时 VMS 摆在上游 300 米（和 backend.js 的演示方案一样）
+export const VMS2_AT_M = 500; // 标准档第二块 VMS 最远摆在上游 500 米（vms2At：引擎模拟的上游路段不够长就往回收）
 export const AT_M = { ahead: 200, lane: 100, arrow: 60 }; // 静态标志 / 箭头板离施工起点多少米（工程假设，和演示方案同位置）
 export const BARRIER_PREF = ['barrier_water', 'barrier_klemmfix', 'barrier_steel']; // 先用水马（官网：50 km/h 以下道路合适、对行人友好）
 export const VMS_PREF = ['vms_a', 'vms_c'];
@@ -59,8 +66,25 @@ export function siteOf(net, ws) {
   const close = Number(ws.closes?.lanes) || 0;
   return {
     len_m: Math.round(len), lanes: Number.isFinite(lanes) ? lanes : null, close_lanes: close,
-    full: Number.isFinite(lanes) && close > 0 && close >= lanes, footpath: footpathOf(ws), missing,
+    full: Number.isFinite(lanes) && close > 0 && close >= lanes, footpath: footpathOf(ws), missing, up_m: missing.length ? null : upOf(net, ws),
   };
+}
+
+// 引擎模拟的上游路段有多长（routes.js approaches() 从施工起点沿同一条街往上游走的那段；每段 approach 的车都从它的起点进来）。
+// 几段 approach 取最短的；算不出 → null
+function upOf(net, ws) {
+  try {
+    const ms = approaches(net, ws).map(a => a.up.reduce((s, l) => s + (Number(l.len_m) || 0), 0));
+    return ms.length ? Math.round(Math.min(...ms)) : null;
+  } catch { return null; }
+}
+
+// 标准档第二块 VMS 摆多远（T50）：比第一块再往上游，司机在更多拐口之前就知道要堵多久。最远 VMS2_AT_M；
+// 引擎模拟的上游路段（up_m）不够长就摆在它的起点之内 ≥ 25 米、取整 50 —— 起点再往上游，从横街拐进来的车根本经过不了这块屏，
+// 引擎却会当所有车都看到了；至少比第一块远 50 米。Lonsdale 8 点：上游 436 米（到 Spring St）→ 400 米，在 Exhibition St 拐口（298 米）之前
+export function vms2At(vmsAt, upM) {
+  const far = Number.isFinite(upM) && upM > 0 ? Math.min(VMS2_AT_M, Math.floor((upM - 25) / 50) * 50) : VMS2_AT_M;
+  return Math.min(2000, Math.max((Number(vmsAt) || 0) + 50, far));
 }
 
 // 封的是哪一侧车道：原方案标志牌上写了 LEFT LANE CLOSED 就是左，否则按演示方案的右
@@ -87,8 +111,25 @@ export function guidedFrames(frames) {
   return vmsTextOk([[...fs[0]]]) ? [[...fs[0]]] : null;
 }
 
+// 标准档（T50）的屏：报走原路每车要多等几分钟、不点名路线 → [['EXPECT', 'DELAYS'], ['N MIN']]。
+// N 和顾问给引导档算「SAVE N MIN」同一份摘要（advisorSummary，最省那套的引擎结果）、同一种取法：按延误从大到小挑方向，
+// 原路（stay）现在要走的分钟 − 平时要走的分钟，四舍五入到整分钟，≥ 1 才写、封顶 99（顾问是原路 − 最快绕行）。
+// 算不出（这个小时不施工、不到 1 分钟）→ null，屏上照旧写 ROADWORK / AHEAD（flags.no_delay_min）
+export function delayFrames(summary, wsId) {
+  const aps = [...(summary?.approaches || [])].filter(a => wsId == null || a.worksite === wsId).sort((a, b) => (b.delay_min || 0) - (a.delay_min || 0));
+  for (const ap of aps) {
+    const stay = (ap.routes || []).find(r => r.id === 'stay');
+    const n = stay ? Math.round(stay.now_min - stay.usual_min) : NaN;
+    if (!(n >= 1)) continue;
+    const min = Math.min(n, 99), frames = [[...DELAY_HEAD], [`${min} MIN`]];
+    if (vmsTextOk(frames)) return { min, frames };
+  }
+  return null;
+}
+
 // 一档 → 要摆的东西（还没对库存）：{ id, type, at_m, text? | frames?, items: [按优先顺序的库存 id], close?, len_m? | qty? }
-export function tierNeeds(tier, ws, site, { vmsAt = VMS_AT_M, frames = [WARN_FRAME] } = {}) {
+// tier.vms 块 VMS 写同样的字：VMS-1 在 vmsAt，VMS-2（标准档）在 vms2At（默认按 site.up_m 算，见 vms2At()）
+export function tierNeeds(tier, ws, site, { vmsAt = VMS_AT_M, frames = [WARN_FRAME], vms2 = vms2At(vmsAt, site?.up_m) } = {}) {
   const out = [];
   const lanes = site.close_lanes > 0;
   const sides = site.footpath === 'both' ? ['L', 'R'] : site.footpath === 'left' ? ['L'] : site.footpath === 'right' ? ['R'] : [];
@@ -103,10 +144,13 @@ export function tierNeeds(tier, ws, site, { vmsAt = VMS_AT_M, frames = [WARN_FRA
   }
   for (const s of sides) out.push({ id: `S-F${s}`, type: 'sign', at_m: 0, text: 'FOOTPATH CLOSED', items: ['sign_footpath_closed'] });
   // 「施工结束」摆在施工段末端（at_m 为负 = 施工起点下游）：清单完整、要付租金；reading.js 的 signsOn() 只收 at_m ≥ 0 的牌，
-  // 所以它不进读数请求、不占 T5 一次最多读 6 块的名额（上游最多 6 块：S-1、S-2、S-FL、S-FR、A-1、VMS-1）
+  // 所以它不进读数请求、不占 T5 一次最多读 6 块的名额（上游最多 7 块：S-1、S-2、S-FL、S-FR、A-1、VMS-1、VMS-2 —— 标准档封两侧人行道时
+  // 最远的 VMS-2 会被挤掉，flags.vms_read = false 如实报出来）
   out.push({ id: 'S-9', type: 'sign', at_m: -Math.max(1, site.len_m), text: 'END ROADWORK', items: ['sign_end_roadwork'] });
   if (tier.arrow && lanes && !site.full) out.push({ id: 'A-1', type: 'arrow', at_m: AT_M.arrow, items: ['arrow_board'] });
-  if (tier.vms) out.push({ id: 'VMS-1', type: 'vms', at_m: vmsAt, frames: frames.map(f => [...f]), items: VMS_PREF });
+  const nV = Math.max(0, Math.min(2, Math.floor(Number(tier.vms)) || 0));
+  if (nV >= 1) out.push({ id: 'VMS-1', type: 'vms', at_m: vmsAt, frames: frames.map(f => [...f]), items: VMS_PREF });
+  if (nV >= 2) out.push({ id: 'VMS-2', type: 'vms', at_m: vms2, frames: frames.map(f => [...f]), items: VMS_PREF });
   return out;
 }
 
@@ -118,7 +162,7 @@ export function usageOf(worksites) {
 }
 export const sharingWith = (worksites, ws) => (worksites || []).filter(w => w !== ws && overlaps(w, ws));
 
-// VMS 会不会进读数请求：signsOn() 只把离施工最近的 6 块牌交给 T5，VMS 被挤掉就等于没摆（引导档悄悄变成和标准档一样）
+// VMS 会不会进读数请求：signsOn() 只把离施工最近的 6 块牌交给 T5，VMS 被挤掉就等于没摆（引导档悄悄变成和标准档一样）；几块 VMS 都要读到才算
 export function vmsRead(equipment) {
   const seen = signsOn({ dir: null, kmh: 40 }, { equipment });
   return (equipment || []).filter(e => e.type === 'vms').every(v => seen.some(x => x.kind === 'vms' && x.m === (Number(v.at_m) || 0)));
