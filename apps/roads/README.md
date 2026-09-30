@@ -98,7 +98,7 @@ apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次
 ## 天气回测（T31，需求见 `docs/arch/T31-weather-backtest-PRD.md`）
 
 ```bash
-python3 apps/roads/tools/fetch_weather.py       # Open-Meteo 逐小时天气 → public/cbd/weather_hourly.json（免费、不要 key）
+python3 apps/roads/tools/fetch_weather.py       # Open-Meteo 逐小时天气 → public/cbd/weather_hourly.json（免费、不要 key；日期默认按 raw/ 里的交通数据定）
 python3 apps/roads/tools/backtest_weather.py    # → public/cbd/weather_backtest.json（约 20 秒）
 ```
 

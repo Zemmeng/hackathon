@@ -40,6 +40,13 @@ if wx is not None:
     ok(all(len(wx['hourly'][v]) == len(t) for v in wx['hourly']), '每个变量都和时间一样长')
     ok('Open-Meteo' in wx.get('attribution', '') and wx.get('licence') == 'CC BY 4.0', '带 Open-Meteo 署名和 CC BY 4.0')
     precip_at = dict(zip(t, wx['hourly']['precipitation']))
+    td = wx.get('traffic_days')
+    ok(td is not None and not td['not_covered_by_weather']
+       and td['scats']['from'] >= wx['window'][0] and td['scats']['to'] <= wx['window'][1]
+       and td['peds']['from'] >= wx['window'][0] and td['peds']['to'] <= wx['window'][1],
+       '天气窗口覆盖所有交通数据的日子（SCATS %s..%s、行人 %s..%s）' % (
+           (td or {}).get('scats', {}).get('from'), (td or {}).get('scats', {}).get('to'),
+           (td or {}).get('peds', {}).get('from'), (td or {}).get('peds', {}).get('to')))
 
 bt, p = load('weather_backtest.json')
 if bt is not None:
