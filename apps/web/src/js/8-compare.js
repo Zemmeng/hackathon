@@ -191,12 +191,13 @@ function cmpHTML(){
   // 04 Compare: one table, plans across and measures down (the team template's horizontal comparison); the panel widens for it
   const lean=CP.explain&&CP.explain.lean?CP.explain.lean.option:null,budget=+EP.budget||0,lo=(B,k,i)=>!!(B[k]&&B[k].includes(i));
   const ext=CP.rows.map(r=>({md:r.s&&Number.isFinite(r.s.mean_delay_s)?r.s.mean_delay_s:null,q:r.s&&Number.isFinite(r.s.queue_m)?r.s.queue_m:null})),best2=cmpBest(ext,['md','q']);
-  const tag=(r,i)=>r.id===lean?L('Recommended','综合推荐'):lo(best,'hire',i)?L('Cheapest','最省'):i===0?L('Baseline','比较基准'):'';
-  const rc=i=>CP.rows[i].id===lean?' class="cmp-rec"':'';
+  const tag=(r,i)=>r.id===lean?L('Recommended','综合推荐'):i===0&&!lo(best,'hire',i)?L('Baseline','比较基准'):'';
+  // the highlighted column: the plan picked (click anywhere in its column), else the recommended one
+  const sel=CP.pick!=null&&CP.rows[CP.pick]?CP.pick:CP.rows.findIndex(r=>r.id===lean),rc=i=>` data-cmpcol="${i}"${i===sel?' class="cmp-sel"':''}`;
   const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
     [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
   const days=CP.rows[0].days;
-  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}>${tag(r,i)?`<span class="cmp-tag">${tag(r,i)}</span>`:''}<b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}>${tag(r,i)?`<span class="cmp-tag">${tag(r,i)}</span>`:''}<b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
     ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
     <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
     <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
@@ -227,6 +228,7 @@ function cmpRender(){
   const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
+  el.querySelectorAll('[data-cmpcol]').forEach(c=>c.onclick=()=>{const i=+c.dataset.cmpcol;if(CP.pick!==i&&CP.rows[i]&&CP.rows[i].s){CP.pick=i;cmpRender();}});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
   const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
   const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
