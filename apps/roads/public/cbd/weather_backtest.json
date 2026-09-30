@@ -4,7 +4,7 @@
   "2026-08-01",
   "2026-09-27"
  ],
- "generated": "2026-09-30T10:36:10+10:00",
+ "generated": "2026-09-30T10:37:15+10:00",
  "sources": {
   "weather": "Open-Meteo Historical Weather API, model ecmwf_ifs (Weather data by Open-Meteo.com (https://open-meteo.com/), CC BY 4.0)",
   "check": "BoM Daily Weather Observations Melbourne (Olympic Park) IDCJDW3033, downloaded by hand, not redistributed",
@@ -648,7 +648,7 @@
    "ratio": 1.005,
    "ci95": [
     0.993,
-    1.02
+    1.019
    ],
    "note": "upper bound: mixes fewer cars with slower driving"
   },

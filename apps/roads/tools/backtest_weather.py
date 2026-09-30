@@ -307,9 +307,9 @@ def main():
     lanes = lane_detectors(daily)
     peds = load_peds(os.path.join(a.raw, 'peds.csv'))
     series = {
-        'car': {k: hourly[k] for k in lanes},
-        'car_2921': {k: hourly[k] for k in CAR_2921 if k in hourly},
-        'bike': {k: hourly[k] for k in BIKE_2921 if k in hourly},
+        'car': {k: hourly[k] for k in sorted(lanes)},
+        'car_2921': {k: hourly[k] for k in sorted(CAR_2921) if k in hourly},
+        'bike': {k: hourly[k] for k in sorted(BIKE_2921) if k in hourly},
         'ped': dict(peds),
     }
     dry = cls_hours['dry']
@@ -360,7 +360,7 @@ def main():
                 dry_days.append(d)
         peak_max = lambda k, d: max((q15[k].get((d, h)) for h in hrs if (d, h) in q15[k]), default=None)
         dry_med, dry_med_dow = {}, {}
-        for k in lanes:
+        for k in sorted(lanes):  # 固定顺序：集合顺序随 PYTHONHASHSEED 变，并列时会选到不同的检测器
             vals = [(d, peak_max(k, d)) for d in dry_days]
             vals = [(d, x) for d, x in vals if x is not None]
             if len(vals) >= 3:
@@ -370,8 +370,8 @@ def main():
                     if len(xs) >= 3:
                         dry_med_dow[(k, wdn)] = statistics.median(xs)
         ref = lambda k, d: dry_med_dow.get((k, dow(d)), dry_med[k])
-        top = sorted(dry_med, key=dry_med.get, reverse=True)[:max(1, len(dry_med) // 10)]
-        groups = [('cbd_top10pct', top), ('2921', [k for k in CAR_2921 if k in dry_med]),
+        top = sorted(dry_med, key=lambda k: (-dry_med[k], k))[:max(1, len(dry_med) // 10)]
+        groups = [('cbd_top10pct', top), ('2921', [k for k in sorted(CAR_2921) if k in dry_med]),
                   ('2935', [k for k in dry_med if k[0] == '2935'])]
         for site, dets in groups:
             per_day = collections.defaultdict(list)
