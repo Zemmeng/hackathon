@@ -116,11 +116,11 @@ Checked 2026-09-29 ~22:05:
 
 **🟡 待拍板**
 
-- 提交记录里的个人邮箱：去重后 6 个个人邮箱（4 个 gmail、1 个 outlook、1 个学校邮箱），另有 5 个 GitHub noreply 和 1 个 anthropic.com；文档里还有真名。改历史要 force push，D-07 禁止，队里定接不接受。Canvas 表只要队名。
 - 放不放线上链接 + 二维码：网址子域里有队员 handle（`zemmmeng`），和「只写队名」可能冲突（`4-demo.md` 拍板 2）。`README.md` 顶部现在放了 Demo 链接。
 
 **✅ 已定（09-30）**
 
+- 提交记录里的个人邮箱（6 个）和文档里的真名 → **随仓库公开，不改历史**（D-0930-0133，全队同意）。
 - `apps/api` 里两个测试小工具来自赛前模板 → **如实披露，不改口**。第 3 节照实写着，`README.md` 的「披露与 License」同一口径，不再提「重写那两条」的备选。
 - `docs/event/canvas-export.md`（Canvas 课程页逐字拷贝，含四家赞助商赛题原文）→ **已删**。赛题要点已在 `docs/1-brief.md`，不依赖该拷贝。
 - 赛前协作脚手架（`KICKOFF.md`、`CONTRIBUTING.md`、`AGENTS.md`、`CLAUDE.md`、`docs/onboarding.md`、`.claude/`、`scripts/new-app.sh`）→ **已从工作区删除**（D-0930-0200）。三条硬规矩移到 `README.md`，`scripts/check.sh` / `.githooks/` / CI 的检查机制不变。历史保留，第 3 节已写明。
