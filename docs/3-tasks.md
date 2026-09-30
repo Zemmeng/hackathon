@@ -7,7 +7,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 ## 现在停在哪（只有 lead 改，写时间）
 
 - 里程碑：M0 完成，M1 未到（09-29 15:48）· 倒计时 44h · main：绿（`check.sh` 全量 `0 ❌`，8 个模块 728 passed）· 冻结：否
-- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `bad055d`（#85 T27：地图放下整个 CBD）· 09-30 01:59 由 @unicornnnnnny 部署；线上冒烟 0 ❌；`/api/health` = `llm.mode llm`（deepseek-flash）
+- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `6f42066`（#95 T33：第 2 步 2×2 路口微观仿真）· 09-30 11:02 由 @Zemmeng 备份部署（api + site）；线上冒烟 0 ❌ 0 ⚠️；`/api/health` = `llm.mode llm`（deepseek-flash）；到 `33de50e`（09-30 16:09）为止页面没再变（`index.html` 相同），#96 SUMO 后端在 `apps/web/tools/`，不部署
 - main 上已有：T3/T7 路网 + 行人 / 公交 / 设备、T11 临街建筑、T9 引擎（契约 v3）、T5 读屏规则版、T12 有出处的参数、`docs/llm-apis/` 百炼卡
 - **没有开着的 PR**；最大缺口是 T2 网页还没把这些串起来（R5）
 - 交接：`handoff/Zemmeng-T6-0929-1548.md`（17:00 集成点的待办和要拍板的事）
@@ -73,7 +73,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 | T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
-| T33 | 第 2 步微观仿真改成 2×2 四个路口（D-0930-1036）：Little Lonsdale / Lonsdale × Swanston / Russell（SCATS 2913 / 2912 / 2904 / 2903），主演示 Lonsdale 西行封 1 道的施工段在 2904 和 2903 之间；新文件 `apps/web/src/js/4b-grid.js`（纯函数 GridSim：真车道数、`flows.json` 流量、两相位 90 s 配时和 15% 左转是假设值、不许堵路口、施工段拉链并道），只在引擎方案是 Lonsdale 时的第 2 步用；La Trobe 场景和第 3、4 步不动 | 🔨 | `lead/grid2x2` | 09-30 10:36 |
+| T33 | 第 2 步微观仿真改成 2×2 四个路口（D-0930-1036）：Little Lonsdale / Lonsdale × Swanston / Russell（SCATS 2913 / 2912 / 2904 / 2903），主演示 Lonsdale 西行封 1 道的施工段在 2904 和 2903 之间；新文件 `apps/web/src/js/4b-grid.js`（纯函数 GridSim：真车道数、`flows.json` 流量、两相位 90 s 配时和 15% 左转是假设值、不许堵路口、施工段拉链并道），只在引擎方案是 Lonsdale 时的第 2 步用；La Trobe 场景和第 3、4 步不动 | ✅ 已合 #95，已上线 6f42066（09-30 11:02）；已知：施工排队约 2 m（不做右转）、没有冲突检测 | `lead/grid2x2` | 09-30 10:36 |
 
 卡住了：
 
