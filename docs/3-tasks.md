@@ -143,6 +143,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T44 | （@unicornnnnnny 09-30 自提，编号自取：T42 已被 #121 用）01 施工信息 / 设备诱导两个页签去掉引擎四张卡（只在没选街 / 引擎算不了时留一行提示）；02 浏览器 4×4 仿真的急刹、冲突（TTC < 1.5 s）、严重（< 1.0 s）带位置标在地图上（菱形：白 / 橙 / 红，留 60 秒），急刹阈值标签改成 4×4 自己的 3.5 m/s²；底部时间轴 4×4 = 每 10 分钟 100% 堆叠柱（红 = 急刹或卷入冲突的车占比），SUMO 回放 / 示意场景按最忙一分钟缩放；4×4 的分钟按时钟记 | 🔨 | `unicornnnnnny/web/T44-map-events` | 09-30 23:10 |
 | T48 | （@unicornnnnnny 10-01 自提，编号自取）左上角换成团队最后定的 logo：原稿裁边缩成 314×64 PNG，拆成两层：路 + Twin 照原稿，「Ripple」做成遮罩、用主题文字色填（深色主题白字、浅色主题黑字），内嵌进页面（约 27 KB） | 🔨 | `unicornnnnnny/web/T48-logo` | 10-01 00:35 |
 | T49 | （@unicornnnnnny 10-01 自提，编号自取）第 2 步镜头框住整个 4×4（16 个路口：Elizabeth–Exhibition × La Trobe–Little Bourke），原来只框施工处 2×2；「再点一次缩小」和 ⌖ 也回到 4×4。取景算法抽成 fitView()，和 engFit 共用 | 🔨 | `unicornnnnnny/web/T49-grid-frame` | 10-01 01:10 |
+| T50 | （@unicornnnnnny 10-01 自提，编号自取）精细窗口（高清影像、楼房阴影、天气 / 风险栅格）往东、往南扩到盖住第 2 步整个 4×4：WORLD 从 x −320…320、y −300…300 改成 x −320…480、y −380…300（西、北不动，La Trobe 示意场景照旧），STREETS 补 Exhibition St、Little Bourke St。原来 Exhibition 一列和 Little Bourke 一行落在矢量底图上，影像和仿真对不上 | 🔨 | `unicornnnnnny/web/T50-fine-window` | 10-01 02:30 |
 
 卡住了：
 

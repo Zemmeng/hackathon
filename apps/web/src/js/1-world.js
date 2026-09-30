@@ -58,7 +58,10 @@ function inConvex(P,x,y){for(let i=0,n=P.length;i<n;i++){const a=P[i],b=P[(i+1)%
 /* ============================================================
    World: Swanston St × La Trobe St, Melbourne CBD (local metres, x east, y north)
    ============================================================ */
-const WORLD={x0:-320,x1:320,y0:-300,y1:300};
+// T50: east to x 480 and south to y −380 so the step-2 4×4 (Elizabeth–Exhibition × La Trobe–Little Bourke, junctions at
+// x −195…401, y −300…9) sits on the fine window, not half on the vector map; west / north unchanged (the La Trobe scene).
+// Spans are multiples of 40: CELL 2, RISK_CELL 4 and the weather cells 5 / 8 all divide them
+const WORLD={x0:-320,x1:480,y0:-380,y1:300};
 /* The whole Hoddle Grid (Spencer–Spring × Flinders–La Trobe) plus ~150 m, in page units (T27); north to Franklin St (y 450,
    ~210 m past La Trobe — the La Trobe 17:00 detours run along it; north of La Trobe the page is stretched ×1.85, so no further).
    Only decides how far the view pans, how far it zooms out and where the engine's lines are drawn; imagery, weather and the
@@ -84,6 +87,9 @@ const STREETS=[
   {id:'swanston',name:'Swanston St',zh:'斯旺斯顿街',axis:'v',c:0,w:30,fp:4.5,tram:true,bike:true,main:true},
   {id:'russell',name:'Russell St',zh:'罗素街',axis:'v',c:200,w:30,fp:4.5,main:true},
   {id:'elizabeth',name:'Elizabeth St',zh:'伊丽莎白街',axis:'v',c:-200,w:30,fp:4.5,tram:true,main:true},
+  // T50: the 4×4's east column and south row (centre lines from network.json: Exhibition x ≈ 401, Little Bourke y ≈ −300)
+  {id:'exhibition',name:'Exhibition St',zh:'展览街',axis:'v',c:402,w:30,fp:4.5,main:true},
+  {id:'lbourke',name:'Little Bourke St',zh:'小博克街',axis:'h',c:-300,w:10,fp:1.6,little:true},
 ];
 function streetRect(s){return s.axis==='h'?{x0:WORLD.x0-60,x1:WORLD.x1+60,y0:s.c-s.w/2,y1:s.c+s.w/2}:{x0:s.c-s.w/2,x1:s.c+s.w/2,y0:WORLD.y0-60,y1:WORLD.y1+60};}
 function carriage(s){const r=streetRect(s);return s.axis==='h'?{x0:r.x0,x1:r.x1,y0:r.y0+s.fp,y1:r.y1-s.fp}:{x0:r.x0+s.fp,x1:r.x1-s.fp,y0:r.y0,y1:r.y1};}
