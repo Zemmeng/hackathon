@@ -163,5 +163,10 @@ check("简洁模式默认收起「车往哪走」「叠加检查」「方案对�
 check("人行道照常时行人只占一行；第 1 步人行道选项写短（Works side closed / Both sides closed）",
       "L('Footpath open · no detour','人行道照常 · 不用绕')" in ENGJS and "L('Works side closed','施工侧封')" in ENGJS and "Works-side footpath closed" not in ENGJS)
 
+# 09-30 @unicornnnnnny：第 2 步 4×4，点一个路口就飞过去放大；⌖ 回到 16 个路口
+check("第 2 步 4×4：点路口（不是拖动，双击仍是缩放）飞到这个路口放大，悬停有圈和路口名，⌖（gridFly）回到全部 16 个",
+      "function gridPick(" in APP and "function gridFocus(j){" in APP and "gridBindMap();" in APP and "function gridFly(d){S.gridJ=null;" in APP
+      and "L('click to zoom','点击放大')" in APP and "SCATS ${fo.id}" in APP and "cv.addEventListener('dblclick',()=>clearTimeout(pending));" in APP)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

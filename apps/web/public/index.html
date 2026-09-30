@@ -2461,7 +2461,7 @@ function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,c
 function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
 function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
-function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
+function gridFly(d){S.gridJ=null;flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
 function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null,hr=engHour(EP.hour);return L(`Micro-sim · 16 junctions (La Trobe – Little Bourke × Elizabeth – Exhibition), weekday ${hr} flows · counts below cover the 2×2 at the works · signal timing and turn shares are assumed`,`微观仿真 · 16 个路口（La Trobe – Little Bourke × Elizabeth – Exhibition），工作日 ${hr} 车流 · 下面的计数只算施工处 2×2 · 信号配时和转弯比例是假设值`)+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
 // closed-lane polygons (works hatch, T38: halo + pulsing outline + a label so the closure stands out among 16 junctions)
@@ -2480,7 +2480,29 @@ function drawJunctions(sim){
   }
   const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
   for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
+  // hovered junction: ring + name + "click to zoom"; the one zoomed in on: its name (gridBindMap)
+  const J=id=>id&&sim.spec.junctions.find(j=>j.id===id),fo=J(S.gridJ),I=GL.ins,on=fo&&V.s>=2.5&&Math.hypot(V.X(fo.x)-(I.l+V.w-I.r)/2,V.Y(fo.y)-(I.t+V.h-I.b)/2)<160,hv=J(S.gridHover); // on: still zoomed in on it (near the middle of the open map)
+  const nm=j=>`${shortSt(j.ew)} × ${shortSt(j.ns)}`.toUpperCase();
+  if(hv&&!(on&&hv===fo)){const px=V.X(hv.x),py=V.Y(hv.y),ring=Math.max(14,24*V.s);ctx.setLineDash([5,4]);ctx.strokeStyle=TK.fg;ctx.globalAlpha=.85;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,ring,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    drawTag(ctx,px,py-ring,0,-18,`${nm(hv)} · ${L('click to zoom','点击放大')}`,TK.fg);}
+  if(on)drawTag(ctx,V.X(fo.x),V.Y(fo.y)-Math.max(14,24*V.s),0,-18,`${nm(fo)} · SCATS ${fo.id}`,TK.fg);
   ctx.restore();
+}
+// Step 2 (4×4): a click (not a drag) on a junction flies in on it; ⌖ (gridFly) goes back to all 16 (09-30 ask). Junctions sit
+// 100+ page units apart, so anything within 45 of one is that junction, at any zoom
+function gridPick(px,py){
+  if(!gridShown()||!S.sim.spec)return null;const x=V.wx(px),y=V.wy(py);let best=null,bd=45;
+  for(const j of S.sim.spec.junctions){const d=Math.hypot(j.x-x,j.y-y);if(d<bd){bd=d;best=j;}}return best;
+}
+function gridFocus(j){const I=GL.ins;S.gridJ=j.id;flyTo(j.x,j.y,clamp((V.w-I.l-I.r)/150,3,9),.8);}
+function gridBindMap(){
+  let down=null,pending=0;
+  cv.addEventListener('pointermove',e=>{const j=e.buttons?null:gridPick(e.offsetX,e.offsetY),id=j?j.id:null;if(id!==S.gridHover){S.gridHover=id;cv.style.cursor=id?'pointer':'';}});
+  cv.addEventListener('pointerleave',()=>{S.gridHover=null;cv.style.cursor='';});
+  cv.addEventListener('pointerdown',e=>{clearTimeout(pending);down=[e.offsetX,e.offsetY];});
+  cv.addEventListener('dblclick',()=>clearTimeout(pending)); // a double-click zooms (bindInput), not a pick
+  cv.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
+    const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(gridShown())gridFocus(j);},250);});
 }
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
@@ -2777,7 +2799,7 @@ function boot(){
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
   readTokens();makePatterns();S.basemap=TK.light?'streets':'imagery';
-  initGlass();resize();sizeHist();bindInput();engBindMap();
+  initGlass();resize();sizeHist();bindInput();engBindMap();gridBindMap();
   renderWxSwitcher();renderLegend();updateBasemapUI();renderCredits();
   /* the saved weather's raster (heat ≈ 180 ms) is built once, in start(), on whichever city is in by then — building it here
      on the synthetic grids was thrown away as soon as the real buildings arrived (WX.rebind) */
