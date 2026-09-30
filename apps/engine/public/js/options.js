@@ -76,12 +76,15 @@ export function vmsTextOk(frames) {
   return lines && frames.flat().join(' ').split(/\s+/).filter(Boolean).length <= 8;
 }
 
-// 引导帧（顾问规则点名最快绕行的那一帧，如 USE / RUSSELL / SAVE 9 MIN）→ VMS 的两帧：先「前方施工」，再引导；超 8 个词就只留引导帧
-export function guidedFrames(frame) {
-  if (!Array.isArray(frame)) return null;
-  const two = [[...WARN_FRAME], [...frame]];
+// 顾问规则给的引导帧（如 USE / RUSSELL ▸ SAVE / 9 MIN）→ VMS 上的帧。顾问给了两帧就原样用：屏最多两帧，「前方施工」由 S-1 静态牌说；
+// 只给一帧（旧写法，也可以直接传一帧）就在前面加「前方施工」，超 8 个词就只留引导帧
+export function guidedFrames(frames) {
+  if (!Array.isArray(frames) || !frames.length) return null;
+  const fs = Array.isArray(frames[0]) ? frames : [frames];
+  if (fs.length > 1) return vmsTextOk(fs) ? fs.map(f => [...f]) : null;
+  const two = [[...WARN_FRAME], [...fs[0]]];
   if (vmsTextOk(two)) return two;
-  return vmsTextOk([[...frame]]) ? [[...frame]] : null;
+  return vmsTextOk([[...fs[0]]]) ? [[...fs[0]]] : null;
 }
 
 // 一档 → 要摆的东西（还没对库存）：{ id, type, at_m, text? | frames?, items: [按优先顺序的库存 id], close?, len_m? | qty? }

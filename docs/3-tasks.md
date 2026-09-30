@@ -63,6 +63,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
 | T37 | SUMO 上云（D-0930-1700）：后端加固（语言 bug、HOST/PORT、跑完删 raw/、只留 20 次、参数收紧、HEAD、SIGTERM）、新模块 `apps/sumo`（Worker `hackathon-sumo` + Cloudflare Container）、site 转发 `/api/sumo/*`、预跑兜底 `apps/sumo/public/baked/` + `sumo-client.js`；页面卡片不在本单 | 🔨 | `lead/T37-sumo-cloud` | 09-30 17:00 |
 | T38 | 第 2 步 4×4 路口仿真（D-0930-1820）：16 个路口的车和信号灯全画、缩小不丢车、施工段醒目标注、时钟按方案时段；`apps/web` 跨模块（高h 的 5-app.js、qjm 的 4b-grid.js），lead 自己审 | 🔨 | `lead/T38-grid16` | 09-30 18:10 |
+| T40 | 第 2 步车流改由真实路网 SUMO 生成（D-0930-2200）：`build_real.py`（network.json + SCATS 08:00）、`serve.py` 加 `network:'real'`、镜像带路网数据、预跑 `apps/sumo/public/real/`、`sumo-client.js` 加 `loadReal / runReal`、页面 `4c-sumo.js` 播放轨迹 + 原方案 / AI 方案切换 + 云端现场重跑；GridSim 兜底 | 🔨 | `lead/T40-sumo-card` | 09-30 22:00 |
 | T6 | 附：README 评委段对齐线上 + 第三方清单 + 参考文献 11 条（逐条核对）+ 仓库 About / `VIDEO_URL`；交接 `handoff/Zemmeng-T6-0930-1610.md` | ✅ | #97 #98 #99 #100 #103 | 09-30 10:47 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff`；初筛架构图 `claude/lead/arch-v2` / PR #42 ✅（`docs/pitch-assets/03-architecture*`；要按 D-0929-1718 / 2011 改，见 `handoff/Zemmeng-T6-0929-2255.md`）；T20 核对 + 派 T28 / T26 / T27（#74 #77）交接 `handoff/Zemmeng-T6-0930-0117.md` | 09-29 13:05 |
 | T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | ✅ | `claude/lead/ai-infra` / PR #20 ✅；`claude/lead/engine-fixes` / PR #34 ✅（后端接线层 `backend.js`、不走小巷、审查 15 条、契约 v3.1、派 T13） | 09-29 13:50 |
@@ -117,6 +118,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T5 | 执行包和设备租金（提案 #48 第 ⑧ 步、第 ④ 步租金，只做后端）：`public/js/pack.js` 报价（RPM 库存 × 件数 × 天数，假设值）、多处施工共用库存检查、配置检查、要通知谁、中英文字版；T23 导出接它；`packDoc()` 给网页排版、负数 `at_m` = 施工起点下游 | ✅ | #55 #66 | 09-29 21:10 |
 | T23 | 多方案并排对比 + 选定 + 一页导出（D-0929-2011 ④）：`apps/web/src/js/8-compare.js`，第 4 步顾问下面；T22 `be.options()` 的 3 套（拿不到退回现在的方案 + 顾问改法），车延误 / 电车公交 / 行人 / 租金，选定 + 理由，导出接 `pack.js`；导出排成一页 A4（中 / 英）；09-29 22:50 线上验过 | ✅ | #61 | 09-29 21:55 |
 | T15（素材协作） | 用户要求：业务流程图重绘为可编辑 SVG 并上传；已上传并通过检查，状态保留原 pre-screen 快照，交 pitch owner 复核 | ✅ | `jinmingq/pitch/T15-workflow-svg` | 09-29 20:18 |
+| T41 | 引擎顾问改字建议改成两帧 `USE / 路名` ▸ `SAVE / N MIN`：原来一行「SAVE 9 MIN」10 个字符，被 T5 检查警告「超过 8 个字符难读」（顾问自己的建议被自己的检查打回）；`apps/engine`，lead 同意改法、用户要求不等审直接合；任务号待 lead 确认 | ✅ | `jinmingq/engine/T41-vms-two-frames` | 09-30 21:15 |
 
 卡住了：
 
@@ -135,7 +137,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T27 | 地图放下整个 CBD（PRD 第 3 节阶段 1）：精细窗口不动，外面垫一层预渲染的全城路网 + 建筑（`6c-city.js`；`CITY` 北边放到 Franklin St，装下 La Trobe 17:00 的绕行），放开拖动 / 缩放（缩放 < 1 不画天气、小人、经纬网，不能点图挪施工区），引擎线改用 `CITY`，排队线沿同名路段按 `len_m` 画到街没了为止（标签照写引擎的数），比例尺按 1 m ≈ 0.862 页面单位，变慢路段的筛选和标红只看 `extra_min`（#82），引擎标签避开地图控件、施工段和彼此（375 px 不再出屏）；顺带 T26 审查两处字样；交接单 `handoff/unicornnnnnny-T27-0930-0202.md` | ✅ 已合 #85，已上线 bad055d（09-30 01:59 @unicornnnnnny 部署，e2e 0 ❌） | `unicornnnnnny/web/T27-full-cbd` | 09-30 00:37 |
 | T32 | （@unicornnnnnny 09-30 自提，编号自取：T29 已被 #89 用、T30 留给 #85 小修、T31 是天气回测；lead 可改）右侧面板三处：第 3 步「AI 路人 · 各自读到了什么」改成 2 × 2 小方块（看到 / 看懂 / 相信 + 路线建议），点一个在下面展开它的完整卡片；面板底部按钮（找更好的方案、错开 N 天、复制处置手册）桌面上一直悬浮，「错开 N 天」挪进底部按钮条；左侧图层栏缩小、位置不变（#91）；数据来源一行去掉边框、居中在地图底边，第一次打开默认英文（#93）；第一次打开默认深色（#94）；右侧面板减字（tutor：limit the words）—— 简洁模式只留数字、按钮和一行假设，车往哪走 / 叠加检查 / 方案对比默认收起、标题行写结论，底部按钮改成悬浮的深色液态玻璃 | ✅ 已合 #91 #93 #94 #107，已上线 18ce09a | `unicornnnnnny/web/T32-ai-tiles`、`T32-credits-en`、`T32-default-dark`、`T32-less-text` | 09-30 09:55 |
 | T39 | （@unicornnnnnny 09-30 自提，编号自取）右侧改成团队模板（`apps/web/templates/workflow-preview`，#114）的 6 步工作台：路况总览 → 配置施工（施工信息 / 设备诱导 / 约束检查：预算 + 必须满足的通行条件）→ 仿真评估 → 影响分析（交通影响 / 施工叠加 / 依据假设）→ 比较方案（横向对比表，面板向左展开）→ 确认导出，底部统一「上一步 / 下一步」，数字都来自引擎；第 2 步 4×4 点路口放大、再点缩回；大段小字不在简洁版里 | ✅ 已合 #116，已上线 ca05718（09-30 20:27 @unicornnnnnny 部署，e2e 0 ❌） | `unicornnnnnny/web/T39-junction-zoom` | 09-30 18:40 |
-| T40 | （lead 派给 @unicornnnnnny，任务号以 lead 确认为准）决赛两个亮点摆到评委眼前，只摆引擎已有的数、不加算法：① 04 对比表：交通结果（每车多等 / 排队 / 全网 / 电车公交 / 行人）和更便宜的一套全一样的列，表头标「结果和 A 一样 · 多花 A$…」；② 04 对比表加一行「和附近施工叠加」：每套和 03 页同一处施工 `be.clash()`，表先出、这一行后补；③ 01 Signs：同一方案 VMS 只写 ROADWORK / AHEAD（引擎 WARN_FRAME）再跑一次，显示「排队 X → Y m（少 Z m）」 | 🔨 | `unicornnnnnny/web/T40-spotlight` | 09-30 21:05 |
+| T43 | （lead 派给 @unicornnnnnny；T40 已被 #118 SUMO 用，按 qjm 交接单改 T43，以 lead 确认为准）决赛两个亮点摆到评委眼前，只摆引擎已有的数、不加算法：① 04 对比表：交通结果（每车多等 / 排队 / 全网 / 电车公交 / 行人）和更便宜的一套全一样的列，表头标「结果和 A 一样 · 多花 A$…」；② 04 对比表加一行「和附近施工叠加」：每套和 03 页同一处施工 `be.clash()`，表先出、这一行后补；③ 01 Signs：同一方案 VMS 只写 ROADWORK / AHEAD（引擎 WARN_FRAME）再跑一次，显示「排队 X → Y m（少 Z m）」 | 🔨 | `unicornnnnnny/web/T43-compare-spotlight` | 09-30 21:05 |
 
 卡住了：
 

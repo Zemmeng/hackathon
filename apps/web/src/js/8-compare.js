@@ -39,7 +39,7 @@ function cmpBest(rows,keys){
   }
   return out;
 }
-// A plan that buys nothing (T40): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
+// A plan that buys nothing (T43): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
 // buses, on foot) and the footpath are the same as a cheaper plan's, at the precision on screen → { of: that plan's index,
 // extra: hire difference A$ }, else null. The cheapest such plan is named (then the first). Needs an engine result and a hire
 // figure; an hour with no works (all zeros) is never flagged.
@@ -150,7 +150,7 @@ async function cmpUpdate(){
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
 }
 
-// 04 Compare, "Nearby works" row (T40): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
+// 04 Compare, "Nearby works" row (T43): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
 // clashPick in 8-clash.js), by be.clash(). Filled in after the table is on screen, cell by cell; never holds the table up.
 // CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r }, cells: [clash result | 'err'], err }
 async function cmpClashUpdate(){

@@ -38,8 +38,9 @@ check("public/index.html 与 src/ 打包结果一致", committed == PAGE, "先�
 size = len(PAGE.encode("utf-8"))
 check(f"打包后 {size} 字节 < 2MB", size < 2 * 1024 * 1024)
 
-# 3. 反向断言（隐私）：页面只从同源取东西（/engine/ /roads/ /params/ /api/，T13 PRD 第 6 节），不往别的服务器发数据
-SAME_ORIGIN = ("/engine/", "/roads/", "/params/", "/api/")
+# 3. 反向断言（隐私）：页面只从同源取东西（/engine/ /roads/ /params/ /api/，T13 PRD 第 6 节；T40 加 /sumo/：
+#    只 import 同源的 sumo-client.js，由它去取 /sumo/public/real/ 和 /api/sumo/v1/），不往别的服务器发数据
+SAME_ORIGIN = ("/engine/", "/roads/", "/params/", "/api/", "/sumo/")
 loads = re.findall(r"\b(import|fetch)\s*\(\s*([^)]*?)\s*[,)]", JS)
 bad = [f"{k}({a})" for k, a in loads if not re.fullmatch(r"'(/[^']*)'", a) or not a.strip("'").startswith(SAME_ORIGIN)]
 check(f"import() / fetch() 只用同源的固定路径（{len(loads)} 处）", loads and not bad, f"不合规 {bad}")
@@ -222,53 +223,53 @@ check("T23：方案名称（可能是顾问给的 kind）过 esc()", "esc(cmpLab
 probe_cmp = "`<b>${cmpLabel(r)}</b><i>${r.kind}</i>`"
 check("自检：T23 去掉 esc() 会被抓到", len(unsafe_in(probe_cmp)) >= 1)
 
-# 10. T40 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」③01 Signs「比只写 ROADWORK AHEAD 少排多少」
+# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」③01 Signs「比只写 ROADWORK AHEAD 少排多少」
 #     只把引擎已有的数摆出来：页面不自己算、源码里不写死验收时看到的数
 CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
-T40_SRC = JS + "\n" + BODY + "\n" + (SRC / "styles.css").read_text(encoding="utf-8")
-t40_lits = [x for x in ["1,250", "1250", "33,015", "33015", "25,719", "25719"] if x in T40_SRC or x in PAGE] \
-    + re.findall(r"(?<![\w.])725(?!\d)", T40_SRC + PAGE)
-check("T40 反向断言：源码和打包页里没有验收时的数（1,250 / 33,015 / 25,719 / 725），都从引擎来", not t40_lits, str(t40_lits[:4]))
-check("T40①：「结果和 A 一样 · 多花 A$…」由 cmpSameAs(CP.rows) 逐列算，字母和金额都不写死（中英成对）",
+T43_SRC = JS + "\n" + BODY + "\n" + (SRC / "styles.css").read_text(encoding="utf-8")
+t40_lits = [x for x in ["1,250", "1250", "33,015", "33015", "25,719", "25719"] if x in T43_SRC or x in PAGE] \
+    + re.findall(r"(?<![\w.])725(?!\d)", T43_SRC + PAGE)
+check("T43 反向断言：源码和打包页里没有验收时的数（1,250 / 33,015 / 25,719 / 725），都从引擎来", not t40_lits, str(t40_lits[:4]))
+check("T43①：「结果和 A 一样 · 多花 A$…」由 cmpSameAs(CP.rows) 逐列算，字母和金额都不写死（中英成对）",
       "dup=cmpSameAs(CP.rows)" in CMP and "function cmpSameAs(rows){" in CMP and "String.fromCharCode(65+d.of),amt=fmtN(d.extra)" in CMP
       and "L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`)" in CMP and 'class=\\"cmp-dup\\"' in CMP.replace('"', '\\"'))
 t40_same = CMP[CMP.index("function cmpSameAs(rows){"):CMP.index("function cmpSpan(")]
-check("T40① 反向断言：不是只认 B 列的特判（cmpSameAs 里没有 rows[1] / 'B' / i===1）",
+check("T43① 反向断言：不是只认 B 列的特判（cmpSameAs 里没有 rows[1] / 'B' / i===1）",
       not re.search(r"rows\[1\]|'B'|===1\b", t40_same))
-check("T40②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.api.clash 逐套算；表先出、这一行后补；无重叠写 none、算失败写 — 并 console.warn",
+check("T43②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.api.clash 逐套算；表先出、这一行后补；无重叠写 none、算失败写 — 并 console.warn",
       "async function clashPick(cur,alive){" in CLASHJS and "await clashPick(clashCur(),()=>seq===CL.seq)" in CLASHJS
       and "await clashPick(cur,alive)" in CMP and "BE.api.clash(r.plan.worksites[0],x.ws)" in CMP and "${cmpClashRow(rc)}" in CMP
       and "cmpUpdate();cmpExplainUpdate();cmpClashUpdate();" in CMP and "L('none','无')" in CMP
       and "console.warn('compare: clash check failed for plan'" in CMP and "console.warn('compare: nearby works check failed'" in CMP
       and "L('Nearby works','和附近施工叠加')" in CMP)
-check("T40②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
+check("T43②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
       "CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other" in CMP)
 t40_vs = ENG[ENG.index("function engVsHTML(){"):ENG.index("async function engStep4(){")]
-check("T40③：基准 = 同一方案、VMS 只写 options.js 的 WARN_FRAME，再跑一次引擎；按基准方案缓存（不含屏上文字，打字不重跑）",
+check("T43③：基准 = 同一方案、VMS 只写 options.js 的 WARN_FRAME，再跑一次引擎；按基准方案缓存（不含屏上文字，打字不重跑）",
       "import('/engine/public/js/options.js')" in ENG and "VSB.frame=m.WARN_FRAME" in ENG and "if(VSB.runs.has(k))return;" in ENG
       and "frames:[[...VSB.frame]]" in ENG and 'id="vmsVs"' in ENG and "['vmsVs',engVsHTML]" in ENG)
-check("T40③：当前就是 ROADWORK AHEAD 时不显示；更长时用 var(--risk) 写 +X m；中英成对",
+check("T43③：当前就是 ROADWORK AHEAD 时不显示；更长时用 var(--risk) 写 +X m；中英成对",
       "JSON.stringify(v.frames)===JSON.stringify([w]))return''" in t40_vs and "d>0?'var(--risk)'" in t40_vs
       and "L(`vs ${wt} only: queue" in t40_vs and "`只写 ${wt} 时：排队" in t40_vs)
-check("T40③ 反向断言：基准那行的 ROADWORK / AHEAD 字样来自引擎的 WARN_FRAME，不在页面里写死", "ROADWORK" not in t40_vs and "AHEAD" not in t40_vs)
+check("T43③ 反向断言：基准那行的 ROADWORK / AHEAD 字样来自引擎的 WARN_FRAME，不在页面里写死", "ROADWORK" not in t40_vs and "AHEAD" not in t40_vs)
 
-# 11. T42（@unicornnnnnny 09-30）：01 施工信息 / 设备诱导不放引擎四个数；02 仿真的冲突 / 严重 / 急刹在地图上标出来
+# 11. T44（@unicornnnnnny 09-30）：01 施工信息 / 设备诱导不放引擎四个数；02 仿真的冲突 / 严重 / 急刹在地图上标出来
 GRIDJS = (SRC / "js" / "4b-grid.js").read_text(encoding="utf-8")
-check("T42：01 施工信息 / 设备诱导两个页签不再放「引擎 · 真实 CBD 车流」四个数，只在没选街 / 引擎算不了时留一行提示",
+check("T44：01 施工信息 / 设备诱导两个页签不再放「引擎 · 真实 CBD 车流」四个数，只在没选街 / 引擎算不了时留一行提示",
       "engOutSec()" not in app_js and app_js.count("engStateSec()") == 2 and "function engStateHTML(){" in ENG and "['engState',engStateHTML]" in ENG)
-check("T42：4×4 仿真的急刹和冲突都带位置记进 sim.events（冲突 TTC < 1.5 s、严重 < 1.0 s，只算 2×2）；地图 drawEvents 画出来",
+check("T44：4×4 仿真的急刹和冲突都带位置记进 sim.events（冲突 TTC < 1.5 s、严重 < 1.0 s，只算 2×2）；地图 drawEvents 画出来",
       "kind:'harsh'" in GRIDJS and "kind:'conflict'" in GRIDJS and "ttc:1.5,ttcCrit:1" in GRIDJS and "if(e.kind==='harsh'){" in app_js
       and "const keep=sim.isGrid?EV_KEEP_GRID:25" in app_js)
-check("T42 反向断言：02 面板急刹写的阈值来自 4×4 仿真自己的 GRID_P.harsh（3.5），不再写旧场景的 4.2",
+check("T44 反向断言：02 面板急刹写的阈值来自 4×4 仿真自己的 GRID_P.harsh（3.5），不再写旧场景的 4.2",
       "-GRID_P.harsh/GRID_K" in app_js and "grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'" in app_js)
-check("T42：02 面板有图例说明地图和时间轴上的标记（中英成对）；冲突 / 严重也画成菱形，不和信号灯的圆点混",
+check("T44：02 面板有图例说明地图和时间轴上的标记（中英成对）；冲突 / 严重也画成菱形，不和信号灯的圆点混",
       "L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per 10 min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 10 分钟车辆占比`)" in app_js and 'class="eng-legend ev-legend"' in app_js
       and "evDiamond(px,py,sim.isGrid?(e.sev===2?7.5:6.5)" in app_js and "ev-dot" not in app_js)
-check("T42：02 时间轴改成每 10 分钟一根的 100% 堆叠柱（红 = 急刹或卷入冲突的车占比，灰 = 其余），两段都标百分比；其他步骤按最忙的一分钟缩放（不再按每分钟 3 次封顶）",
+check("T44：02 时间轴改成每 10 分钟一根的 100% 堆叠柱（红 = 急刹或卷入冲突的车占比，灰 = 其余），两段都标百分比；其他步骤按最忙的一分钟缩放（不再按每分钟 3 次封顶）",
       "function histShare(c,sim,top,bot){" in app_js and "hit/seen" in app_js and "pct(1-p)" in app_js
-      and "Math.min(1,v/3)" not in app_js[app_js.index("function drawHist(){"):app_js.index("function histShare(")] and "let mx=3;" in app_js
+      and "Math.min(1,v/3)" not in app_js[app_js.index("function drawHist(){"):app_js.index("function histShare(")] and "const mx=Math.max(3,top1)" in app_js
       and "this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);" in GRIDJS and "mBy" not in GRIDJS + app_js)
-check("T42：02 的 4×4 仿真按时钟记分钟（clock0 = 时钟 − 仿真秒数），时间轴柱子和时钟指针对得上",
+check("T44：02 的 4×4 仿真按时钟记分钟（clock0 = 时钟 − 仿真秒数），时间轴柱子和时钟指针对得上",
       "s.clock0=CLOCK_EVENT-s.t;return s;" in app_js and "g.clock0=S.clock-g.t;" in app_js)
 
 print(f"{passed} passed, {failed} failed")

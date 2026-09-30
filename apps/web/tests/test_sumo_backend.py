@@ -38,13 +38,43 @@ def raw_then(fail):
     return runner
 
 
+REAL_IDS=('baseline','original','ai')
+
+
+def fake_validate_real(payload):
+    # 按 contract F 写的替身：白名单 + 范围；真 build_real.validate_real 另有一条测试直接查
+    if not isinstance(payload,dict):raise ValueError('payload must be an object')
+    extra=set(payload)-{'seed','p_original','p_ai','scenarios'}
+    if extra:raise ValueError('unknown fields: '+', '.join(sorted(extra)))
+    out={'seed':payload.get('seed',42),'p_original':payload.get('p_original',.14),'p_ai':payload.get('p_ai',.53),
+         'scenarios':payload.get('scenarios',list(REAL_IDS))}
+    if type(out['seed']) is not int or not 0<=out['seed']<=2147483647:raise ValueError('seed')
+    for k in ('p_original','p_ai'):
+        if type(out[k]) not in (int,float) or not 0<=out[k]<=1:raise ValueError(k)
+    if not isinstance(out['scenarios'],list) or not out['scenarios'] or not set(out['scenarios'])<=set(REAL_IDS):raise ValueError('scenarios')
+    return out
+
+
+def fake_build_real(args):
+    # contract A 的最小目录：index.json + <id>/manifest.json + <id>/frames-000.json
+    out=pathlib.Path(args.output)
+    model.dump(out/'index.json',{'version':2,'network':'real','seed':args.seed,'hour':8,
+        'params':{'seed':args.seed,'p_original':args.p_original,'p_ai':args.p_ai,'scenarios':args.scenarios},
+        'scenarios':[{'id':i,'manifest':f'{i}/manifest.json','metrics':{}} for i in args.scenarios]})
+    for i in args.scenarios:
+        model.dump(out/i/'manifest.json',{'version':2,'network':'real','scenario':i,'duration_s':2,'sample_s':1,'clock0_s':180,
+            'agent_columns':['i','lon_e6','lat_e6','angle_deg','speed_cms'],'agents':[{'id':'v0','type':'car','length_m':5,'width_m':1.8}],
+            'signal_heads':[],'chunks':[{'file':'frames-000.json','start':0,'end':1,'sha256':None}],'metrics':{}})
+        model.dump(out/i/'frames-000.json',{'frames':[{'t':t,'a':[[0,144963000,-37810000,90,500]],'tls':{},'q':0} for t in range(2)]})
+
+
 class BackendTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
         self.jobs=serve.Jobs(self.temp.name,'SUMO test fixture',runner=fixture)
 
     def tearDown(self):
-        self.jobs.close();serve.read_json.cache_clear();self.temp.cleanup()
+        self.jobs.close();serve.read_json.cache_clear();serve.read_file.cache_clear();self.temp.cleanup()
 
     def complete(self):
         job=self.jobs.create({})
@@ -283,6 +313,120 @@ class BackendTests(unittest.TestCase):
                          (['--data-dir','/d','--port','70000'],{}),(['--data-dir','/d','--posts-per-min','-1'],{})]:
             with self.subTest(argv=argv,env=env),self.assertRaises(SystemExit),contextlib.redirect_stderr(io.StringIO()):
                 serve.settings(argv,env)
+
+    # ---- 实网（contract v2 B/F）：network:'real' 走 build_real，别的照旧 ----
+    def real_jobs(self,build=fake_build_real,validate=fake_validate_real):
+        calls=[]
+        def runner(args):calls.append(args);build(args)
+        self.jobs.close();self.jobs=serve.Jobs(self.temp.name,'fixture',runner=fixture,real=SimpleNamespace(validate_real=validate,build=runner))
+        return calls
+
+    def run_real(self,payload):
+        job=self.jobs.create(payload);self.jobs.close()
+        return self.jobs.get(job['id'])
+
+    def test_real_job_calls_build_real_with_contract_args(self):
+        calls=self.real_jobs();synthetic=[];self.jobs.runner=lambda args:synthetic.append(args)
+        job=self.run_real({'network':'real','seed':7,'p_ai':.6,'scenarios':['baseline','ai']})
+        self.assertEqual(job['status'],'complete');self.assertEqual(synthetic,[])
+        self.assertEqual(job['config'],{'network':'real','seed':7,'p_original':.14,'p_ai':.6,'scenarios':['baseline','ai']})
+        args=calls[0];root=pathlib.Path(self.temp.name).resolve()/job['id']
+        self.assertEqual(vars(args),{'seed':7,'p_original':.14,'p_ai':.6,'scenarios':['baseline','ai'],'output':root/'output','work_dir':root/'raw'})
+        self.assertFalse((root/'raw').exists())
+
+    def test_real_serves_contract_files_for_original_and_ai(self):
+        self.real_jobs();job=self.run_real({'network':'real'})
+        base=f"{serve.PREFIX}/runs/{job['id']}/"
+        status,index=self.jobs.route('GET',job['result'])
+        self.assertEqual((status,index['version'],index['network']),(200,2,'real'))
+        self.assertEqual([s['id'] for s in index['scenarios']],list(REAL_IDS))
+        for sid in REAL_IDS:
+            with self.subTest(sid=sid):
+                status,meta=self.jobs.route('GET',base+sid+'/manifest.json')
+                self.assertEqual((status,meta['scenario']),(200,sid))
+                status,chunk=self.jobs.route('GET',base+sid+'/'+meta['chunks'][0]['file'])
+                self.assertEqual((status,chunk['frames'][0]['a'][0][1]),(200,144963000))
+        for path in ['closure/manifest.json','original/frames-1.json','ai/../job.json','original/../../raw/x.json','frame?scenario=ai&t=0',
+                     'frame?scenario=baseline&t=0','AI/manifest.json','original/manifest.json/']:
+            with self.subTest(path=path),self.assertRaises(serve.ApiError) as e:self.jobs.route('GET',base+path)
+            self.assertEqual(e.exception.status,404)
+
+    def test_real_validation_errors_are_bad_config(self):
+        calls=self.real_jobs()
+        for payload in [{'network':'real','seed':-1},{'network':'real','p_ai':1.5},{'network':'real','scenarios':['closure']},
+                        {'network':'real','weather':'rain'},{'network':'mars'},{'network':None},{'network':['real']},
+                        {'network':'synthetic','p_ai':.5},{'network':'synthetic','weather':'rain'}]:
+            with self.subTest(payload=payload),self.assertRaises(serve.ApiError) as e:self.jobs.create(payload)
+            self.assertEqual((e.exception.status,e.exception.code),(400,'bad_config'))
+        self.assertEqual((self.jobs.active,calls),(0,[]))
+        raw=self.post(b'{"network":"real","p_original":-0.1}')
+        self.assertIn(b'400',raw.splitlines()[0]);self.assertIn(b'"error":"bad_config"',raw)
+
+    def test_synthetic_default_and_explicit_are_unchanged(self):
+        self.real_jobs()
+        self.assertEqual(self.jobs.configure({}),model.validate_config({}))
+        self.assertEqual(self.jobs.configure({'network':'synthetic','seed':3}),model.validate_config({'seed':3}))
+        self.assertNotIn('network',self.jobs.configure({'network':'synthetic'}))
+        job=self.run_real({'network':'synthetic'})
+        self.assertEqual(job['status'],'complete');self.assertNotIn('network',job['config'])
+        status,frame=self.jobs.route('GET',f"{serve.PREFIX}/runs/{job['id']}/frame?scenario=baseline&t=0")
+        self.assertEqual(status,200)
+
+    def test_real_http_post_and_health_lists_networks(self):
+        self.real_jobs()
+        raw=self.post(b'{"network":"real","seed":1}')
+        self.assertIn(b'202',raw.splitlines()[0])
+        body=json.loads(raw.partition(b'\r\n\r\n')[2]);self.assertEqual(body['config']['network'],'real')
+        health=json.loads(self.http(b'GET /sumo/v1/health HTTP/1.0\r\n\r\n').partition(b'\r\n\r\n')[2])
+        self.assertEqual(health['networks'],['synthetic','real'])
+
+    def test_real_backend_missing_is_500_and_synthetic_still_runs(self):
+        def missing():raise ModuleNotFoundError("No module named 'build_real'")
+        with mock.patch.object(serve,'load_real',missing),mock.patch.object(serve.importlib.util,'find_spec',lambda name:None):
+            with self.assertRaises(serve.ApiError) as e:self.jobs.create({'network':'real'})
+            self.assertEqual((e.exception.status,e.exception.code),(500,'sumo_error'))
+            self.assertEqual(self.jobs.active,0)
+            self.assertEqual(self.jobs.route('GET',serve.PREFIX+'/health')[1]['networks'],['synthetic'])
+            self.assertEqual(self.complete()['status'],'complete')
+
+    def test_real_failure_keeps_logs_drops_partial_output(self):
+        def broken(args):
+            raw=pathlib.Path(args.work_dir);(raw/'ai').mkdir(parents=True)
+            (raw/'ai/fcd.xml').write_bytes(b' '*1_500_000);(raw/'ai/sumo.log').write_text('log')
+            fake_build_real(args);raise RuntimeError('Simulation integrity failure ai: 3 collisions')
+        self.real_jobs(build=broken);job=self.run_real({'network':'real'})
+        root=pathlib.Path(self.temp.name)/job['id']
+        self.assertEqual(job['status'],'failed');self.assertNotIn('result',job);self.assertIn('3 collisions',job['error'])
+        self.assertFalse((root/'output').exists());self.assertFalse((root/'raw/ai/fcd.xml').exists())
+        self.assertTrue((root/'raw/ai/sumo.log').exists())
+        with self.assertRaises(serve.ApiError) as e:self.jobs.route('GET',f"{serve.PREFIX}/runs/{job['id']}/index.json")
+        self.assertEqual(e.exception.status,409)
+
+    def test_output_files_are_sent_byte_for_byte_so_sha256_matches(self):
+        # 写的人用别的格式（缩进、\\u 转义）也不能变：浏览器按 manifest 里的 sha256 核对收到的正文
+        def indented(args):
+            fake_build_real(args);f=pathlib.Path(args.output)/'ai/frames-000.json'
+            f.write_text(json.dumps({'frames':[{'t':0,'a':[],'tls':{'x':'Gr'},'q':1.5,'note':'路口'}]},indent=1))
+        self.real_jobs(build=indented);job=self.run_real({'network':'real'})
+        raw=self.http(f"GET /sumo/v1/runs/{job['id']}/ai/frames-000.json HTTP/1.0\r\n\r\n".encode())
+        body=raw.partition(b'\r\n\r\n')[2]
+        self.assertIn(b'200',raw.splitlines()[0])
+        self.assertEqual(body,(pathlib.Path(self.temp.name)/job['id']/'output/ai/frames-000.json').read_bytes())
+        self.assertIn(b'Content-Length: '+str(len(body)).encode(),raw)
+        status,value=self.jobs.route('GET',f"{serve.PREFIX}/runs/{job['id']}/ai/frames-000.json")
+        self.assertEqual(value['frames'][0]['note'],'路口')
+
+    @unittest.skipUnless((TOOLS/'build_real.py').exists(),'build_real.py 还没有')
+    def test_build_real_validate_matches_contract_f(self):
+        import build_real
+        v=build_real.validate_real({})
+        self.assertTrue({'seed','p_original','p_ai','scenarios'}<=set(v))
+        self.assertEqual(sorted(v['scenarios']),sorted(REAL_IDS))
+        for ok in [{'seed':0},{'seed':2147483647},{'p_original':0},{'p_ai':1},{'scenarios':['ai']},{'scenarios':['baseline','original']}]:
+            with self.subTest(ok=ok):build_real.validate_real(ok)
+        for bad in [{'seed':-1},{'seed':2147483648},{'seed':1.5},{'seed':True},{'p_ai':-.01},{'p_ai':1.01},{'p_original':float('nan')},
+                    {'p_ai':'0.5'},{'scenarios':[]},{'scenarios':['closure']},{'scenarios':'ai'},{'weather':'rain'},None,[]]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):build_real.validate_real(bad)
 
     def test_real_socket_server_answers_head(self):
         with mock.patch.object(serve.Handler,'log_message',lambda *args:None):

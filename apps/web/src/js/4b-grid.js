@@ -11,7 +11,7 @@
 // amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound green wave at 11 m/s; 15 % of cars
 // turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
 // IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
-// Safety events (T42), 2×2 only, each with x, y for the map (sim.events): harsh braking < −3.5 m/s²; conflict = a follower
+// Safety events (T44), 2×2 only, each with x, y for the map (sim.events): harsh braking < −3.5 m/s²; conflict = a follower
 // moving ≥ 1.5 m/s closing on its leader in the same lane at ≥ 1 m/s with time-to-collision < 1.5 s (critical < 1.0 s), once
 // per pair within 6 s — the La Trobe scene's definition (4-sim.js). Rear-end only: signals keep crossing streams apart and
 // there are no pedestrians here; IDM keeps safe gaps, so conflicts are rare and most marks are harsh braking.
@@ -38,7 +38,7 @@ function gridIn(B,x,y){return x>=B.x0&&x<=B.x1&&y>=B.y0&&y<=B.y1;}
 const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
 const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
   cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25,
-  ttc:1.5,ttcCrit:1,ttcV:1.5*GRID_K,ttcDv:1*GRID_K,evKeep:120}; // safety events (T42); evKeep: seconds of events kept
+  ttc:1.5,ttcCrit:1,ttcV:1.5*GRID_K,ttcDv:1*GRID_K,evKeep:120}; // safety events (T44); evKeep: seconds of events kept
 // Street widths (page units) as 1-world.js draws them. 2-basemap.js puts the zebra w/2 + 0.4 … w/2 + 4.0 from the crossing
 // street's centre line and the stop line at w/2 + 4.6 … w/2 + 5.0, so a junction's stop line is w/2 + stopGap before it and
 // its far-side zebra ends w/2 + 4 after it
@@ -166,7 +166,7 @@ function gridStopsAt(o){return o.s-o.len+(o.v<1||o.v<GRID_P.slow&&o.acc<=.1?0:o.
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
-    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60); // T42: per minute, vehicles into the 2×2 / of them with a safety event
+    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60); // T44: per minute, vehicles into the 2×2 / of them with a safety event
     this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
     const cl=spec.close;this.lanes=[];
     this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){

@@ -16,14 +16,14 @@
   // 线上日志（容器启动 / 停止、转发出错）在 Cloudflare 后台 Workers Logs 里查，或 npx wrangler tail hackathon-sumo
   "observability": { "enabled": true },
 
-  // 容器：image 是 Dockerfile，构建上下文是 apps/web（Dockerfile 里 COPY tools/sumo/…）
+  // 容器：image 是 Dockerfile，构建上下文是 apps/（Dockerfile 里 COPY web/tools/sumo/… 和实网要的 roads/public/cbd/*.json）
   // standard-2 = 1 vCPU / 6 GiB / 12 GB 盘：SUMO 单核跑满，给多了也用不上；lite / basic 只有 1/16、1/4 核，4 种情景要慢好几倍
   // max_instances 1：serve.py 的任务状态只在这一个实例里（worker.js 固定用 getContainer(…, 'main')）
   "containers": [
     {
       "class_name": "SumoContainer",
       "image": "./Dockerfile",
-      "image_build_context": "../web",
+      "image_build_context": "..",
       "instance_type": "standard-2",
       "max_instances": 1
     }
