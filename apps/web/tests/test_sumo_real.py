@@ -1,5 +1,8 @@
 """真实 CBD 路网 SUMO 回放（contract v2）：烘焙副本 apps/sumo/public/real/ 的形状 + build_real.py 的纯函数。
-不需要 SUMO；装了 SUMO 的 venv（环境变量 SUMO_PY，或 README 里的 /tmp/rippletwin-sumo-venv）时再真跑两次查可复现。
+T48：整整一小时 08:00–09:00（clock0_s = 0），回放只有 original / ai（baseline 只出指标），只含页面视野里的车，每 2 s 一帧；
+新指标 works_queue_end_m / works_queue_equiv_end_m / queue_series / works_throughput_vph / works_capacity_assumption_vph。
+T49 方案模式：options → baseline + opt-<id>（p 相同只跑一次、默认只写指标）；旧 {p_original, p_ai, scenarios} 输出不变。
+不需要 SUMO；装了 SUMO 的 venv（环境变量 SUMO_PY，或 README 里的 /tmp/rippletwin-sumo-venv）时再真跑查可复现。
 """
 import hashlib
 import json
@@ -19,11 +22,12 @@ sys.path.insert(0, str(TOOLS))
 import build_real  # noqa: E402
 
 IDS = ['baseline', 'original', 'ai']
-# 研究区（Elizabeth–Spring × Bourke–La Trobe）外扩一点；network.json 的 bbox 是整个 CBD
-AREA = (144.9600, -37.8155, 144.9745, -37.8065)
+PLAYED = ['original', 'ai']
 # contract A：至少这 16 个路口（La Trobe / Little Lonsdale / Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition）
 SITES16 = ['2922', '2921', '2920', '2919', '2914', '2913', '2912', '2911', '2906', '2904', '2903', '2902', '4606', '4605', '4604', '4603']
 MB15 = 1.5*1024*1024
+SCENARIO_BYTES = 18e6  # 每个情景的回放合计（目标约 15 MB；实测 15–17.5 MB，见 README）
+NEW_METRICS = {'works_queue_end_m', 'works_queue_equiv_end_m', 'queue_series', 'works_throughput_vph', 'works_capacity_assumption_vph'}
 
 
 def load(p):
@@ -32,6 +36,10 @@ def load(p):
 
 def metres(lon_e6, lat_e6, lon0_e6, lat0_e6):
     return ((lon_e6-lon0_e6)/1e6*build_real.KX, (lat_e6-lat0_e6)/1e6*build_real.KY)
+
+
+def uv_of(lon_e6, lat_e6):
+    return build_real.UV(*build_real.xy(lat_e6/1e6, lon_e6/1e6))
 
 
 def sumo_python():
@@ -61,13 +69,22 @@ class RealReplay(unittest.TestCase):
         self.assertEqual(i['works'], {'link': 'l595594354_9756035316', 'lanes_closed': 1})
         self.assertRegex(i['generator_sha256'], '^[0-9a-f]{64}$')
         self.assertEqual(type(i['seed']), int)
-        for k in ['seed', 'p_original', 'p_ai', 'scenarios', 'source', 'signal_2935_green', 'warmup_s', 'shown_s']:
-            self.assertIn(k, i['params'])
+        p = i['params']
+        for k in ['seed', 'p_original', 'p_ai', 'scenarios', 'source', 'signal_2935_green', 'warmup_s', 'shown_s',
+                  'hour_window', 'green_2935', 'network_extent', 'sim_s', 'sample_s']:
+            self.assertIn(k, p)
+        self.assertEqual(p['hour_window'], [8, 9])
+        self.assertEqual((p['shown_s'], p['sim_s'], p['sample_s']), (3600, p['warmup_s']+3600, 2))
+        self.assertEqual(p['green_2935'], p['signal_2935_green'])
+        self.assertTrue(isinstance(p['network_extent'], str) and 'Spring' in p['network_extent'])
         # 烘焙副本用和云端同一个镜像（linux/amd64）跑：routeSampler 在 macOS 和 Linux 上挑的需求不一样，只有同平台才能和云端现场一致
-        self.assertEqual(i['params']['source'], 'docker-linux-amd64')
-        self.assertEqual((i['params']['p_original'], i['params']['p_ai']), (.14, .53))
+        self.assertEqual(p['source'], 'docker-linux-amd64')
+        self.assertEqual((p['p_original'], p['p_ai']), (.14, .53))
         self.assertTrue(i['assumptions']['en'] and len(i['assumptions']['en']) == len(i['assumptions']['zh']))
-        self.assertIn('%d%%' % round(i['params']['signal_2935_green']*100), ' '.join(i['assumptions']['en']))
+        en = ' '.join(i['assumptions']['en'])
+        self.assertIn('%d%%' % round(p['green_2935']*100), en)
+        self.assertIn('810 veh/h', en)
+        self.assertNotIn('{', en+' '.join(i['assumptions']['zh']))
         self.assertEqual([s['id'] for s in i['scenarios']], IDS)
         for s in i['scenarios']:
             self.assertEqual(s['manifest'], s['id']+'/manifest.json')
@@ -76,37 +93,78 @@ class RealReplay(unittest.TestCase):
         self.assertEqual([s['diversion_share'] for s in i['scenarios']], [0, .14, .53])
 
     def test_baked_copy_is_from_this_generator(self):
-        # 改了 build_real.py 就要重烘（约 5 s，命令见 README「真实路网」）
+        # 改了 build_real.py 就要重烘（镜像里约 1 分钟，命令见 README「真实路网」）
         self.assertEqual(self.index['generator_sha256'], hashlib.sha256((TOOLS/'build_real.py').read_bytes()).hexdigest())
 
     def test_manifest_contract(self):
         keys = {'vehicles', 'completed', 'teleports', 'collisions', 'mean_timeloss_s', 'mean_extra_s', 'works_queue_max_m',
-                'works_queue_mean_m', 'detour_vehicles'}
+                'works_queue_mean_m', 'detour_vehicles'} | NEW_METRICS
         for k, m in self.man.items():
             with self.subTest(k=k):
-                self.assertEqual((m['version'], m['network'], m['scenario'], m['sample_s']), (2, 'real', k, 1))
+                self.assertEqual((m['version'], m['network'], m['scenario']), (2, 'real', k))
+                self.assertIn(m['sample_s'], (1, 2))
                 self.assertEqual(m['agent_columns'], ['i', 'lon_e6', 'lat_e6', 'angle_deg', 'speed_cms'])
-                self.assertEqual(m['clock0_s'], self.index['params']['warmup_s'])
-                self.assertTrue(600 <= m['duration_s'] <= 900)
+                # 整整一小时：t = 0 ↔ 08:00:00，展示到 09:00
+                self.assertEqual((m['clock0_s'], m['duration_s']), (0, 3600))
                 self.assertTrue(keys <= set(m['metrics']))
                 self.assertEqual(m['metrics']['collisions'], 0)
-                self.assertEqual(m['metrics']['vehicles'], len(m['agents']))
                 self.assertTrue(all(a['type'] in ('car', 'bus') and a['length_m'] > 0 and a['width_m'] > 0 for a in m['agents']))
                 self.assertEqual(len({a['id'] for a in m['agents']}), len(m['agents']))
-                n = m['duration_s']//60
-                self.assertEqual((len(m['per_minute']['halting']), len(m['per_minute']['harsh'])), (n, n))
-                # 分块首尾相接、覆盖 0 … duration_s − 1
-                self.assertEqual(m['chunks'][0]['start'], 0)
-                self.assertEqual(m['chunks'][-1]['end'], m['duration_s']-1)
-                for a, b in zip(m['chunks'], m['chunks'][1:]):
-                    self.assertEqual(b['start'], a['end']+1)
+                self.assertEqual((len(m['per_minute']['halting']), len(m['per_minute']['harsh'])), (60, 60))
+                if k in PLAYED:
+                    self.assertEqual(m['metrics']['vehicles'], len(m['agents']))
+                    # 分块首尾相接、覆盖 0 … duration_s − sample_s
+                    dt = m['sample_s']
+                    self.assertEqual(m['chunks'][0]['start'], 0)
+                    self.assertEqual(m['chunks'][-1]['end'], m['duration_s']-dt)
+                    for a, b in zip(m['chunks'], m['chunks'][1:]):
+                        self.assertEqual(b['start'], a['end']+dt)
+                    self.assertEqual(sum(c['frames'] for c in m['chunks']), m['duration_s']//dt)
+                else:
+                    # baseline 页面不播：只有指标
+                    self.assertEqual((m['chunks'], m['agents']), ([], []))
         self.assertIsNone(self.man['baseline']['metrics']['mean_extra_s'])
         self.assertEqual(self.man['baseline']['metrics']['detour_vehicles'], 0)
-        for k in ['original', 'ai']:
+        for k in PLAYED:
             self.assertEqual(type(self.man[k]['metrics']['mean_extra_s']), float)
         # 同一批车、同一个抽签数：绕行比例高的情景绕行车不会更少
         self.assertGreaterEqual(self.man['ai']['metrics']['detour_vehicles'], self.man['original']['metrics']['detour_vehicles'])
         self.assertGreater(self.man['ai']['metrics']['detour_vehicles'], 0)
+
+    def test_queue_metrics(self):
+        for k, m in self.man.items():
+            mt = m['metrics']
+            with self.subTest(k=k):
+                s = mt['queue_series']
+                self.assertEqual([x[0] for x in s], list(range(61)))  # 每分钟一项，0 … 60
+                self.assertTrue(all(len(x) == 3 and x[1] >= 0 and x[2] >= 0 for x in s))
+                self.assertEqual((s[-1][1], s[-1][2]), (mt['works_queue_end_m'], mt['works_queue_equiv_end_m']))
+                self.assertEqual(mt['works_queue_equiv_max_m'], max(x[2] for x in s))
+                self.assertEqual(mt['works_capacity_assumption_vph'], 810)
+                self.assertGreater(mt['works_throughput_vph'], 0)
+                # 实际排队只在 Lonsdale / Albert 西行链上，超不过链长
+                self.assertLessEqual(mt['works_queue_end_m'], self.index['params']['chain_m'])
+                # 引擎算法是 7 m ÷ 2 条车道一辆：米数 = 车数 × 3.5，取周期平均后不必是整数倍，但不会是负的
+                self.assertGreaterEqual(mt['works_queue_equiv_end_m'], 0)
+                self.assertGreaterEqual(mt['teleports'], mt['teleports_in_hour'])
+                self.assertGreaterEqual(mt['teleports_in_hour'], mt['teleports_works_bound'])
+        b, o, a = (self.man[k]['metrics'] for k in IDS)
+        # 标定：封一条车道后施工段实际放行量要对上引擎的 810 辆/小时（2935 绿信比就是为这个选的）
+        self.assertLess(abs(o['works_throughput_vph']-810), 60, o['works_throughput_vph'])
+        # 无施工时施工段不是瓶颈：放行量 ≈ 需求，排队短
+        self.assertGreater(b['works_throughput_vph'], 1000)
+        self.assertLess(b['works_queue_equiv_end_m'], 100)
+        # 有施工：一小时里排队（引擎算法）一路涨上去；原方案绕行少，排得比 AI 方案长
+        self.assertGreater(o['works_queue_equiv_end_m'], 500)
+        self.assertGreater(o['works_queue_equiv_end_m'], a['works_queue_equiv_end_m'])
+        s = o['queue_series']
+        self.assertGreater(s[60][2], s[30][2]); self.assertGreater(s[30][2], s[10][2])
+        # 对照组算法（同一批车无施工时已过、有施工时还没过）和引擎算法差不到 25%
+        self.assertLess(abs(o['works_queue_vs_baseline_end_m']-o['works_queue_equiv_end_m']), .25*o['works_queue_equiv_end_m'])
+        self.assertIsNone(b['works_queue_vs_baseline_end_m'])
+        # 施工排队里的车不会被瞬移（每个周期都往前挪）
+        for m in (o, a):
+            self.assertEqual(m['teleports_works_bound'], 0)
 
     def test_files_small_and_chunks_hashed(self):
         files = [p for p in REAL.rglob('*') if p.is_file()]
@@ -114,15 +172,20 @@ class RealReplay(unittest.TestCase):
         self.assertEqual(big, [])
         listed = {'index.json'} | {k+'/manifest.json' for k in IDS}
         for k, m in self.man.items():
+            total = (REAL/k/'manifest.json').stat().st_size
             for c in m['chunks']:
                 data = (REAL/k/c['file']).read_bytes()
                 self.assertEqual(hashlib.sha256(data).hexdigest(), c['sha256'], k+'/'+c['file'])
+                self.assertEqual(len(data), c['bytes'])
                 self.assertRegex(c['file'], r'^frames-\d{3}\.json$')
-                listed.add(k+'/'+c['file'])
+                listed.add(k+'/'+c['file']); total += len(data)
+            self.assertLess(total, SCENARIO_BYTES, k)
         self.assertEqual({p.relative_to(REAL).as_posix() for p in files}, listed)  # 没有多余的原始文件混进来
 
-    def test_frames_inside_study_area(self):
-        for k, m in self.man.items():
+    def test_frames_inside_view(self):
+        u0, u1, v0, v1 = build_real.VIEW_BOX
+        for k in PLAYED:
+            m = self.man[k]
             with self.subTest(k=k):
                 tls = {h['tls'] for h in m['signal_heads']}
                 n, qs, ts = len(m['agents']), [], []
@@ -134,17 +197,24 @@ class RealReplay(unittest.TestCase):
                     for a in f['a']:
                         self.assertEqual(len(a), 5)
                         self.assertTrue(0 <= a[0] < n and all(type(x) is int for x in (a[0], a[1], a[2], a[4])))
-                        self.assertTrue(AREA[0] <= a[1]/1e6 <= AREA[2] and AREA[1] <= a[2]/1e6 <= AREA[3], a)
+                        # 只有页面视野（16 个路口外扩一点、往东 140 m）里的车；经纬度取整到 1e-6 度，给 0.5 m 余量
+                        u, v = uv_of(a[1], a[2])
+                        self.assertTrue(u0-.5 <= u <= u1+.5 and v0-.5 <= v <= v1+.5, a)
                         self.assertTrue(0 <= a[3] < 360 and a[4] >= 0, a)
                     self.assertEqual(len({a[0] for a in f['a']}), len(f['a']))
-                self.assertEqual(ts, list(range(m['duration_s'])))
+                self.assertEqual(ts, list(range(0, m['duration_s'], m['sample_s'])))
                 self.assertEqual(max(qs), m['metrics']['works_queue_max_m'])
                 self.assertAlmostEqual(sum(qs)/len(qs), m['metrics']['works_queue_mean_m'], delta=.06)
+                # 回放里出现过的车 = 目录里的车
+                seen = set()
+                for f in self.frames(k):
+                    seen.update(a[0] for a in f['a'])
+                self.assertEqual(seen, set(range(n)))
 
     def test_heading_matches_motion(self):
         # angle_deg 是 SUMO 约定（0 = 北、顺时针）：页面坐标（x 东、y 北）里朝向 = [sin a, cos a]，要跟实际位移同向
         prev, ok, bad = {}, 0, 0
-        for f in self.frames('baseline'):
+        for f in self.frames('original'):
             cur = {a[0]: a for a in f['a']}
             for i, a in cur.items():
                 p = prev.get(i)
@@ -167,16 +237,17 @@ class RealReplay(unittest.TestCase):
         self.assertEqual((lon, lat), (144967200, -37810800))
         # 反过来：回放里停着的车（speed 0）中心不会压在停止线上的信号头正中（车头在线后 ≥ 0，中心再后 2.3 m）
         heads = [(h['lon_e6'], h['lat_e6']) for h in self.man['original']['signal_heads']]
-        f = next(self.frames('original'))
-        stopped = [a for a in f['a'] if a[4] == 0]
+        stopped = [a for f in self.frames('original') if f['t'] == 600 for a in f['a'] if a[4] == 0]
         near = [min(math.hypot(*metres(a[1], a[2], hx, hy)) for hx, hy in heads) for a in stopped]
         self.assertTrue(stopped and min(near) > 1.0, min(near) if near else None)
 
     def test_signal_heads_cover_16_junctions(self):
         sites = {s['site']: s for s in load(REPO/'apps/roads/public/cbd/signals.json')['sites']}
-        for k, m in self.man.items():
+        for k in PLAYED:
+            m = self.man[k]
             heads = m['signal_heads']
             self.assertTrue(all(h['idx'] and all(type(x) is int for x in h['idx']) for h in heads))
+            self.assertTrue(all(build_real.in_box(build_real.VIEW_BOX, *uv_of(h['lon_e6'], h['lat_e6'])) for h in heads))
             f = next(self.frames(k))
             for h in heads:
                 self.assertLess(max(h['idx']), len(f['tls'][h['tls']]))
@@ -199,11 +270,29 @@ class RealReplay(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 build_real.validate_real(bad)
 
-    def test_tls_state_follows_program(self):
+    def test_pure_helpers(self):
         p = {'offset': 0.0, 'phases': [(60.0, 'GG'), (3.0, 'yy'), (27.0, 'rr')], 'cycle': 90.0}
         self.assertEqual([build_real.tls_state(p, t) for t in [0, 59.5, 60, 62.9, 63, 89.9, 90, 150]], ['GG', 'GG', 'yy', 'yy', 'rr', 'rr', 'GG', 'yy'])
-        self.assertEqual(build_real.queue_now([0, 30, 85, 200], {}), 85)
-        self.assertEqual(build_real.queue_now([70, 90], {}), 0)
+        self.assertEqual(build_real.queue_now([0, 30, 85, 200]), 85)
+        self.assertEqual(build_real.queue_now([70, 90]), 0)
+        # 数车用同一个 60 m 断档规则
+        self.assertEqual(build_real.queue_count([0, 7, 14, 60, 130]), 4)
+        self.assertEqual(build_real.queue_count([61, 62]), 0)
+        # 每分钟：最后一个 90 s 周期里实际排队取最长、引擎算法取车数平均 × 3.5 m
+        ts = list(range(0, 3601, 2)); qs = [float(t % 90) for t in ts]; es = [10]*len(ts)
+        s = build_real.minute_series(ts, qs, es)
+        self.assertEqual(len(s), 61)
+        self.assertEqual(s[0], [0, 0.0, 35.0])
+        self.assertEqual(s[60][1], 88.0)
+        self.assertTrue(all(x[2] == 35.0 for x in s))
+        # 对照组算法：无施工时 09:00 前过了、有施工时没过 → +1；反过来 −1
+        E = build_real.END
+        self.assertEqual(build_real.delayed_vs_baseline({'a': E+5, 'b': 100, 'c': 50}, {'a': 200, 'b': 90, 'c': E+9}, ['a', 'b', 'c', 'd']), 0)
+        self.assertEqual(build_real.delayed_vs_baseline({'b': 100}, {'a': 200, 'b': 90}, ['a', 'b']), 1)
+        # 视野框：16 个路口都在里面，Spring St 不在
+        for lat, lon in [(-37.810317, 144.961359), (-37.808158, 144.968743), (-37.813269, 144.962708), (-37.811104, 144.970108)]:
+            self.assertTrue(build_real.in_box(build_real.VIEW_BOX, *build_real.UV(*build_real.xy(lat, lon))))
+        self.assertFalse(build_real.in_box(build_real.VIEW_BOX, *build_real.UV(*build_real.xy(*build_real.SPRING_LONSDALE))))
 
     def test_rebuild_is_deterministic(self):
         py = sumo_python()
@@ -212,12 +301,13 @@ class RealReplay(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             d = pathlib.Path(d)
             env = {**os.environ, 'SUMO_REAL_CACHE': str(d/'cache')}
-            for name, seed, sc in [('a', 42, IDS), ('b', 43, ['baseline'])]:
+            def run(name, seed, sc):
                 r = subprocess.run([py, str(TOOLS/'build_real.py'), '--seed', str(seed), '--scenarios', *sc, '--output', str(d/name),
-                                    '--work-dir', str(d/(name+'-raw'))], capture_output=True, text=True, env=env, timeout=300)
+                                    '--work-dir', str(d/(name+'-raw'))], capture_output=True, text=True, env=env, timeout=900)
                 self.assertEqual(r.returncode, 0, r.stdout[-2000:]+r.stderr[-2000:])
-            a = load(d/'a/index.json')
-            self.assertLess(a['timing']['total_s'], 30)
+                return load(d/name/'index.json')
+            a = run('a', 42, IDS)
+            self.assertLess(a['timing']['total_s'], 180)
             import platform
             if platform.system() == 'Linux' and platform.machine() in ('x86_64', 'AMD64'):
                 for k in IDS:
@@ -225,12 +315,115 @@ class RealReplay(unittest.TestCase):
                     self.assertEqual(load(d/'a'/k/'manifest.json'), self.man[k], k)
             else:
                 # 别的平台 routeSampler 挑的需求不同（T40 实测），不和 linux/amd64 的烘焙副本比；只查本机可复现
-                r = subprocess.run([py, str(TOOLS/'build_real.py'), '--seed', '42', '--scenarios', 'baseline', '--output', str(d/'a2'),
-                                    '--work-dir', str(d/'a2-raw')], capture_output=True, text=True, env=env, timeout=300)
+                run('a2', 42, ['original'])
+                self.assertEqual(load(d/'a2/original/manifest.json')['metrics'] | {'mean_extra_s': None, 'works_traffic_extra_s': None, 'works_queue_vs_baseline_end_m': None},
+                                 load(d/'a/original/manifest.json')['metrics'] | {'mean_extra_s': None, 'works_traffic_extra_s': None, 'works_queue_vs_baseline_end_m': None})
+                self.assertEqual([c['sha256'] for c in load(d/'a2/original/manifest.json')['chunks']],
+                                 [c['sha256'] for c in load(d/'a/original/manifest.json')['chunks']])
+            b = run('b', 43, ['baseline'])
+            self.assertNotEqual(b['scenarios'][0]['metrics']['queue_series'], a['scenarios'][0]['metrics']['queue_series'])
+
+    # ---- T49 方案模式：options → baseline + opt-<id>（封一条车道 + 各自的 p）；旧形式不变 ----
+    def test_validate_options(self):
+        v = build_real.validate_real({'network': 'real', 'options': [{'id': 'C', 'p': .607}, {'id': 'A', 'p': .14}, {'id': 'B', 'p': 0}]})
+        self.assertEqual(v, {'seed': 42, 'options': [{'id': 'A', 'p': .14}, {'id': 'B', 'p': 0.0}, {'id': 'C', 'p': .607}], 'frames': False,
+                             'scenarios': ['baseline', 'opt-A', 'opt-B', 'opt-C']})
+        self.assertEqual(type(v['options'][1]['p']), float)
+        v = build_real.validate_real({'seed': 9, 'options': [{'id': x, 'p': 1} for x in 'EDCBA'], 'frames': True})
+        self.assertEqual((v['seed'], v['frames'], v['scenarios']), (9, True, ['baseline', 'opt-A', 'opt-B', 'opt-C', 'opt-D', 'opt-E']))
+        # 旧形式一个字段都没变
+        self.assertEqual(build_real.validate_real({'p_ai': .6}), {'seed': 42, 'p_original': .14, 'p_ai': .6, 'scenarios': IDS})
+        for bad in [{'options': []}, {'options': [{'id': x, 'p': .1} for x in 'ABCDEA']}, {'options': [{'id': 'F', 'p': .1}]},
+                    {'options': [{'id': 'A', 'p': .1}, {'id': 'A', 'p': .1}]}, {'options': [{'id': 'A', 'p': 1.01}]},
+                    {'options': [{'id': 'A', 'p': float('inf')}]}, {'options': [{'id': 'A', 'p': None}]}, {'options': [{'id': 'A', 'p': False}]},
+                    {'options': [{'id': 'A', 'p': .1, 'x': 1}]}, {'options': [{'id': ['A'], 'p': .1}]}, {'options': 'A'}, {'options': None},
+                    {'options': [{'id': 'A', 'p': .1}], 'p_ai': .5}, {'options': [{'id': 'A', 'p': .1}], 'p_original': .5},
+                    {'options': [{'id': 'A', 'p': .1}], 'scenarios': ['baseline']},
+                    {'options': [{'id': 'A', 'p': .1}], 'frames': 0}, {'options': [{'id': 'A', 'p': .1}], 'seed': True},
+                    {'options': [{'id': 'A', 'p': .1}], 'network': 'synthetic'}]:
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                build_real.validate_real(bad)
+
+    def test_scenario_plan_reuses_equal_p(self):
+        from types import SimpleNamespace
+        old = build_real.validate_real({'p_original': .2, 'scenarios': ['baseline', 'ai']})
+        # 旧三情景：写帧照 T48（只 original / ai），不复用
+        self.assertEqual(build_real.scenario_plan(old), ({'baseline': 0.0, 'original': .2, 'ai': .53}, {'baseline': False, 'original': True, 'ai': True}, {}))
+        opts = build_real.validate_real({'options': [{'id': 'A', 'p': .14}, {'id': 'B', 'p': .14}, {'id': 'C', 'p': .607}, {'id': 'D', 'p': .14}]})
+        shares, frames, reuse = build_real.scenario_plan(opts)
+        self.assertEqual(shares, {'baseline': 0.0, 'opt-A': .14, 'opt-B': .14, 'opt-C': .607, 'opt-D': .14})
+        self.assertEqual(reuse, {'opt-B': 'opt-A', 'opt-D': 'opt-A'})
+        self.assertEqual(set(frames.values()), {False})
+        _, frames, _ = build_real.scenario_plan(build_real.validate_real({'options': [{'id': 'A', 'p': .3}], 'frames': True}))
+        self.assertEqual(frames, {'baseline': False, 'opt-A': True})  # baseline 永远只出指标
+        self.assertEqual([build_real.closed(k) for k in ['baseline', 'original', 'ai', 'opt-A']], [False, True, True, True])
+        self.assertEqual(build_real.label('opt-C'), {'en': 'Option C', 'zh': '方案 C'})
+        self.assertEqual(build_real.label('ai'), {'en': build_real.SCENARIOS['ai']['en'], 'zh': build_real.SCENARIOS['ai']['zh']})
+        # build(args) 的入参：serve.py 传进来的 config（带 scenarios）/ 命令行 args 都能认
+        args = SimpleNamespace(**opts, output='x', work_dir='y')
+        self.assertEqual(build_real.validate_real(build_real.run_config(args)), opts)
+        args = SimpleNamespace(**old, output='x', work_dir='y')
+        self.assertEqual(build_real.validate_real(build_real.run_config(args)), old)
+
+    def test_copy_reused_keeps_chunk_hashes(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = pathlib.Path(d)
+            build_real.dump(out/'opt-A/frames-000.json', {'frames': [{'t': 0}]})
+            sha = hashlib.sha256((out/'opt-A/frames-000.json').read_bytes()).hexdigest()
+            m = {'scenario': 'opt-A', 'chunks': [{'file': 'frames-000.json', 'sha256': sha}], 'metrics': {'works_queue_max_m': 5.0}}
+            results = {'opt-A': {'manifest': m, 'loss': {'v1': 1.0}, 'passed': {'v1': 200.0}, 'bound': ['v1'], 'wall': {}},
+                       'opt-C': {'manifest': {'scenario': 'opt-C', 'chunks': [], 'metrics': {}}, 'loss': {}, 'passed': {}, 'bound': [], 'wall': {}}}
+            build_real.copy_reused(out, {'opt-B': 'opt-A', 'opt-D': 'opt-C'}, results)
+            b = results['opt-B']['manifest']
+            self.assertEqual((b['scenario'], b['reused_from'], b['metrics']), ('opt-B', 'opt-A', {'works_queue_max_m': 5.0}))
+            self.assertIsNot(b['metrics'], m['metrics'])  # 深拷贝：后面补 mean_extra_s 不会串
+            self.assertEqual(m['scenario'], 'opt-A'); self.assertNotIn('reused_from', m)
+            self.assertEqual((results['opt-B']['loss'], results['opt-B']['passed'], results['opt-B']['bound']), ({'v1': 1.0}, {'v1': 200.0}, ['v1']))
+            self.assertEqual(hashlib.sha256((out/'opt-B/frames-000.json').read_bytes()).hexdigest(), sha)
+            self.assertFalse((out/'opt-D').exists())  # 只有指标的不建目录（manifest 由 build 稍后写）
+            self.assertEqual(results['opt-D']['manifest']['reused_from'], 'opt-C')
+
+    def test_options_run_matches_original_and_reuses_equal_p(self):
+        py = sumo_python()
+        if not py:
+            self.skipTest('没有装了 SUMO 的 venv（设 SUMO_PY）')
+        with tempfile.TemporaryDirectory() as d:
+            d = pathlib.Path(d)
+            env = {**os.environ, 'SUMO_REAL_CACHE': os.environ.get('SUMO_REAL_CACHE') or str(d/'cache')}
+            for name, extra in [('o', ['--options', 'A=0.14', 'B=0.14', 'C=0.607']), ('c', ['--scenarios', 'baseline', 'original'])]:
+                r = subprocess.run([py, str(TOOLS/'build_real.py'), '--seed', '42', *extra, '--output', str(d/name), '--work-dir', str(d/(name+'-raw'))],
+                                   capture_output=True, text=True, env=env, timeout=900)
                 self.assertEqual(r.returncode, 0, r.stdout[-2000:]+r.stderr[-2000:])
-                self.assertEqual(load(d/'a2/baseline/manifest.json'), load(d/'a/baseline/manifest.json'))
-            b = load(d/'b/baseline/manifest.json')
-            self.assertNotEqual([c['sha256'] for c in b['chunks']], [c['sha256'] for c in load(d/'a/baseline/manifest.json')['chunks']])
+            o, c = load(d/'o/index.json'), load(d/'c/index.json')
+            self.assertEqual([s['id'] for s in o['scenarios']], ['baseline', 'opt-A', 'opt-B', 'opt-C'])
+            self.assertEqual([s['diversion_share'] for s in o['scenarios']], [0, .14, .14, .607])
+            self.assertEqual([s['label']['en'] for s in o['scenarios']], ['No works', 'Option A', 'Option B', 'Option C'])
+            self.assertEqual([s.get('reused_from') for s in o['scenarios']], [None, None, 'opt-A', None])
+            self.assertEqual(set(o['timing']['sumo_s']), {'baseline', 'opt-A', 'opt-C'})  # p 相同的 B 没有再跑
+            self.assertEqual(set(o['timing']['job_s']), {'baseline', 'opt-A', 'opt-C'})
+            self.assertEqual(o['params']['options'], [{'id': 'A', 'p': .14}, {'id': 'B', 'p': .14}, {'id': 'C', 'p': .607}])
+            self.assertEqual((o['params']['frames'], o['hour'], o['params']['shown_s']), (False, 8, 3600))
+            man = {s['id']: load(d/'o'/s['manifest']) for s in o['scenarios']}
+            cm = load(d/'c/original/manifest.json')
+            # 方案 A（p = 0.14）就是 original（p_original = 0.14）：同一批车、同一个抽签数，T48 的全部指标一模一样
+            self.assertEqual(man['opt-A']['metrics'], cm['metrics'])
+            self.assertTrue(NEW_METRICS <= set(man['opt-A']['metrics']))
+            self.assertEqual(man['opt-A']['per_minute'], cm['per_minute'])
+            self.assertEqual(man['baseline']['metrics'], load(d/'c/baseline/manifest.json')['metrics'])
+            self.assertEqual(man['opt-B']['metrics'], man['opt-A']['metrics'])
+            self.assertEqual((man['opt-B']['scenario'], man['opt-B']['reused_from']), ('opt-B', 'opt-A'))
+            for k, m in man.items():
+                self.assertEqual((m['chunks'], m['agents']), ([], []), k)  # 默认只写指标
+                self.assertEqual(m['metrics'], next(s['metrics'] for s in o['scenarios'] if s['id'] == k))
+                self.assertEqual(m['works']['closed_lane'], None if k == 'baseline' else build_real.WORKS_LANE)
+                self.assertEqual(m['metrics']['collisions'], 0)
+                self.assertEqual(m['diversion_share'], next(s['diversion_share'] for s in o['scenarios'] if s['id'] == k))
+            self.assertEqual(sorted(p.relative_to(d/'o').as_posix() for p in (d/'o').rglob('*.json')),
+                             sorted(['index.json']+[k+'/manifest.json' for k in man]))
+            a, cc = man['opt-A']['metrics'], man['opt-C']['metrics']
+            self.assertGreater(cc['detour_vehicles'], a['detour_vehicles'])
+            # 绕行多的方案施工段排队（引擎算法，09:00）更短
+            self.assertLess(cc['works_queue_equiv_end_m'], a['works_queue_equiv_end_m'])
 
 
 if __name__ == '__main__':

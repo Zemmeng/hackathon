@@ -46,6 +46,7 @@ function clashHTML(){
   if(CL.busy)return one(L('checking the works register for overlaps…','正在查登记表里同期的施工…'));
   if(CL.err)return one(L('clash check unavailable right now.','叠加检查暂时用不了。'));
   if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
+  if(suPlan())return clashSuHTML(); // T49 (lead D-0930): the SUMO plan shows no engine clash cost
   const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
   const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
   const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow"${r.flags.reliable&&r.cost>0?' style="color:var(--risk)"':''}>${r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`:L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
@@ -57,7 +58,7 @@ function clashHTML(){
   const sub=r.flags.substitutes?`<div class="card eng-note"><b>${L('≈ 0 · both works sit on the same corridor; together they add no extra delay','≈ 0 · 两处施工在同一走廊，叠加不额外增加延误')}</b></div>`:'';
   const m=(lab,v,col)=>`<div class="metric"><span class="eyebrow">${lab}</span><div class="v"${col?` style="color:${col}"`:''}>${v}<small>${U}</small></div></div>`;
   const metrics=`<div class="metrics">${m(L('This plan alone','本方案单独'),fmtN(r.a))}${m(L('Other works alone','那处施工单独'),fmtN(r.b))}${m(L('Both at once','两处同时'),fmtN(r.ab))}${m(L('Clash cost','叠加冲突'),(r.cost>0?'+':'')+fmtN(r.cost),r.cost>0?'var(--risk)':'var(--accent)')}</div>`;
-  const why=`<p class="small muted">${L(`Clash cost = D(A+B) − D(A) − D(B): network delay that exists only because both run at once. Summed over ${r.whens} sampled hours (${hrs} on each overlapping day), all CBD links.`,`叠加冲突 = D(A+B) − D(A) − D(B)：只因两处同时施工才多出来的全网延误。按 ${r.whens} 个采样小时加总（每个重叠日的 ${hrs}），全部 CBD 路段。`)}</p>
+  const why=`<p class="small muted">${L(`Engine estimate. Clash cost = D(A+B) − D(A) − D(B): network delay that exists only because both run at once. Summed over ${r.whens} sampled hours (${hrs} on each overlapping day), all CBD links.`,`引擎估算。叠加冲突 = D(A+B) − D(A) − D(B)：只因两处同时施工才多出来的全网延误。按 ${r.whens} 个采样小时加总（每个重叠日的 ${hrs}），全部 CBD 路段。`)}</p>
   <div class="eng-legend"><span><i style="background:var(--a-bike)"></i>${L('Dashed · the other works','虚线 · 那处施工')}</span></div>`;
   let act='';
   const st=CL.st,b=st&&st.best;
@@ -66,11 +67,24 @@ function clashHTML(){
   else if(r.cost>0){const n=clashDays(ws);act=`<p class="small muted">${CL.stErr?L('Stagger failed — try again (button at the bottom of the panel).','错开没算成，再点一次面板底部的按钮。'):L(`“Stagger by ${n} day${n===1?'':'s'}” at the bottom of the panel moves ${title} later, re-scored by the engine day by day.`,`面板底部的「错开 ${n} 天」把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
   return`${head}${metrics}${sub}${why}${act}${more}`;
 }
+// T49 (lead D-0930 「SUMO 为主，引擎退幕后」): on the SUMO plan the section names the overlapping works, the dates and the
+// window, and suggests a stagger in days worked out from the dates alone (clashDays: start the day after this plan ends) — no
+// engine clash cost, no engine stagger (its result is a cost), and SUMO does not model two works at once: 「叠加影响 SUMO 暂不覆盖」
+function clashSuHTML(){
+  const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
+  const days=r.overlap.days,n=clashDays(ws),win=cmpWin(days,r.hours.length,LANG.cur==='zh');
+  const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>esc(x.o.title)).join(' · ')}</p>`:'';
+  return`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${win?` · ${win}`:''}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>
+  <div class="card eng-note"><b>${L(`Suggestion: stagger ${title} by ${n} day${n===1?'':'s'}`,`建议：把「${title}」错开 ${n} 天`)}</b><span class="small muted">${L(`It would then start the day after this plan ends — the dates no longer overlap. This plan keeps its dates.`,`这样它在本方案结束后的第二天才开工，日期不再重叠。本方案日期不变。`)}</span></div>
+  <div class="card eng-note"><b>${L('Combined impact not covered by SUMO','叠加影响 SUMO 暂不覆盖')}</b><span class="small muted">${L('SUMO runs this plan’s works on its own, so no clash number is shown for this plan.','SUMO 只算本方案这一处施工，所以这里不给叠加的数。')}</span></div>
+  <div class="eng-legend"><span><i style="background:var(--a-bike)"></i>${L('Dashed · the other works','虚线 · 那处施工')}</span></div>${more}`;
+}
 // The stagger button lives in the panel's sticky footer next to "Find a better plan" (09-30: always in reach, no scrolling),
-// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet
+// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet (never on the SUMO plan, T49)
 function clashBtnHTML(){
   const x=CL.other,st=CL.st;
-  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0))return'';
+  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0)||suPlan())return'';
   const n=clashDays(x.ws);
   return`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button>`;
 }

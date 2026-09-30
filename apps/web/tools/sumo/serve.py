@@ -2,7 +2,8 @@
 """SUMO job API. Native engine execution; no frontend files are written.
 Local by default; in the cloud the same file runs in a Cloudflare Container behind Worker hackathon-sumo.
 Two networks: POST {} (or network:'synthetic') = the 2×2 demo of build_demo.py, unchanged;
-POST {network:'real', seed?, p_original?, p_ai?, scenarios?} = the real CBD network of build_real.py (contract v2)."""
+POST {network:'real', seed?, p_original?, p_ai?, scenarios?} = the real CBD network of build_real.py (contract v2);
+POST {network:'real', seed?, options:[{id:'A'…'E', p}], frames?:false} = baseline + one scenario opt-<id> per plan option (T49)."""
 import argparse
 import importlib
 import importlib.util
@@ -30,8 +31,8 @@ import build_demo as model
 PREFIX = '/sumo/v1'
 MAX_BODY = 16384
 RUN_ID = r'[0-9a-f]{32}'
-# 输出文件白名单：合成 2×2 的四种情景 + 实网（contract v2）的 original / ai；别的路径一律 404，读不到 raw/ 和 job.json
-OUTPUT_FILE = r'(index\.json|(?:baseline|closure|guided|footpath|original|ai)/(?:manifest|frames-\d{3})\.json)'
+# 输出文件白名单：合成 2×2 的四种情景 + 实网（contract v2）的 original / ai + 方案模式（T49）的 opt-A … opt-E；别的路径一律 404，读不到 raw/ 和 job.json
+OUTPUT_FILE = r'(index\.json|(?:baseline|closure|guided|footpath|original|ai|opt-[A-E])/(?:manifest|frames-\d{3})\.json)'
 NETWORKS = ('synthetic', 'real')
 # docs/contract.md §错误格式: the Worker passes container errors through, so they carry the same short codes.
 CODES = {400: 'bad_request', 401: 'bad_key', 403: 'bad_origin', 404: 'not_found', 409: 'not_ready',

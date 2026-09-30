@@ -41,7 +41,7 @@ try {
   ok(c.image === './Dockerfile' && existsSync(new URL('../Dockerfile', import.meta.url)), `image = ${c.image}（文件存在）`);
   ok(c.image_build_context === '..' && existsSync(new URL('../../web/tools/sumo/serve.py', import.meta.url)) && existsSync(new URL('../../roads/public/cbd/network.json', import.meta.url)),
     `image_build_context = ${c.image_build_context}（= apps/，里面有 web/tools/sumo/serve.py 和 roads/public/cbd/）`);
-  ok(c.instance_type === 'standard-2', `instance_type = ${c.instance_type}（1 vCPU；SUMO 单核跑满）`);
+  ok(c.instance_type === 'standard-4', `instance_type = ${c.instance_type}（4 vCPU，Cloudflare 上限：一小时的几个情景并行）`);
   ok(c.max_instances === 1, `max_instances = ${c.max_instances}（任务状态只在一个实例里）`);
 
   // ---- 3. Durable Object 绑定 + migration ----

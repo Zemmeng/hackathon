@@ -716,6 +716,12 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T43: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit */
 .cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
 .cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
+/* T49 (the SUMO plan): same p = same SUMO run — neutral, not the red "wasted" badge; what SUMO does not cover; the options run */
+.cmp-table .cmp-dup[data-eq]{color:var(--fg-2);background:color-mix(in srgb,var(--fg) 8%,transparent)}
+.cmp-table .cmp-na{display:block;font-size:11px;line-height:1.3;color:var(--fg-3)}
+.cmp-table .cmp-su-wait td{padding:8px 10px}
+.cmp-table .cmp-su-note td{text-align:left;font-size:11.5px;line-height:1.4;color:var(--fg-2)}
+.cmp-table .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
 .cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
 /* the picked plan's whole column is lit (else the recommended one); any cell of a column picks it */
 .cmp-table [data-cmpcol]{cursor:pointer;transition:background .15s}
@@ -799,3 +805,22 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .sumo-imp thead th{font:600 10px/1.3 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
 .sumo-imp tr.cur th[scope=row]{color:var(--works)}
 .sumo-imp-wrap{overflow-x:auto}
+/* T48: the full-hour table leads with the 09:00 queue counted the engine's way; one generated sentence sets it against the engine */
+.sumo-imp.hour{font-size:11.5px}
+.sumo-imp.hour th,.sumo-imp.hour td{padding:5px 4px}
+.sumo-imp.hour td.k{font-weight:700;color:var(--fg)}
+.sumo-imp.hour thead th{font-size:9px;letter-spacing:.02em}
+.sumo-cmp{margin:0;padding:8px 10px;border-left:2px solid var(--works);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:6px}
+.sumo-cmp p{margin:0}
+.sumo-qchart{width:100%;height:auto;display:block;overflow:visible}
+.sumo-qchart polyline,.sumo-qchart line{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.sumo-qchart .ax{stroke:var(--line-2);stroke-width:1}
+.sumo-qchart .eng{stroke:var(--risk);stroke-dasharray:4 3}
+.sumo-qchart .equiv{stroke:var(--works);stroke-width:2}
+.sumo-qchart .phys{stroke:var(--fg-3)}
+.sumo-qchart text{font:500 8px var(--f-mono);fill:var(--fg-3)}
+.sumo-qkey{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--fg-3)}
+.sumo-qkey i{display:inline-block;width:12px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.sumo-qkey i.equiv{border-color:var(--works)}
+.sumo-qkey i.phys{border-color:var(--fg-3)}
+.sumo-qkey i.eng{border-color:var(--risk);border-top-style:dashed}

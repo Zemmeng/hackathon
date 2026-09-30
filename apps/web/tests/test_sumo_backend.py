@@ -68,6 +68,18 @@ def fake_build_real(args):
         model.dump(out/i/'frames-000.json',{'frames':[{'t':t,'a':[[0,144963000,-37810000,90,500]],'tls':{},'q':0} for t in range(2)]})
 
 
+def fake_build_options(args):
+    # T49 方案模式的最小目录：index.json + baseline / opt-<id> 的 manifest.json；frames:false → chunks 为空、没有 frames-NNN.json
+    out=pathlib.Path(args.output)
+    model.dump(out/'index.json',{'version':2,'network':'real','seed':args.seed,'hour':8,
+        'params':{'seed':args.seed,'options':args.options,'frames':args.frames,'scenarios':args.scenarios},
+        'scenarios':[{'id':i,'manifest':f'{i}/manifest.json','metrics':{'works_queue_max_m':1.0}} for i in args.scenarios]})
+    for i in args.scenarios:
+        chunks=[{'file':'frames-000.json','start':0,'end':1,'sha256':None}] if args.frames else []
+        model.dump(out/i/'manifest.json',{'version':2,'network':'real','scenario':i,'duration_s':2,'chunks':chunks,'metrics':{'works_queue_max_m':1.0}})
+        if args.frames:model.dump(out/i/'frames-000.json',{'frames':[{'t':t,'a':[],'tls':{},'q':0} for t in range(2)]})
+
+
 class BackendTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
@@ -437,6 +449,70 @@ class BackendTests(unittest.TestCase):
                 with urllib.request.urlopen(request,timeout=5) as response:self.assertEqual((response.status,response.read()),(200,b''))
                 self.assertEqual(server.RequestHandlerClass.timeout,30)
             finally:server.shutdown();server.server_close()
+
+    # ---- T49 方案模式：{network:'real', seed?, options:[{id,p}], frames?} → baseline + opt-<id>；旧的 {p_original,p_ai,scenarios} 不变 ----
+    OPTS=[{'id':'C','p':.607},{'id':'A','p':.14},{'id':'B','p':.14}]
+
+    def options_jobs(self):
+        import build_real
+        return self.real_jobs(build=fake_build_options,validate=build_real.validate_real)
+
+    def test_real_options_job_config_and_build_args(self):
+        calls=self.options_jobs()
+        job=self.run_real({'network':'real','seed':7,'options':self.OPTS})
+        self.assertEqual(job['status'],'complete')
+        want=[{'id':'A','p':.14},{'id':'B','p':.14},{'id':'C','p':.607}]  # 按 id 排好
+        self.assertEqual(job['config'],{'network':'real','seed':7,'options':want,'frames':False,'scenarios':['baseline','opt-A','opt-B','opt-C']})
+        root=pathlib.Path(self.temp.name).resolve()/job['id']
+        self.assertEqual(vars(calls[0]),{'seed':7,'options':want,'frames':False,'scenarios':['baseline','opt-A','opt-B','opt-C'],
+                                         'output':root/'output','work_dir':root/'raw'})
+        # 旧形式照旧：没有 options / frames 字段
+        job2=self.jobs.configure({'network':'real','p_ai':.6})
+        self.assertEqual(job2,{'network':'real','seed':42,'p_original':.14,'p_ai':.6,'scenarios':list(REAL_IDS)})
+
+    def test_real_options_serves_only_opt_a_to_e(self):
+        self.options_jobs()
+        job=self.run_real({'network':'real','options':[{'id':'A','p':.2},{'id':'E','p':1}],'frames':True})
+        base=f"{serve.PREFIX}/runs/{job['id']}/"
+        status,index=self.jobs.route('GET',job['result'])
+        self.assertEqual([s['id'] for s in index['scenarios']],['baseline','opt-A','opt-E'])
+        for sid in ['baseline','opt-A','opt-E']:
+            with self.subTest(sid=sid):
+                status,meta=self.jobs.route('GET',base+sid+'/manifest.json')
+                self.assertEqual((status,meta['scenario']),(200,sid))
+                status,chunk=self.jobs.route('GET',base+sid+'/frames-000.json')
+                self.assertEqual((status,len(chunk['frames'])),(200,2))
+        for path in ['opt-B/manifest.json','opt-F/manifest.json','opt-a/manifest.json','opt-AB/manifest.json','opt-/manifest.json','OPT-A/manifest.json',
+                     'opt-A/../job.json','opt-A/frames-1.json','opt-A/index.json','option-A/manifest.json','opt-A/manifest.json/']:
+            with self.subTest(path=path),self.assertRaises(serve.ApiError) as e:self.jobs.route('GET',base+path)
+            self.assertEqual(e.exception.status,404)
+
+    def test_real_options_default_writes_metrics_only(self):
+        self.options_jobs()
+        job=self.run_real({'network':'real','options':[{'id':'B','p':0}]})
+        base=f"{serve.PREFIX}/runs/{job['id']}/"
+        status,meta=self.jobs.route('GET',base+'opt-B/manifest.json')
+        self.assertEqual((status,meta['chunks']),(200,[]))
+        with self.assertRaises(serve.ApiError) as e:self.jobs.route('GET',base+'opt-B/frames-000.json')
+        self.assertEqual(e.exception.status,404)
+
+    def test_real_options_validation_errors_are_bad_config(self):
+        calls=self.options_jobs()
+        for options in [[],[{'id':x,'p':.1} for x in 'ABCDEA'],[{'id':'F','p':.1}],[{'id':'a','p':.1}],[{'id':'A','p':.1},{'id':'A','p':.2}],
+                        [{'id':'A','p':1.5}],[{'id':'A','p':-.01}],[{'id':'A','p':float('nan')}],[{'id':'A','p':'0.5'}],[{'id':'A','p':True}],
+                        [{'id':'A'}],[{'id':'A','p':.1,'label':'x'}],['A'],'A',{'A':.1},None]:
+            with self.subTest(options=options),self.assertRaises(serve.ApiError) as e:self.jobs.create({'network':'real','options':options})
+            self.assertEqual((e.exception.status,e.exception.code),(400,'bad_config'))
+        ok=[{'id':'A','p':.1}]
+        for extra in [{'p_ai':.5},{'p_original':.1},{'scenarios':['baseline']},{'frames':'no'},{'frames':1},{'seed':-1},{'seed':1.5},{'weather':'rain'}]:
+            with self.subTest(extra=extra),self.assertRaises(serve.ApiError) as e:self.jobs.create({'network':'real','options':ok,**extra})
+            self.assertEqual((e.exception.status,e.exception.code),(400,'bad_config'))
+        self.assertEqual((self.jobs.active,calls),(0,[]))
+        raw=self.post(b'{"network":"real","options":[{"id":"Z","p":0.1}]}')
+        self.assertIn(b'400',raw.splitlines()[0]);self.assertIn(b'"error":"bad_config"',raw)
+        raw=self.post(b'{"network":"real","seed":3,"options":[{"id":"A","p":0.14},{"id":"B","p":0.14},{"id":"C","p":0.607}]}')
+        self.assertIn(b'202',raw.splitlines()[0])
+        body=json.loads(raw.partition(b'\r\n\r\n')[2]);self.assertEqual(body['config']['scenarios'],['baseline','opt-A','opt-B','opt-C'])
 
 
 if __name__=='__main__':

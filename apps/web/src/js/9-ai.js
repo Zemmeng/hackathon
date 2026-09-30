@@ -150,7 +150,7 @@ function aiHTML(rd,st){
   const none=L('no route advice','没给路线建议'),noAdv=TYPES4.every(t=>!ps[t]||!ps[t].reading||aiAdvice(ps[t].reading)===none); // said once, not four times
   const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel,!noAdv)).join('')}</div>${noAdv?`<p class="ai-noadv">→ ${L('None of them was told which way to go','屏上没告诉任何人该走哪条路')}</p>`:''}
     ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
-    <p class="ai-note">${L(`The LLM only reads the signs · the engine computes every number · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · 数字都由引擎算 · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
+    <p class="ai-note">${L(`The LLM only reads the signs · ${typeof sumoPlanOn==='function'&&sumoPlanOn()?'the share who detour is SUMO’s input · SUMO computes the traffic numbers':'the engine computes every number'} · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · ${typeof sumoPlanOn==='function'&&sumoPlanOn()?'绕行比例是 SUMO 的输入 · 交通数字由 SUMO 算':'数字都由引擎算'} · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }
