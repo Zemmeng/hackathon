@@ -715,6 +715,12 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T43: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit */
 .cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
 .cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
+/* T49 (the SUMO plan): same p = same SUMO run — neutral, not the red "wasted" badge; what SUMO does not cover; the options run */
+.cmp-table .cmp-dup[data-eq]{color:var(--fg-2);background:color-mix(in srgb,var(--fg) 8%,transparent)}
+.cmp-table .cmp-na{display:block;font-size:11px;line-height:1.3;color:var(--fg-3)}
+.cmp-table .cmp-su-wait td{padding:8px 10px}
+.cmp-table .cmp-su-note td{text-align:left;font-size:11.5px;line-height:1.4;color:var(--fg-2)}
+.cmp-table .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
 .cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
 /* the picked plan's whole column is lit (else the recommended one); any cell of a column picks it */
 .cmp-table [data-cmpcol]{cursor:pointer;transition:background .15s}

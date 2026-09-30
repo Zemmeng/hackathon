@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,cmpClashOther,cmpClashWhen,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, cmpClashOther, cmpClashWhen, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,cmpClashOther,cmpClashWhen,cmpWin,cmpP,cmpSuParse,cmpSuNums,cmpSameP,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, cmpClashOther, cmpClashWhen, cmpWin, cmpP, cmpSuParse, cmpSuNums, cmpSameP, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -167,7 +167,8 @@ if (typeof be.options !== 'function') {
         const ENG = readFileSync(WEB + 'src/js/6-engine.js', 'utf8'), CLS = readFileSync(WEB + 'src/js/8-clash.js', 'utf8'), CMS = readFileSync(WEB + 'src/js/8-compare.js', 'utf8');
         const fmt = ENG.slice(ENG.indexOf('const esc='), ENG.indexOf('const TYPES4=')), rowFns = CMS.slice(CMS.indexOf('async function cmpClashUpdate()'), CMS.indexOf('// Independent of scoring'));
         const pend = [], drain = async () => { while (pend.length) await pend.shift(); };
-        const c = { planFrom, cmpSpan, cmpBest, cmpClashOther, cmpClashWhen, console, EP: { ...EP }, BE: { api: be }, S: { ui: 4 }, LANG: { cur: 'en' },
+        // T49：这一段测的是引擎那条路（SUMO 覆盖范围以外的方案照旧），suPlan 桩成 false；SUMO 方案那条路见文件末尾 T49 一节
+        const c = { planFrom, cmpSpan, cmpBest, cmpClashOther, cmpClashWhen, cmpWin, suPlan: () => false, console, EP: { ...EP }, BE: { api: be }, S: { ui: 4 }, LANG: { cur: 'en' },
           CP: { key: 'k1', busy: false, rows: kits, cl: null }, document: { getElementById: () => null }, engOn: () => true, engNet: () => be.engine.net };
         c.L = (en, zh) => (c.LANG.cur === 'zh' ? zh : en);
         c.cmpRender = () => { pend.push(c.cmpClashUpdate()); };
@@ -250,7 +251,7 @@ if (typeof be.options !== 'function') {
     explainOptions:req=>{requests.push(req);return new Promise(resolve=>pending.push(resolve));}
   }}};
   const language={cur:'en'};
-  const c={CP:state,LANG:language,cmpLabel:()=>language.cur,cmpRender:()=>{},console};vm.createContext(c);
+  const c={CP:state,LANG:language,cmpLabel:()=>language.cur,cmpRender:()=>{},suPlan:()=>false,console};vm.createContext(c);
   vm.runInContext(source.slice(source.indexOf('function cmpExplainUpdate()'),source.indexOf('function cmpExplainRender(')),c);
   c.cmpExplainUpdate();c.cmpExplainUpdate();await new Promise(r=>setImmediate(r));
   ok(requests.length===1&&requests[0].options[0].metrics.hire_aud===1765,'AI 解读重绘不重复请求，租金来自现有方案');
@@ -261,6 +262,155 @@ if (typeof be.options !== 'function') {
   ok(state.explain.lang==='zh'&&!state.exBusy,'当前语言的规则兜底正常完成');
   state.key='new plan';state.busy=true;c.cmpExplainUpdate();
   ok(state.explain===null&&!state.exKey,'重新计算方案立即清除旧解读');
+}
+
+// 5 T49（lead D-0930「SUMO 为主，引擎退幕后」）：SUMO 覆盖的方案（Lonsdale 这段、只封 1 条道）在 04 对比 / 05 导出 / 03 附近施工
+//   不出现引擎的交通结果数（排队 m、每车 s、车·分钟、人·分钟、叠加成本）：SUMO 有的用 SUMO 的，没有的写「SUMO 暂不覆盖」；
+//   引擎只在幕后把牌上的字读成「会绕行的司机」比例 p（SUMO 的输入）。页面真的 8-compare.js / 8-clash.js 整个文件 + 6-engine.js
+//   的格式化那几行，DOM 换成桩，SUMO 客户端换成假的 runOptions（sumo-client.js 的 runOptions 由 T49-a 另写，这里按约定的调用方式测）
+{
+  // 5a 纯函数
+  ok(cmpP({ routes: [{ id: 'stay', share: 0.86 }, { id: 'r1', share: 0.14 }] }) === 0.14 && cmpP({ routes: [{ id: 'stay', share: 0.395 }] }) === 0.605
+    && cmpP({ detour_share: 0.3, routes: [] }) === 0.3 && cmpP(null) === null && cmpP({}) === null, 'T49 p = 1 − 原路（stay）份额，没有 routes 用 detour_share，取到 0.1%；没读数 → null');
+  const M1 = { works_queue_max_m: 1 };
+  const shapes = [[{ id: 'A', metrics: M1 }], { options: [{ id: 'opt-A', metrics: M1 }] }, { index: { scenarios: [{ id: 'baseline', metrics: {} }, { id: 'option_A', metrics: M1 }] } }, { scenarios: [{ id: 'a', works_queue_max_m: 1 }] }, { metrics: { A: M1 } }];
+  ok(shapes.every(s => { const r = cmpSuParse(s, ['A', 'B']); return r.A && r.A.works_queue_max_m === 1 && r.B === null; }) && JSON.stringify(cmpSuParse(null, ['A'])) === '{"A":null}',
+    'T49 runOptions 的结果几种形状都认（数组 / options / index.scenarios / 指标直接写在条目里 / metrics 按 id），没有的方案 → null');
+  const n1 = cmpSuNums({ works_queue_equiv_end_m: 120.4, works_queue_max_m: 160, works_traffic_extra_s: 38.3, mean_extra_s: 6.9, cohort_vehicles: 1565, vehicles: 1764, detour_vehicles: 5 });
+  ok(n1.q === 120.4 && !n1.qMax && n1.ex === 38.3 && Math.abs(n1.tot - 6.9 * 1565 / 60) < 1e-9 && n1.totEst && n1.dv === 5, 'T49 09:00 排队用 works_queue_equiv_end_m；总延误 = mean_extra_s × cohort_vehicles / 60（车·分钟，标 ≈）');
+  const n2 = cmpSuNums({ works_queue_max_m: 160.8, total_extra_veh_min: 200, detour_vehicles: 0 });
+  ok(n2.q === 160.8 && n2.qMax && n2.tot === 200 && !n2.totEst && n2.ex === null && n2.dv === 0 && cmpSuNums(null) === null, 'T49 没有 09:00 排队 → 用本次最长（标出来）；SUMO 自己给了总数就用它；没有的是 null 不是 0');
+  const sp = cmpSameP([{ p: 0.14, hire: 515 }, { p: 0.14, hire: 1765 }, { p: 0.605, hire: 1765 }]);
+  ok(sp[0] === null && sp[1] && sp[1].of === 0 && sp[1].extra === 1765 - 515 && sp[2] === null, 'T49 p 一样 = SUMO 结果一样（按构造）→ 贵的那套对照便宜的、记差价');
+  ok(cmpSameP([{ p: 0.14, hire: 515, flags: { inactive: true } }, { p: 0.14, hire: 900, flags: { inactive: true } }]).every(x => x === null) && cmpSameP([{ p: null, hire: 1 }, { p: null, hire: 2 }]).every(x => x === null), 'T49 不施工 / 没读数 → 不标');
+  ok(cmpWin(3, 2, false) === '3 days × 2 peak hours' && cmpWin(1, 1, false) === '1 day × 1 peak hour' && cmpWin(3, 2, true) === '3 天 × 2 个高峰小时' && cmpWin(0, 2, false) === '', 'T49 叠加的窗口写成「3 days × 2 peak hours」（别的行是一小时）；错开后不重叠 → 空');
+
+  // 5b 真路网 + 页面真的 04 / 03 代码
+  const wsUrl = APPS + 'api/public/js/worksites.js';
+  const W = existsSync(wsUrl) ? await import(pathToFileURL(wsUrl).href) : null;
+  const res5 = await be.options(plan, { n: 3 }), kits5 = cmpFromOptions(res5);
+  const ENG = readFileSync(WEB + 'src/js/6-engine.js', 'utf8'), CLS = readFileSync(WEB + 'src/js/8-clash.js', 'utf8'), CMS = readFileSync(WEB + 'src/js/8-compare.js', 'utf8');
+  const fmt = ENG.slice(ENG.indexOf('const esc='), ENG.indexOf('const TYPES4='));
+  const SUMO_LINK = 'l595594354_9756035316';
+  ok(EP.link === SUMO_LINK && EP.lanes === 1 && kits5.length === 3, 'T49 演示方案就是 SUMO 覆盖的那段（Lonsdale、封 1 条道），options() 出 3 套');
+  const page = (client, ep = EP) => {
+    const c = { console, EP: { ...ep, all: false }, BE: { api: be }, S: { ui: 4, step: 4 }, LANG: { cur: 'en' }, SUMO_LINK, SU: { seed: 42, mod: null, index: null },
+      document: { getElementById: () => null, querySelector: () => null }, compactPanel() {}, toast() {}, creditLines: () => [], engOn: () => true, engNet: () => be.engine.net,
+      setInterval: () => 1, clearInterval() {}, sumoErr: e => String((e && e.message) || e), sumoReason: k => 'why:' + k, sumoClient: client };
+    c.L = (en, zh) => (c.LANG.cur === 'zh' ? zh : en);
+    vm.createContext(c);
+    vm.runInContext(pure('6-engine.js') + '\n' + fmt + '\n' + CLS + '\n' + CMS + '\n;globalThis.X={CP,CL};', c);
+    Object.assign(c.X.CP, { rows: kits5, key: 'k5', src: 'kits', busy: false });
+    if (W) Object.assign(c.X.CL, { m: W, src: 'seed', listP: Promise.resolve(W.SEEDS) });
+    return c;
+  };
+  // 屏上不许出现的引擎数：线上看到的那几个 + 这 3 套引擎算出来的（排队、每车多等、全网延误、电车公交、行人）
+  const H = n => Math.round(Number(n) || 0).toLocaleString('en-AU');
+  const engNums = new Set(['918', '509', '10,493', '18,693', '33,015', '79']);
+  for (const k of kits5) { const s = k.s; for (const v of [s.queue_m, s.mean_delay_s, s.delay_min, s.transit && s.transit.pax_min, s.peds && s.peds.extra_min]) if (Number.isFinite(v) && Math.round(v) >= 10) engNums.add(H(v)); }
+  const leaks = html => [...engNums].filter(n => new RegExp(`(?<![\\d,.$])${n}(?![\\d]|,\\d)`).test(html.replace(/A\$[\d,]+/g, 'A$')));
+  const metricsFor = p => ({ works_queue_equiv_end_m: 300 - 200 * p + 0.4, works_queue_max_m: 400, works_traffic_extra_s: 40 - 10 * p, mean_extra_s: 7 + 2 * p, cohort_vehicles: 1565, detour_vehicles: Math.round(p * 100) });
+  const calls = [];
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const cli = { runOptions: async (opts, params) => { calls.push({ opts, params }); await gate; return { source: 'live', runId: 'x', elapsedMs: 61234, index: { hour: 8, seed: params.seed, options: opts.map(o => ({ id: o.id, p: o.p, metrics: metricsFor(o.p) })) } }; } };
+  const c = page(async () => cli);
+  const pend = c.cmpSuUpdate();
+  const busyHtml = c.cmpHTML();
+  ok(/SUMO computing the options in the cloud · <span data-cmpsuel>\d+<\/span> s \(about 1 min\)/.test(busyHtml) && busyHtml.includes('class="spin"') && !leaks(busyHtml).length,
+    `T49 SUMO 在算时：表里一行转圈「SUMO computing the options in the cloud · X s (about 1 min)」，没有引擎数${leaks(busyHtml).length ? '（漏了 ' + leaks(busyHtml) + '）' : ''}`);
+  const pRow = /Drivers who detour \(AI sign reading\)[\s\S]*?<\/tr>/.exec(busyHtml);
+  ok(pRow && (pRow[0].match(/>14%</g) || []).length === 2 && pRow[0].includes('>61%<') && pRow[0].includes('SUMO’s input'), `T49 「AI 读牌 → 会绕行的司机」一行：引擎读牌得到的 p（14% / 14% / 61%），标明是 SUMO 的输入`);
+  release(); await pend;
+  ok(calls.length === 1 && JSON.stringify(calls[0].opts) === JSON.stringify([{ id: 'A', p: 0.14 }, { id: 'B', p: 0.14 }, { id: 'C', p: cmpP(kits5[2].s) }]) && calls[0].params.seed === 42,
+    `T49 调 runOptions([{id,p}…], {seed: SU.seed})：${calls[0] && calls[0].opts.map(o => o.id + ' ' + o.p).join(' / ')} · seed ${calls[0] && calls[0].params.seed}`);
+  const html = c.cmpHTML(), lk = leaks(html);
+  ok(!lk.length, `T49 反向断言：04 表里没有任何引擎交通数（查了 ${[...engNums].join(' / ')}）${lk.length ? ' —— 漏了 ' + lk.join(', ') : ''}`);
+  const cell = (row) => { const m = new RegExp(`${row}[\\s\\S]*?</tr>`).exec(html); return m ? [...m[0].matchAll(/<span class="cmp-num">([^<]+)<\/span>/g)].map(x => x[1]) : []; };
+  const q = cell('Works queue at 09:00'), ex = cell('Extra per vehicle through the works'), tot = cell('Total extra delay in the SUMO area'), dv = cell('Detoured vehicles');
+  const want = kits5.map(k => metricsFor(cmpP(k.s)));
+  ok(q.join() === want.map(m => H(m.works_queue_equiv_end_m)).join() && ex.join() === want.map(m => H(m.works_traffic_extra_s)).join()
+    && tot.join() === want.map(m => H(m.mean_extra_s * m.cohort_vehicles / 60)).join() && dv.join() === want.map(m => H(m.detour_vehicles)).join(),
+    `T49 SUMO 的数逐格进表：09:00 排队 ${q.join(' / ')} m · 每车 ${ex.join(' / ')} s · 总延误 ${tot.join(' / ')} 车·分钟 · 绕行 ${dv.join(' / ')} 辆`);
+  ok(html.includes('≈ mean × vehicles') && /Trams &amp; buses|Trams & buses/.test(html) && /Pedestrians/.test(html) && (html.match(/not covered by SUMO/g) || []).length >= 6,
+    'T49 电车公交、行人两行每格写「not covered by SUMO」；总延误标「≈ mean × vehicles」');
+  const amt = H(kits5[1].hire - kits5[0].hire);
+  ok(html.includes(`<i class="cmp-dup" data-eq>Same traffic effect as A · models don't value the arrow board's safety role · +A$${amt}</i>`) && !html.includes('Same result as'),
+    `T49 B 的标记：「Same traffic effect as A · models don't value the arrow board's safety role · +A$${amt}」，不再写「结果一样」（像是白花钱）`);
+  ok(/SUMO computed live in the cloud · 61\.2 s · seed 42/.test(html) && html.includes('Traffic 08:00–09:00 weekday · SUMO on the real CBD network') && !/engine on real CBD flows|Car, tram &amp; bus and on-foot numbers|Car, tram & bus and on-foot numbers/.test(html),
+    'T49 表尾写 SUMO（现场计算 · 秒 · seed），不再写「引擎在真实 CBD 车流上算」');
+  c.LANG.cur = 'zh'; const zh = c.cmpHTML(); c.LANG.cur = 'en';
+  ok(zh.includes(`交通效果和 A 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}`) && zh.includes('AI 读牌 → 会绕行的司机') && zh.includes('SUMO 暂不覆盖') && !leaks(zh).length, 'T49 中文：「交通效果和 A 相同 · 模型不评价箭头板的安全作用 · 多 A$…」、「AI 读牌 → 会绕行的司机」、「SUMO 暂不覆盖」');
+
+  // 附近施工一行：列出哪处施工、日期、窗口、建议错开几天；不给引擎叠加成本，也不逐套跑 be.clash
+  if (W) {
+    await c.cmpClashUpdate();
+    const x = c.X.CP.cl && c.X.CP.cl.other, row = c.cmpClashRow(() => '');
+    const sug = x && Math.max(1, Math.min(14, (Date.parse(c.clashCur().time.to) - Date.parse(x.ws.time.from)) / 864e5 + 1));
+    ok(x && x.r.flags.reliable && x.r.cost > 0 && c.X.CP.cl.cells.length === 0, `T49 04 叠加一行：挑中 ${x && x.o.id}（引擎在幕后挑），不再逐套算叠加成本`);
+    ok(x && row.includes(cmpSpan(x.r.overlap.from, x.r.overlap.to, false)) && row.includes(cmpWin(x.r.overlap.days, x.r.hours.length, false)) && row.includes(`suggest staggering it ${sug} day`)
+      && (row.match(/combined impact not covered by SUMO/g) || []).length === 3 && !row.includes(H(x.r.cost)) && !leaks(row).length,
+      `T49 04 叠加一行：日期、「${x && cmpWin(x.r.overlap.days, x.r.hours.length, false)}」、建议错开 ${sug} 天、每格「combined impact not covered by SUMO」，没有 +${x && H(x.r.cost)}`);
+    if (x) for (const v of [x.r.cost, x.r.a, x.r.b, x.r.ab]) if (Math.abs(v) >= 100) engNums.add(H(v));
+    const full = c.cmpHTML();
+    ok(!leaks(full).length && full.includes('combined impact not covered by SUMO'), `T49 反向断言：叠加一行填好后整张 04 表还是没有引擎数（加查叠加的 D(A) / D(B) / D(A+B) / 成本）${leaks(full).length ? ' —— 漏了 ' + leaks(full) : ''}`);
+    // 03 附近施工页签（8-clash.js）同一口径
+    c.S.ui = 3; c.X.CL.key = JSON.stringify(c.clashCur()); await c.clashRun();
+    const h3 = c.clashHTML(), o3 = c.X.CL.other;
+    ok(o3 && h3.includes(`Suggestion: stagger ${o3.o.title} by ${sug} day`) && h3.includes('Combined impact not covered by SUMO') && h3.includes(cmpWin(o3.r.overlap.days, o3.r.hours.length, false))
+      && ![o3.r.cost, o3.r.a, o3.r.b, o3.r.ab].filter(v => Math.abs(v) >= 100).some(v => new RegExp(`(?<![\\d,])${H(v)}(?![\\d]|,\\d)`).test(h3)) && !/veh·min/.test(h3) && c.clashBtnHTML() === '',
+      `T49 03 附近施工：名称、日期、窗口、建议错开 ${sug} 天，不给 D(A) / D(B) / D(A+B) / 叠加成本，也没有引擎的「错开」按钮`);
+    const e3 = page(async () => cli, { ...EP, lanes: 2 });
+    Object.assign(e3.X.CL, { other: o3, more: [], key: 'x' });
+    const h3e = e3.clashHTML();
+    ok(h3e.includes('Engine estimate.') && h3e.includes(H(o3.r.cost)) && e3.clashBtnHTML().includes('Stagger by'), 'T49 SUMO 范围以外的方案：03 照旧给引擎叠加成本和错开按钮，标「Engine estimate」');
+    c.S.ui = 4;
+  } else console.log('⏭ 跳过叠加一段：没有 apps/api 的 worksites.js');
+
+  // 05 导出（选中 C）：卡片上是 SUMO 的总延误，电车公交 / 行人「SUMO 暂不覆盖」
+  c.S.ui = 5; c.X.CP.pick = 2;
+  const h5 = c.cmpHTML();
+  ok(h5.includes('Extra delay · SUMO area') && h5.includes(H(want[2].mean_extra_s * 1565 / 60)) && (h5.match(/not covered by SUMO/g) || []).length >= 2 && !leaks(h5).length && h5.includes('Traffic numbers: SUMO'),
+    `T49 05 导出卡片：SUMO 范围延误增量 ${H(want[2].mean_extra_s * 1565 / 60)} 车·分钟，电车公交 / 行人 SUMO 暂不覆盖，没有引擎数`);
+  c.S.ui = 4; c.X.CP.pick = null;
+  // AI 解读：SUMO 方案不去要（explain.js 读的是引擎的数），「倾向」也不出
+  let asked = 0; c.X.CP.mod = { ex: { explainOptions: () => { asked++; return Promise.resolve({}); }, optionFromRun: () => ({}) } };
+  c.cmpExplainUpdate(); await new Promise(r => setImmediate(r));
+  ok(asked === 0 && c.X.CP.explain === null, 'T49 SUMO 方案不调 explainOptions（会引用引擎的数）——藏起来，不喂');
+  // 执行包的「比较过的方案」表（cmpDocHTML src:'sumo'）
+  const packUrl5 = APPS + 'api/public/js/pack.js';
+  if (existsSync(packUrl5)) {
+    const pack = await import(pathToFileURL(packUrl5).href);
+    if (typeof pack.packDoc === 'function') {
+      const inventory = await pack.loadInventory({ fetch: fakeFetch }), net = be.engine.net, ws = kits5[2].plan.worksites[0];
+      const pk = pack.buildPack({ ...ws, title: ws.name, status: 'decided', decision: { option: 'C', by: 'council', reason: 'r', at: '2026-10-01T00:00:00.000Z' } }, { inventory, links: new Map(ws.links.map(id => [id, net.links.get(id)])) });
+      const Hh = { L: en => en, esc: x => String(x == null ? '' : x).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])), fmt: H };
+      const rowsX = kits5.map((k, i) => ({ id: k.id, label: k.label, car: want[i].mean_extra_s * 1565 / 60, transit: null, peds: null, hire: k.hire }));
+      const doc = cmpDocHTML(pack.packDoc(pk, 'en'), { rows: rowsX, src: 'sumo', pick: 2, by: 'Council', hour: '08:00', date: '1 Oct 2026' }, Hh);
+      ok(doc.includes('Extra delay · SUMO area') && (doc.match(/not covered by SUMO/g) || []).length >= 6 && doc.includes('Traffic numbers: SUMO') && !doc.includes('simulation engine') && !leaks(doc).length,
+        'T49 执行包「比较过的方案」：SUMO 范围延误增量，电车公交 / 行人写「not covered by SUMO」，注明 SUMO 不是引擎');
+    }
+  }
+
+  // runOptions 还没有（T49-a 没上线）/ 抛错 / 客户端没加载 / 没结果 → 每格 —，写原因，绝不拿引擎的数顶上
+  const bad = async (client, re, what) => {
+    const f = page(client); await f.cmpSuUpdate(); const h = f.cmpHTML(), q5 = /Works queue at 09:00[\s\S]*?<\/tr>/.exec(h);
+    ok(re.test(h) && q5 && [...q5[0].matchAll(/<span class="cmp-num">([^<]+)<\/span>/g)].every(m => m[1] === '—') && h.includes('data-cmpsure') && !leaks(h).length && !/<b>boom/.test(h),
+      `T49 ${what} → SUMO 那几行是 —，写原因、给「重试」，没有引擎数`);
+  };
+  await bad(async () => ({ runReal() {} }), /SUMO numbers unavailable: this SUMO client has no runOptions yet/, '客户端还没有 runOptions');
+  await bad(async () => ({ runOptions: async () => { throw new Error('<b>boom</b>'); } }), /the SUMO options run failed \(&lt;b&gt;boom&lt;\/b&gt;\)/, 'runOptions 抛错（报错文字转义）');
+  await bad(async () => { throw new Error('404'); }, /the SUMO client did not load \(404\)/, 'sumo-client.js 没加载上');
+  await bad(async () => ({ runOptions: async () => ({ source: 'none', reason: 'health_down', index: null }) }), /SUMO gave no result for these plans \(why:health_down\)/, 'runOptions 回来没有这几套的结果');
+  await bad(undefined, /this SUMO client has no runOptions yet/, '页面没有 sumoClient（5-app.js 没装上）');
+
+  // SUMO 范围以外的方案（这里只把封道数改成 2）：04 照旧是引擎的数、「结果和 A 一样」，标「engine estimate」，不调 runOptions
+  const n = [];
+  const e = page(async () => ({ runOptions: async () => { n.push(1); return {}; } }), { ...EP, lanes: 2 });
+  await e.cmpSuUpdate();
+  const he = e.cmpHTML();
+  ok(n.length === 0 && he.includes(`>${H(kits5[0].s.queue_m)}<`) && he.includes(`>${H(kits5[0].s.delay_min)}<`) && he.includes(`Same result as A · +A$${amt}`) && he.includes('engine estimate on real CBD flows') && !he.includes('not covered by SUMO'),
+    `T49 SUMO 范围以外：照旧引擎的数（排队 ${H(kits5[0].s.queue_m)} m、全网 ${H(kits5[0].s.delay_min)} 车·分钟）和「Same result as A」，标「engine estimate」，不调 runOptions`);
 }
 
 console.log(`${pass} passed, ${fail} failed`);

@@ -275,5 +275,35 @@ check("T44：02 时间轴改成每 10 分钟一根的 100% 堆叠柱（红 = 急
 check("T44：02 的 4×4 仿真按时钟记分钟（clock0 = 时钟 − 仿真秒数），时间轴柱子和时钟指针对得上",
       "s.clock0=CLOCK_EVENT-s.t;return s;" in app_js and "g.clock0=S.clock-g.t;" in app_js)
 
+# 12. T49（lead D-0930「SUMO 为主，引擎退幕后」）：SUMO 覆盖的方案（Lonsdale 这段、封 1 条道）在 04 / 05、03 附近施工、VMS 试验台
+#     不放引擎的交通结果数；渲染出来的页面由 compare_glue.mjs / vlab_glue.mjs 反向断言，这里只查接线
+LAB = (SRC / "js" / "6d-vmslab.js").read_text(encoding="utf-8")
+CSS = (SRC / "styles.css").read_text(encoding="utf-8")
+check("T49：SUMO 方案的判断和 5-app.js 的 sumoImpactHTML 同一口径（SUMO_LINK、不全封、封 1 条道）",
+      "function suPlan(){return typeof SUMO_LINK==='string'&&EP.link===SUMO_LINK&&!EP.all&&EP.lanes===1;}" in CMP
+      and "if(EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';" in app_js)
+check("T49：04 用 sumo-client.js 的 runOptions（经 5-app.js 的 sumoClient() 加载、按有没有这个方法判断），p 来自引擎读牌、带上 SU.seed；不另 import",
+      "await sumoClient()" in CMP and "typeof cli.runOptions==='function'" in CMP and "r=await fn(ask,{seed})" in CMP
+      and "ask=CP.rows.map((r,i)=>({id:r.id,p:ps[i]}))" in CMP and "cmpUpdate();cmpExplainUpdate();cmpClashUpdate();cmpSuUpdate();" in CMP)
+check("T49：没有 runOptions / 失败 → 写原因（中英成对），不拿引擎的数顶上；报错文字进 HTML 前过 esc()",
+      "this SUMO client has no runOptions yet" in CMP and "SUMO 客户端还没有 runOptions" in CMP and "${esc(su.err)}" in CMP and "${esc(s.why)}" in CMP)
+check("T49：SUMO 方案 04 表的交通几行换成 cmpSuRows（会绕行的司机 / 09:00 排队 / 每车 / 总延误 / 绕行车数 / 电车公交、行人 SUMO 暂不覆盖）",
+      "${su?cmpSuRows(rc):mRows.map(" in CMP and "L('Drivers who detour (AI sign reading)','AI 读牌 → 会绕行的司机')" in CMP
+      and "L('not covered by SUMO','SUMO 暂不覆盖')" in CMP and "L('SUMO computing the options in the cloud','SUMO 正在云端计算这几套方案')" in CMP)
+check("T49：p 一样的两套写「交通效果和 A 相同 · 模型不评价箭头板的安全作用 · 多 A$…」（中性样式，不是红色的「白花钱」）",
+      "交通效果和 ${a} 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}" in CMP and "models don't value the arrow board's safety role" in CMP
+      and "<i class=\"cmp-dup\" data-eq>" in CMP and ".cmp-table .cmp-dup[data-eq]{" in CSS)
+check("T49：SUMO 方案不要 AI 解读（explain.js 读引擎的数），藏起来并说明原因",
+      "if(CP.busy||!CP.rows.length||suPlan()){" in CMP and "No AI explanation for this plan" in CMP and "这套方案不显示 AI 解读" in CMP)
+check("T49：03 附近施工在 SUMO 方案上走 clashSuHTML（叠加影响 SUMO 暂不覆盖、建议错开天数），不出引擎的错开按钮；其他方案标「引擎估算」",
+      "if(suPlan())return clashSuHTML();" in CLASH and "function clashSuHTML(){" in CLASH and "叠加影响 SUMO 暂不覆盖" in CLASH
+      and "!(x.r.cost>0)||suPlan())return'';" in CLASH and "引擎估算。叠加冲突" in CLASH and "L('engine estimate','引擎估算')" in CMP)
+check("T49：VMS 试验台在 SUMO 方案上走 vlSuHTML（会绕行的比例、绕行信号最强、效果由第 2 步 SUMO 算，不试 DELAYS N MIN）；其他方案标「引擎估算」",
+      "if(suPlan())return vlSuHTML();" in LAB and "function vlBestShare(rows){" in LAB and "(suPlan()?vlBestShare:vlBest)(VL.rows)" in LAB
+      and "for(const c of vlCands(b,suPlan())){" in LAB and "if(dm>=2&&!su)" in LAB
+      and "由第 2 步的 SUMO 计算" in LAB and "Each row: engine estimate on this plan" in LAB)
+t49_lits = [x for x in ["918", "509", "10,493", "10493", "18,693", "18693", "33,015", "33015"] if x in CMP + CLASH + LAB]
+check("T49 反向断言：04 / 03 / 试验台源码里没有线上看到的引擎数（918 / 509 / 10,493 / 18,693 / 33,015）", not t49_lits, str(t49_lits))
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
