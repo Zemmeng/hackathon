@@ -298,7 +298,8 @@ function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.st
 function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
 function gridFly(d){S.gridJ=null;flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
-function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
+function gridRebuild(){if(S.step!==2)return;if(S.sim&&S.sim.isSumo&&sumoWant())return; // engine plan changed while on step 2 (T40: the SUMO replay only depends on the works link)
+  const was=gridShown(),g=gridOn()&&newGrid();if(!g){if(S.sim&&S.sim.isSumo&&SU.grid){SU.tok++;S.sim=SU.grid;renderPanel();}return;}S.sim=g;if(!was)gridFly(.7);renderPanel();sumoStart();}
 function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null,hr=engHour(EP.hour);return L(`Micro-sim · 16 junctions (La Trobe – Little Bourke × Elizabeth – Exhibition), weekday ${hr} flows · counts below cover the 2×2 at the works · signal timing and turn shares are assumed`,`微观仿真 · 16 个路口（La Trobe – Little Bourke × Elizabeth – Exhibition），工作日 ${hr} 车流 · 下面的计数只算施工处 2×2 · 信号配时和转弯比例是假设值`)+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
 // closed-lane polygons (works hatch, T38: halo + pulsing outline + a label so the closure stands out among 16 junctions)
 // and signal heads (green / amber / red) of all 16 junctions
@@ -340,11 +341,93 @@ function gridBindMap(){
   cv.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
     const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(!gridShown())return;if(S.gridJ===j.id&&V.s>=2.5)gridFly(.8);else gridFocus(j);},250);}); // again → back out
 }
+/* Step 2 on the real network (T40, 4c-sumo.js): on the Lonsdale demo works the grid sim above starts at once, then the page
+   swaps in a SUMO replay on the real CBD network — the baked run (/sumo/public/real/) first; "Re-run live" asks the cloud for
+   a fresh one (sumo-client.js falls back to the baked copy on any failure and says why). Chips switch the shown scenario.
+   Missing client / baked index / a throw → the grid sim stays, one console.info line. The pill reads the source of the replay
+   on screen (S.sim.src, set from what the client returned), so a baked replay is never labelled live. */
+const SU={cli:null,cliP:null,mod:null,ref:{source:'baked'},src:{source:'baked'},index:null,baked:null,scen:'original',grid:null,tok:0,busy:false,t0:0};
+const sumoErr=e=>e&&e.code?`${e.code}: ${String(e.message||'').slice(0,120)}`:String((e&&e.message)||e).slice(0,160); // one short line (a 404 page body is long)
+function sumoWant(){return typeof SumoReplay==='function'&&gridOn()&&EP.link===SUMO_LINK&&!EP.all&&EP.lanes===1;} // the replay closes 1 lane of this link
+function sumoClient(){
+  if(!SU.cliP)SU.cliP=import('/sumo/public/js/sumo-client.js').then(m=>{SU.mod=m;SU.cli=typeof m.createSumoClient==='function'?m.createSumoClient():m;return SU.cli;},e=>{SU.cliP=null;throw e;});
+  return SU.cliP;
+}
+async function sumoStart(retry){
+  if(!sumoWant())return;const tok=++SU.tok;
+  try{
+    const c=await sumoClient();
+    if(!SU.index){const r=await c.loadReal();if(!r||!r.index)throw new Error('no baked index');if(tok!==SU.tok)return;SU.index=SU.baked=r.index;SU.ref={source:'baked'};SU.src={source:'baked',reason:retry?'not_found':null};}
+    await sumoPlay(tok);
+  }catch(e){
+    if(tok!==SU.tok)return;
+    if(SU.ref.source==='live'&&!retry){SU.index=null;return sumoStart(true);} // a live run the cloud no longer has → the baked one
+    console.info('SUMO replay unavailable, keeping the browser grid sim:',sumoErr(e));
+  }
+}
+// Manifest + first chunk of SU.scen → swap S.sim (same camera), then the other chunks in the background
+async function sumoPlay(tok){
+  const c=SU.cli,ref=SU.ref,scen=SU.scen,idx=SU.index,base=S.sim&&S.sim.isGrid&&!S.sim.isSumo?S.sim:SU.grid;
+  if(!c||!idx||!base||!base.spec)throw new Error('no client, index or grid spec');
+  if(idx.works&&idx.works.link&&idx.works.link!==EP.link)throw new Error('the replay is for another works link');
+  const man=await c.realManifest(ref,scen);if(tok!==SU.tok)return;
+  const R=new SumoReplay(idx,scen,man,{spec:base.spec,polys:base.works().polys,src:Object.assign({},SU.src)}),ch=man.chunks;
+  if(!ch.length)throw new Error('manifest has no chunks');
+  // switching plan (chips) keeps the moment on screen: load up to the chunk holding it before the swap
+  const keepT=S.sim&&S.sim.isSumo?S.sim.t:0;let k=0;
+  do{R.addChunk(k,await c.realChunk(ref,scen,ch[k]));k++;if(tok!==SU.tok)return;}while(k<ch.length&&+ch[k].start<=keepT); // the chunk entry: the client checks its sha256
+  if(!gridShown()||!sumoWant())return;
+  if(!R.ready)throw new Error('first chunk has no frames');
+  if(keepT)R.seek(keepT);
+  SU.grid=base;S.sim=R;S.clock=R.clock();renderPanel();
+  try{for(;k<ch.length;k++){const d=await c.realChunk(ref,scen,ch[k]);if(tok!==SU.tok)return;R.addChunk(k,d);}}
+  catch(e){R.nChunks=R.chunksIn;console.info('SUMO: later chunks unavailable, looping what arrived:',sumoErr(e));}
+}
+function sumoScen(id){if(id===SU.scen)return;SU.scen=id;renderPanel();const tok=++SU.tok;sumoPlay(tok).catch(e=>{if(tok===SU.tok)console.info('SUMO scenario switch failed:',sumoErr(e));});}
+// Detour share for the AI plan: the engine's advisor comparison when it has one (step 04), else 0.53 (USE RUSSELL / SAVE 9 MIN)
+function sumoPAi(){const c=EP.cmp,p=c&&c.before&&c.delta?c.before.detour_share+c.delta.detour_share:NaN;return isFinite(p)&&p>=0&&p<=1?Math.round(p*1000)/1000:.53;}
+async function sumoRerun(){
+  if(SU.busy||!SU.cli||typeof SU.cli.runReal!=='function')return;SU.busy=true;SU.t0=performance.now();renderPanel();
+  let r=null;
+  try{r=await SU.cli.runReal({seed:Math.floor(Math.random()*2147483647),p_original:.14,p_ai:sumoPAi()},{timeoutMs:90000});}
+  catch(e){console.info('SUMO re-run failed:',sumoErr(e));}
+  SU.busy=false;
+  if(r&&!r.index)console.info('SUMO re-run: no result and no baked copy —',r.reason||r.source);
+  if(r&&r.index){SU.index=r.index;
+    if(r.source==='live'&&r.runId){SU.ref={source:'live',runId:r.runId};SU.src={source:'live',elapsedMs:r.elapsedMs};}
+    else{SU.ref={source:'baked'};SU.src={source:'baked',reason:r.reason||'network'};}}
+  if(!gridShown()||!sumoWant())return;
+  const tok=++SU.tok;try{await sumoPlay(tok);}catch(e){console.info('SUMO replay failed after the re-run:',sumoErr(e));
+    if(SU.ref.source==='live'){SU.ref={source:'baked'};SU.index=SU.baked;SU.src={source:'baked',reason:'not_found'};}} // the screen keeps the replay it had
+  renderPanel();
+}
+const sumoReason=k=>SU.mod&&typeof SU.mod.reasonLabel==='function'?SU.mod.reasonLabel(k,LANG.cur):k;
+function sumoNote(){const R=S.sim,v=(/(\d+\.\d+\.\d+)/.exec((R.index&&R.index.engine)||'')||[0,'1.27.1'])[1],h=String(R.hour).padStart(2,'0'),A=R.index&&R.index.assumptions,as=A&&(LANG.cur==='zh'?A.zh:A.en);
+  return`<p class="eng-assume"${Array.isArray(as)&&as.length?` title="${esc(as.join(' · '))}"`:''}>${L(`SUMO ${v} · real CBD network (OSM) + SCATS ${h}:00 flows · signal timing and turn shares assumed`,`SUMO ${v} · 真实 CBD 路网（OSM）+ SCATS ${h}:00 车流 · 信号配时和转弯比例是假设值`)}</p>`;}
+// Source of the replay on screen: live only when the client said so for this very run
+function sumoPill(){const s=S.sim.src||{};
+  if(s.source==='live'&&isFinite(s.elapsedMs))return`<span class="pill ok" data-sumo-src="live">${L('Cloud · live','云端 · 实时')} · ${(s.elapsedMs/1000).toFixed(1)} s</span>`;
+  return`<span class="pill" data-sumo-src="baked">${L('SUMO · pre-computed','SUMO · 预先跑好')}</span>${s.reason?`<span class="small muted">${esc(sumoReason(s.reason))}</span>`:''}`;}
+function sumoCtl(){
+  const have=new Set(((S.sim.index&&S.sim.index.scenarios)||[]).map(x=>x.id)),ch=[['original',L('Original plan · ROADWORK AHEAD','原方案 · ROADWORK AHEAD')],['ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL')]].filter(([k])=>have.has(k));
+  return`<div class="row sumo-src">${sumoPill()}</div>
+    ${ch.length?`<div class="eng-seg sumo-seg" role="tablist" aria-label="${L('Plan shown','显示的方案')}">${ch.map(([k,n])=>`<button type="button" role="tab" data-sumo="${k}" aria-selected="${SU.scen===k}">${n}</button>`).join('')}</div>`:''}
+    <button type="button" class="btn ghost sumo-run" id="sumoRerun"${SU.busy?' disabled':''}>${SU.busy?`${L('SUMO running in the cloud','SUMO 正在云端计算')} · <span data-live="suEl">0</span> s`:L('▶ Re-run live in the cloud (~40 s)','▶ 在云端重新实时运行（约 40 s）')}</button>`;
+}
+function sumoTiles(){const m=S.sim.metrics,ex=m.mean_extra_s,dv=m.detour_vehicles,okN=v=>v!=null&&isFinite(+v);
+  return`<div class="metric"><span class="eyebrow">${L('Vehicles on map','地图上的车')}</span><div class="v"><span data-live="agents">0</span></div></div>
+      <div class="metric"><span class="eyebrow">${L('Works queue now','施工排队（现在）')}</span><div class="v" style="color:var(--works)"><span data-live="gq">0</span><small>m</small></div></div>
+      <div class="metric"><span class="eyebrow">${L('Extra time per vehicle','每车多花时间')}</span><div class="v">${okN(ex)?(ex>0?'+':'')+Math.round(ex):'—'}<small>${L('s vs no works','秒 · 比不施工')}</small></div></div>
+      <div class="metric"><span class="eyebrow">${L('Detoured vehicles','绕行的车')}</span><div class="v">${okN(dv)?fmtN(dv):'—'}<small>${L('this run','本次')}</small></div></div>`;}
+function sumoBind(){
+  document.querySelectorAll('[data-sumo]').forEach(b=>b.onclick=()=>sumoScen(b.dataset.sumo));
+  const rb=$('#sumoRerun');if(rb)rb.onclick=()=>{sumoRerun();};
+}
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
   if(UI_STEP[S.ui]!==n)S.ui=UI_STEP.indexOf(n);S.step=n;S.booted=true;S.slow=0;$('#alert').hidden=true;$('#swipe').hidden=n!==4;S.simAfter=null;
   if(n===1){S.sim=new Sim('before',{seed:7});S.sim.setWeather(S.wx,WX);for(let i=0;i<1200;i++)S.sim.step(.05);S.sim.resetStats();S.sim.clock0=-S.sim.t;S.clock=0;S.playing=true;S.speed=2;if(engOn())engFly();else flyTo(HOME.cx,HOME.cy,HOME.s);}
-  if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();}
+  if(n===2){const g=gridOn()&&newGrid();if(g){S.sim=g;S.stress=null;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;gridFly();sumoStart();}
     else{S.stress=newStress('before');S.sim=S.stress;S.event=null;S.alertShown=false;S.clock=CLOCK_EVENT;S.playing=true;S.speed=2;flyTo(-8,-4,4.2);}}
   if(n===3){
     if(!S.stress||!S.stress.critical){S.stress=S.stress&&S.stress.script?S.stress:newStress('before');let guard=0;while((!S.stress.critical||!S.stress.critical.frozen)&&guard++<3000)S.stress.step(.05);S.clock=CLOCK_EVENT+(S.stress.t-45);}
@@ -407,15 +490,15 @@ function renderPanel(){
     P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
     engBind1();
   }else if(S.step===2){
-    const crit=S.sim&&S.sim.critical,grid=gridShown();
+    const crit=S.sim&&S.sim.critical,grid=gridShown(),su=grid&&!!S.sim.isSumo;
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
-    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2><p class="eng-assume">${grid?gridNote():L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p></div>
-    <div class="metrics">
+    <div class="stack"><h2>${L('Junction micro-simulation','路口微观仿真')}</h2>${su?sumoNote()+sumoCtl():`<p class="eng-assume">${grid?gridNote():L(`La Trobe × Swanston, weekday 17:00, weather: ${wl.toLowerCase()} (illustrative). Road users follow a scripted scene; the counts below come from this one run — they are not the engine's numbers for the plan.`,`La Trobe × Swanston 路口，工作日 17:00，天气：${wl}（示意）。道路使用者按预设场景行动；下面的计数来自这一次仿真，不是方案的引擎数字。`)}</p>`}</div>
+    <div class="metrics">${su?sumoTiles():`
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
-      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    ${navHTML()}`;
+      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div>`}</div>
+    ${navHTML()}`;if(su)sumoBind();
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
   }else if(S.step===3){
@@ -512,7 +595,8 @@ function updateLive(force){
     if(sim.isGrid){const w=sim.works();if(w&&isFinite(w.queue_m))set('gq',Math.round(w.queue_m));}
     set('agents',(sim.isGrid&&sim.all?sim.all:sim.agents).length);set('conf',sim.stats.conflicts);set('crit',sim.stats.critical);set('harsh',sim.stats.harsh);
     const crit=!!sim.critical,wl=wxLabel(S.wx);
-    const lb=$('#stLabel');if(lb){const txt=crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
+    if(SU.busy)set('suEl',Math.round((performance.now()-SU.t0)/1000));
+    const lb=$('#stLabel');if(lb){const txt=sim.isSumo?L('SUMO replay · real CBD network','SUMO 回放 · 真实 CBD 路网'):crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
   }
   if(S.step===4&&S.simAfter){set('liveB',S.sim.stats.conflicts);set('liveA',S.simAfter.stats.conflicts);}
 }
@@ -615,14 +699,15 @@ const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
 function sizeHist(){const r=hc.getBoundingClientRect();hw=r.width;hh=r.height;const d=Math.min(2,devicePixelRatio||1);hc.width=Math.max(1,Math.round(hw*d));hc.height=Math.max(1,Math.round(hh*d));hctx.setTransform(d,0,0,d,0,0);}
 function drawHist(){
   if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,live=S.sim?S.sim.minute:null;
+  const sumo=!!(S.sim&&S.sim.isSumo&&live),mx=sumo?Math.max(...live):0,cap=sumo?Math.max(3,mx):3,hi=sumo?Math.max(2,mx*.67):2; // T40: SUMO counts the whole real network (tens per minute): scale to this run's max
   for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
-    const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/3);c.fillStyle=v>=2?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
+    const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/cap);c.fillStyle=v>=hi?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
   const H=clockHour();for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(k===6?`${String((H+1)%24).padStart(2,'0')}:00`:`${String(H).padStart(2,'0')}:${String(k*10).padStart(2,'0')}`,x,bot+4);}
   const px=S.clock/3600*hw;c.fillStyle=TK.accent;c.fillRect(px-1,top-2,2,bot-top+4);
 }
 // The 1 h sim window's hour: the plan's hour on the step-2 grid sim (T38; it runs that hour's flows), else the La Trobe scene's 17:00
-function clockHour(){return gridShown()?clamp(Math.floor(+EP.hour||0),0,23):17;}
+function clockHour(){return gridShown()?(S.sim.isSumo?S.sim.hour:clamp(Math.floor(+EP.hour||0),0,23)):17;} // T40: a SUMO replay runs its own hour (index.hour)
 const fmtClock=s=>{s=Math.floor(s);return`${String(clockHour()).padStart(2,'0')}:${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 
 /* ---------- input ---------- */
@@ -642,7 +727,7 @@ function bindInput(){
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
   document.querySelectorAll('#speed button').forEach(b=>b.onclick=()=>{S.speed=+b.dataset.speed;S.playing=true;});
   $('#play').onclick=()=>{S.playing=!S.playing;if(S.playing&&S.clock>=3599)S.clock=0;};
-  hc.addEventListener('click',e=>{S.clock=clamp(e.offsetX/hw*3600,0,3599);});
+  hc.addEventListener('click',e=>{S.clock=clamp(e.offsetX/hw*3600,0,3599);if(S.sim&&S.sim.isSumo)S.sim.seek(S.clock-S.sim.clock0);});
   $('#langToggle').onclick=()=>setLang(LANG.cur==='zh'?'en':'zh');
   $('#themeToggle').onclick=()=>{const next=TK.light?'dark':'light';document.documentElement.dataset.theme=next;ls.set('rt-theme',next);};
   new MutationObserver(()=>applyTheme()).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
@@ -663,6 +748,7 @@ function loop(now){
   let sp=S.playing?S.speed:0;
   if(S.slow>0){S.slow-=dt;sp=.2;if(S.slow<=0){S.playing=false;sp=0;onCritical();}}
   if(sp>0){const sd=dt*sp,n=Math.ceil(sd/.05),h=sd/n;for(let i=0;i<n;i++)for(const s of activeSims())s.step(h);S.clock=Math.min(3599,S.clock+sd);if(S.clock>=3599)S.playing=false;}
+  if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock(); // T40: the clock reads the replay's own time (it loops)
   WX.clock=fmtClock(S.clock);WX.update(dt,S.clock/3600);
   if(S.step===2&&S.sim&&S.sim.critical&&!S.alertShown){S.alertShown=true;S.slow=1.2;}
   render(dt);placeAlert();
