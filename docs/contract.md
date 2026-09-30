@@ -289,12 +289,16 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 | `GET /api/worksites/<id>` | — | `{ "ok": true, "worksite" }`；没有 404 | api |
 | `PATCH /api/worksites/<id>` | 请求头 `x-edit-token` + 要改的字段 | `{ "ok": true, "worksite" }`；合并后整份重新校验；token 不对 403 `bad_token`、预置的 403 `locked`、满 200 条 409、全局每天写 500 次 429 | api |
 | `POST /api/explain` | `{ lang?, options: [{ id, label, metrics, per_capita_min?, flags? }] }`（1–5 套，数字从 `optionFromRun()` 转） | `{ "ok": true, "explain": { src, lang, options: [{ id, summary, pros, cons, hardest_hit, risks }], lean, decide, model?, prompt_v?, note? } }`（`src` 是 `llm / kv / rule`；`model` / `prompt_v` 只在 `llm / kv`；`note` 只在大模型兜底成规则时）；解读里的每个数都要能追溯到请求里的数，`hardest_hit` 和规则风险永远按引擎的数算；不合规范 400，> 8KB 413 | api |
+| `GET /api/sumo/v1/health`、`POST /api/sumo/v1/runs`、`GET /api/sumo/v1/runs/<id>[/index.json \| /<情景>/manifest.json \| /<情景>/frames-NNN.json \| /frame?scenario&t]` | 同 `apps/web/tools/sumo/README.md` §接口 v1；POST 只收白名单字段，`demand_scale` 0.1–1.2、`clearance_s` 600–2400，body ≤ 2KB | 同 README（完成前读结果 409）；错误一律 `{ ok:false, error, msg }`：`sumo_off` 503（site 没绑 `SUMO`）、`sumo_down` 502（容器没响应）、`sumo_starting` 503、`sumo_rate` 429（每 IP 每分钟 3 次运行）、`sumo_busy` 429（同时 ≥ 2 个任务）、`not_found` 404、`too_big` 413；完成的 index / manifest / frames 可缓存一天 | sumo |
+| 静态 `/sumo/public/baked/…` | — | 预跑结果：`baked.json`（目录：生成时间、来源、SUMO 版本、`generator_sha256`、预设和 15 个格点各自 complete / failed）+ `preset/`（seed 42 默认 4 种情景的 index / manifest / frames）+ `grid/<key>.json`（只有 index）；页面用它时**必须**标「预先跑好」 | sumo |
+| 静态 `/sumo/public/js/sumo-client.js` | — | `createSumoClient()`：先试云端，连不上 / 限流 / 忙 / 超时 / 运行失败都回预跑结果；返回值带 `source: live \| baked` 和 `reason`，页面按它选文案（`labels`） | sumo |
 
 - `llm.mode` 是 `llm` 只在 Worker 变量 `MOCK` 为 `"0"` **且**有 secret `LLM_API_KEY`；否则 `/api/read` 只用关键词规则、不发任何外部请求（`apps/api/tests/llm.test.mjs` 反向断言）
 - `POST /api/explain` 开关同 `/api/read`，每个请求最多 1 次外部调用、预留 1 次（和读屏同一本账），兜底 `note` 另有 `llm_fallback: bad_json / invalid / empty / timeout / http_<码>`
 - 真调用前还要向全局每日计数（Durable Object 绑定 `BUDGET`）预留 3 次：超了 `LLM_MAX_CALLS_PER_DAY`（`llm.per_day`）、没绑上或出错都不调用，读数回规则并带 `note`（`llm_daily_cap` / `llm_no_budget` / `llm_budget_error`）
 - `llm.cache`：`kv` = 有 KV 绑定 `READINGS`（跨实例）；`cache-api` = Workers 自带的 Cache API（只在自己的域名上生效）；`memory` = 只有每个实例的内存缓存（`*.workers.dev` 上就是这个）
 - `/api/*` 由 site 用服务绑定 `API` 转给 api Worker（`hackathon-api`，不开自己的 `workers.dev` 网址）；`/api/public/*` 是 `apps/api/public/` 的静态文件，不转发
+- `/api/sumo` 和 `/api/sumo/*` 在上一条之前被 site 截走，经服务绑定 `SUMO` 转给 `hackathon-sumo`（不开自己的 `workers.dev` 网址），它再转进容器的 `/sumo/v1/*`；容器只开 1 个实例、会重启，重启后旧的运行 id 一律 404，页面要回预跑结果（D-0930-1700）
 
 ## WebSocket 消息（`/ws?room=<CODE>`）
 
@@ -336,6 +340,7 @@ const 结果 = engine.evaluate(方案, { seed });                 // 同步、�
 
 | 版本 | 时间 | 改了什么 | 谁 |
 |---|---|---|---|
+| v3.12 | 2026-09-30 | T37（D-0930-1700）§HTTP API 加 `/api/sumo/v1/*`（经 site → `hackathon-sumo` → 容器）和两处静态文件 `/sumo/public/baked/…`、`/sumo/public/js/sumo-client.js`（只加路径） | lead |
 | v3.11 | 2026-09-30 | §引擎原始结果 `raw.links` 加 `extra_min`（T28 #79，只加字段）；`delay_s` 的说明改成「比自由流多」（原来误写「比平时多」），并写明 `queue_m` 是绝对值 | lead |
 | v3.10 | 2026-09-29 | §evaluate 加 AI 调用日志（向后兼容，只加方法 / 可选参数）：`be.aiLog()` / `be.onAiLog(fn)` / `be.readingsOf(summary)` / `be.lastReadings()`，`connect({ onAiLog, aiLogMax })`；summary 字段不变 | lead |
 | v3.9 | 2026-09-29 | D-0929-2307（向后兼容，只加字段 / 取值）：`POST /api/explain` 接上大模型，`src` 多了 `llm / kv`，另加可选 `model` / `prompt_v`（`llm / kv` 时）和 `note`（兜底时）；`/api/health` 的 `llm` 加 `explain_v` | lead |

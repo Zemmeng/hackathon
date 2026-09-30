@@ -14,7 +14,21 @@ python3 -m venv /tmp/rippletwin-sumo-venv
   --allow-origin http://127.0.0.1:8001
 ```
 
-只监听 `127.0.0.1`。按实际前端地址设置 `--allow-origin`，可重复传入，未列出的浏览器来源拒绝访问。无需修改前端即可启动和测试后端。生产部署需独立运行原生进程的服务；当前 Cloudflare 静态站 / Worker 无法直接运行该二进制。这里不是生产鉴权服务，也不在公网发布。
+本机默认只监听 `127.0.0.1`。按实际前端地址设置 `--allow-origin`，可重复传入，带 `Origin` 头但不在名单里的请求一律 `403`。无需修改前端即可启动和测试后端。
+
+**云端（T37，D-0930-1700）**：同一份 `serve.py` 跑在 Cloudflare Container 里（`HOST=0.0.0.0 PORT=8080 SUMO_DATA_DIR=/data SUMO_KEEP_RUNS=20`，`ALLOW_ORIGINS` 留空），前面是 Worker `hackathon-sumo`（`apps/sumo`，只开 1 个实例，不开自己的 `workers.dev` 网址）。公网只能经网站的 `/api/sumo/v1/*` 进来：site 经服务绑定 `SUMO` 转给 `hackathon-sumo`，它只放行 §接口 v1 表里的路径，去掉 `Origin` / `Cookie` / `Authorization`，每个 IP 每分钟最多 3 次 POST，容器里同时 ≥ 2 个任务就回 `429`，再转进容器的 `/sumo/v1/*`。所以容器不开自己的 IP 限流（它看到的来源地址都是代理）。容器会休眠、重启，磁盘不持久：重启后旧的运行 id 一律 `404`，页面要回退到预先跑好的结果（`apps/sumo/public/baked/`，必须标「预先跑好」）。
+
+| 环境变量 | 命令行 | 默认 | 说明 |
+|---|---|---|---|
+| `HOST` | `--host` | `127.0.0.1` | 容器里是 `0.0.0.0` |
+| `PORT` | `--port` | `8021` | 容器里是 `8080` |
+| `SUMO_DATA_DIR` | `--data-dir` | 必填 | 容器里是 `/data` |
+| `ALLOW_ORIGINS` | `--allow-origin`（可重复） | 空 | 逗号分隔；命令行的追加在环境变量之后 |
+| `SUMO_KEEP_RUNS` | `--keep-runs` | `20` | 只留最新 N 次完成或失败的运行（默认一次约 21 MB 回放），启动时和每次运行结束后清理 |
+| `SUMO_POSTS_PER_MIN` | `--posts-per-min` | `0`（不限） | 每个来源 IP 每分钟最多几次 POST，超了 `429 sumo_rate`；只在服务直接对外时用 |
+| `SUMO_API_KEY` | 无（只认环境变量） | 空（不检查） | 设了以后除 `/health` 外都要带请求头 `X-Sumo-Key`，否则 `401`；此时 IP 限流改认调用方给的 `X-Client-IP`。云端方案不用它 |
+
+容器平台用 `SIGTERM` 停服务：不再接新请求，排队的任务丢掉（下次启动标成失败），正在跑的那次跑完再退出。单个请求读写超过 30 秒没动静就断开。`sumo --version` 在不支持的 locale（例如 `LANG=xx_YY.UTF-8`）下第一行是 `Warning: Could not set locale`，版本检查按 `Eclipse SUMO` 开头的那一行认。
 
 离线批量运行（输出目录与审计目录必须为空）：
 
@@ -27,7 +41,7 @@ python3 -m venv /tmp/rippletwin-sumo-venv
 
 | 方法与路径 | 用途 |
 |---|---|
-| `GET /sumo/v1/health` | 已验证的 SUMO 版本、队列状态 |
+| `GET /sumo/v1/health` | 已验证的 SUMO 版本、队列状态（`active_jobs` = 排队 + 正在跑）；不需要 `X-Sumo-Key` |
 | `POST /sumo/v1/runs` | 新建一次原生仿真，返回 `202` 和 `id` |
 | `GET /sumo/v1/runs/{id}` | `queued → running → complete / failed` |
 | `GET /sumo/v1/runs/{id}/index.json` | 全部情景的指标、参数与数据路径 |
@@ -43,9 +57,11 @@ curl http://127.0.0.1:8021/sumo/v1/runs \
   -d '{"seed":42,"scenarios":["baseline","closure","guided","footpath"],"demand_duration_s":600,"clearance_s":1200,"demand_scale":1,"diversion_share":0.45}'
 ```
 
-字段全部可省略，默认如上；只接受白名单字段。`seed` 为 0–2147483647 整数；出行生成窗口为 10–600 秒整数；清空窗口为 60–2400 秒整数；流量倍率 0.1–3；绕行服从比例 0–1。`baseline` 自动加入，保证有对照。每个任务重跑 SUMO，浏览器没有自己计算交通运动。最多四个未完成任务、串行运行；超出返回 `429`。
+字段全部可省略，默认如上；只接受白名单字段。`seed` 为 0–2147483647 整数；出行生成窗口为 10–600 秒整数；清空窗口为 600–2400 秒整数；流量倍率 0.1–1.2；绕行服从比例 0–1。上限按实测收紧（seed 42）：流量倍率 1.5 起每次都失败（碰撞或清不空），出行窗口 60 秒配清空 300 秒时行人清不空、配 600 秒就通过。`baseline` 自动加入，保证有对照。每个任务重跑 SUMO，浏览器没有自己计算交通运动。最多四个未完成任务、串行运行；超出返回 `429`。所有 GET 接口都支持 `HEAD`（只回响应头）。
 
-轮询约每秒一次即可。运行失败不发布结果，读取未完成结果返回 `409`。`failed.error` 给出原因；原始 XML、日志、实际命令与同一批需求保存在 `data-dir/{id}/raw/`。输出持久保存在 `output/`，不会自动删除；同一服务重启后可继续读取完成结果，未完成任务标记失败。大流量未能清空时，增加 `clearance_s` 后创建新任务，不能把未到达的人车当作消失。
+轮询约每秒一次即可。运行失败不发布结果，读取未完成结果返回 `409`。`failed.error` 给出原因。运行成功后删掉 `data-dir/{id}/raw/`（默认一次约 300 MB 的 SUMO XML），只留 `output/`；失败时删掉 `output/` 和 `raw/` 里超过 1 MB 的 XML，保留日志、实际命令与同一批需求供排查。只保留最新 `SUMO_KEEP_RUNS` 次（默认 20）完成或失败的运行，更早的整个目录删除，再读返回 `404`。同一服务重启后可继续读取还留着的完成结果，未完成任务标记失败。大流量未能清空时，增加 `clearance_s` 后创建新任务，不能把未到达的人车当作消失。
+
+错误一律 `{ "ok": false, "error": "<短码>", "msg": "<中文说明>" }`（`docs/contract.md` §错误格式，Worker 原样转出）：`400 bad_request / bad_config / bad_json`、`401 bad_key`、`403 bad_origin`、`404 not_found`、`409 not_ready`、`413 too_big`、`415 bad_type`、`429 sumo_busy`（排队满）/ `sumo_rate`（IP 限流）、`500 sumo_error`。Worker 自己的 `sumo_off / sumo_down / sumo_starting` 等见 `docs/contract.md` §HTTP API。
 
 ## 前端对接数据
 
@@ -84,6 +100,8 @@ python3 apps/web/tests/test_sumo_backend.py
 python3 apps/web/tools/sumo/smoke.py
 # 也可验证已有任务，避免重复计算
 python3 apps/web/tools/sumo/smoke.py --run-id RUN_ID
+# 云端：经网站同一条路径验证（Worker 限流，一分钟内别连跑 3 次以上）
+python3 apps/web/tools/sumo/smoke.py --base https://<站点>/api/sumo/v1
 ```
 
 `examples/` 是从真实 API 导出的指标与一帧数据样本，不是供接口兜底的预设结果。每次 POST 都运行原生 SUMO。前端接线需由前端负责人完成；本任务没有更改页面。

@@ -1,4 +1,5 @@
 """SUMO backend unit/API contract tests; native executable is not required in CI."""
+import contextlib
 import io
 import json
 import pathlib
@@ -6,7 +7,9 @@ import sys
 import tempfile
 import threading
 import unittest
+import urllib.request
 from types import SimpleNamespace
+from unittest import mock
 
 TOOLS=pathlib.Path(__file__).resolve().parents[1]/'tools/sumo'
 sys.path.insert(0,str(TOOLS))
@@ -24,6 +27,15 @@ def fixture(args):
     model.dump(out/'baseline/frames-000.json',{'frames':[
         {'t':t,'a':[[0,12345,-240,90,500,0]],'q':[[0,25]],'signals':{'A':'Gr'},'counts':{'running':1}}
         for t in range(3)]})
+
+
+def raw_then(fail):
+    def runner(args):
+        raw=pathlib.Path(args.work_dir);(raw/'closure').mkdir(parents=True)
+        (raw/'closure/queues.xml').write_bytes(b' '*1_500_000);(raw/'closure/trips.xml').write_text('<trips/>')
+        (raw/'closure/run.log').write_text('log');fixture(args)
+        if fail:raise RuntimeError('Simulation integrity failure closure')
+    return runner
 
 
 class BackendTests(unittest.TestCase):
@@ -143,15 +155,18 @@ class BackendTests(unittest.TestCase):
         try:self.assertEqual(second.get('a'*32)['status'],'failed')
         finally:second.close()
 
-    def http(self,request):
+    def http(self,request,**server):
         class Socket:
             def __init__(self):self.output=bytearray()
             def makefile(self,*args):return io.BytesIO(request)
             def sendall(self,value):self.output.extend(value)
         class QuietHandler(serve.Handler):
             def log_message(self,*args):pass
-        sock=Socket();QuietHandler(sock,('127.0.0.1',12345),SimpleNamespace(jobs=self.jobs,origins={'http://127.0.0.1:8001'}))
+        sock=Socket();QuietHandler(sock,('127.0.0.1',12345),SimpleNamespace(jobs=self.jobs,origins={'http://127.0.0.1:8001'},**server))
         return bytes(sock.output)
+
+    def post(self,body=b'{}',headers=b'',**server):
+        return self.http(b'POST /sumo/v1/runs HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: '+str(len(body)).encode()+b'\r\n'+headers+b'\r\n'+body,**server)
 
     def test_unapproved_origin_rejected_without_cors_grant(self):
         raw=self.http(b'POST /sumo/v1/runs HTTP/1.0\r\nOrigin: https://untrusted.example\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}')
@@ -171,6 +186,113 @@ class BackendTests(unittest.TestCase):
     def test_invalid_json_rejected(self):
         raw=self.http(b'POST /sumo/v1/runs HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\nxx')
         self.assertIn(b'400',raw.splitlines()[0])
+
+
+    def test_public_limits_match_measured_failures(self):
+        for ok in [{'demand_scale':.1},{'demand_scale':1.2},{'clearance_s':600},{'clearance_s':2400}]:
+            with self.subTest(ok=ok):model.validate_config(ok)
+        for bad in [{'demand_scale':1.21},{'demand_scale':1.5},{'demand_scale':3},{'clearance_s':599},{'clearance_s':60},{'clearance_s':2401}]:
+            with self.subTest(bad=bad),self.assertRaises(ValueError):model.validate_config(bad)
+        raw=self.post(b'{"demand_scale":1.5}')
+        self.assertIn(b'400',raw.splitlines()[0]);self.assertEqual(self.jobs.active,0)
+
+    def test_version_check_skips_locale_warning(self):
+        which=mock.patch.object(model.shutil,'which',lambda name:'/opt/sumo/bin/'+name)
+        out="Warning: Could not set locale to 'C'.\nEclipse SUMO sumo 1.27.1\n Build features: Darwin arm64\n"
+        with which,mock.patch.object(model,'command',return_value=out):
+            self.assertEqual(model.binaries()[1],'Eclipse SUMO sumo 1.27.1')
+        with which,mock.patch.object(model,'command',return_value="Warning: Could not set locale to 'C'.\nEclipse SUMO sumo 1.26.0\n"):
+            with self.assertRaises(RuntimeError):model.binaries()
+
+    def test_success_drops_raw_and_keeps_only_newest_runs(self):
+        self.jobs.keep=2;self.jobs.runner=raw_then(False)
+        ids=[self.jobs.create({})['id'] for _ in range(3)]
+        self.jobs.close();root=pathlib.Path(self.temp.name)
+        self.assertEqual(sorted(p.name for p in root.iterdir()),sorted(ids[1:]))
+        for i in ids[1:]:
+            self.assertEqual(self.jobs.get(i)['status'],'complete')
+            self.assertFalse((root/i/'raw').exists());self.assertTrue((root/i/'output/index.json').exists())
+        with self.assertRaises(serve.ApiError) as e:self.jobs.get(ids[0])
+        self.assertEqual(e.exception.status,404)
+
+    def test_failed_run_keeps_logs_but_drops_big_xml_and_partial_output(self):
+        self.jobs.runner=raw_then(True)
+        job=self.complete();root=pathlib.Path(self.temp.name)/job['id']
+        self.assertEqual(job['status'],'failed')
+        self.assertFalse((root/'raw/closure/queues.xml').exists());self.assertFalse((root/'output').exists())
+        self.assertTrue((root/'raw/closure/trips.xml').exists());self.assertTrue((root/'raw/closure/run.log').exists())
+
+    def test_restart_prunes_to_keep_runs(self):
+        names=[f'{i:032x}' for i in range(3)]
+        for name in names:self.jobs.update({'id':name,'status':'complete'})
+        second=serve.Jobs(self.temp.name,'fixture',runner=fixture,keep=1)
+        try:self.assertEqual([p.name for p in pathlib.Path(self.temp.name).iterdir()],names[-1:])
+        finally:second.close()
+
+    def test_sigterm_close_drops_queued_but_finishes_running(self):
+        started,release,calls=threading.Event(),threading.Event(),[]
+        def slow(args):calls.append(1);started.set();release.wait(5);fixture(args)
+        self.jobs.runner=slow
+        first,second=self.jobs.create({}),self.jobs.create({})
+        self.assertTrue(started.wait(5))
+        self.jobs.close(wait=False);release.set();self.jobs.close()
+        self.assertEqual(len(calls),1)
+        self.assertEqual(self.jobs.get(first['id'])['status'],'complete')
+        again=serve.Jobs(self.temp.name,'fixture',runner=fixture)
+        try:self.assertEqual(again.get(second['id'])['status'],'failed')
+        finally:again.close()
+
+    def test_head_sends_headers_only(self):
+        head,_,body=self.http(b'HEAD /sumo/v1/health HTTP/1.0\r\n\r\n').partition(b'\r\n\r\n')
+        full=self.http(b'GET /sumo/v1/health HTTP/1.0\r\n\r\n').partition(b'\r\n\r\n')[2]
+        self.assertIn(b'200',head.splitlines()[0]);self.assertEqual(body,b'')
+        self.assertIn(b'Content-Length: '+str(len(full)).encode(),head)
+
+    def test_errors_use_repo_format(self):
+        for raw,status,code in [(self.http(b'GET /sumo/v1/runs/'+b'a'*32+b' HTTP/1.0\r\n\r\n'),b'404','not_found'),
+                                (self.post(b'{"weather":"rain"}'),b'400','bad_config'),
+                                (self.post(b'x'*20000),b'413','too_big')]:
+            with self.subTest(code=code):
+                self.assertIn(status,raw.splitlines()[0])
+                body=json.loads(raw.partition(b'\r\n\r\n')[2])
+                self.assertEqual((body['ok'],body['error']),(False,code));self.assertTrue(body['msg'])
+
+    def test_key_required_when_set_except_health(self):
+        for headers,code in [(b'',b'401'),(b'X-Sumo-Key: wrong\r\n',b'401'),(b'X-Sumo-Key: \xff\r\n',b'401'),(b'X-Sumo-Key: s3cret\r\n',b'202')]:
+            with self.subTest(headers=headers):self.assertIn(code,self.post(headers=headers,api_key='s3cret').splitlines()[0])
+        self.assertIn(b'200',self.http(b'GET /sumo/v1/health HTTP/1.0\r\n\r\n',api_key='s3cret').splitlines()[0])
+        self.assertIn(b'401',self.http(b'GET /sumo/v1/runs/'+b'a'*32+b' HTTP/1.0\r\n\r\n',api_key='s3cret').splitlines()[0])
+        self.assertIn(b'202',self.post().splitlines()[0])
+
+    def test_optional_per_ip_post_limit(self):
+        self.jobs.limit=10;limit={'posts_per_min':2,'posts':{},'posts_lock':threading.Lock()}
+        self.assertEqual([self.post(**limit).split()[1] for _ in range(3)],[b'202',b'202',b'429'])
+        self.assertIn(b'"error":"sumo_rate"',self.post(**limit))
+        self.assertIn(b'429',self.post(headers=b'X-Client-IP: 9.9.9.9\r\n',**limit).splitlines()[0])
+        self.assertIn(b'202',self.post(headers=b'X-Sumo-Key: k\r\nX-Client-IP: 9.9.9.9\r\n',api_key='k',**limit).splitlines()[0])
+
+    def test_settings_read_container_env_and_flags_win(self):
+        a=serve.settings([],{'HOST':'0.0.0.0','PORT':'8080','SUMO_DATA_DIR':'/data','ALLOW_ORIGINS':'','SUMO_KEEP_RUNS':'20','SUMO_API_KEY':'k'})
+        self.assertEqual((a.host,a.port,a.data_dir,a.allow_origin,a.keep_runs,a.posts_per_min,a.api_key),
+                         ('0.0.0.0',8080,pathlib.Path('/data'),[],20,0,'k'))
+        a=serve.settings(['--port','8041','--data-dir','/tmp/x','--allow-origin','http://a','--posts-per-min','3'],
+                         {'SUMO_DATA_DIR':'/data','ALLOW_ORIGINS':'http://b, http://c'})
+        self.assertEqual((a.host,a.port,a.data_dir,a.allow_origin,a.keep_runs,a.posts_per_min,a.api_key),
+                         ('127.0.0.1',8041,pathlib.Path('/tmp/x'),['http://b','http://c','http://a'],20,3,''))
+        for argv,env in [([],{}),([],{'SUMO_DATA_DIR':'/d','SUMO_KEEP_RUNS':'x'}),([],{'SUMO_DATA_DIR':'/d','SUMO_KEEP_RUNS':'0'}),
+                         (['--data-dir','/d','--port','70000'],{}),(['--data-dir','/d','--posts-per-min','-1'],{})]:
+            with self.subTest(argv=argv,env=env),self.assertRaises(SystemExit),contextlib.redirect_stderr(io.StringIO()):
+                serve.settings(argv,env)
+
+    def test_real_socket_server_answers_head(self):
+        with mock.patch.object(serve.Handler,'log_message',lambda *args:None):
+            server=serve.make_server(0,self.jobs)
+            threading.Thread(target=server.serve_forever,daemon=True).start()
+            try:
+                request=urllib.request.Request(f'http://127.0.0.1:{server.server_port}/sumo/v1/health',method='HEAD')
+                with urllib.request.urlopen(request,timeout=5) as response:self.assertEqual((response.status,response.read()),(200,b''))
+                self.assertEqual(server.RequestHandlerClass.timeout,30)
+            finally:server.shutdown();server.server_close()
 
 
 if __name__=='__main__':
