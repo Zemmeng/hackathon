@@ -17,7 +17,7 @@ function clashLoad(){
 // Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
 function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
 // Registered works that overlap plan `cur` in time (not the same works), at most CL_MAX, each scored by be.clash(), the
-// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T40)
+// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T43)
 async function clashPick(cur,alive){
   const list=await clashLoad();if(!alive())return null;
   const same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register

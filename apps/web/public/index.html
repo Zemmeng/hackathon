@@ -711,7 +711,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .panel.compact .cmp-table thead .cmp-what{display:none} /* the kit list under each plan: Details only */
 .cmp-num{font:700 17px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
 .cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
-/* T40: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit; 01 Signs vs the plain warning */
+/* T43: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit; 01 Signs vs the plain warning */
 .cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
 .cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
 .eng-vs{margin:0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--fg) 6%,transparent);font:500 12px/1.45 var(--f-mono);color:var(--fg-2)}
@@ -3246,7 +3246,7 @@ function engAfterConnect(){
     if(BE.api){
       engPreset(EP.preset,true);
       import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';if(EP.sum&&!EP.badText){engAlts(planFrom(EP),EP.sum);if(S.booted&&S.step===3&&EP.tab3==='net')engFly(.6);}}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
-      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T40)
+      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T43)
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -3299,7 +3299,7 @@ async function engRun(){
   if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();
 }
-// 01 Signs (T40): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
+// 01 Signs (T43): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
 // is the yardstick for the sign text. One run per baseline plan: street, hour, lanes, footpath, positions — never the text,
 // so typing in the VMS boxes does not re-run it.
 const VSB={frame:null,runs:new Map()};
@@ -3998,7 +3998,7 @@ function clashLoad(){
 // Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
 function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
 // Registered works that overlap plan `cur` in time (not the same works), at most CL_MAX, each scored by be.clash(), the
-// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T40)
+// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T43)
 async function clashPick(cur,alive){
   const list=await clashLoad();if(!alive())return null;
   const same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
@@ -4119,7 +4119,7 @@ function cmpBest(rows,keys){
   }
   return out;
 }
-// A plan that buys nothing (T40): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
+// A plan that buys nothing (T43): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
 // buses, on foot) and the footpath are the same as a cheaper plan's, at the precision on screen → { of: that plan's index,
 // extra: hire difference A$ }, else null. The cheapest such plan is named (then the first). Needs an engine result and a hire
 // figure; an hour with no works (all zeros) is never flagged.
@@ -4230,7 +4230,7 @@ async function cmpUpdate(){
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
 }
 
-// 04 Compare, "Nearby works" row (T40): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
+// 04 Compare, "Nearby works" row (T43): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
 // clashPick in 8-clash.js), by be.clash(). Filled in after the table is on screen, cell by cell; never holds the table up.
 // CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r }, cells: [clash result | 'err'], err }
 async function cmpClashUpdate(){

@@ -125,7 +125,7 @@ function engAfterConnect(){
     if(BE.api){
       engPreset(EP.preset,true);
       import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';if(EP.sum&&!EP.badText){engAlts(planFrom(EP),EP.sum);if(S.booted&&S.step===3&&EP.tab3==='net')engFly(.6);}}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
-      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T40)
+      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T43)
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -178,7 +178,7 @@ async function engRun(){
   if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();
 }
-// 01 Signs (T40): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
+// 01 Signs (T43): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
 // is the yardstick for the sign text. One run per baseline plan: street, hour, lanes, footpath, positions — never the text,
 // so typing in the VMS boxes does not re-run it.
 const VSB={frame:null,runs:new Map()};

@@ -57,7 +57,7 @@ ok(JSON.stringify(b.car) === '[1,2]', '并列最少的都标');
 ok(!('hire' in b), '两套一样多：不标');
 ok(!('peds' in b), '都没有这个数：不标');
 
-// 2b T40「结果一样、却多花钱」（纯函数）：交通数字（每车多等 / 排队 / 全网 / 电车公交 / 行人）和人行道都一样、租金更贵 → 标出便宜的那套和差价
+// 2b T43「结果一样、却多花钱」（纯函数）：交通数字（每车多等 / 排队 / 全网 / 电车公交 / 行人）和人行道都一样、租金更贵 → 标出便宜的那套和差价
 const R = (md, q, car, hire, flags = {}) => ({ s: { mean_delay_s: md, queue_m: q, delay_min: car, transit: { src: 'gtfs', pax_min: 40 }, peds: { src: 'peds', extra_min: 0 } }, hire, flags: { footpath: 'none', ...flags } });
 {
   const sa = cmpSameAs([R(60, 300, 900, 100), R(60, 300, 900.2, 340), R(12, 50, 200, 340)]);
@@ -120,11 +120,11 @@ if (typeof be.options !== 'function') {
   const kn = kits.map(k => cmpNumbers(k.s));
   ok(kn.every(n => n.transit !== null && n.peds !== null), 'options() 的结果里电车公交、行人也有数');
 
-  // T40：真路网 Lonsdale 08:00 —— 最省那套没有 VMS，标准那套的 VMS 只写 ROADWORK / AHEAD：结果一样、多花钱
+  // T43：真路网 Lonsdale 08:00 —— 最省那套没有 VMS，标准那套的 VMS 只写 ROADWORK / AHEAD：结果一样、多花钱
   const sa = cmpSameAs(kits);
   ok(sa[0] === null && sa[1] && sa[1].of === 0 && sa[1].extra === kits[1].hire - kits[0].hire && sa[2] === null,
-    `T40：B 标「结果和 A 一样 · 多花 A$${kits[1] && kits[0] ? kits[1].hire - kits[0].hire : '?'}」，A、C 不标`);
-  // T40：对比表「和附近施工叠加」逐套算，和 03 页（表单里的方案）同一处施工、同一口径
+    `T43：B 标「结果和 A 一样 · 多花 A$${kits[1] && kits[0] ? kits[1].hire - kits[0].hire : '?'}」，A、C 不标`);
+  // T43：对比表「和附近施工叠加」逐套算，和 03 页（表单里的方案）同一处施工、同一口径
   const wsUrl = APPS + 'api/public/js/worksites.js';
   if (!existsSync(wsUrl)) console.log('⏭ 跳过叠加一段：没有 apps/api 的 worksites.js');
   else {
