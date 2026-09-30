@@ -1,0 +1,327 @@
+{
+ "version": 1,
+ "generated_at": "2026-09-30T07:25:15+00:00",
+ "source": "docker-linux-amd64",
+ "engine": "Eclipse SUMO sumo 1.27.1",
+ "generator_sha256": "612510fa25e73ff9271eb5d4820dcf5a5cfeb7005547e693539568e115085629",
+ "preset": {
+  "params": {
+   "seed": 42,
+   "scenarios": [
+    "baseline",
+    "closure",
+    "guided",
+    "footpath"
+   ],
+   "demand_duration_s": 600,
+   "clearance_s": 1200,
+   "demand_scale": 1.0,
+   "diversion_share": 0.45
+  },
+  "path": "preset/index.json",
+  "run_id": "4cf9f07068a34895beff7771c837cb61",
+  "elapsed_s": 17.8
+ },
+ "grid": [
+  {
+   "key": "s42-d0.00-x0.8",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 0.8,
+    "diversion_share": 0
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.00-x0.8.json",
+   "run_id": "730316fd476a44098115b3584b747dd1",
+   "elapsed_s": 15.2
+  },
+  {
+   "key": "s42-d0.00-x1.0",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.0,
+    "diversion_share": 0
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.00-x1.0.json",
+   "run_id": "031b4c82eed846f3b3c8336dcfbf5f2a",
+   "elapsed_s": 17.4
+  },
+  {
+   "key": "s42-d0.00-x1.2",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.2,
+    "diversion_share": 0
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.00-x1.2.json",
+   "run_id": "34f2a03a3be442fa9025e35914a204f0",
+   "elapsed_s": 18.8
+  },
+  {
+   "key": "s42-d0.15-x0.8",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 0.8,
+    "diversion_share": 0.15
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.15-x0.8.json",
+   "run_id": "89fd4a58b2c44f0eae7a6ffd1c5df29e",
+   "elapsed_s": 15.3
+  },
+  {
+   "key": "s42-d0.15-x1.0",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.0,
+    "diversion_share": 0.15
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.15-x1.0.json",
+   "run_id": "ce8bd60e5e154d8b8521728a53e46732",
+   "elapsed_s": 17.6
+  },
+  {
+   "key": "s42-d0.15-x1.2",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.2,
+    "diversion_share": 0.15
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.15-x1.2.json",
+   "run_id": "82344258fb634d748c489732e1845017",
+   "elapsed_s": 19.2
+  },
+  {
+   "key": "s42-d0.30-x0.8",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 0.8,
+    "diversion_share": 0.3
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.30-x0.8.json",
+   "run_id": "8fddbc1d319e4178a879c6977965b5cf",
+   "elapsed_s": 15.5
+  },
+  {
+   "key": "s42-d0.30-x1.0",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.0,
+    "diversion_share": 0.3
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.30-x1.0.json",
+   "run_id": "8f1109e95ce24221b52b87bd6b34576a",
+   "elapsed_s": 17.9
+  },
+  {
+   "key": "s42-d0.30-x1.2",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.2,
+    "diversion_share": 0.3
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.30-x1.2.json",
+   "run_id": "136e072bf1314e83aa1ca7cdf0a787e8",
+   "elapsed_s": 19.4
+  },
+  {
+   "key": "s42-d0.45-x0.8",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 0.8,
+    "diversion_share": 0.45
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.45-x0.8.json",
+   "run_id": "7d727919478e404b83782363719b7f16",
+   "elapsed_s": 15.5
+  },
+  {
+   "key": "s42-d0.45-x1.0",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.0,
+    "diversion_share": 0.45
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.45-x1.0.json",
+   "run_id": "4cf9f07068a34895beff7771c837cb61",
+   "elapsed_s": 17.8
+  },
+  {
+   "key": "s42-d0.45-x1.2",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.2,
+    "diversion_share": 0.45
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.45-x1.2.json",
+   "run_id": "f06249a7ff7f4cb6855eb73e69519c57",
+   "elapsed_s": 19.6
+  },
+  {
+   "key": "s42-d0.60-x0.8",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 0.8,
+    "diversion_share": 0.6
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.60-x0.8.json",
+   "run_id": "e9df532f33d04d3cb08a34559a036156",
+   "elapsed_s": 15.7
+  },
+  {
+   "key": "s42-d0.60-x1.0",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.0,
+    "diversion_share": 0.6
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.60-x1.0.json",
+   "run_id": "cc2109533c044daf83e8ac02ed861bbf",
+   "elapsed_s": 17.9
+  },
+  {
+   "key": "s42-d0.60-x1.2",
+   "params": {
+    "seed": 42,
+    "scenarios": [
+     "baseline",
+     "closure",
+     "guided",
+     "footpath"
+    ],
+    "demand_duration_s": 600,
+    "clearance_s": 1200,
+    "demand_scale": 1.2,
+    "diversion_share": 0.6
+   },
+   "status": "complete",
+   "path": "grid/s42-d0.60-x1.2.json",
+   "run_id": "c47ffa0e4fc04099a18e22be8076c85f",
+   "elapsed_s": 19.6
+  }
+ ]
+}

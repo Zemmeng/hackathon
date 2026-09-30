@@ -61,6 +61,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T1 | Swanston/La Trobe 路口仿真 demo（`apps/sim`，真实流量 + 施工模式对比） | ✅ | `lead/sim-demo` / PR #6 | 09-29 11:31 |
+| T37 | SUMO 上云（D-0930-1700）：后端加固（语言 bug、HOST/PORT、跑完删 raw/、只留 20 次、参数收紧、HEAD、SIGTERM）、新模块 `apps/sumo`（Worker `hackathon-sumo` + Cloudflare Container）、site 转发 `/api/sumo/*`、预跑兜底 `apps/sumo/public/baked/` + `sumo-client.js`；页面卡片不在本单 | 🔨 | `lead/T37-sumo-cloud` | 09-30 17:00 |
 | T6 | 附：README 评委段对齐线上 + 第三方清单 + 参考文献 11 条（逐条核对）+ 仓库 About / `VIDEO_URL`；交接 `handoff/Zemmeng-T6-0930-1610.md` | ✅ | #97 #98 #99 #100 #103 | 09-30 10:47 |
 | T6 | 集成上线：删 starters、建 web / engine / api 空架子、Cloudflare 上线一个网址、把 T2–T5 接起来、接上路口放大 | 🔨 | `lead/kickoff`；初筛架构图 `claude/lead/arch-v2` / PR #42 ✅（`docs/pitch-assets/03-architecture*`；要按 D-0929-1718 / 2011 改，见 `handoff/Zemmeng-T6-0929-2255.md`）；T20 核对 + 派 T28 / T26 / T27（#74 #77）交接 `handoff/Zemmeng-T6-0930-0117.md` | 09-29 13:05 |
 | T9 | 引擎骨架（T4 的底，D-0929-1435 版）：`apps/engine` 找绕行 · 场景卡 · 读数 + 每类人参数的选择模型 · 两点校准 · 分流算延误 · 冲突成本 · 顾问改法重算，对外 `evaluate(方案)`；跑在 T3 真路网上 | ✅ | `claude/lead/ai-infra` / PR #20 ✅；`claude/lead/engine-fixes` / PR #34 ✅（后端接线层 `backend.js`、不走小巷、审查 15 条、契约 v3.1、派 T13） | 09-29 13:50 |

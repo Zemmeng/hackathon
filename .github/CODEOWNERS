@@ -34,6 +34,7 @@
 /apps/api/                    @jinmingq
 /apps/params/                 @Unzzip
 /apps/site/                   @Zemmeng @unicornnnnnny
+/apps/sumo/                   @Zemmeng
 # /docs/4-demo.md               @<pitch owner>
 # /docs/pitch-assets/           @<pitch owner>
 # pitch owner 用 <handle>/pitch/T<n>-x 分支写 docs/4-demo.md 与 docs/pitch-assets/
