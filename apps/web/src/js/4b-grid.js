@@ -166,7 +166,7 @@ function gridStopsAt(o){return o.s-o.len+(o.v<1||o.v<GRID_P.slow&&o.acc<=.1?0:o.
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
-    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
+    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60); // T42: per minute, vehicles into the 2×2 / of them with a safety event
     this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
     const cl=spec.close;this.lanes=[];
     this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){
@@ -184,7 +184,8 @@ class GridSim{
   _exp(rate){return this.t-Math.log(1-this.R())*3600/(rate*((this.wx&&this.wx.rate)||1));}
   resetStats(){
     this.events=[];this.recent=new Map();this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
-    this.minute.fill(0);this.risk.fill(0);this.riskVer++;this.redRun=0;
+    this.minute.fill(0);this.mSeen.fill(0);this.mHit.fill(0);this.risk.fill(0);
+    for(const ln of this.lanes||[])for(const c of ln.cars){c.inV=false;c.hit=false;} // cars already in the 2×2 count again from herethis.riskVer++;this.redRun=0;
     this.entry=this.spec.dirs.map(D=>({id:D.entry,street:D.street,dir:D.dir,vph:D.vph,arr:0,ins:0,div:0}));
   }
   setWeather(k,env){this.wxk=k;this.wx=WXP[k]||WXP.clear;this.env=env;}
@@ -295,10 +296,10 @@ class GridSim{
       const c=a[i],ld=a[i-1],dv=c.v-ld.v;if(c.v<P.ttcV||dv<P.ttcDv||!gridIn(GRID_VIEW,c.x,c.y))continue;
       const ttc=Math.max(.1*GRID_K,ld.s-ld.len-c.s)/dv;if(ttc>=P.ttc)continue;
       const key=c.id+'-'+ld.id,prev=this.recent.get(key);
-      if(prev&&t-prev.t<6){if(ttc<prev.ttc){prev.ttc=ttc;if(ttc<P.ttcCrit&&prev.sev<2){prev.sev=2;this.stats.critical++;}}continue;}
+      if(prev&&t-prev.t<6){if(ttc<prev.ttc){prev.ttc=ttc;if(ttc<P.ttcCrit&&prev.sev<2){prev.sev=2;this.stats.critical++}}continue;}
       const ev={t,x:(c.x+ld.x)/2,y:(c.y+ld.y)/2,ttc,sev:ttc<P.ttcCrit?2:1,kind:'conflict',types:[c.type,ld.type]};
       this.recent.set(key,ev);this.events.push(ev);this.stats.conflicts++;if(ev.sev===2)this.stats.critical++;
-      this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(ev.x,ev.y,ev.sev===2?1.6:1);
+      const mi=clamp(Math.floor((this.clock0+t)/60),0,59);this.minute[mi]+=1;if(!c.hit){c.hit=true;this.mHit[mi]+=1;}this._splat(ev.x,ev.y,ev.sev===2?1.6:1);
     }}
     // 4 move; hard walls and no-overlap are enforced, stop-line crossings reported
     for(const ln of this.lanes){
@@ -309,7 +310,7 @@ class GridSim{
         if(i>0){const ld=cars[i-1],mx=ld.s-ld.len-.05;if(s>mx){s=mx;v=Math.min(v,ld.v);}}
         c.s=s;c.v=v;c.dist+=Math.max(0,s-s0);
         const ra=(v-v1)/dt;c.acc=ra;
-        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);this.events.push({t,x:c.x,y:c.y,kind:'harsh',sev:0,type:c.type});}}}
+        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;const mi=clamp(Math.floor((this.clock0+t)/60),0,59);this.minute[mi]+=1;if(!c.hit){c.hit=true;this.mHit[mi]+=1;}this._splat(c.x,c.y,.6);this.events.push({t,x:c.x,y:c.y,kind:'harsh',sev:0,type:c.type});}}}
         else if(ra>-1)c.hb=false;
         for(const q of D.jn)if(s0<q.stop&&s>=q.stop){if(sig[q.j][D.axis]==='R')this.redRun++;if(this.onCross)this.onCross(c,ln,q,t);}
       }
@@ -344,7 +345,7 @@ class GridSim{
     for(const ln of this.lanes)for(const c of ln.cars){
       c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
       if(this.t-c.tt>=.4){c.tt=this.t;c.trail.push(c.x,c.y);if(c.trail.length>24)c.trail.splice(0,2);}
-      all.push(c);if(gridIn(GRID_VIEW,c.x,c.y))ag.push(c);
+      all.push(c);if(gridIn(GRID_VIEW,c.x,c.y)){ag.push(c);if(!c.inV){c.inV=true;this.mSeen[clamp(Math.floor((this.clock0+this.t)/60),0,59)]+=1;}}
     }
     this.agents=ag;this.all=all;
     // forget events older than evKeep (the counts keep them)

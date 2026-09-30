@@ -171,6 +171,9 @@ s.setWeather('storm', null); s.step(5); ok(s.wxk === 'storm', 'setWeather switch
     ok(sim.stats.conflicts === n0 + 1, 'T42: the same pair is counted once (within 6 s)');
   }
   ok(cf.every(e => e.ttc < 1.5 && (e.sev === 2) === (e.ttc < 1)), 'T42: conflict = TTC < 1.5 s, critical = TTC < 1.0 s');
+  { const sum = a => a.reduce((x, y) => x + y, 0), seen = sum(sim.mSeen), hit = sum(sim.mHit);
+    ok(seen > 0 && hit > 0 && hit <= seen && hit <= sim.stats.harsh + sim.stats.conflicts,
+      `T42: timeline shares — ${hit} of ${seen} vehicles into the 2×2 braked harshly or were in a conflict (${(hit / seen * 100).toFixed(1)} %); a vehicle counts once`); }
   while (sim.t < 600) sim.step(0.25);
   ok(sim.events.every(e => sim.t - e.t <= 120) && sim.stats.harsh > sim.events.filter(e => e.kind === 'harsh').length, 'T42: marks older than 2 minutes are dropped; the counts keep them');
 }
