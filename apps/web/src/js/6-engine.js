@@ -172,7 +172,7 @@ async function engRun(){
   const first=!EP.sum; // first numbers for this street: frame its queue and detours too (T20 addendum 1)
   try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
-  EP.busy=false;engRenderOut();
+  EP.busy=false;engRenderOut();vlAfterRun();
   if(S.step===3)renderPanel();
   if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();

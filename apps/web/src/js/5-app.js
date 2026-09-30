@@ -515,7 +515,7 @@ function renderPanel(){
     const tabs1=`<div class="eng-seg eng-seg3" role="tablist" aria-label="${L('Plan setup','方案设置')}">${[['site',L('Site','施工信息')],['signs',L('Signs','设备诱导')],['checks',L('Checks','约束检查')]].map(([k,n])=>`<button type="button" role="tab" data-tab1="${k}" aria-selected="${t===k}">${n}</button>`).join('')}</div>`;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan · draft','施工方案 · 草稿')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engStateSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engStateSec()):engOfflineCard()}
+    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engStateSec()+vlabHTML():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engStateSec()):engOfflineCard()}
     ${microOn()&&t==='site'?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
@@ -526,7 +526,7 @@ function renderPanel(){
     P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
     const bi=$('#budgetIn');if(bi)bi.oninput=()=>{EP.budget=Math.max(0,+bi.value||0);};
     P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
-    engBind1();
+    engBind1();vlMount();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown(),su=grid&&!!S.sim.isSumo,wait=sumoWaiting();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>

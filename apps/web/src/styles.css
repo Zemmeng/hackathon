@@ -773,3 +773,19 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-row .adv{color:var(--fg-2);overflow-wrap:anywhere}
 .cmp-explain{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
 .cmp-explain small{display:block;opacity:.7}.cmp-explain p{margin:8px 0}.cmp-explain ul{padding-left:18px;margin:6px 0 12px}.cmp-lean{font-size:14px;line-height:1.6}
+/* T45 VMS lab (6d-vmslab.js): same plan, other words on VMS-1 — one row per wording, bar = queue */
+.vlab{display:flex;flex-direction:column;gap:7px}
+.vlab-rows{display:flex;flex-direction:column;gap:4px}
+.vlab-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 54px;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:4px;padding:6px;color:var(--fg);cursor:pointer;font:inherit;font-size:12px}
+.vlab-row:hover{border-color:var(--line-2)}
+.vlab-row[aria-current="true"]{border-color:var(--tint-line);background:var(--tint)}
+.vlab-row .tx{min-width:0;font:500 11px/1.35 var(--f-mono);color:var(--works);overflow-wrap:anywhere}
+.vlab-row .tag{font:700 9px/1 var(--f-mono);letter-spacing:.04em;font-style:normal;color:var(--accent);margin-left:6px;white-space:nowrap}
+.vlab-row .tag.base{color:var(--fg-3)}.vlab-row .tag.cur{color:var(--fg-2)}
+.vlab-row .track{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.vlab-row .track i{display:block;height:100%;background:var(--fg-3);border-radius:2px}
+.vlab-row.best .track i{background:var(--accent)}
+.vlab-row .n{font:600 11px/1 var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.vlab-rec{font-size:12.5px;line-height:1.5;margin:4px 0 0}
+.vlab-rec b{font-family:var(--f-mono);color:var(--works);font-weight:600}
+.vlab .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;text-decoration:underline;cursor:pointer}
