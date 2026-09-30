@@ -305,5 +305,19 @@ check("T49：VMS 试验台在 SUMO 方案上走 vlSuHTML（会绕行的比例、
 t49_lits = [x for x in ["918", "509", "10,493", "10493", "18,693", "18693", "33,015", "33015"] if x in CMP + CLASH + LAB]
 check("T49 反向断言：04 / 03 / 试验台源码里没有线上看到的引擎数（918 / 509 / 10,493 / 18,693 / 33,015）", not t49_lits, str(t49_lits))
 
+# 13. T48（@unicornnnnnny 10-01）：左上角换成团队最后定的 logo —— 「Ripple」跟主题的文字色（深色主题浅色字、浅色主题深色字），其余照原稿；嵌在页面里的 PNG
+CSS_ALL = (SRC / "styles.css").read_text(encoding="utf-8")
+check("T48：顶栏品牌区是新 logo（role=img、aria-label=RippleTwin），原来的圆圈图标和文字去掉了",
+      '<span class="brand-logo" role="img" aria-label="RippleTwin"></span>' in BODY and "brand-name" not in BODY + CSS_ALL and ".brand>svg" not in CSS_ALL)
+check("T48：logo 两层都内嵌为 PNG（页面仍是单文件）：路 + Twin 照原稿；Ripple 是遮罩、用 --fg 填色，深浅主题自动跟着变",
+      '.brand-logo{position:relative;display:block;width:148px;height:30px;background:url("data:image/png;base64,' in CSS_ALL
+      and '--logo-ripple:url("data:image/png;base64,' in CSS_ALL and "background:var(--fg);-webkit-mask:var(--logo-ripple)" in CSS_ALL
+      and "mask:var(--logo-ripple) left center/contain no-repeat}" in CSS_ALL)
+
+# 14. T49（@unicornnnnnny 10-01）：第 2 步镜头框住整个 4×4（16 个路口），不再只框施工处 2×2；「再点缩小」和 ⌖ 也回到 4×4
+check("T49：gridFly 用 gridFit() 框 16 个路口（S.sim.spec.junctions）+ 一圈斑马线余量，按 fitView 让开面板；没 spec 才退回 2×2",
+      "function gridFit(){" in app_js and "S.sim.spec.junctions" in app_js and "return fitView(Math.min(...xs)-m,Math.max(...xs)+m,Math.min(...ys)-m,Math.max(...ys)+m,3);" in app_js
+      and "const f=gridFit();if(f)flyTo(f[0],f[1],f[2],d);else flyTo((GRID_BOX.x0" in app_js and "function fitView(x0,x1,y0,y1,maxS){" in ENG)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

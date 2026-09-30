@@ -80,8 +80,8 @@ check("反向：缩放 < 1 时点地图不挪施工区", "if(S.step!==1||!BE.api
 check("引擎叠加层用 CITY：可点的路段、取景、标签剔除、可见范围", all(x in ENG for x in [
     "p[0]<CITY.x0||p[0]>CITY.x1", "clamp(p[0],CITY.x0,CITY.x1)", "if(c[0]<CITY.x0||c[0]>CITY.x1", "Math.max(CITY.x0,V.wx(24))"]))
 check("反向：6-engine.js 里不再用 WORLD", "WORLD" not in ENG)
-fit = fn(ENG, "engFit")
-check("取景缩放下限跟着放开（cityMinS），画出来的绕行（≥ 1%）都框进来", "cityMinS(),3.6" in fit and ">=.01" in fit)
+fit = fn(ENG, "engFit") + fn(ENG, "fitView")  # T49：取景算法抽成 fitView(x0, x1, y0, y1, maxS)
+check("取景缩放下限跟着放开（cityMinS），画出来的绕行（≥ 1%）都框进来", "cityMinS(),maxS" in fit and "+60,3.6);" in fit and ">=.01" in fit)
 
 # 5 排队线沿真路
 check("排队线沿施工街往上游找同名路段、按 len_m 累加（upstreamPath），画到街没了为止",
