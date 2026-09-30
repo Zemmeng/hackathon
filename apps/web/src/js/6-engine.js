@@ -125,7 +125,6 @@ function engAfterConnect(){
     if(BE.api){
       engPreset(EP.preset,true);
       import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';if(EP.sum&&!EP.badText){engAlts(planFrom(EP),EP.sum);if(S.booted&&S.step===3&&EP.tab3==='net')engFly(.6);}}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
-      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T43)
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -171,37 +170,12 @@ async function engRun(){
   EP.busy=true;engRenderOut();
   const plan=planFrom(EP);
   const first=!EP.sum; // first numbers for this street: frame its queue and detours too (T20 addendum 1)
-  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);engVsRun();if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
+  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
   EP.busy=false;engRenderOut();
   if(S.step===3)renderPanel();
   if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();
-}
-// 01 Signs (T43): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
-// is the yardstick for the sign text. One run per baseline plan: street, hour, lanes, footpath, positions — never the text,
-// so typing in the VMS boxes does not re-run it.
-const VSB={frame:null,runs:new Map()};
-function engVsPlan(plan){
-  const p=JSON.parse(JSON.stringify(plan)),ws=p.worksites[0];
-  ws.equipment=[{id:'VMS-1',type:'vms',at_m:EP.vmsAt,frames:[[...VSB.frame]]},...ws.equipment.filter(e=>e.type!=='vms')];
-  return p;
-}
-async function engVsRun(){
-  if(!engOn()||!VSB.frame||EP.badText)return;
-  const p=engVsPlan(planFrom(EP)),k=JSON.stringify(p);if(VSB.runs.has(k))return;
-  VSB.runs.set(k,null); // in flight
-  try{VSB.runs.set(k,await BE.api.run(p));}catch(e){VSB.runs.delete(k);console.warn('baseline run (warning-only VMS) failed',e);return;}
-  engRenderOut();
-}
-function engVsHTML(){
-  const s=engOn()&&!EP.badText?EP.sum:null,w=VSB.frame;if(!s||!w||s.flags.inactive)return'';
-  const plan=planFrom(EP),v=plan.worksites[0].equipment.find(e=>e.type==='vms');
-  if(v&&JSON.stringify(v.frames)===JSON.stringify([w]))return''; // the text is the plain warning already
-  const b=VSB.runs.get(JSON.stringify(engVsPlan(plan)));if(!b)return'';
-  const q0=Math.round(b.queue_m||0),q1=Math.round(s.queue_m||0),d=q1-q0,wt=esc(w.join(' ')),col=d>0?'var(--risk)':d<0?'var(--accent)':'var(--fg-2)';
-  return`<p class="eng-vs${EP.busy||EP.runErr?' stale':''}">${L(`vs ${wt} only: queue ${fmtN(q0)} → ${fmtN(q1)} m <b style="color:${col}">(${d<0?'−'+fmtN(-d)+' m':d>0?'+'+fmtN(d)+' m':'no change'})</b>`,
-    `只写 ${wt} 时：排队 ${fmtN(q0)} → ${fmtN(q1)} m<b style="color:${col}">（${d<0?'少 '+fmtN(-d)+' m':d>0?'多 '+fmtN(d)+' m':'一样'}）</b>`)}</p>`;
 }
 async function engStep4(){
   if(!engOn()||EP.badText){EP.adv=null;EP.advKey='';EP.advBusy=false;EP.cmp=null;EP.cmpKey='';EP.cmpBusy=false;EP.pick=-1;engRender4();return;}
@@ -306,7 +280,7 @@ function engMoreHTML(){
   const stale=EP.busy||EP.badText||!!EP.runErr;
   return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
-function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML],['vmsVs',engVsHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -336,7 +310,7 @@ function engSiteHTML(){
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
-    <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div><div id="vmsVs"></div>
+    <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>

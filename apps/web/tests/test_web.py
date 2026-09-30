@@ -223,7 +223,7 @@ check("T23：方案名称（可能是顾问给的 kind）过 esc()", "esc(cmpLab
 probe_cmp = "`<b>${cmpLabel(r)}</b><i>${r.kind}</i>`"
 check("自检：T23 去掉 esc() 会被抓到", len(unsafe_in(probe_cmp)) >= 1)
 
-# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」③01 Signs「比只写 ROADWORK AHEAD 少排多少」
+# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」（③「比只写 ROADWORK AHEAD 少排多少」由 T42 VMS 试验台包含，按 qjm 交接单不做）
 #     只把引擎已有的数摆出来：页面不自己算、源码里不写死验收时看到的数
 CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
 T43_SRC = JS + "\n" + BODY + "\n" + (SRC / "styles.css").read_text(encoding="utf-8")
@@ -244,14 +244,6 @@ check("T43②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.ap
       and "L('Nearby works','和附近施工叠加')" in CMP)
 check("T43②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
       "CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other" in CMP)
-t40_vs = ENG[ENG.index("function engVsHTML(){"):ENG.index("async function engStep4(){")]
-check("T43③：基准 = 同一方案、VMS 只写 options.js 的 WARN_FRAME，再跑一次引擎；按基准方案缓存（不含屏上文字，打字不重跑）",
-      "import('/engine/public/js/options.js')" in ENG and "VSB.frame=m.WARN_FRAME" in ENG and "if(VSB.runs.has(k))return;" in ENG
-      and "frames:[[...VSB.frame]]" in ENG and 'id="vmsVs"' in ENG and "['vmsVs',engVsHTML]" in ENG)
-check("T43③：当前就是 ROADWORK AHEAD 时不显示；更长时用 var(--risk) 写 +X m；中英成对",
-      "JSON.stringify(v.frames)===JSON.stringify([w]))return''" in t40_vs and "d>0?'var(--risk)'" in t40_vs
-      and "L(`vs ${wt} only: queue" in t40_vs and "`只写 ${wt} 时：排队" in t40_vs)
-check("T43③ 反向断言：基准那行的 ROADWORK / AHEAD 字样来自引擎的 WARN_FRAME，不在页面里写死", "ROADWORK" not in t40_vs and "AHEAD" not in t40_vs)
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
