@@ -181,7 +181,7 @@ check("大段小字（.eng-assume 假设说明、单位说明、仿真说明）�
       ".panel.compact .eng-assume{display:none}" in CSS and "L('Trust in signs','对标志的信任度')" in ENGJS and "L('Riders per trip','每班乘客')" in ENGJS
       and 'class="list eng-evd"' in ENGJS)
 check("比较方案：横向对比表（方案横排、指标竖排，点哪一列就高亮哪一列、没选时亮推荐列，「最省」像「最少」一样写在方案名下，超预算标红），面板在这一步向左展开",
-      'class="cmp-table"' in CMP2 and "L('Recommended','综合推荐')" in CMP2 and "L('over budget','超预算')" in CMP2 and "cmp-sel" in CMP2 and "el.querySelectorAll('[data-cmpcol]')" in CMP2 and "<i class=\"cmp-best\">${L('Cheapest','最省')}</i>" in CMP2
+      'class="cmp-table"' in CMP2 and "L('Recommended','综合推荐')" in CMP2 and "L('over budget','超预算')" in CMP2 and "cmp-sel" in CMP2 and ".panel.compact .cmp-table thead .cmp-what{display:none}" in CSS and "el.querySelectorAll('[data-cmpcol]')" in CMP2 and "<i class=\"cmp-best\">${L('Cheapest','最省')}</i>" in CMP2
       and "setWide(S.ui===4);" in APP and "function setWide(on){" in APP and ".app.ui-wide .panel #cmp4{order:-1}" in CSS)
 
 print(f"{passed} passed, {failed} failed")
