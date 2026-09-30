@@ -281,6 +281,15 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .sumo-seg button{white-space:normal}
 .sumo-run{padding:10px 12px;font-size:13px}
 .sumo-run [data-live]{font-variant-numeric:tabular-nums}
+/* T42: cloud SUMO run in progress; seed box */
+.sumo-wait{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line2);border-radius:10px;font-size:13px}
+.sumo-wait [data-live]{font-variant-numeric:tabular-nums}
+.spin{flex:none;width:16px;height:16px;border:2px solid var(--line2);border-top-color:var(--works);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.sumo-seed{flex-wrap:wrap;gap:6px 8px;align-items:center}
+.sumo-seed input{width:120px;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:inherit;font:inherit;font-variant-numeric:tabular-nums}
+.sumo-seed .btn{padding:8px 12px;font-size:13px}
 .eng-routes{display:flex;flex-direction:column;gap:8px}
 .eng-route{display:grid;grid-template-columns:minmax(0,1fr) 60px 34px 86px;align-items:center;gap:8px;font-size:12.5px}
 .eng-route .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
