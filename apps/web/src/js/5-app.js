@@ -429,6 +429,35 @@ async function sumoRerun(){
   }catch(e){if(tok!==SU.tok)return;SU.failed=true;console.info('SUMO unavailable, keeping the browser grid sim:',sumoErr(e));}
   renderPanel();
 }
+// T47: step 3 shows the SUMO run from step 2 (the one on screen: live or pre-computed, with its seed) above the engine's
+// numbers, so a SUMO run is visibly used and the two models are not confused (engine: whole CBD, 1 h; SUMO: 16 junctions, ~12 min)
+function sumoImpactHTML(){
+  if(EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';
+  const idx=SU.index,src=SU.src||{};
+  if(!idx||!Array.isArray(idx.scenarios))return`<div class="card eng-note sumo-impact"><b>${L('SUMO','SUMO')}</b><span>${L('Run SUMO in step 2 to see its result for this plan here, next to the engine estimate.','在第 2 步跑一次 SUMO，这里会并排显示它对这个方案的结果。')}</span></div>`;
+  const m=id=>(idx.scenarios.find(x=>x.id===id)||{}).metrics||null,n=v=>v!=null&&isFinite(+v),r=v=>n(v)?fmtN(Math.round(+v)):'—';
+  const live=src.source==='live'&&isFinite(src.elapsedMs),sd=isFinite(src.seed)?src.seed:idx.seed;
+  const tag=live?L(`Cloud SUMO · computed live · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`,`云端 SUMO · 现场计算 · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`):L(`SUMO · pre-computed · seed ${sd}`,`SUMO · 预先跑好 · seed ${sd}`);
+  const row=(id,name)=>{const x=m(id);if(!x)return'';const ex=n(x.works_traffic_extra_s)?x.works_traffic_extra_s:x.mean_extra_s;
+    return`<tr${id===SU.scen?' class="cur"':''}><th scope="row">${name}</th><td>${r(x.works_queue_max_m)} / ${r(x.works_queue_mean_m)} m</td><td>${n(ex)?(ex>0?'+':'')+Math.round(ex)+' s':'—'}</td><td>${r(x.detour_vehicles)}</td></tr>`;};
+  return`<div class="stack sumo-impact"><div class="row between"><span class="eyebrow">${L('SUMO · this run from step 2','SUMO · 第 2 步这一次的结果')}</span><span class="pill${live?' ok':''}">${tag}</span></div>
+    <div class="sumo-imp-wrap"><table class="sumo-imp"><thead><tr><th></th><th>${L('Works queue max / mean','施工排队 最长 / 平均')}</th><th>${L('Extra per vehicle through the works','过施工段每车多花')}</th><th>${L('Detoured','绕行的车')}</th></tr></thead>
+    <tbody>${row('original',L('Original · ROADWORK AHEAD','原方案 · ROADWORK AHEAD'))}${row('ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL'))}</tbody></table></div>
+    <p class="small eng-assume">${L('Why the engine says more: SUMO covers the 16 junctions around the works for ~12 minutes with signal 2935 assumed 70% green; the engine below covers the whole CBD for a full hour at 50% green, so its queue keeps growing through the hour. Both are models — a cross-check, not measured proof.','为什么引擎的数大：SUMO 只算施工附近 16 个路口、约 12 分钟，2935 信号按 70% 绿灯假设；下面的引擎算整个 CBD、整整 1 小时、50% 绿灯，排队会在这一小时里一直变长。两个都是模型，是交叉验证，不是实测证据。')}</p></div>`;
+}
+// T47: pick the seed BEFORE the run — on 01 Configure, right above 「Save & simulate」; entering step 2 runs SUMO with it
+function sumoPreHTML(){
+  if(!BE.api||EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';
+  return`<div class="stack sumo-pre"><span class="eyebrow">${L('SUMO · step 2 runs in the cloud with this seed','SUMO · 第 2 步用这个种子在云端算')}</span>
+    <div class="row sumo-seed"><label class="eyebrow" for="sumoSeedPre">${L('Seed','种子')}</label><input id="sumoSeedPre" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"><button type="button" class="btn ghost" id="sumoDicePre">${L('Random','随机')}</button></div>
+    <p class="small muted">${L('Same seed, same run (42 matches the pre-computed copy); change it to see how much the result varies.','同一个种子结果一样（42 和预先跑好的那份一致）；换种子看结果波动多大。')}</p></div>`;
+}
+function sumoPreBind(){
+  const si=$('#sumoSeedPre');if(!si)return;
+  const set=()=>{const v=Math.floor(+si.value);if(isFinite(v)&&v>=0&&v<=2147483647)SU.seed=v;else si.value=SU.seed;};
+  si.onchange=set;si.oninput=set;
+  const dz=$('#sumoDicePre');if(dz)dz.onclick=()=>{SU.seed=Math.floor(Math.random()*2147483647);si.value=SU.seed;};
+}
 const sumoReason=k=>SU.mod&&typeof SU.mod.reasonLabel==='function'?SU.mod.reasonLabel(k,LANG.cur):k;
 function sumoNote(){const R=S.sim,v=(/(\d+\.\d+\.\d+)/.exec((R.index&&R.index.engine)||'')||[0,'1.27.1'])[1],h=String(R.hour).padStart(2,'0'),A=R.index&&R.index.assumptions,as=A&&(LANG.cur==='zh'?A.zh:A.en);
   return`<p class="eng-assume"${Array.isArray(as)&&as.length?` title="${esc(as.join(' · '))}"`:''}>${L(`SUMO ${v} · real CBD network (OSM) + SCATS ${h}:00 flows · signal timing and turn shares assumed`,`SUMO ${v} · 真实 CBD 路网（OSM）+ SCATS ${h}:00 车流 · 信号配时和转弯比例是假设值`)}</p>`;}
@@ -522,11 +551,11 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">VMS-1</span><span class="val">${L('60 m upstream','上游 60 m')}</span></div>
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
-    ${navHTML()}`;
+    ${typeof sumoPreHTML==='function'?sumoPreHTML():''}${navHTML()}`;
     P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
     const bi=$('#budgetIn');if(bi)bi.oninput=()=>{EP.budget=Math.max(0,+bi.value||0);};
     P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
-    engBind1();vlMount();
+    engBind1();vlMount();sumoPreBind();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown(),su=grid&&!!S.sim.isSumo,wait=sumoWaiting();
     P.innerHTML=`<div class="row"><span class="dot pulse" id="stDot" style="background:var(--works)"></span><span class="eyebrow" id="stLabel" style="color:var(--works)"></span></div>
