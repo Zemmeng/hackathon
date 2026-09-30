@@ -1,0 +1,563 @@
+<div id="rt-landscape-preview" aria-label="RippleTwin 横向桌面工作台示意">
+  <div class="rt-app" aria-label="RippleTwin 施工规划工作台">
+    <header class="rt-header">
+      <button class="rt-logo" data-go="0" type="button" aria-label="RippleTwin 工作台"><span class="rt-logo-mark"><i data-lucide="waves" aria-hidden="true"></i></span><span>RippleTwin</span></button>
+      <span class="rt-workspace">Melbourne · 施工规划工作台</span>
+      <div class="rt-header-end"><span class="rt-prototype">横版概念 · 示例数据</span><span class="rt-user"><i data-lucide="user-round" aria-hidden="true"></i><span>规划人员</span></span></div>
+    </header>
+    <div class="rt-body">
+      <aside class="rt-sidebar" aria-label="工作空间导航">
+        <span class="rt-nav-caption">工作空间</span>
+        <button data-go="0" data-nav="home" type="button"><i data-lucide="map" aria-hidden="true"></i><span>工作台</span></button>
+        <button data-go="1" data-nav="project" type="button"><i data-lucide="folder-open" aria-hidden="true"></i><span>施工项目</span></button>
+        <div class="rt-nav-divider"></div>
+        <span class="rt-nav-caption">当前项目</span>
+        <span class="rt-project-nav"><span class="rt-mini-dot"></span>Lonsdale St<span class="rt-project-sub">道路养护</span></span>
+        <div class="rt-sidebar-bottom"><i data-lucide="shield-check" aria-hidden="true"></i><span>规划 · 评估 · 决策</span></div>
+      </aside>
+      <main class="rt-main">
+        <nav class="rt-flow" aria-label="示意页面切换">
+          <button data-go="0" type="button"><span class="rt-flow-num"><i data-lucide="map-pinned" aria-hidden="true"></i></span><span>路网总览</span></button>
+          <span class="rt-flow-line"></span>
+          <button data-go="1" type="button"><span class="rt-flow-num">1</span><span>配置施工</span></button>
+          <span class="rt-flow-line"></span>
+          <button data-go="2" type="button"><span class="rt-flow-num">2</span><span>仿真评估</span></button>
+          <span class="rt-flow-line"></span>
+          <button data-go="3" type="button"><span class="rt-flow-num">3</span><span>比较方案</span></button>
+          <span class="rt-flow-line"></span>
+          <button data-go="4" type="button"><span class="rt-flow-num">4</span><span>确认导出</span></button>
+        </nav>
+        <div id="rt-page" class="rt-page" aria-live="polite"></div>
+      </main>
+    </div>
+    <div id="rt-notice" class="rt-notice" role="status" hidden></div>
+  </div>
+</div>
+
+<style>
+#rt-landscape-preview{--rt-bg:light-dark(#f5f7f5,#141d1a);--rt-panel:light-dark(#ffffff,#1c2722);--rt-text:light-dark(#20352c,#e5eee8);--rt-muted:light-dark(#65766a,#a4b6a9);--rt-border:light-dark(#dfe6df,#34473a);--rt-soft:light-dark(#edf2ed,#24382a);--rt-brand:light-dark(#176b53,#7bc6a4);--rt-on-brand:light-dark(#ffffff,#12291d);--rt-brand-soft:light-dark(#e5f2ea,#254535);--rt-orange:light-dark(#b96013,#ecb16b);--rt-orange-soft:light-dark(#fff2df,#493522);--rt-red:light-dark(#bd5a50,#edaaa2);--rt-blue:light-dark(#407d9b,#90c6df);--rt-blue-soft:light-dark(#e9f2f8,#233d4a);--rt-road:light-dark(#fbfdfb,#16231b);--rt-building:light-dark(#dce4db,#324639);--rt-building-detail:light-dark(#cedace,#405547);--rt-park:light-dark(#cfdfc8,#2c4830);--rt-map-bg:light-dark(#e9eee5,#203126);--rt-shadow:light-dark(#233a2510,#00000025);--rt-radius:12px;--rt-pad:22px;color:var(--rt-text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.55;isolation:isolate}
+#rt-landscape-preview *{box-sizing:border-box}
+#rt-landscape-preview button,#rt-landscape-preview input,#rt-landscape-preview select,#rt-landscape-preview textarea{font:inherit;color:inherit}
+#rt-landscape-preview button{cursor:var(--cursor-interaction,pointer)}
+#rt-landscape-preview button:disabled{cursor:not-allowed;opacity:.5}
+#rt-landscape-preview button:focus-visible,#rt-landscape-preview input:focus-visible,#rt-landscape-preview select:focus-visible,#rt-landscape-preview textarea:focus-visible{outline:2px solid var(--rt-brand);outline-offset:3px}
+#rt-landscape-preview button{border:0;background:none}
+#rt-landscape-preview .rt-app{background:var(--rt-bg);border:1px solid var(--rt-border);border-radius:16px;overflow:clip;position:relative}
+#rt-landscape-preview .rt-header{min-height:65px;display:flex;align-items:center;gap:20px;padding:12px 22px;background:var(--rt-panel);border-bottom:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-logo{display:flex;align-items:center;gap:10px;font-weight:500;font-size:19px;padding:0;letter-spacing:-.5px;white-space:nowrap}
+#rt-landscape-preview .rt-logo-mark{width:31px;height:31px;border-radius:9px;background:var(--rt-brand);color:var(--rt-on-brand);display:grid;place-items:center}
+#rt-landscape-preview .rt-logo-mark svg{width:22px;height:22px}
+#rt-landscape-preview .rt-workspace{border-left:1px solid var(--rt-border);padding-left:20px;color:var(--rt-muted);font-size:12px}
+#rt-landscape-preview .rt-header-end{margin-left:auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+#rt-landscape-preview .rt-prototype{color:var(--rt-muted);background:var(--rt-soft);padding:4px 9px;border-radius:5px;font-size:11px;white-space:nowrap}
+#rt-landscape-preview .rt-user{display:flex;gap:7px;align-items:center;font-size:12px;white-space:nowrap}
+#rt-landscape-preview svg.lucide{width:16px;height:16px;flex:none;vertical-align:middle;stroke-width:1.7}
+#rt-landscape-preview .rt-body{display:grid;grid-template-columns:126px minmax(0,1fr)}
+#rt-landscape-preview .rt-sidebar{padding:24px 12px;display:flex;flex-direction:column;gap:7px;border-right:1px solid var(--rt-border);background:var(--rt-panel)}
+#rt-landscape-preview .rt-nav-caption{font-size:11px;color:var(--rt-muted);padding:0 10px 6px}
+#rt-landscape-preview .rt-sidebar>button{display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border-radius:7px;font-size:12px;white-space:nowrap}
+#rt-landscape-preview .rt-sidebar>button[aria-current="page"]{background:var(--rt-brand-soft);color:var(--rt-brand);font-weight:500}
+#rt-landscape-preview .rt-nav-divider{height:1px;background:var(--rt-border);margin:18px 10px}
+#rt-landscape-preview .rt-project-nav{font-size:11px;padding:7px 9px;line-height:1.9}
+#rt-landscape-preview .rt-project-sub{display:block;color:var(--rt-muted);padding-left:14px}
+#rt-landscape-preview .rt-mini-dot{display:inline-block;width:6px;height:6px;background:var(--rt-orange);border-radius:50%;margin-right:7px}
+#rt-landscape-preview .rt-sidebar-bottom{margin-top:auto;padding:48px 10px 0;color:var(--rt-muted);font-size:11px;display:flex;flex-direction:column;gap:8px}
+#rt-landscape-preview .rt-main{min-width:0;padding:24px}
+#rt-landscape-preview .rt-flow{display:flex;align-items:center;margin-bottom:25px;gap:9px}
+#rt-landscape-preview .rt-flow>button{display:flex;align-items:center;gap:7px;padding:0;font-size:12px;color:var(--rt-muted);white-space:nowrap}
+#rt-landscape-preview .rt-flow-num{display:grid;place-items:center;width:26px;height:26px;flex:none;border-radius:50%;background:var(--rt-panel);border:1px solid var(--rt-border);font-size:11px}
+#rt-landscape-preview .rt-flow-line{height:1px;background:var(--rt-border);min-width:5px;flex:1}
+#rt-landscape-preview .rt-flow button[aria-current="step"]{color:var(--rt-brand);font-weight:500}
+#rt-landscape-preview .rt-flow button[aria-current="step"] .rt-flow-num{background:var(--rt-brand);color:var(--rt-on-brand);border-color:var(--rt-brand)}
+#rt-landscape-preview .rt-flow button.rt-done .rt-flow-num{background:var(--rt-brand-soft);color:var(--rt-brand);border-color:var(--rt-brand-soft)}
+#rt-landscape-preview h1,#rt-landscape-preview h2,#rt-landscape-preview h3,#rt-landscape-preview p{margin:0}
+#rt-landscape-preview h1{font-weight:500;font-size:23px;letter-spacing:-.5px;line-height:1.35}
+#rt-landscape-preview h2{font-weight:500;font-size:16px;line-height:1.4}
+#rt-landscape-preview h3{font-weight:500;font-size:13px}
+#rt-landscape-preview .rt-page-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:20px}
+#rt-landscape-preview .rt-page-heading p{color:var(--rt-muted);font-size:12px;margin-top:5px}
+#rt-landscape-preview .rt-eyebrow{font-size:11px;color:var(--rt-muted);display:block;margin-bottom:7px;letter-spacing:.6px}
+#rt-landscape-preview .rt-status{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border-radius:20px;background:var(--rt-soft);color:var(--rt-muted);padding:5px 10px;font-size:11px}
+#rt-landscape-preview .rt-status.good{color:var(--rt-brand);background:var(--rt-brand-soft)}
+#rt-landscape-preview .rt-status.warn{color:var(--rt-orange);background:var(--rt-orange-soft)}
+#rt-landscape-preview .rt-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--rt-border);border-radius:7px;background:var(--rt-panel);padding:9px 13px;min-height:37px;font-weight:500;font-size:12px;white-space:normal;text-align:center}
+#rt-landscape-preview .rt-button.primary{background:var(--rt-brand);color:var(--rt-on-brand);border-color:var(--rt-brand)}
+#rt-landscape-preview .rt-button.block{width:100%}
+#rt-landscape-preview .rt-button.subtle{border-color:transparent;background:transparent;color:var(--rt-muted)}
+#rt-landscape-preview .rt-button:hover{filter:brightness(.97)}
+#rt-landscape-preview .rt-split{display:grid;grid-template-columns:minmax(0,1fr) 276px;gap:18px;align-items:start}
+#rt-landscape-preview .rt-split.rt-edit{grid-template-columns:minmax(0,1fr) 306px}
+#rt-landscape-preview[data-form-side="left"] .rt-edit{grid-template-columns:306px minmax(0,1fr)}
+#rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-map-column{grid-column:2;grid-row:1}
+#rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-form-panel{grid-column:1;grid-row:1}
+#rt-landscape-preview .rt-panel{background:var(--rt-panel);border:1px solid var(--rt-border);border-radius:var(--rt-radius);padding:var(--rt-pad)}
+#rt-landscape-preview .rt-panel+.rt-panel{margin-top:14px}
+#rt-landscape-preview .rt-muted{color:var(--rt-muted)}
+#rt-landscape-preview .rt-small{font-size:11px}
+#rt-landscape-preview .rt-cta-symbol{width:42px;height:42px;border-radius:12px;background:var(--rt-brand-soft);color:var(--rt-brand);display:grid;place-items:center;margin-bottom:18px}
+#rt-landscape-preview .rt-cta-symbol svg{width:22px;height:22px}
+#rt-landscape-preview .rt-cta p{font-size:12px;color:var(--rt-muted);margin:9px 0 23px}
+#rt-landscape-preview .rt-cta .rt-button+.rt-button{margin-top:5px}
+#rt-landscape-preview .rt-section-title{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
+#rt-landscape-preview .rt-project-item{display:block;text-align:left;width:100%;padding:13px 0;border-bottom:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-project-item:last-child{border:0;padding-bottom:0}
+#rt-landscape-preview .rt-project-item strong{font-size:12px;font-weight:500;display:block;margin-bottom:5px}
+#rt-landscape-preview .rt-project-meta{font-size:11px;display:flex;align-items:center;gap:8px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-project-meta .rt-status{font-size:11px;padding:2px 7px}
+#rt-landscape-preview .rt-map{border:1px solid var(--rt-border);border-radius:var(--rt-radius);overflow:clip;background:var(--rt-panel);min-width:0}
+#rt-landscape-preview .rt-map-toolbar{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;gap:8px;border-bottom:1px solid var(--rt-border);font-size:12px;flex-wrap:wrap}
+#rt-landscape-preview .rt-map-toolbar strong{font-weight:500;display:inline-flex;align-items:center;gap:7px}
+#rt-landscape-preview .rt-map-mode{font-size:11px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-map-surface{position:relative;background:var(--rt-map-bg);height:455px;overflow:clip;container-type:inline-size}
+#rt-landscape-preview .rt-map-surface.compact{height:320px}
+#rt-landscape-preview .rt-map-surface.preview{height:190px}
+#rt-landscape-preview .rt-map-geometry{position:absolute;inset:0;transform-origin:50% 50%;transition:transform .2s ease}
+#rt-landscape-preview .rt-map-art{position:absolute;inset:0;width:100%;height:100%}
+#rt-landscape-preview .rt-map-art .rt-route{fill:none;stroke:var(--rt-blue);stroke-width:3;stroke-dasharray:7 5;vector-effect:non-scaling-stroke}
+#rt-landscape-preview .rt-map-art .rt-queue{fill:none;stroke:var(--rt-red);stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rt-landscape-preview .rt-map-art .rt-workline{stroke:var(--rt-orange);stroke-width:8;stroke-linecap:round;vector-effect:non-scaling-stroke}
+#rt-landscape-preview .rt-map-art .rt-workcaps{stroke:var(--rt-panel);stroke-width:2;vector-effect:non-scaling-stroke}
+#rt-landscape-preview .rt-map-art .rt-trafficline{stroke:var(--rt-brand);stroke-width:3;opacity:.65;vector-effect:non-scaling-stroke}
+#rt-landscape-preview .rt-block{position:absolute;background:var(--rt-building);border:1px solid var(--rt-building-detail);border-radius:3px}
+#rt-landscape-preview .rt-block::after{content:"";position:absolute;inset:6px;border-top:1px solid var(--rt-building-detail);border-left:1px solid var(--rt-building-detail)}
+#rt-landscape-preview .rt-block.park{background:var(--rt-park);border-color:var(--rt-park);border-radius:12px}
+#rt-landscape-preview .rt-block.park::after{border:0}
+#rt-landscape-preview .rt-street-h{position:absolute;left:0;right:0;height:18px;transform:translateY(-50%);background:var(--rt-road);border-top:1px solid var(--rt-border);border-bottom:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-street-v{position:absolute;top:0;bottom:0;width:19px;transform:translateX(-50%);background:var(--rt-road);border-left:1px solid var(--rt-border);border-right:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-road-label{position:absolute;color:var(--rt-muted);font-size:11px;white-space:nowrap;pointer-events:none;text-shadow:0 1px var(--rt-road)}
+#rt-landscape-preview .rt-road-label.horizontal{left:4%;margin-top:5px}
+#rt-landscape-preview .rt-road-label.vertical{top:75%;transform:rotate(-90deg);transform-origin:0 0;margin-left:-7px}
+#rt-landscape-preview .rt-landmark{position:absolute;font-size:11px;color:var(--rt-muted);text-align:center;transform:translate(-50%,-50%);line-height:1.4;pointer-events:none}
+#rt-landscape-preview .rt-map-pill{position:absolute;display:flex;gap:5px;align-items:center;background:var(--rt-panel);border:1px solid var(--rt-border);box-shadow:0 3px 12px var(--rt-shadow);border-radius:6px;padding:6px 9px;font-size:11px;white-space:nowrap;z-index:2}
+#rt-landscape-preview .rt-map-pill.works{left:38%;top:57%;color:var(--rt-orange)}
+#rt-landscape-preview .rt-map-pill.queue{right:5%;top:43%;color:var(--rt-red)}
+#rt-landscape-preview .rt-map-pill.detour{left:31%;top:25%;color:var(--rt-blue)}
+#rt-landscape-preview .rt-map-pin{position:absolute;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:var(--rt-orange);color:var(--rt-panel);font-size:11px;font-weight:500;box-shadow:0 0 0 4px var(--rt-orange-soft);transform:translate(-50%,-50%);z-index:2}
+#rt-landscape-preview .rt-map-pin.secondary{background:var(--rt-blue);box-shadow:0 0 0 4px var(--rt-blue-soft)}
+#rt-landscape-preview .rt-vms{position:absolute;transform:translate(-50%,-50%);background:var(--rt-text);color:var(--rt-panel);padding:2px 5px;border-radius:3px;font-size:11px;font-weight:500;letter-spacing:.3px;z-index:2}
+#rt-landscape-preview .rt-map-schematic{position:absolute;bottom:10px;left:11px;background:var(--rt-panel);color:var(--rt-muted);border-radius:4px;padding:3px 6px;font-size:11px}
+#rt-landscape-preview .rt-map-zoom{position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:1px;border:1px solid var(--rt-border);border-radius:6px;overflow:clip;background:var(--rt-border);z-index:3}
+#rt-landscape-preview .rt-map-zoom button{background:var(--rt-panel);width:30px;height:29px;display:grid;place-items:center}
+#rt-landscape-preview .rt-map-legend{display:flex;gap:14px;align-items:center;padding:10px 13px;font-size:11px;color:var(--rt-muted);flex-wrap:wrap}
+#rt-landscape-preview .rt-map-legend>span{display:inline-flex;align-items:center;gap:6px}
+#rt-landscape-preview .rt-swatch{width:15px;height:3px;border-radius:2px;background:var(--rt-orange)}
+#rt-landscape-preview .rt-swatch.blue{background:var(--rt-blue)}
+#rt-landscape-preview .rt-swatch.red{background:var(--rt-red)}
+#rt-landscape-preview .rt-map-hint{display:flex;gap:8px;align-items:center;margin-top:11px;color:var(--rt-muted);font-size:11px}
+#rt-landscape-preview .rt-selection-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;background:var(--rt-panel);border:1px solid var(--rt-border);padding:12px 15px;border-radius:9px;margin-top:12px;font-size:11px;flex-wrap:wrap}
+#rt-landscape-preview .rt-form-panel{padding:0}
+#rt-landscape-preview .rt-form-head{padding:18px 18px 0}
+#rt-landscape-preview .rt-form-tabs{display:flex;gap:20px;border-bottom:1px solid var(--rt-border);margin-top:14px}
+#rt-landscape-preview .rt-form-tabs button{font-size:12px;padding:0 0 11px;color:var(--rt-muted);border-bottom:2px solid transparent}
+#rt-landscape-preview .rt-form-tabs button[aria-selected="true"]{color:var(--rt-brand);border-bottom-color:var(--rt-brand)}
+#rt-landscape-preview .rt-form-content{padding:17px 18px;min-height:397px}
+#rt-landscape-preview .rt-field{display:block;margin-bottom:14px;font-size:11px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-field>span{display:block;margin-bottom:6px}
+#rt-landscape-preview .rt-field input,#rt-landscape-preview .rt-field select,#rt-landscape-preview .rt-field textarea{width:100%;background:var(--rt-panel);color:var(--rt-text);padding:9px 10px;border:1px solid var(--rt-border);border-radius:6px;min-width:0;font-size:12px}
+#rt-landscape-preview .rt-field textarea{resize:vertical;min-height:70px}
+#rt-landscape-preview .rt-fields-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#rt-landscape-preview .rt-check{display:flex;align-items:flex-start;gap:8px;font-size:12px;margin:9px 0;color:var(--rt-text)}
+#rt-landscape-preview .rt-check input{accent-color:var(--rt-brand);margin:4px 0 0}
+#rt-landscape-preview .rt-form-footer{padding:15px 18px;border-top:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-form-footer>span{display:block;text-align:center;font-size:11px;color:var(--rt-muted);margin-top:9px}
+#rt-landscape-preview .rt-equipment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid var(--rt-border);font-size:12px}
+#rt-landscape-preview .rt-equipment-row strong{font-weight:500}
+#rt-landscape-preview .rt-equipment-icon{width:30px;height:30px;background:var(--rt-soft);border-radius:7px;display:grid;place-items:center;margin-right:8px}
+#rt-landscape-preview .rt-equipment-label{display:flex;align-items:center}
+#rt-landscape-preview .rt-inline-note{padding:11px 12px;border-radius:7px;background:var(--rt-soft);font-size:11px;color:var(--rt-muted);margin-top:13px}
+#rt-landscape-preview .rt-run-top{background:var(--rt-brand-soft);border-radius:9px;padding:14px 17px;display:flex;align-items:center;gap:12px;margin-bottom:17px}
+#rt-landscape-preview .rt-run-top>svg{color:var(--rt-brand);width:22px;height:22px}
+#rt-landscape-preview .rt-run-top strong{font-weight:500;display:block;font-size:13px}
+#rt-landscape-preview .rt-run-top small{font-size:11px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-run-top .rt-status{margin-left:auto;background:var(--rt-panel)}
+#rt-landscape-preview .rt-toggle{display:inline-flex;border:1px solid var(--rt-border);border-radius:6px;overflow:clip;background:var(--rt-panel)}
+#rt-landscape-preview .rt-toggle button{padding:6px 10px;font-size:11px;white-space:nowrap}
+#rt-landscape-preview .rt-toggle button[aria-pressed="true"]{background:var(--rt-brand);color:var(--rt-on-brand)}
+#rt-landscape-preview .rt-replay{display:flex;gap:12px;align-items:center;padding:13px;border-top:1px solid var(--rt-border);flex-wrap:wrap}
+#rt-landscape-preview .rt-replay input{flex:1;min-width:90px;accent-color:var(--rt-brand)}
+#rt-landscape-preview .rt-replay-time{font-size:11px;font-variant-numeric:tabular-nums}
+#rt-landscape-preview .rt-run-row{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:12px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-run-row>svg{color:var(--rt-brand)}
+#rt-landscape-preview .rt-run-row>span:last-child{margin-left:auto;font-size:11px}
+#rt-landscape-preview .rt-metric{padding:14px 0;border-bottom:1px solid var(--rt-border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+#rt-landscape-preview .rt-metric:last-of-type{border-bottom:0}
+#rt-landscape-preview .rt-metric span{color:var(--rt-muted);font-size:12px}
+#rt-landscape-preview .rt-metric strong{font-size:22px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+#rt-landscape-preview .rt-metric strong small{font-size:11px;color:var(--rt-muted);margin-left:3px}
+#rt-landscape-preview .rt-bottom-actions{margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#rt-landscape-preview .rt-bottom-actions .rt-button.primary{margin-left:auto}
+#rt-landscape-preview .rt-recommendation{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:19px 21px;background:var(--rt-brand-soft);border-radius:var(--rt-radius);margin-bottom:20px}
+#rt-landscape-preview .rt-recommendation-title{display:flex;gap:9px;align-items:center;font-weight:500;font-size:16px}
+#rt-landscape-preview .rt-recommendation-title svg{color:var(--rt-brand);width:20px;height:20px}
+#rt-landscape-preview .rt-recommendation p{font-size:12px;color:var(--rt-muted);margin-top:6px}
+#rt-landscape-preview .rt-recommendation-number{font-size:27px;font-weight:500;white-space:nowrap;letter-spacing:-.8px;text-align:right;font-variant-numeric:tabular-nums}
+#rt-landscape-preview .rt-recommendation-number small{font-size:11px;display:block;letter-spacing:0;color:var(--rt-muted)}
+#rt-landscape-preview .rt-comparison{background:var(--rt-panel);border:1px solid var(--rt-border);border-radius:var(--rt-radius);overflow:clip}
+#rt-landscape-preview .rt-comparison table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+#rt-landscape-preview .rt-comparison th,#rt-landscape-preview .rt-comparison td{text-align:center;padding:15px 9px;border-bottom:1px solid var(--rt-border);font-weight:400;vertical-align:middle;overflow-wrap:anywhere}
+#rt-landscape-preview .rt-comparison th:first-child,#rt-landscape-preview .rt-comparison td:first-child{text-align:left;padding-left:19px;width:27%;color:var(--rt-muted)}
+#rt-landscape-preview .rt-comparison th{padding-top:20px;padding-bottom:18px}
+#rt-landscape-preview .rt-comparison th strong{display:block;font-weight:500;font-size:14px;color:var(--rt-text);margin:6px 0}
+#rt-landscape-preview .rt-comparison th small{display:block;color:var(--rt-muted);font-size:11px}
+#rt-landscape-preview .rt-comparison .rt-recommended-col{background:var(--rt-brand-soft)}
+#rt-landscape-preview .rt-comparison .rt-numeric{font-size:17px;font-variant-numeric:tabular-nums;font-weight:500}
+#rt-landscape-preview .rt-comparison td small{font-size:11px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-comparison tr:last-child td{border-bottom:0}
+#rt-landscape-preview .rt-comparison-foot{padding:11px 16px;color:var(--rt-muted);font-size:11px;border-top:1px solid var(--rt-border);background:var(--rt-panel)}
+#rt-landscape-preview .rt-option-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+#rt-landscape-preview .rt-option{padding:19px;background:var(--rt-panel);border:1px solid var(--rt-border);border-radius:var(--rt-radius)}
+#rt-landscape-preview .rt-option.recommended{background:var(--rt-brand-soft)}
+#rt-landscape-preview .rt-option h3{font-size:15px;margin:9px 0 4px}
+#rt-landscape-preview .rt-option p{font-size:11px;color:var(--rt-muted);min-height:36px}
+#rt-landscape-preview .rt-option dl{margin:18px 0}
+#rt-landscape-preview .rt-option dl>div{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:7px 0}
+#rt-landscape-preview .rt-option dt{color:var(--rt-muted)}
+#rt-landscape-preview .rt-option dd{margin:0;font-variant-numeric:tabular-nums}
+#rt-landscape-preview .rt-explanation{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:17px}
+#rt-landscape-preview .rt-explanation .rt-panel{padding:18px;margin:0}
+#rt-landscape-preview .rt-change-list{padding:0;list-style:none;margin:12px 0 0;display:grid;gap:9px;font-size:12px}
+#rt-landscape-preview .rt-change-list li{display:flex;gap:7px;align-items:flex-start}
+#rt-landscape-preview .rt-change-list svg{color:var(--rt-brand);margin-top:1px}
+#rt-landscape-preview .rt-cost-trade{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12px}
+#rt-landscape-preview .rt-cost-trade strong{font-size:23px;font-weight:500;white-space:nowrap}
+#rt-landscape-preview details.rt-evidence{margin-top:15px;color:var(--rt-muted);font-size:11px}
+#rt-landscape-preview details.rt-evidence summary{cursor:var(--cursor-interaction,pointer);padding:7px 0}
+#rt-landscape-preview details.rt-evidence p{padding:7px 0}
+#rt-landscape-preview .rt-export-grid{display:grid;grid-template-columns:minmax(0,1fr) 253px;gap:20px;align-items:start}
+#rt-landscape-preview .rt-paper-wrap{padding:21px;background:var(--rt-soft);border:1px solid var(--rt-border);border-radius:var(--rt-radius)}
+#rt-landscape-preview .rt-paper{background:var(--rt-panel);padding:26px;border:1px solid var(--rt-border);box-shadow:0 4px 14px var(--rt-shadow)}
+#rt-landscape-preview .rt-paper-brand{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--rt-muted);border-bottom:2px solid var(--rt-brand);padding-bottom:14px;margin-bottom:20px}
+#rt-landscape-preview .rt-paper-brand strong{font-size:14px;font-weight:500;color:var(--rt-brand)}
+#rt-landscape-preview .rt-paper h2{font-size:20px;margin:5px 0 8px}
+#rt-landscape-preview .rt-paper .rt-map{margin:20px 0 16px}
+#rt-landscape-preview .rt-paper .rt-map-surface{height:185px}
+#rt-landscape-preview .rt-paper .rt-map-legend,#rt-landscape-preview .rt-paper .rt-map-toolbar{font-size:11px;padding:7px 9px}
+#rt-landscape-preview .rt-paper .rt-map-zoom,#rt-landscape-preview .rt-paper .rt-road-label.vertical,#rt-landscape-preview .rt-paper .rt-landmark,#rt-landscape-preview .rt-paper .rt-map-pill.queue,#rt-landscape-preview .rt-paper .rt-map-pill.detour,#rt-landscape-preview .rt-paper .rt-map-pin.secondary{display:none}
+#rt-landscape-preview .rt-paper .rt-map-pill.works{font-size:11px;padding:3px 6px;left:33%;top:59%}
+#rt-landscape-preview .rt-paper .rt-map-schematic{font-size:11px;bottom:5px;left:5px}
+#rt-landscape-preview .rt-paper-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 0 17px;border-bottom:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-paper-stats span{font-size:11px;color:var(--rt-muted);display:block}
+#rt-landscape-preview .rt-paper-stats strong{font-size:20px;font-weight:500;display:block;margin-top:4px;font-variant-numeric:tabular-nums}
+#rt-landscape-preview .rt-paper-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+#rt-landscape-preview .rt-paper-table td{padding:7px 0;border-bottom:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-paper-table td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+#rt-landscape-preview .rt-paper-table td:nth-child(2){text-align:center;color:var(--rt-muted)}
+#rt-landscape-preview .rt-paper-foot{font-size:11px;color:var(--rt-muted);margin-top:17px;display:flex;justify-content:space-between;gap:10px}
+#rt-landscape-preview .rt-export-list{display:grid;gap:2px;margin:15px 0}
+#rt-landscape-preview .rt-export-list .rt-check{gap:9px}
+#rt-landscape-preview .rt-export-list small{display:block;color:var(--rt-muted);font-size:11px}
+#rt-landscape-preview .rt-notice{position:absolute;left:145px;right:20px;bottom:18px;z-index:10;background:var(--rt-text);color:var(--rt-panel);padding:13px 16px;border-radius:9px;box-shadow:0 4px 16px var(--rt-shadow);font-size:12px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+#rt-landscape-preview .rt-notice[hidden]{display:none}
+#rt-landscape-preview .rt-notice button{color:inherit;padding:2px;font-size:12px;white-space:nowrap}
+#rt-landscape-preview .rt-export-confirm{background:var(--rt-brand-soft);padding:12px;border-radius:7px;margin-top:12px;color:var(--rt-brand);font-size:12px}
+#rt-landscape-preview .rt-mobile-compare{display:none}
+@container (max-width: 350px){#rt-landscape-preview .rt-landmark,#rt-landscape-preview .rt-map-pill.queue{display:none}#rt-landscape-preview .rt-road-label.vertical:nth-of-type(even){display:none}#rt-landscape-preview .rt-map-pill.detour{left:21%;font-size:11px}#rt-landscape-preview .rt-map-pill.works{left:27%}}
+@media (max-width:900px){#rt-landscape-preview .rt-body{grid-template-columns:91px minmax(0,1fr)}#rt-landscape-preview .rt-sidebar{padding:23px 7px}#rt-landscape-preview .rt-sidebar>button{flex-direction:column;gap:4px;padding:9px 4px;font-size:11px}#rt-landscape-preview .rt-nav-caption{padding:0 3px 5px;text-align:center}#rt-landscape-preview .rt-project-nav{padding:7px 0;font-size:11px}#rt-landscape-preview .rt-sidebar-bottom{padding-left:3px;padding-right:3px;font-size:11px}#rt-landscape-preview .rt-main{padding:20px}#rt-landscape-preview .rt-flow{gap:5px}#rt-landscape-preview .rt-flow>button{gap:5px;font-size:11px}#rt-landscape-preview .rt-flow-num{width:23px;height:23px}#rt-landscape-preview .rt-split{grid-template-columns:minmax(0,1fr) 242px;gap:14px}#rt-landscape-preview .rt-split.rt-edit{grid-template-columns:minmax(0,1fr) 280px}#rt-landscape-preview[data-form-side="left"] .rt-edit{grid-template-columns:280px minmax(0,1fr)}#rt-landscape-preview .rt-export-grid{grid-template-columns:minmax(0,1fr) 230px;gap:14px}#rt-landscape-preview .rt-paper-wrap{padding:12px}#rt-landscape-preview .rt-paper{padding:19px}#rt-landscape-preview .rt-header{gap:14px}#rt-landscape-preview .rt-workspace{font-size:11px;padding-left:14px}}
+@media (max-width:740px){#rt-landscape-preview .rt-body{grid-template-columns:minmax(0,1fr)}#rt-landscape-preview .rt-sidebar{display:none}#rt-landscape-preview .rt-header{padding:12px 17px}#rt-landscape-preview .rt-workspace,#rt-landscape-preview .rt-user{display:none}#rt-landscape-preview .rt-main{padding:18px}#rt-landscape-preview .rt-flow{gap:7px}#rt-landscape-preview .rt-flow>button{font-size:12px}#rt-landscape-preview .rt-split,#rt-landscape-preview .rt-split.rt-edit,#rt-landscape-preview[data-form-side="left"] .rt-edit,#rt-landscape-preview .rt-export-grid{grid-template-columns:minmax(0,1fr)}#rt-landscape-preview .rt-split>.rt-side{display:grid;grid-template-columns:1fr 1fr;gap:14px}#rt-landscape-preview .rt-split>.rt-side>.rt-panel{margin:0}#rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-map-column,#rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-form-panel{grid-column:auto;grid-row:auto}#rt-landscape-preview .rt-map-surface{height:360px}#rt-landscape-preview .rt-form-content{min-height:0}#rt-landscape-preview .rt-form-content .rt-fields-row{gap:15px}#rt-landscape-preview .rt-form-panel{order:-1}#rt-landscape-preview .rt-export-side{order:-1}#rt-landscape-preview .rt-export-side .rt-panel{padding:17px}#rt-landscape-preview .rt-export-list{grid-template-columns:1fr 1fr}#rt-landscape-preview .rt-export-side .rt-field{margin-bottom:10px}#rt-landscape-preview .rt-notice{left:18px}#rt-landscape-preview .rt-page-heading h1{font-size:21px}}
+@media (max-width:490px){#rt-landscape-preview .rt-header{gap:8px;padding:12px}#rt-landscape-preview .rt-logo{font-size:17px;gap:7px}#rt-landscape-preview .rt-prototype{font-size:11px;padding:4px 5px}#rt-landscape-preview .rt-main{padding:14px}#rt-landscape-preview .rt-flow{gap:4px;margin-bottom:22px}#rt-landscape-preview .rt-flow>button{flex-direction:column;gap:4px;font-size:11px;white-space:normal;text-align:center;min-width:42px}#rt-landscape-preview .rt-flow-line{align-self:flex-start;margin-top:12px}#rt-landscape-preview .rt-page-heading{align-items:flex-start}#rt-landscape-preview .rt-page-heading h1{font-size:20px}#rt-landscape-preview .rt-page-heading>.rt-status{font-size:11px;padding:4px 7px}#rt-landscape-preview .rt-split>.rt-side{display:block}#rt-landscape-preview .rt-split>.rt-side>.rt-panel+.rt-panel{margin-top:13px}#rt-landscape-preview .rt-map-surface{height:330px}#rt-landscape-preview .rt-map-toolbar{padding:11px}#rt-landscape-preview .rt-map-mode{font-size:11px}#rt-landscape-preview .rt-run-top{padding:12px;gap:8px;align-items:flex-start}#rt-landscape-preview .rt-run-top .rt-status{display:none}#rt-landscape-preview .rt-recommendation{padding:16px;align-items:flex-start;gap:12px}#rt-landscape-preview .rt-recommendation-title{font-size:14px;align-items:flex-start}#rt-landscape-preview .rt-recommendation-number{font-size:23px}#rt-landscape-preview .rt-recommendation-number small{max-width:75px;font-size:11px}#rt-landscape-preview .rt-explanation{grid-template-columns:1fr;gap:13px}#rt-landscape-preview .rt-comparison{display:none}#rt-landscape-preview .rt-mobile-compare{display:block}#rt-landscape-preview .rt-option-cards{grid-template-columns:1fr}#rt-landscape-preview .rt-option dl{margin:10px 0}#rt-landscape-preview .rt-option p{min-height:0}#rt-landscape-preview .rt-paper-wrap{padding:10px}#rt-landscape-preview .rt-paper{padding:15px}#rt-landscape-preview .rt-paper h2{font-size:19px}#rt-landscape-preview .rt-paper-stats{gap:8px}#rt-landscape-preview .rt-paper-stats strong{font-size:18px}#rt-landscape-preview .rt-paper .rt-map-legend{gap:8px}#rt-landscape-preview .rt-form-content{padding:15px}#rt-landscape-preview .rt-field input,#rt-landscape-preview .rt-field select,#rt-landscape-preview .rt-field textarea{font-size:16px}#rt-landscape-preview .rt-fields-row{grid-template-columns:1fr}#rt-landscape-preview .rt-flow button{min-height:44px}#rt-landscape-preview .rt-export-list{grid-template-columns:1fr}#rt-landscape-preview .rt-notice{left:12px;right:12px;bottom:12px}}
+@media (prefers-reduced-motion:reduce){#rt-landscape-preview .rt-map-geometry{transition:none}}
+@media (max-width:490px){#rt-landscape-preview .rt-recommendation{flex-direction:column}#rt-landscape-preview .rt-recommendation-number{display:flex;align-items:baseline;gap:10px;text-align:left}#rt-landscape-preview .rt-recommendation-number small{max-width:none;white-space:normal}}
+#rt-landscape-preview .rt-body{grid-template-columns:minmax(0,1fr)}
+#rt-landscape-preview .rt-sidebar{display:none}
+#rt-landscape-preview .rt-header{min-height:53px;padding:10px 20px}
+#rt-landscape-preview .rt-main{padding:16px 20px 14px}
+#rt-landscape-preview .rt-flow{margin-bottom:16px;gap:12px}
+#rt-landscape-preview .rt-page-heading{margin-bottom:14px}
+#rt-landscape-preview .rt-page-heading h1{font-size:21px}
+#rt-landscape-preview .rt-split{grid-template-columns:minmax(0,1fr) 280px;gap:16px}
+#rt-landscape-preview .rt-split.rt-edit{grid-template-columns:minmax(0,1fr) 306px;align-items:stretch}
+#rt-landscape-preview[data-form-side="left"] .rt-edit{grid-template-columns:306px minmax(0,1fr)}
+#rt-landscape-preview .rt-map-surface{height:300px}
+#rt-landscape-preview .rt-map-surface.compact{height:260px}
+#rt-landscape-preview .rt-map-toolbar{padding:10px 13px}
+#rt-landscape-preview .rt-map-legend{padding:9px 12px}
+#rt-landscape-preview .rt-map-hint{margin-top:8px}
+#rt-landscape-preview .rt-form-panel{display:flex;flex-direction:column;order:0}
+#rt-landscape-preview .rt-form-head{padding:14px 16px 0}
+#rt-landscape-preview .rt-form-head h2{font-size:15px}
+#rt-landscape-preview .rt-form-tabs{margin-top:9px;gap:18px}
+#rt-landscape-preview .rt-form-tabs button{padding-bottom:8px}
+#rt-landscape-preview .rt-form-content{padding:13px 16px;min-height:0;flex:1}
+#rt-landscape-preview .rt-field{margin-bottom:10px}
+#rt-landscape-preview .rt-field>span{margin-bottom:4px}
+#rt-landscape-preview .rt-field input,#rt-landscape-preview .rt-field select{padding:7px 8px;font-size:12px;min-height:34px}
+#rt-landscape-preview .rt-form-content .rt-fields-row{gap:9px}
+#rt-landscape-preview .rt-form-note{border-top:1px solid var(--rt-border);padding:10px 16px;font-size:11px;color:var(--rt-muted);display:flex;gap:7px;align-items:center}
+#rt-landscape-preview .rt-inline-note{margin-top:8px;padding:9px 10px}
+#rt-landscape-preview .rt-equipment-row{padding:7px 0}
+#rt-landscape-preview .rt-equipment-icon{height:25px;width:25px}
+#rt-landscape-preview .rt-equipment-budget{margin-top:12px}
+#rt-landscape-preview .rt-selection-strip{margin-top:10px;padding:9px 12px}
+#rt-landscape-preview .rt-action-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--rt-border)}
+#rt-landscape-preview .rt-action-note{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--rt-muted)}
+#rt-landscape-preview .rt-action-bar .primary{margin-left:auto;min-width:178px}
+#rt-landscape-preview .rt-run-top{padding:10px 14px;margin-bottom:12px}
+#rt-landscape-preview .rt-section-title{margin-bottom:10px}
+#rt-landscape-preview .rt-metric{padding:10px 0}
+#rt-landscape-preview .rt-run-row{padding:6px 0}
+#rt-landscape-preview .rt-replay{padding:9px 11px}
+#rt-landscape-preview .rt-cta-symbol{display:none}
+#rt-landscape-preview .rt-cta p{margin:8px 0 13px}
+#rt-landscape-preview .rt-project-item{padding:9px 0}
+#rt-landscape-preview .rt-panel{padding:16px}
+#rt-landscape-preview .rt-form-panel{padding:0}
+#rt-landscape-preview .rt-panel+.rt-panel{margin-top:12px}
+#rt-landscape-preview .rt-compare-workspace{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px;align-items:start}
+#rt-landscape-preview .rt-comparison th,#rt-landscape-preview .rt-comparison td{padding:10px 8px}
+#rt-landscape-preview .rt-comparison th{padding-top:14px;padding-bottom:14px}
+#rt-landscape-preview .rt-comparison th:first-child,#rt-landscape-preview .rt-comparison td:first-child{padding-left:14px;width:25%}
+#rt-landscape-preview .rt-comparison th strong{font-size:13px}
+#rt-landscape-preview .rt-comparison td svg{margin-right:4px}
+#rt-landscape-preview .rt-comparison-foot{padding:9px 12px}
+#rt-landscape-preview .rt-insights{display:grid;gap:12px}
+#rt-landscape-preview .rt-insights .rt-recommendation{display:block;padding:16px;margin:0}
+#rt-landscape-preview .rt-insights .rt-recommendation-title{font-size:14px;align-items:flex-start}
+#rt-landscape-preview .rt-insights .rt-recommendation-number{margin-top:14px;text-align:left;font-size:27px;white-space:normal}
+#rt-landscape-preview .rt-insights .rt-recommendation-number small{max-width:none;white-space:normal}
+#rt-landscape-preview .rt-insights .rt-cost-trade{margin-top:9px;gap:8px;align-items:baseline;flex-wrap:wrap}
+#rt-landscape-preview .rt-insights .rt-cost-trade strong{font-size:22px}
+#rt-landscape-preview .rt-insights .rt-cost-trade span{font-size:11px}
+#rt-landscape-preview .rt-insights .rt-change-list{font-size:11px;margin:10px 0 0;gap:7px}
+#rt-landscape-preview .rt-insights .rt-evidence{margin-top:0}
+#rt-landscape-preview .rt-option{padding:12px}
+#rt-landscape-preview .rt-option-cards{gap:9px}
+#rt-landscape-preview .rt-option dl>div{display:block;padding:5px 0}
+#rt-landscape-preview .rt-option dd{margin-top:2px}
+#rt-landscape-preview .rt-export-grid{grid-template-columns:minmax(0,1fr) 280px;gap:16px}
+#rt-landscape-preview .rt-export-side{order:0}
+#rt-landscape-preview .rt-paper-wrap{padding:14px}
+#rt-landscape-preview .rt-paper{padding:20px}
+#rt-landscape-preview .rt-paper .rt-map-surface{height:165px}
+#rt-landscape-preview .rt-paper-table td{padding:6px 0}
+#rt-landscape-preview .rt-paper-stats{margin:12px 0;padding:11px 0}
+#rt-landscape-preview .rt-paper h2{font-size:19px}
+#rt-landscape-preview .rt-paper-foot{margin-top:15px}
+#rt-landscape-preview .rt-export-list{display:block;margin:13px 0}
+#rt-landscape-preview .rt-export-list .rt-check{margin:10px 0}
+#rt-landscape-preview .rt-notice{left:20px}
+@media (min-width:641px) and (max-width:900px){
+  #rt-landscape-preview .rt-main{padding:14px}
+  #rt-landscape-preview .rt-workspace{display:none}
+  #rt-landscape-preview .rt-flow{gap:8px}
+  #rt-landscape-preview .rt-flow>button{font-size:11px;gap:5px}
+  #rt-landscape-preview .rt-split,#rt-landscape-preview .rt-split.rt-edit{grid-template-columns:minmax(0,1fr) 280px;gap:14px}
+  #rt-landscape-preview[data-form-side="left"] .rt-edit{grid-template-columns:280px minmax(0,1fr)}
+  #rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-map-column{grid-column:2;grid-row:1}
+  #rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-form-panel{grid-column:1;grid-row:1}
+  #rt-landscape-preview .rt-split>.rt-side{display:block}
+  #rt-landscape-preview .rt-split>.rt-side>.rt-panel+.rt-panel{margin-top:12px}
+  #rt-landscape-preview .rt-compare-workspace{grid-template-columns:minmax(0,1fr) 190px;gap:12px}
+  #rt-landscape-preview .rt-comparison th,#rt-landscape-preview .rt-comparison td{padding:9px 5px}
+  #rt-landscape-preview .rt-comparison th:first-child,#rt-landscape-preview .rt-comparison td:first-child{padding-left:10px}
+  #rt-landscape-preview .rt-comparison .rt-numeric{font-size:15px}
+  #rt-landscape-preview .rt-insights .rt-panel,#rt-landscape-preview .rt-insights .rt-recommendation{padding:13px}
+  #rt-landscape-preview .rt-export-grid{grid-template-columns:minmax(0,1fr) 250px;gap:14px}
+  #rt-landscape-preview .rt-paper-wrap{padding:9px}
+  #rt-landscape-preview .rt-paper{padding:14px}
+}
+@media (max-width:640px){
+  #rt-landscape-preview .rt-workspace,#rt-landscape-preview .rt-user{display:none}
+  #rt-landscape-preview .rt-header{padding:12px}
+  #rt-landscape-preview .rt-main{padding:14px}
+  #rt-landscape-preview .rt-flow{gap:4px}
+  #rt-landscape-preview .rt-flow>button{flex-direction:column;gap:4px;font-size:11px;white-space:normal;text-align:center;min-width:42px;min-height:44px}
+  #rt-landscape-preview .rt-flow-line{align-self:flex-start;margin-top:12px}
+  #rt-landscape-preview .rt-split,#rt-landscape-preview .rt-split.rt-edit,#rt-landscape-preview[data-form-side="left"] .rt-edit,#rt-landscape-preview .rt-export-grid,#rt-landscape-preview .rt-compare-workspace{grid-template-columns:minmax(0,1fr)}
+  #rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-map-column,#rt-landscape-preview[data-form-side="left"] .rt-edit>.rt-form-panel{grid-column:auto;grid-row:auto}
+  #rt-landscape-preview .rt-form-panel,#rt-landscape-preview .rt-export-side{order:0}
+  #rt-landscape-preview .rt-map-surface{height:285px}
+  #rt-landscape-preview .rt-insights{grid-row:1}
+  #rt-landscape-preview .rt-action-bar .primary{min-width:0;width:100%}
+  #rt-landscape-preview .rt-field input,#rt-landscape-preview .rt-field select{font-size:16px}
+  #rt-landscape-preview .rt-fields-row{grid-template-columns:minmax(0,1fr)}
+  #rt-landscape-preview .rt-comparison{display:none}
+  #rt-landscape-preview .rt-mobile-compare{display:block}
+  #rt-landscape-preview .rt-option-cards{grid-template-columns:minmax(0,1fr)}
+  #rt-landscape-preview .rt-option dl>div{display:flex;justify-content:space-between}
+}
+
+@media (min-width:641px){
+  #rt-landscape-preview[data-view="3"] .rt-page{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:14px}
+  #rt-landscape-preview[data-view="3"] .rt-page-heading{grid-column:1/-1;margin-bottom:0}
+  #rt-landscape-preview[data-view="3"] .rt-comparison,#rt-landscape-preview[data-view="3"] .rt-page>.rt-option-cards{grid-column:1;grid-row:2/5;align-self:start}
+  #rt-landscape-preview[data-view="3"] .rt-recommendation{grid-column:2;grid-row:2;display:block;padding:15px;margin:0}
+  #rt-landscape-preview[data-view="3"] .rt-recommendation-title{font-size:14px;align-items:flex-start}
+  #rt-landscape-preview[data-view="3"] .rt-recommendation-number{text-align:left;font-size:25px;margin-top:10px}
+  #rt-landscape-preview[data-view="3"] .rt-explanation{grid-column:2;grid-row:3;display:block;margin:0}
+  #rt-landscape-preview[data-view="3"] .rt-explanation .rt-panel{padding:14px}
+  #rt-landscape-preview[data-view="3"] .rt-explanation .rt-panel+.rt-panel{margin-top:12px}
+  #rt-landscape-preview[data-view="3"] .rt-change-list{font-size:11px;gap:7px}
+  #rt-landscape-preview[data-view="3"] .rt-cost-trade{flex-wrap:wrap;gap:5px}
+  #rt-landscape-preview[data-view="3"] .rt-cost-trade strong{font-size:21px}
+  #rt-landscape-preview[data-view="3"] .rt-cost-trade span{font-size:11px}
+  #rt-landscape-preview[data-view="3"] .rt-evidence{grid-column:1;grid-row:4;margin:0;align-self:end}
+  #rt-landscape-preview[data-view="3"] .rt-bottom-actions{grid-column:1/-1;grid-row:5;margin:0}
+}
+@media (min-width:641px) and (max-width:900px){
+  #rt-landscape-preview[data-view="3"] .rt-page{grid-template-columns:minmax(0,1fr) 190px;gap:12px}
+}
+
+</style>
+
+<script>
+(() => {
+  const root = document.getElementById('rt-landscape-preview');
+  const page = root.querySelector('#rt-page');
+  const defaults = {view:1, formTab:'work', selected:'B', replay:'original', minute:15, zoom:1, street:'Lonsdale St', closure:'1', start:'2026-10-05', end:'2026-10-09', from:'07:00', to:'19:00', footpath:true, transit:true, budget:'3500', reason:'综合考虑交通改善与设备投入，选用方案 B。', exported:false};
+  const design = {formSide:'right', compareView:'table', density:'comfortable'};
+  let state = {...defaults};
+  const options = {
+    original:{name:'原方案',short:'原方案',description:'现有设备与引导配置',delay:'3.8',queue:'680',transit:'2.9',cost:2800,vms:1},
+    A:{name:'方案 A',short:'方案 A',description:'调整现有 VMS 位置',delay:'3.1',queue:'510',transit:'2.4',cost:2800,vms:1},
+    B:{name:'方案 B',short:'方案 B',description:'增加上游 VMS 引导',delay:'2.1',queue:'340',transit:'1.7',cost:3200,vms:2}
+  };
+  const icon = name => '<i data-lucide="'+name+'" aria-hidden="true"></i>';
+  const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const money = value => '$'+value.toLocaleString('en-AU');
+  const button = (label,go,primary=false) => '<button class="rt-button '+(primary?'primary':'')+'" data-go="'+go+'" type="button">'+label+(primary?icon('arrow-right'):'')+'</button>';
+  function restore(snapshot) {
+    if (!snapshot || typeof snapshot!=='object') return;
+    const incoming = snapshot.privateContent?.state;
+    if (incoming && typeof incoming==='object') {
+      for(const key of Object.keys(defaults)) if(typeof incoming[key]===typeof defaults[key]) state[key]=incoming[key];
+    }
+    const incomingDesign=snapshot.privateContent?.design;
+    if(incomingDesign && ['left','right'].includes(incomingDesign.formSide)) design.formSide=incomingDesign.formSide;
+    if(incomingDesign && ['table','cards'].includes(incomingDesign.compareView)) design.compareView=incomingDesign.compareView;
+    if(incomingDesign && ['comfortable','compact'].includes(incomingDesign.density)) design.density=incomingDesign.density;
+    if(!Number.isInteger(state.view)||state.view<0||state.view>4) state.view=0;
+    if(!options[state.selected]) state.selected='B';
+    if(!['original','B'].includes(state.replay)) state.replay='original';
+    state.minute=Math.max(0,Math.min(60,state.minute));
+    state.zoom=Math.max(1,Math.min(1.5,state.zoom));
+  }
+  restore(window.openai?.widgetState);
+  function persist() {
+    if(window.openai?.setWidgetState) window.openai.setWidgetState({modelContent:{page:['路网总览','配置施工','仿真评估','比较方案','确认导出'][state.view],selectedOption:state.selected,design:{...design}},privateContent:{state:{...state},design:{...design}}}).catch(()=>{});
+  }
+  function icons() {if(globalThis.lucide) globalThis.lucide.createIcons({attrs:{width:16,height:16}});}
+  function map(mode='home',compact=false) {
+    const xs=[12,27,43,59,75,90], ys=[14,33,53,73,91];
+    const xEdges=[-3,...xs,105], yEdges=[-8,...ys,110];
+    let blocks='';
+    for(let x=0;x<xEdges.length-1;x++) for(let y=0;y<yEdges.length-1;y++){
+      const left=xEdges[x]+2.1, top=yEdges[y]+3.6, width=xEdges[x+1]-xEdges[x]-4.2, height=yEdges[y+1]-yEdges[y]-7.2;
+      const park=(x===5&&y===0)||(x===1&&y===4);
+      blocks+='<div class="rt-block '+(park?'park':'')+'" style="left:'+left+'%;top:'+top+'%;width:'+width+'%;height:'+height+'%"></div>';
+      if(!park && width>10 && height>10) blocks+='<div class="rt-block" style="left:'+(left+width*.48)+'%;top:'+(top+height*.47)+'%;width:'+(width*.46)+'%;height:'+(height*.45)+'%"></div>';
+    }
+    const namesH=['La Trobe St','Little Lonsdale St','Lonsdale St','Little Bourke St','Bourke St'];
+    const namesV=['Queen St','Elizabeth St','Swanston St','Russell St','Exhibition St','Spring St'];
+    const roads=ys.map(y=>'<div class="rt-street-h" style="top:'+y+'%"></div>').join('')+xs.map(x=>'<div class="rt-street-v" style="left:'+x+'%"></div>').join('');
+    const labels=ys.map((y,i)=>'<span class="rt-road-label horizontal" style="top:'+y+'%">'+namesH[i]+'</span>').join('')+xs.map((x,i)=>'<span class="rt-road-label vertical" style="left:'+x+'%">'+namesV[i]+'</span>').join('');
+    const guided=mode==='guided'||mode==='export';
+    const showQueue=mode==='sim'||guided;
+    const queueEnd=guided?710:900;
+    let marks='<line class="rt-workline" x1="444" y1="530" x2="574" y2="530"/>';
+    for(let x=450;x<577;x+=18) marks+='<line class="rt-workcaps" x1="'+x+'" y1="521" x2="'+(x+6)+'" y2="539"/>';
+    if(showQueue) marks+='<path class="rt-queue" d="M590 530 H'+queueEnd+'"/>';
+    if(guided) marks+='<path class="rt-route" d="M920 520 H750 V330 H270 V520 H130"/>';
+    if(mode==='home') marks+='<path class="rt-trafficline" d="M70 133 H260 M600 143 H880 M770 915 H970 M277 580 V700"/>';
+    if(mode==='sim'||guided) {
+      for(let i=0;i<12;i++) {
+        const xpos=100+((i*67+state.minute*3)%820);
+        marks+='<rect x="'+xpos+'" y="'+(i%2?720:903)+'" width="13" height="6" rx="2" fill="var(--rt-text)" opacity=".55"/>';
+      }
+      const n=guided?6:13;
+      for(let i=0;i<n;i++) marks+='<rect x="'+(600+i*19)+'" y="535" width="12" height="5" rx="1.5" fill="var(--rt-red)"/>';
+    }
+    return '<div class="rt-map"><div class="rt-map-toolbar"><strong>'+icon('map-pinned')+'Melbourne CBD</strong><span class="rt-map-mode">'+(mode==='home'?'历史典型日 · 08:00 · 示例':mode==='edit'?'施工范围与设备布置':'方案影响 · 示例回放')+'</span></div><div class="rt-map-surface '+(compact?'compact':'')+'" role="group" aria-label="墨尔本 CBD 示意路网，Lonsdale Street 施工范围'+(guided?'及建议绕行路线':'')+'，非测绘地图"><div class="rt-map-geometry" style="transform:scale('+state.zoom+')">'+blocks+roads+'<svg class="rt-map-art" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">'+marks+'</svg>'+labels+'<span class="rt-landmark" style="left:35%;top:23%">Melbourne<br>Central</span><span class="rt-landmark" style="left:51%;top:23%">State<br>Library</span><span class="rt-landmark" style="left:82%;top:5%">Carlton Gardens</span><span class="rt-map-pin" style="left:43%;top:53%">01</span>'+(mode==='home'?'<span class="rt-map-pin secondary" style="left:59%;top:14%">02</span>':'')+'<span class="rt-vms" style="left:80%;top:56%">VMS 1</span>'+(guided?'<span class="rt-vms" style="left:91%;top:56%">VMS 2</span>':'')+'<span class="rt-map-pill works">'+icon('traffic-cone')+'施工区 · 西行 '+escape(state.closure)+' 车道</span>'+(showQueue?'<span class="rt-map-pill queue">排队 '+(guided?'340':'680')+' m</span>':'')+(guided?'<span class="rt-map-pill detour">'+icon('corner-down-left')+'建议绕行</span>':'')+'</div><span class="rt-map-schematic">示意路网 · 不按比例</span><div class="rt-map-zoom"><button type="button" data-action="zoom-in" aria-label="放大示意地图">'+icon('plus')+'</button><button type="button" data-action="zoom-out" aria-label="缩小示意地图">'+icon('minus')+'</button></div></div><div class="rt-map-legend"><span><i class="rt-swatch"></i>施工区</span>'+(showQueue?'<span><i class="rt-swatch red"></i>新增排队</span>':'')+(guided?'<span><i class="rt-swatch blue"></i>引导路线</span>':'')+'<span style="margin-left:auto">'+(mode==='home'?'2 个项目 · 示例':'Lonsdale St · 西行')+'</span></div></div>';
+  }
+  function heading(title,subtitle,status='') {return '<div class="rt-page-heading"><div><h1>'+title+'</h1><p>'+subtitle+'</p></div>'+status+'</div>';}
+  function home() {
+    return heading('施工规划工作台','先了解路网，再开始一份可评估的施工方案。','<span class="rt-status">'+icon('calendar-days')+'工作日 · 早高峰</span>')+'<div class="rt-split"><div class="rt-map-column">'+map('home')+'<div class="rt-map-hint">'+icon('info')+'历史数据模式，明确区分已有施工与拟建方案。</div></div><div class="rt-side"><section class="rt-panel rt-cta"><div class="rt-cta-symbol">'+icon('route')+'</div><span class="rt-eyebrow">开始规划</span><h2>下一处施工，<br>会带来哪些影响？</h2><p>选择路段、设置占道和设备，比较交通影响与实施费用。</p><button class="rt-button primary block" data-go="1" type="button">'+icon('plus')+'新建施工方案</button><button class="rt-button subtle block" data-go="1" type="button">使用历史案例</button></section><section class="rt-panel"><div class="rt-section-title"><h3>最近项目</h3><span class="rt-small rt-muted">示例</span></div><button class="rt-project-item" data-go="1" type="button"><strong>Lonsdale St · 车道维修</strong><span class="rt-project-meta"><span class="rt-status warn">草稿</span>10 月 5–9 日</span></button><button class="rt-project-item" data-go="3" type="button"><strong>Lonsdale St · 方案评估</strong><span class="rt-project-meta"><span class="rt-status good">待选定</span>2 套候选方案</span></button></section></div></div>';
+  }
+  function workForm() {
+    return `<div class="rt-fields-row"><label class="rt-field"><span>开始日期</span><input data-field="start" type="date" value="${escape(state.start)}"></label><label class="rt-field"><span>结束日期</span><input data-field="end" type="date" value="${escape(state.end)}"></label></div>
+      <div class="rt-fields-row"><label class="rt-field"><span>每日开始</span><input data-field="from" type="time" value="${escape(state.from)}"></label><label class="rt-field"><span>每日结束</span><input data-field="to" type="time" value="${escape(state.to)}"></label></div>
+      <label class="rt-field"><span>占道方式 · 西行</span><select data-field="closure" aria-label="占道方式"><option value="1" ${state.closure==='1'?'selected':''}>封闭 1 条车道</option><option value="2" ${state.closure==='2'?'selected':''}>封闭 2 条车道</option></select></label>
+      <label class="rt-field"><span>评估目标</span><select aria-label="评估目标" data-field="goal"><option>交通影响与成本平衡</option><option>公共交通优先</option><option>预算优先</option></select></label>`;
+  }
+
+
+  function equipmentForm() {
+    return '<div class="rt-equipment-row"><span class="rt-equipment-label"><span class="rt-equipment-icon">'+icon('panel-top')+'</span>VMS 信息屏</span><strong>1 块</strong></div><div class="rt-equipment-row"><span class="rt-equipment-label"><span class="rt-equipment-icon">'+icon('signpost')+'</span>临时标志牌</span><strong>4 块</strong></div><div class="rt-equipment-row"><span class="rt-equipment-label"><span class="rt-equipment-icon">'+icon('fence')+'</span>隔离设施</span><strong>40 件</strong></div><label class="rt-field" style="margin-top:18px"><span>设备与布置预算上限 · AUD</span><input data-field="budget" inputmode="decimal" value="'+escape(state.budget)+'"></label><h3 style="margin-bottom:10px">必须保留</h3><label class="rt-check"><input type="checkbox" data-field="footpath" '+(state.footpath?'checked':'')+'>连续的行人通道</label><label class="rt-check"><input type="checkbox" data-field="transit" '+(state.transit?'checked':'')+'>公交通行条件</label><div class="rt-inline-note">库存、价格和约束用于展示界面结构，均为示例。</div>';
+  }
+  function configure() {
+    return heading('配置施工方案','Lonsdale St · 西行 / 道路养护','<span class="rt-status warn">方案 v1 · 草稿</span>')+
+      `<div class="rt-split rt-edit"><div class="rt-map-column">${map('edit')}</div>
+      <section class="rt-panel rt-form-panel"><div class="rt-form-head"><h2>施工方案</h2><div class="rt-form-tabs" role="tablist" aria-label="方案输入">
+      <button type="button" id="rt-landscape-work-tab" data-form-tab="work" role="tab" aria-controls="rt-landscape-form-content" aria-selected="${state.formTab==='work'}">施工设置</button>
+      <button type="button" id="rt-landscape-equipment-tab" data-form-tab="equipment" role="tab" aria-controls="rt-landscape-form-content" aria-selected="${state.formTab==='equipment'}">设备与约束</button></div></div>
+      <div class="rt-form-content" id="rt-landscape-form-content" role="tabpanel" aria-labelledby="${state.formTab==='work'?'rt-landscape-work-tab':'rt-landscape-equipment-tab'}">${state.formTab==='equipment'?equipmentForm():workForm()}</div>
+      <div class="rt-form-note">${icon('map-pin')}已选路段：Lonsdale St 西行</div></section></div>
+      <div class="rt-action-bar">${button(icon('arrow-left')+'返回总览',0)}<span class="rt-action-note">${icon('layers')}原方案 + 2 套候选 · 界面演示</span>${button('生成并仿真方案',2,true)}</div>`;
+  }
+
+  function simulation() {
+    const item=options[state.replay];
+    const time='08:'+String(Math.min(59,state.minute)).padStart(2,'0');
+    return heading('仿真评估','查看施工影响，再进入方案比较。','<span class="rt-status good">'+icon('circle-check')+'完成状态示意</span>')+'<div class="rt-run-top">'+icon('circle-check')+'<div><strong>原方案与候选方案已完成评估</strong><small>无施工基准 + 原方案 + 2 套候选 · 同一评价时段</small></div><span class="rt-status">4 / 4 情景</span></div><div class="rt-split"><div class="rt-map-column"><div class="rt-section-title"><h3>交通影响回放</h3><div class="rt-toggle" aria-label="回放方案"><button type="button" data-replay="original" aria-pressed="'+(state.replay==='original')+'">原方案</button><button type="button" data-replay="B" aria-pressed="'+(state.replay==='B')+'">推荐方案 B</button></div></div>'+map(state.replay==='B'?'guided':'sim',true)+'<div class="rt-replay"><button type="button" class="rt-button" data-action="next-frame" aria-label="查看下一时刻">'+icon('skip-forward')+'</button><span class="rt-replay-time">'+time+'</span><input type="range" min="0" max="59" value="'+state.minute+'" data-field="minute" aria-label="示例回放时刻"><span class="rt-small rt-muted">09:00</span></div><div class="rt-map-hint">'+icon('info')+'位置与数值为界面占位示例，未运行交通模型。</div></div><div class="rt-side"><section class="rt-panel"><span class="rt-eyebrow">'+item.name+' · 08:00–09:00</span><h2>关键影响</h2><div class="rt-metric"><span>平均新增行程</span><strong>'+item.delay+'<small>分钟 / 车</small></strong></div><div class="rt-metric"><span>最大排队</span><strong>'+item.queue+'<small>m</small></strong></div><div class="rt-metric"><span>公交额外用时</span><strong>'+item.transit+'<small>分钟 / 班</small></strong></div></section><section class="rt-panel"><h3>运行记录 · 示例</h3><div class="rt-run-row">'+icon('check')+'路网与需求检查<span>完成</span></div><div class="rt-run-row">'+icon('check')+'4 组情景评估<span>完成</span></div><div class="rt-run-row">'+icon('check')+'指标与差异汇总<span>完成</span></div></section></div></div><div class="rt-bottom-actions">'+button(icon('arrow-left')+'返回配置',1)+button('查看方案比较',3,true)+'</div>';
+  }
+  function optionCards(extraClass='') {
+    return '<div class="rt-option-cards '+extraClass+'">'+Object.entries(options).map(([key,o])=>'<section class="rt-option '+(key==='B'?'recommended':'')+'"><span class="rt-status '+(key==='B'?'good':'')+'">'+(key==='B'?'综合推荐':key==='A'?'不增加预算':'比较基准')+'</span><h3>'+o.name+'</h3><p>'+o.description+'</p><dl><div><dt>新增行程</dt><dd>'+o.delay+' 分钟 / 车</dd></div><div><dt>最大排队</dt><dd>'+o.queue+' m</dd></div><div><dt>公交额外用时</dt><dd>'+o.transit+' 分钟 / 班</dd></div><div><dt>行人通道</dt><dd>保留</dd></div><div><dt>施工期费用</dt><dd>'+money(o.cost)+'</dd></div></dl><button type="button" class="rt-button block '+(state.selected===key?'primary':'')+'" data-select="'+key+'">'+(state.selected===key?icon('check')+'已选择':'选择这套')+'</button></section>').join('')+'</div>';
+  }
+  function compare() {
+    const selected=options[state.selected];
+    let table='<div class="rt-comparison"><table aria-label="示例方案比较"><thead><tr><th>比较维度</th>'+Object.entries(options).map(([key,o])=>'<th class="'+(key==='B'?'rt-recommended-col':'')+'"><span class="rt-status '+(key==='B'?'good':'')+'">'+(key==='B'?'综合推荐':key==='A'?'不增加预算':'比较基准')+'</span><strong>'+o.name+'</strong><small>'+o.description+'</small></th>').join('')+'</tr></thead><tbody>';
+    const rows=[['平均新增行程','delay',' 分钟 / 车'],['最大排队长度','queue',' m'],['公交额外用时','transit',' 分钟 / 班']];
+    rows.forEach(row=>{table+='<tr><td>'+row[0]+'</td>'+Object.entries(options).map(([key,o])=>'<td class="'+(key==='B'?'rt-recommended-col':'')+'"><span class="rt-numeric">'+o[row[1]]+'</span><small>'+row[2]+'</small></td>').join('')+'</tr>';});
+    table+='<tr><td>连续行人通道</td>'+Object.keys(options).map(key=>'<td class="'+(key==='B'?'rt-recommended-col':'')+'">'+icon('check')+'保留</td>').join('')+'</tr><tr><td>施工期费用 <small>· AUD</small></td>'+Object.entries(options).map(([key,o])=>'<td class="'+(key==='B'?'rt-recommended-col':'')+'"><span class="rt-numeric">'+money(o.cost)+'</span></td>').join('')+'</tr><tr><td>方案选择</td>'+Object.keys(options).map(key=>'<td class="'+(key==='B'?'rt-recommended-col':'')+'"><button type="button" class="rt-button '+(state.selected===key?'primary':'')+'" data-select="'+key+'">'+(state.selected===key?icon('check')+'已选择':'选择这套')+'</button></td>').join('')+'</tr></tbody></table><div class="rt-comparison-foot">交通：08:00–09:00 · 费用：5 日施工期 · 所有指标与价格均为占位示例</div></div>';
+    return heading('比较并选择方案','同一维修任务，清楚比较每一种收益与代价。','<span class="rt-status">2 套候选</span>')+'<section class="rt-recommendation"><div><div class="rt-recommendation-title">'+icon('sparkles')+'推荐方案 B · 加强上游引导</div><p>新增 1 块 VMS，保留公交与连续行人通道。</p></div><div class="rt-recommendation-number">−1.7<small>分钟 / 车，相比原方案</small></div></section>'+(design.compareView==='cards'?optionCards():table+'<div class="rt-mobile-compare">'+optionCards()+'</div>')+'<div class="rt-explanation"><section class="rt-panel"><h3>方案 B 具体改变了什么</h3><ul class="rt-change-list"><li>'+icon('check')+'在路线决策点前增加 1 块 VMS</li><li>'+icon('check')+'明确显示绕行方向与道路名称</li><li>'+icon('check')+'施工时段与维修任务保持一致</li></ul></section><section class="rt-panel"><h3>需要接受的代价</h3><div class="rt-cost-trade"><strong>+$400</strong><span class="rt-muted">施工期设备费用<br>仍低于示例预算 $3,500</span></div><p class="rt-small rt-muted" style="margin-top:11px">建议结合现场安装条件与供应商报价复核。</p></section></div><details class="rt-evidence"><summary>查看结果依据与假设</summary><p>本页只展示结果页面的布局。数值、预算、通行状态和推荐理由均为占位示例，不代表实际仿真、报价或工程审查。</p></details><div class="rt-bottom-actions">'+button(icon('arrow-left')+'查看仿真',2)+'<span class="rt-small rt-muted">已选：'+selected.name+'</span>'+button('确认并准备导出',4,true)+'</div>';
+  }
+  function exportPage() {
+    const selected=options[state.selected];
+    return heading('确认方案与导出','让评估结果成为可以交接、审阅的项目材料。','<span class="rt-status warn">待人工复核</span>')+'<div class="rt-export-grid"><div class="rt-paper-wrap"><article class="rt-paper" aria-label="评估报告预览"><div class="rt-paper-brand"><strong>RippleTwin</strong><span>评估与实施建议包</span></div><span class="rt-eyebrow">LONSDALE STREET · MELBOURNE</span><h2>道路养护施工影响评估</h2><p class="rt-small rt-muted">2026.10.05–10.09 · 西行 · 方案 v1 · 示意报告</p>'+map(state.selected==='B'?'export':'edit',true)+'<div class="rt-section-title"><h3>所选：'+selected.name+' · '+selected.description+'</h3></div><div class="rt-paper-stats"><div><span>新增行程 · 分钟 / 车</span><strong>'+selected.delay+'</strong></div><div><span>最大排队 · m</span><strong>'+selected.queue+'</strong></div><div><span>施工期费用 · AUD</span><strong>'+money(selected.cost)+'</strong></div></div><h3 style="margin-top:16px">设备与费用清单 · 示例</h3><table class="rt-paper-table" aria-label="示例设备费用清单"><tbody><tr><td>VMS 信息屏</td><td>'+selected.vms+' 块 / 5 日</td><td>'+money(selected.vms*400)+'</td></tr><tr><td>临时标志牌</td><td>4 块 / 5 日</td><td>$200</td></tr><tr><td>隔离设施</td><td>40 件 / 5 日</td><td>$2,000</td></tr><tr><td>运输与布置</td><td>示例费用</td><td>$200</td></tr></tbody></table><div class="rt-paper-foot"><span>附：方案图、对比结果、数据与假设</span><span>1 / 3</span></div></article></div><div class="rt-export-side"><section class="rt-panel"><h2>准备交付</h2><label class="rt-field" style="margin-top:18px"><span>所选方案</span><select data-field="selected" aria-label="所选方案">'+Object.entries(options).map(([key,o])=>'<option value="'+key+'" '+(state.selected===key?'selected':'')+'>'+o.name+' · '+o.description+'</option>').join('')+'</select></label><label class="rt-field"><span>选定理由</span><textarea data-field="reason">'+escape(state.reason)+'</textarea></label><h3>导出内容</h3><div class="rt-export-list"><label class="rt-check"><input type="checkbox" checked><span>评估报告<small>PDF · 摘要、方案与依据</small></span></label><label class="rt-check"><input type="checkbox" checked><span>设备与费用清单<small>CSV · 便于询价与交接</small></span></label><label class="rt-check"><input type="checkbox" checked><span>施工布置图<small>含图例、方向与版本</small></span></label></div><button type="button" class="rt-button primary block" data-action="export">'+icon('download')+'导出评估包</button>'+(state.exported?'<div class="rt-export-confirm">'+icon('circle-check')+'导出步骤示意已完成。预览中未生成实际文件。</div>':'')+'<p class="rt-small rt-muted" style="margin-top:12px">内部选定不代表正式审批，实际实施前完成专业复核。</p></section></div></div><div class="rt-bottom-actions">'+button(icon('arrow-left')+'返回比较',3)+'<span class="rt-small rt-muted">报告与所选方案保持同一版本</span></div>';
+  }
+  function render() {
+    root.dataset.formSide=design.formSide;
+    root.dataset.view=String(state.view);
+    root.style.setProperty('--rt-pad',design.density==='compact'?'12px':'16px');
+    root.querySelectorAll('.rt-flow [data-go]').forEach(el=>{const step=Number(el.dataset.go);el.classList.toggle('rt-done',step<state.view);if(step===state.view)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});
+    root.querySelectorAll('[data-nav]').forEach(el=>{if((el.dataset.nav==='home')===(state.view===0))el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
+    page.innerHTML=[home,configure,simulation,compare,exportPage][state.view]();
+    icons();
+  }
+  function notice(message) {
+    const element=root.querySelector('#rt-notice');
+    element.innerHTML='<span>'+escape(message)+'</span><button type="button" data-action="dismiss">知道了</button>';
+    element.hidden=false;
+  }
+  root.addEventListener('click',event=>{
+    const target=event.target.closest('button');
+    if(!target||!root.contains(target))return;
+    if(target.dataset.go!==undefined){state.view=Number(target.dataset.go);root.querySelector('#rt-notice').hidden=true;render();root.querySelector(".rt-flow").scrollIntoView({block:"start",behavior:"instant"});persist();return;}
+    if(target.dataset.formTab){state.formTab=target.dataset.formTab;render();persist();return;}
+    if(target.dataset.select){state.selected=target.dataset.select;state.reason='结合交通影响与设备投入，选用'+options[state.selected].name+'。';state.exported=false;render();persist();return;}
+    if(target.dataset.replay){state.replay=target.dataset.replay;render();persist();return;}
+    const action=target.dataset.action;
+    if(action==='zoom-in'||action==='zoom-out'){state.zoom=Math.max(1,Math.min(1.5,state.zoom+(action==='zoom-in' ? 0.1 : -0.1)));root.querySelectorAll('.rt-map-geometry').forEach(el=>el.style.transform='scale('+state.zoom+')');persist();}
+    if(action==='next-frame'){state.minute=state.minute>=59?0:Math.min(59,state.minute+5);render();persist();}
+    if(action==='export'){state.exported=true;render();persist();}
+    if(action==='dismiss')root.querySelector('#rt-notice').hidden=true;
+  });
+  root.addEventListener('change',event=>{
+    const input=event.target;
+    const field=input.dataset.field;
+    if(!field)return;
+    if(field==='goal'){notice('目标选择已演示；示意数值不会随输入重新计算。');return;}
+    if(!(field in defaults))return;
+    state[field]=input.type==='checkbox'?input.checked:input.type==='range'?Number(input.value):input.value;
+    if(field==='selected'){state.reason='结合交通影响与设备投入，选用'+options[state.selected].name+'。';state.exported=false;}
+    render();persist();
+  });
+  window.addEventListener('openai:set_globals',event=>{const saved=event.detail?.globals?.widgetState;if(saved){restore(saved);render();}});
+  render();
+  if(globalThis.Tweak){
+    const tweak=new globalThis.Tweak({container:root,onChange:()=>{render();persist();}});
+    tweak.addSelect(design,'formSide',{label:'配置页的表单位置',options:[{label:'地图左侧 · 表单右侧',value:'right'},{label:'表单左侧 · 地图右侧',value:'left'}]});
+    tweak.addSelect(design,'compareView',{label:'方案比较方式',options:[{label:'并排对比表',value:'table'},{label:'独立方案卡片',value:'cards'}]});
+    tweak.addSelect(design,'density',{label:'面板信息密度',options:[{label:'舒展',value:'comfortable'},{label:'紧凑',value:'compact'}]});
+  }
+})();
+</script>

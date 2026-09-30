@@ -107,6 +107,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
+| T23（模板归档） | 用户要求：将已上线的全地图底板、液态玻璃工作台与完整六步流程上传 GitHub；附可编辑片段、本地预览和三版历史稿，保留 iframe/CSP，未改生产前端 | ✅ | `jinmingq/web/T23-workflow-template` | 09-30 18:03 |
 | T35 | 第 2 步路口微观仿真：参与计算的路网从 2×2 扩成 4×4（La Trobe / Little Lonsdale / Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition，16 个 SCATS 路口），画面仍只显示施工处 2×2（车、信号灯、急刹统计都只取 2×2）；外圈车流按 flows.json 校准，进 2×2 的车流和原来一样（D-0930-1720） | 🔨 PR 待合（已合入 #110 的停车线修复） | `jinmingq/web/T35-grid4x4` / #109 | 09-30 17:04 |
 | T36 | 用户报 bug：第 2 步 2×2 微观仿真里车停在斑马线上 / 路口里，电车过路口时尾巴卡在斑马线上。`4b-grid.js` 停车线按横街宽度放到底图画的停车线处（主路离中心 20、Little Lonsdale 10，原来一律 8）；车身整辆放不进对面斑马线后就不进路口（跳过要拐走的前车）；左转先直行过停车线再用 ≤ 9 的半径拐；`grid_glue.mjs` 加反向断言。T35 已被 `jinmingq/web/T35-grid4x4` 会话占用 | ✅ 已合，浏览器尚未验证 | `jinmingq/web/T36-stopline` / #110 | 09-30 17:05 |
 | T34 | （原编号 T33，和 lead 的 T33 撞号，lead 合并时改）用户授权接入 SUMO：2×2 四路口 SUMO 后端与数据接口，输出同次运行轨迹、排队、延误和安全诊断；用户明确禁止前端改动 | ✅ | `jinmingq/web/T33-sumo-backend` | 09-30 10:58 |
