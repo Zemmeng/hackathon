@@ -508,13 +508,13 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
-  /* the step's buttons float at the foot of the panel as a liquid-glass card, 12 px in from its edges (09-30 ask); what scrolls
-     under them shows through faintly. A second backdrop blur does not stack inside the refracting panel (Chromium), so the frost
-     comes from the tint, the lit rim and the top highlight. The orange button is glass too: tinted, lit rim, soft glow */
-  .panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px;border-radius:22px;border:1px solid var(--shell-line);background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 70%,var(--hl-2)),color-mix(in srgb,var(--shell-solid) 74%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 14px 34px rgba(0,0,0,.34),var(--rim)}
-  .panel .cta .btn:not(.ghost):not(.danger):not(:disabled){background:linear-gradient(180deg,rgba(255,255,255,.22),transparent 55%),color-mix(in srgb,var(--sun) 88%,transparent);border-color:rgba(255,255,255,.4);-webkit-backdrop-filter:blur(10px) saturate(1.8);backdrop-filter:blur(10px) saturate(1.8);box-shadow:0 10px 26px color-mix(in srgb,var(--sun) 35%,transparent),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -10px 18px -12px rgba(0,0,0,.28)}
-  .panel .cta .btn.ghost{background:color-mix(in srgb,var(--shell-solid) 45%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-  .panel .cta .note{color:var(--fg-2)}
+  /* the step's buttons float at the foot of the panel (09-30 ask): no band, no card, no orange — each button is one dark
+     liquid-glass pill like the weather chip (.glass). A second backdrop blur does not stack inside the refracting panel
+     (Chromium), so the frost is a near-solid tint + the chip's top-left highlight, lit rim and shadow */
+  .panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px 8px 8px;background:none;border:0;box-shadow:none}
+  .panel .cta .btn:not(:disabled){background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),color-mix(in srgb,var(--shell-solid) 88%,transparent);color:var(--fg);border:1px solid var(--glass-line);border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,.28),var(--rim)}
+  .panel .cta .btn:not(:disabled):hover{filter:none;border-color:var(--line-2)}
+  .panel .cta .note{color:var(--fg-2);text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -547,10 +547,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){

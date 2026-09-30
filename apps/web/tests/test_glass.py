@@ -121,11 +121,12 @@ check("底图重画时调 emphasizeRoads（每次视图变化一次，不是每�
 # 09-30 @unicornnnnnny：面板底部按钮一直悬浮（不用滑到最下面）；左侧图层栏缩小、位置不变
 CLASH = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
 desk = CSS[CSS.index("@media (min-width:821px){"):]
-check("桌面：面板里的 .cta（找更好的方案 / 错开 N 天 / 复制处置手册）sticky 悬浮在面板底部，是液态玻璃卡片（离边 12 px、模糊、高光边），橙色按钮也是玻璃",
-      re.search(r"\.panel \.cta\{position:sticky;bottom:-8px;[^}]*border-radius:22px;[^}]*backdrop-filter:blur\(18px\)[^}]*var\(--rim\)", desk) is not None
-      and ".panel .cta .btn:not(.ghost):not(.danger):not(:disabled){" in desk and "color-mix(in srgb,var(--sun) 88%,transparent)" in desk)
-check("没有毛玻璃 / 减少透明度时，底部按钮条也是实心背景",
-      all(".glass,.panel .cta{background:var(--shell-solid)" in blk for blk in [CSS[CSS.index("@supports not"):], CSS[CSS.index("prefers-reduced-transparency"):]]))
+check("桌面：面板里的 .cta（找更好的方案 / 错开 N 天 / 复制处置手册）sticky 悬浮在面板底部，没有底栏也没有卡片；每个按钮是一块深色液态玻璃（照天气图例 .glass：高光、亮边、阴影），不用橙色",
+      ".panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px 8px 8px;background:none;border:0;box-shadow:none}" in desk
+      and re.search(r"\.panel \.cta \.btn:not\(:disabled\)\{background:linear-gradient\(150deg,var\(--hl\)[^}]*color-mix\(in srgb,var\(--shell-solid\) 88%,transparent\);color:var\(--fg\);[^}]*var\(--rim\)", desk) is not None
+      and "var(--sun)" not in desk[desk.index(".panel .cta{"):desk.index(".panel .cta .note{")])
+check("没有毛玻璃 / 减少透明度时，玻璃块是实心背景（按钮自己已经近乎实心，底部不再有底栏）",
+      all(".glass{background:var(--shell-solid)" in blk for blk in [CSS[CSS.index("@supports not"):], CSS[CSS.index("prefers-reduced-transparency"):]]))
 check("「错开 N 天」挪进底部按钮条的 #clashAct 槽位（clashBtnHTML），叠加检查那一节只留说明",
       "cta.prepend(a)" in CLASH and "a.id='clashAct'" in CLASH and "function clashBtnHTML()" in CLASH
       and CLASH.count('id="clashStagger"') == 1 and "面板底部的「错开 ${n} 天」" in CLASH)
