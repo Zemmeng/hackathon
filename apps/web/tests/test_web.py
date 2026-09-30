@@ -223,7 +223,7 @@ check("T23：方案名称（可能是顾问给的 kind）过 esc()", "esc(cmpLab
 probe_cmp = "`<b>${cmpLabel(r)}</b><i>${r.kind}</i>`"
 check("自检：T23 去掉 esc() 会被抓到", len(unsafe_in(probe_cmp)) >= 1)
 
-# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」（③「比只写 ROADWORK AHEAD 少排多少」由 T42 VMS 试验台包含，按 qjm 交接单不做）
+# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」（③「比只写 ROADWORK AHEAD 少排多少」由 VMS 试验台（qjm 交接单写 T42，GitHub 上 T42 已被 #121 用，改 T45）包含，按交接单不做）
 #     只把引擎已有的数摆出来：页面不自己算、源码里不写死验收时看到的数
 CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
 T43_SRC = JS + "\n" + BODY + "\n" + (SRC / "styles.css").read_text(encoding="utf-8")
