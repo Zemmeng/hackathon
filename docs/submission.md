@@ -48,7 +48,7 @@ The papers behind our design choices (Meister 2024, Xiong 2024, Wang et al. 2025
 | OSMnx (+ networkx, geopandas, shapely) | Offline data preparation only (`apps/roads/requirements.txt`), not shipped | MIT / BSD-3 |
 | Python 3 and Node.js standard libraries | Build scripts and tests | PSF / MIT |
 | Google Fonts: Inter, JetBrains Mono, Noto Sans SC, Space Grotesk (`apps/web`); Barlow, Barlow Condensed, IBM Plex Mono (`apps/sim`) | UI type, loaded from fonts.googleapis.com | SIL OFL 1.1 |
-| DeepSeek API (`deepseek-flash`, OpenAI-compatible) | **Candidate only.** The interface for reading sign text is wired in `apps/api`, but it is switched off (`MOCK=1`), and the deployed demo uses keyword rules labelled "rule-based estimate" (D-0929-1718, D-0929-1830). During development, two team members made a small number of test calls with their own keys and personal credit (see "Paid purchases" below; `docs/llm-apis/`) | DeepSeek API terms |
+| DeepSeek API (`deepseek-flash`, OpenAI-compatible) | **In use in the deployed demo, for reading sign text only.** `apps/api` calls it server-side (`/api/read`); answers are cached in KV and calls are capped per day; without a key or over the cap it falls back to keyword rules, and the page labels which source each reading came from (D-0929-2307, D-0929-1830). Plan explanations (`/api/explain`) are still rule-based. During development, two team members made a small number of test calls with their own keys and personal credit (see "Paid purchases" below; `docs/llm-apis/`) | DeepSeek API terms |
 | Alibaba Cloud Model Studio (Bailian) | Evaluated (PR #28), then dropped (PR #37). Not used | — |
 
 We found no map tiles, CDN JavaScript libraries, stock images, audio or 3D assets under `apps/`: a grep for tile, CDN and font URLs returned only the Google Fonts above. The map is drawn from our own JSON.
@@ -62,7 +62,7 @@ We found no map tiles, CDN JavaScript libraries, stock images, audio or 3D asset
 | **Claude Code** (Anthropic; Claude Opus 5.5 and Claude Fable 5.1 per commit trailers) | The main coding assistant for all five members. It wrote most of the code, tests, data-pipeline scripts, docs and HTML diagrams, working from specs the team wrote (`docs/arch/*-PRD.md`). Humans set the direction and made every product decision (`docs/decisions.md` quotes each one), reviewed the work and merged the PRs. The lead also ran parallel sub-agents for reviews | 59 commits on `main` carry a Claude `Co-Authored-By` trailer; 50 of the last 60 PR descriptions say "Generated with Claude Code" |
 | **OpenAI Codex** | @jinmingq: the editable business-workflow SVG (PR #52). @unicornnnnnny: an early standalone "liquid glass" UI prototype, of which only the accent colour was reused (`handoff/unicornnnnnny-T14-0929-1905.md`) | PR #52 body; T14 handoff |
 | Image or video generation models | **None found.** All diagrams are HTML or SVG written as code and rendered to PDF/PNG | grep of the repo for image-model names returns nothing |
-| LLM inside the product | None in the deployed demo (see DeepSeek above) | `apps/api/wrangler.jsonc` `MOCK=1` |
+| LLM inside the product | DeepSeek reads sign text; every number still comes from the engine (see DeepSeek above) | live `/api/health` → `"mode":"llm"` |
 
 ## 3. What existed before the event (rule 3)
 

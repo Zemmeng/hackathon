@@ -34,7 +34,7 @@ Same barriers, same sign board, same hire bill. Only the words changed. RippleTw
 
 ## 3. It's live, and the numbers are computed — not written into the page
 
-The engine runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. Nothing on screen is a hard-coded result: delete the engine and the page has no numbers. A language model's only job is to read a sign the way a driver does — noticed, understood, trusted, which way it points. Today that reading is a transparent rule set, labelled as such on screen; the model hook is built and switched off.
+The engine runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. Nothing on screen is a hard-coded result: delete the engine and the page has no numbers. A language model's only job is to read a sign the way a driver does — noticed, understood, trusted, which way it points. In the live demo that reading comes from DeepSeek, called only from our own Cloudflare Worker (answers cached, calls capped per day); without a key or over the cap it falls back to a transparent keyword rule set, and the screen always says which source was used. Every minute and percentage still comes from the engine.
 
 ## 4. What's real and what's assumed
 
@@ -79,7 +79,7 @@ Everything under `apps/` is our own code. No map tiles, no CDN JavaScript, no st
 
 ## 7. Third-party material, APIs and AI tools
 
-The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL, DataVic / DTP and City of Melbourne CC BY), no paid services besides small personal test credit on a DeepSeek account, no offshore API call in the deployed demo (`MOCK=1`), and no image or video generation models anywhere in the project.
+The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL, DataVic / DTP and City of Melbourne CC BY), one paid service — the DeepSeek API, used by the deployed demo only to read sign text, on pay-as-you-go credit with a daily call cap — and no image or video generation models anywhere in the project.
 
 ## 8. Team
 
