@@ -705,6 +705,12 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .panel.compact .cmp-table thead .cmp-what{display:none} /* the kit list under each plan: Details only */
 .cmp-num{font:700 17px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
 .cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
+/* T40: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit; 01 Signs vs the plain warning */
+.cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
+.cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
+.eng-vs{margin:0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--fg) 6%,transparent);font:500 12px/1.45 var(--f-mono);color:var(--fg-2)}
+.eng-vs b{white-space:nowrap}
+.eng-vs.stale{opacity:.55}
 .cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
 /* the picked plan's whole column is lit (else the recommended one); any cell of a column picks it */
 .cmp-table [data-cmpcol]{cursor:pointer;transition:background .15s}
@@ -3039,6 +3045,7 @@ function engAfterConnect(){
     if(BE.api){
       engPreset(EP.preset,true);
       import('/engine/public/js/index.js').then(m=>{EP.idx=m;EP.altsKey='';if(EP.sum&&!EP.badText){engAlts(planFrom(EP),EP.sum);if(S.booted&&S.step===3&&EP.tab3==='net')engFly(.6);}}).catch(()=>{}); // same module backend.js already loaded: detour paths for the map
+      import('/engine/public/js/options.js').then(m=>{VSB.frame=m.WARN_FRAME||null;engVsRun();}).catch(()=>{}); // same module backend.js loaded: the plain warning frame its kits use (T40)
       fetch('/params/public/params.json').then(r=>r.ok?r.json():null).then(p=>{if(p&&p.mix){EP.mix=p.mix;if(S.booted&&S.step===3)renderPanel();}}).catch(()=>{});
     }
     if(S.booted){renderPanel();if(S.step===1||(S.step===3&&EP.tab3==='net'))engFly(.9);if(S.step===4)engStep4();}
@@ -3084,12 +3091,37 @@ async function engRun(){
   EP.busy=true;engRenderOut();
   const plan=planFrom(EP);
   const first=!EP.sum; // first numbers for this street: frame its queue and detours too (T20 addendum 1)
-  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
+  try{const s=await BE.api.run(plan);if(seq!==EP.seq)return;EP.sum=s;EP.runErr=null;engAlts(plan,s);engVsRun();if(first&&(S.step===1||(S.step===3&&EP.tab3==='net')))engFly(.7);}
   catch(e){if(seq!==EP.seq)return;EP.runErr=e;console.warn('engine run failed',e);}
   EP.busy=false;engRenderOut();
   if(S.step===3)renderPanel();
   if(S.step===2)gridRebuild(); // 2×2 grid sim follows the plan (works link, lanes, hour)
   if(S.step===4)engStep4();
+}
+// 01 Signs (T40): the same plan with only the plain warning on the VMS (options.js WARN_FRAME, what the engine's kits put up)
+// is the yardstick for the sign text. One run per baseline plan: street, hour, lanes, footpath, positions — never the text,
+// so typing in the VMS boxes does not re-run it.
+const VSB={frame:null,runs:new Map()};
+function engVsPlan(plan){
+  const p=JSON.parse(JSON.stringify(plan)),ws=p.worksites[0];
+  ws.equipment=[{id:'VMS-1',type:'vms',at_m:EP.vmsAt,frames:[[...VSB.frame]]},...ws.equipment.filter(e=>e.type!=='vms')];
+  return p;
+}
+async function engVsRun(){
+  if(!engOn()||!VSB.frame||EP.badText)return;
+  const p=engVsPlan(planFrom(EP)),k=JSON.stringify(p);if(VSB.runs.has(k))return;
+  VSB.runs.set(k,null); // in flight
+  try{VSB.runs.set(k,await BE.api.run(p));}catch(e){VSB.runs.delete(k);console.warn('baseline run (warning-only VMS) failed',e);return;}
+  engRenderOut();
+}
+function engVsHTML(){
+  const s=engOn()&&!EP.badText?EP.sum:null,w=VSB.frame;if(!s||!w||s.flags.inactive)return'';
+  const plan=planFrom(EP),v=plan.worksites[0].equipment.find(e=>e.type==='vms');
+  if(v&&JSON.stringify(v.frames)===JSON.stringify([w]))return''; // the text is the plain warning already
+  const b=VSB.runs.get(JSON.stringify(engVsPlan(plan)));if(!b)return'';
+  const q0=Math.round(b.queue_m||0),q1=Math.round(s.queue_m||0),d=q1-q0,wt=esc(w.join(' ')),col=d>0?'var(--risk)':d<0?'var(--accent)':'var(--fg-2)';
+  return`<p class="eng-vs${EP.busy||EP.runErr?' stale':''}">${L(`vs ${wt} only: queue ${fmtN(q0)} → ${fmtN(q1)} m <b style="color:${col}">(${d<0?'−'+fmtN(-d)+' m':d>0?'+'+fmtN(d)+' m':'no change'})</b>`,
+    `只写 ${wt} 时：排队 ${fmtN(q0)} → ${fmtN(q1)} m<b style="color:${col}">（${d<0?'少 '+fmtN(-d)+' m':d>0?'多 '+fmtN(d)+' m':'一样'}）</b>`)}</p>`;
 }
 async function engStep4(){
   if(!engOn()||EP.badText){EP.adv=null;EP.advKey='';EP.advBusy=false;EP.cmp=null;EP.cmpKey='';EP.cmpBusy=false;EP.pick=-1;engRender4();return;}
@@ -3194,7 +3226,7 @@ function engMoreHTML(){
   const stale=EP.busy||EP.badText||!!EP.runErr;
   return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
-function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML],['vmsVs',engVsHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -3224,7 +3256,7 @@ function engSiteHTML(){
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
-    <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
+    <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div><div id="vmsVs"></div>
     <input type="range" id="vmsAt" min="40" max="${Math.max(1000,EP.vmsAt)}" step="10" value="${EP.vmsAt}" aria-label="${L('VMS distance upstream of the works','屏距施工起点的上游距离')}">
     <p class="small muted">${L('One line per row · ≤ 4 lines × 10 characters per frame. Try adding a second frame: USE / RUSSELL ST.','每行一句 · 每帧 ≤ 4 行 × 10 个字符。试试加第 2 帧：USE / RUSSELL ST。')}</p>
     <label class="eng-field"><span class="eyebrow">S-1 · ${L('sign','标志牌')} · ${EP.signAt} m</span><input type="text" id="signTxt" maxlength="40" spellcheck="false" value="${esc(EP.sign)}"></label>
@@ -3764,16 +3796,19 @@ function clashLoad(){
 }
 // Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
 function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
+// Registered works that overlap plan `cur` in time (not the same works), at most CL_MAX, each scored by be.clash(), the
+// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T40)
+async function clashPick(cur,alive){
+  const list=await clashLoad();if(!alive())return null;
+  const same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
+  const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
+  for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(!alive())return null;scored.push({o,ws,r});}
+  return scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
+}
 async function clashRun(){
   const seq=++CL.seq;Object.assign(CL,{busy:true,err:null,other:null,more:[],st:null,stBusy:false,stErr:null});clashRender();
-  try{
-    const list=await clashLoad();if(seq!==CL.seq)return;
-    const cur=clashCur(),same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
-    const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
-    for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(seq!==CL.seq)return;scored.push({o,ws,r});}
-    scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
-    CL.other=scored[0]||null;CL.more=scored.slice(1);
-  }catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
+  try{const scored=await clashPick(clashCur(),()=>seq===CL.seq);if(!scored)return;CL.other=scored[0]||null;CL.more=scored.slice(1);}
+  catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
   CL.busy=false;clashRender();
 }
 async function clashStagger(){
@@ -3883,6 +3918,26 @@ function cmpBest(rows,keys){
   }
   return out;
 }
+// A plan that buys nothing (T40): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
+// buses, on foot) and the footpath are the same as a cheaper plan's, at the precision on screen → { of: that plan's index,
+// extra: hire difference A$ }, else null. The cheapest such plan is named (then the first). Needs an engine result and a hire
+// figure; an hour with no works (all zeros) is never flagged.
+function cmpSameAs(rows){
+  const sig=r=>{const s=r&&r.s,f=(r&&r.flags)||{};if(!s||!Number.isFinite(r.hire)||f.inactive)return null;
+    const n=cmpNumbers(s),v=x=>Number.isFinite(x)?Math.round(x):null;
+    return JSON.stringify([v(s.mean_delay_s),v(s.queue_m),v(n.car),v(n.transit),v(n.peds),f.footpath==null?null:f.footpath]);};
+  const k=rows.map(sig);
+  return rows.map((r,j)=>{if(k[j]==null)return null;let of=-1;
+    rows.forEach((x,i)=>{if(i!==j&&k[i]===k[j]&&x.hire<r.hire&&(of<0||x.hire<rows[of].hire))of=i;});
+    return of<0?null:{of,extra:r.hire-rows[of].hire};});
+}
+// Overlap dates, short: en "7–9 Oct" (day first, as read in Melbourne), zh "10/7–9". from / to are yyyy-mm-dd
+function cmpSpan(from,to,zh){
+  if(!from||!to)return'';
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p=s=>[+s.slice(5,7),+s.slice(8,10)],[m0,d0]=p(from),[m1,d1]=p(to),one=from.slice(0,7)===to.slice(0,7);
+  if(zh)return from===to?`${m0}/${d0}`:one?`${m0}/${d0}–${d1}`:`${m0}/${d0}–${m1}/${d1}`;
+  return from===to?`${d0} ${M[m0-1]}`:one?`${d0}–${d1} ${M[m0-1]}`:`${d0} ${M[m0-1]} – ${d1} ${M[m1-1]}`;
+}
 // be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
 function cmpFromOptions(res){
   return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
@@ -3931,7 +3986,7 @@ ${(x.credits||[]).length?`<section class="pd-src"><h2>${esc(L('Data sources','�
 }
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,cl:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
 
 // Execution pack, AI explanation and inventory; all model text is rendered as textContent.
 function cmpLoad(){
@@ -3972,6 +4027,41 @@ async function cmpUpdate(){
   }
   if(seq!==CP.seq)return;
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
+}
+
+// 04 Compare, "Nearby works" row (T40): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
+// clashPick in 8-clash.js), by be.clash(). Filled in after the table is on screen, cell by cell; never holds the table up.
+// CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r }, cells: [clash result | 'err'], err }
+async function cmpClashUpdate(){
+  if(S.ui!==4||CP.busy||CP.rows.length<2||!engOn()||EP.badText||(CP.cl&&CP.cl.key===CP.key))return;
+  const st=CP.cl={key:CP.key,other:undefined,cells:[],err:false},alive=()=>CP.cl===st;
+  try{
+    const cur=clashCur();let x;
+    if(CL.m&&CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other; // 03 already picked it for this same plan
+    else{const sc=await clashPick(cur,alive);if(!sc)return;x=sc[0]||null;}
+    st.other=x;cmpRender();
+    for(let i=0;x&&i<CP.rows.length;i++){
+      const r=CP.rows[i];let v='err';
+      if(r.s)try{v=await BE.api.clash(r.plan.worksites[0],x.ws);}catch(e){console.warn('compare: clash check failed for plan',r.id,e);}
+      if(!alive())return;st.cells[i]=v;cmpRender();
+    }
+  }catch(e){if(!alive())return;st.err=true;console.warn('compare: nearby works check failed',e);cmpRender();}
+}
+function cmpClashRow(rc){
+  const c=CP.cl,x=c&&c.other,U=L('veh·min','车·分钟');
+  const vals=CP.rows.map((_,i)=>{const r=c&&c.cells[i];return r&&r!=='err'&&r.flags.reliable?r.cost:null;}),best=cmpBest(vals.map(v=>({v})),['v']);
+  let wlab='…';
+  if(c&&c.err)wlab='—';
+  else if(x===null)wlab=L('no other registered works overlap','登记表里没有同期的其他施工');
+  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpSpan(x.r.overlap.from,x.r.overlap.to,LANG.cur==='zh')} · ${x.r.hours.map(engHour).join(' & ')}`;}
+  const cell=i=>{
+    if(c&&c.err)return'—';
+    if(x===null)return L('none','无');
+    const r=x&&c.cells[i];if(!r)return'…';if(r==='err')return'—';
+    if(!r.flags.reliable)return`<span class="cmp-num">≈ 0</span><small class="cmp-u">${L('not reliable','结果不可信')}</small>`;
+    return`<span class="cmp-num"${r.cost>0?' style="color:var(--risk)"':''}>${r.cost>0?'+':''}${fmtN(r.cost)}</span><small class="cmp-u">${U}</small>${best.v&&best.v.includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}`;
+  };
+  return`<tr><th scope="row"${x?` title="${esc(x.o.title)}"`:''}>${L('Nearby works','和附近施工叠加')}<small>${wlab}</small></th>${CP.rows.map((r,i)=>`<td${rc(i)}>${cell(i)}</td>`).join('')}</tr>`;
 }
 
 // Independent of scoring: never delay choosing/exporting a plan for AI text.
@@ -4041,9 +4131,10 @@ function cmpHTML(){
   const sel=CP.pick!=null&&CP.rows[CP.pick]?CP.pick:CP.rows.findIndex(r=>r.id===lean),rc=i=>` data-cmpcol="${i}"${i===sel?' class="cmp-sel"':''}`;
   const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
     [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
-  const days=CP.rows[0].days;
-  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+  const days=CP.rows[0].days,dup=cmpSameAs(CP.rows),dupL=d=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);return L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`);};
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
     ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
+    ${cmpClashRow(rc)}
     <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
     <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
     <tr><th scope="row">${L('Choose','选定方案')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}><button type="button" class="cmp-pickbtn" data-cmppick="${i}" aria-pressed="${CP.pick===i}" ${r.s?'':'disabled'}>${CP.pick===i?L('Chosen','已选择'):L('Choose','选择')}</button></td>`).join('')}</tr>
@@ -4069,7 +4160,7 @@ function cmpHTML(){
 
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
-  cmpUpdate();cmpExplainUpdate();
+  cmpUpdate();cmpExplainUpdate();cmpClashUpdate();
   const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});

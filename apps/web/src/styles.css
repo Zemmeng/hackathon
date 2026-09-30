@@ -695,6 +695,12 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .panel.compact .cmp-table thead .cmp-what{display:none} /* the kit list under each plan: Details only */
 .cmp-num{font:700 17px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
 .cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
+/* T40: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit; 01 Signs vs the plain warning */
+.cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
+.cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
+.eng-vs{margin:0;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--fg) 6%,transparent);font:500 12px/1.45 var(--f-mono);color:var(--fg-2)}
+.eng-vs b{white-space:nowrap}
+.eng-vs.stale{opacity:.55}
 .cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
 /* the picked plan's whole column is lit (else the recommended one); any cell of a column picks it */
 .cmp-table [data-cmpcol]{cursor:pointer;transition:background .15s}

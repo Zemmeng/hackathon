@@ -16,16 +16,19 @@ function clashLoad(){
 }
 // Days to push the other works so it starts the day after this plan ends (the button's N; stagger() may stop earlier)
 function clashDays(ws){const cur=clashCur();return Math.max(1,Math.min(14,clDay(cur.time.to)-clDay(ws.time.from)+1));}
+// Registered works that overlap plan `cur` in time (not the same works), at most CL_MAX, each scored by be.clash(), the
+// costliest reliable one first. alive() false = the caller moved on → null. 04 Compare's "Nearby works" row uses the same pick (T40)
+async function clashPick(cur,alive){
+  const list=await clashLoad();if(!alive())return null;
+  const same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
+  const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
+  for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(!alive())return null;scored.push({o,ws,r});}
+  return scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
+}
 async function clashRun(){
   const seq=++CL.seq;Object.assign(CL,{busy:true,err:null,other:null,more:[],st:null,stBusy:false,stErr:null});clashRender();
-  try{
-    const list=await clashLoad();if(seq!==CL.seq)return;
-    const cur=clashCur(),same=o=>o.links.length===cur.links.length&&o.links.every(id=>cur.links.includes(id)); // the same works already in the register
-    const cands=CL.m.overlapping(cur,list).filter(o=>!same(o)).slice(0,CL_MAX),scored=[];
-    for(const o of cands){const ws=CL.m.toEngineWorksite(o),r=await BE.api.clash(cur,ws);if(seq!==CL.seq)return;scored.push({o,ws,r});}
-    scored.sort((x,y)=>(y.r.flags.reliable-x.r.flags.reliable)||(y.r.cost-x.r.cost)||(x.o.id<y.o.id?-1:1));
-    CL.other=scored[0]||null;CL.more=scored.slice(1);
-  }catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
+  try{const scored=await clashPick(clashCur(),()=>seq===CL.seq);if(!scored)return;CL.other=scored[0]||null;CL.more=scored.slice(1);}
+  catch(e){if(seq!==CL.seq)return;CL.err=e;console.warn('clash check failed',e);}
   CL.busy=false;clashRender();
 }
 async function clashStagger(){
