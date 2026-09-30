@@ -196,6 +196,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 .btn.ghost{background:var(--raised);color:var(--fg);border-color:var(--line-2)}
 .btn.danger{background:var(--risk-tint);color:var(--risk);border-color:var(--risk)}
 .cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
+.cta-act:empty{display:none}
+.cta-act .btn{width:100%}
 .cta .note{font:400 9.5px/1.3 var(--f-mono);color:var(--fg-3);text-align:center}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .metric{background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
@@ -408,9 +410,11 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
 
 /* layer rail */
-.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button{width:36px;height:36px;border-radius:12px;transition:background .18s,color .18s}
+.rail button svg{width:17px;height:17px}
+.rail .sep{width:20px;margin:2px 0}
 .rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
-.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.rail button[data-tip]:hover::after{left:46px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
 
 /* map HUDs */
 .wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
@@ -505,10 +509,11 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
-  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -541,10 +546,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
@@ -3193,19 +3198,29 @@ function clashHTML(){
   const st=CL.st,b=st&&st.best;
   if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
   else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
-  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<p class="small muted">${CL.stErr?L('Stagger failed — try again (button at the bottom of the panel).','错开没算成，再点一次面板底部的按钮。'):L(`“Stagger by ${n} day${n===1?'':'s'}” at the bottom of the panel moves ${title} later, re-scored by the engine day by day.`,`面板底部的「错开 ${n} 天」把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
   return`${head}${metrics}${sub}${why}${act}${more}`;
+}
+// The stagger button lives in the panel's sticky footer next to "Find a better plan" (09-30: always in reach, no scrolling),
+// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet
+function clashBtnHTML(){
+  const x=CL.other,st=CL.st;
+  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0))return'';
+  const n=clashDays(x.ws);
+  return`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button>`;
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
-  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
+  a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }
 // Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
 function clashMount(){
   const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
   const box=document.createElement('div');box.id='clashBox';box.className='stack';
   const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(cta){const a=document.createElement('div');a.id='clashAct';a.className='cta-act';cta.prepend(a);} // slot for the stagger button
   if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
   clashRender();
 }

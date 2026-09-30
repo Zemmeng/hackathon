@@ -186,6 +186,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 .btn.ghost{background:var(--raised);color:var(--fg);border-color:var(--line-2)}
 .btn.danger{background:var(--risk-tint);color:var(--risk);border-color:var(--risk)}
 .cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
+.cta-act:empty{display:none}
+.cta-act .btn{width:100%}
 .cta .note{font:400 9.5px/1.3 var(--f-mono);color:var(--fg-3);text-align:center}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .metric{background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
@@ -398,9 +400,11 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
 
 /* layer rail */
-.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button{width:36px;height:36px;border-radius:12px;transition:background .18s,color .18s}
+.rail button svg{width:17px;height:17px}
+.rail .sep{width:20px;margin:2px 0}
 .rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
-.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.rail button[data-tip]:hover::after{left:46px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
 
 /* map HUDs */
 .wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
@@ -495,10 +499,11 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
-  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -531,10 +536,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
