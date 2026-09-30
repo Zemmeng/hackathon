@@ -69,8 +69,8 @@ check("重跑：runReal({seed, p_original:.14, p_ai})，只有 source==='live' �
 check("p_ai：引擎顾问对比的绕行比例，没有就 0.53", "return isFinite(p)&&p>=0&&p<=1?" in APP and ":.53;}" in APP)
 check("第 2 步面板 SUMO 模式：说明、两个方案按钮、重跑按钮、四个指标",
       "real CBD network (OSM) + SCATS" in APP and "Original plan · ROADWORK AHEAD" in APP and "AI plan · USE RUSSELL" in APP
-      and "▶ Re-run live in the cloud (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
-check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "在云端重新实时运行", "地图上的车"]))
+      and "↻ Run again in the cloud (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
+check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "在云端再算一次", "地图上的车"]))
 check("不在 SUMO 模式时第 2 步原来的四个 GridSim 指标还在", "${su?sumoTiles():`" in APP and "L('Road users','道路使用者')" in APP and "TTC &lt; 1.5 s" in APP)
 check("时钟跟回放走（clock0_s + t），时间轴点击跳过去，时段用回放的 hour",
       "if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock();" in APP and "S.sim.seek(S.clock-S.sim.clock0)" in APP and "S.sim.isSumo?S.sim.hour:" in APP)
@@ -98,5 +98,10 @@ else:
     if code != 0 and passed + failed == n0:
         check(f"sumo_glue.mjs 退出码 {code}", False, out[-400:])
 
+st = fn(APP, "sumoStart")
+check("T41：预跑上屏后自动在云端现场算（sumoStale() 为真才算：同一 AI 绕行比例 10 分钟内算过就不重算）",
+      "if(tok===SU.tok&&sumoStale())sumoRerun();" in st and "function sumoStale(){return !(SU.ref.source==='live'&&SU.liveKey===String(sumoPAi())&&performance.now()-SU.liveAt<600000);}" in APP)
+check("T41：现场算成功才记 liveKey / liveAt", "SU.liveKey=String(sumoPAi());SU.liveAt=performance.now();" in fn(APP, "sumoRerun"))
+check("T41：文字不再叫「回放」，计算中写明先显示预先跑好的", "SUMO 回放" not in APP and "SUMO replay ·" not in APP and "先显示预先跑好的" in APP and "Cloud SUMO · computed live" in APP)
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
