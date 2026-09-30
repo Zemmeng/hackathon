@@ -85,6 +85,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T3 | 路网数据：CBD 真实路网 + 车流 → `network.json` / `flows.json` / `signals.json`（`apps/roads/PRD.md`） | ✅ | `louisxie316-dotcom/roads/T3-network` / PR #9 | 09-29 13:19 |
 | T7 | T3 第二期：设备库存、公交、行人 → `equipment.json` ✅ / `transit.json` ✅ / `walk.json` + `peds.json` ✅（P0 三样齐了；P1 未做）（`apps/roads/PRD-2.md`） | ✅ | `louisxie316-dotcom/roads/T7-equipment` / PR #14 | 09-29 13:53 |
 | T11 | 临街建筑 `buildings.json`（issue #21）PR #33；后续 PR #40：VMS 每行改 10 字、`test.sh` 的 `${变量}`、`use` 用市政普查补映射（other 76% → 36%）；P2 出入口没做 | ✅ | `louisxie316-dotcom/roads/T11-buildings` / PR #33、#40 | 09-29 15:02 |
+| T31 | 真实天气回测：Open-Meteo 逐小时天气 × SCATS / 自行车 / 行人，雨天 vs 晴天，对照页面 `WXP`（`docs/arch/T31-weather-backtest-PRD.md`） | 🔨 | `louisxie316-dotcom/roads/T31-weather-backtest` | 09-30 10:13 |
 
 卡住了：
 
