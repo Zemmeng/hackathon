@@ -485,7 +485,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
 .app.no-time .timeline{display:none}
 
-/* data credits (OSM / DataVic / City of Melbourne): bottom-right of the open map on desktop, a footer line on phones */
+/* data credits (OSM / DataVic / City of Melbourne): plain text centred along the foot of the open map on desktop (no frame,
+   09-30 ask; a soft halo in the shell colour keeps it legible over imagery). It gets its own band (--cr-h): the scale bar,
+   weather chip, probe and toast sit above it, so it never runs into them however it wraps. A footer line on phones */
 .credits{font:400 10.5px/1.45 var(--f-body);color:var(--fg-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
 .credits a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
 .credits a:hover{color:var(--fg)}
@@ -496,7 +498,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
-  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px;--cr-h:30px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
   .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
@@ -515,10 +517,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
   .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
   .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
-  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 44px)}
-  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
-  .credits{position:fixed;z-index:4;right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 300px);justify-content:flex-end;padding:5px 11px;border-radius:12px}
-  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + var(--cr-h) + 44px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + var(--cr-h) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .credits{position:fixed;z-index:4;left:calc(var(--safe-l) + (100vw - var(--safe-l) - var(--safe-r))/2);transform:translateX(-50%);bottom:calc(var(--safe-b) + 2px);width:max-content;max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 24px);justify-content:center;text-align:center;text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + var(--cr-h) + 48px)}
   .swipe .tag{top:calc(var(--safe-t) + 60px)}
 }
 /* narrower desktops: fewer HUDs, a slimmer panel */
