@@ -287,15 +287,16 @@ function render(dt){
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
-/* 2×2 junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs the
-   plan's own four junctions instead of the scripted La Trobe scene. Missing file or a throw → the La Trobe scene, as before. */
+/* Junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs a 4×4 grid of
+   real junctions around it and shows only the 2×2 at the works, instead of the scripted La Trobe scene. Missing file or a
+   throw → the La Trobe scene, as before. */
 function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
-function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<120)s.step(.05);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
 function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
-function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 4 个路口（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
-// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the 2×2 grid sim
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4×4 junctions computed, the 2×2 at the works shown (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 算 4×4 个路口，显示施工处 2×2（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the grid sim's shown 2×2
 function drawJunctions(sim){
   if(!sim||!sim.isGrid)return;ctx.save();
   if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}
