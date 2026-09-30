@@ -5,44 +5,47 @@
 **Team Uncapped** · FEIT Hackathon Festival 2026 · Challenge 5 — RPM Hire, *Future Cities: Digital Tool for Temporary Infrastructure*
 
 **Live demo:** https://hackathon-site.zemmmeng.workers.dev · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
+<!-- VIDEO: when the unlisted demo video is up, add " · **Video:** <link>" to the line above -->
 
 ---
 
 ## 1. The problem
 
-Every week, councils approve traffic management plans, and contractors hire barriers, signs and VMS boards — from companies like RPM Hire. Before that gear goes out, nobody can say how long the queue will be, which buses will run late, or where pedestrians will have to walk. How many drivers detour is a rule of thumb, and every permit is checked on its own.
+Every week, councils approve traffic management plans, and contractors hire barriers, signs and VMS (variable message sign) boards — from companies like RPM Hire. Before that gear goes out, nobody can say how long the queue will be, which trams and buses will run late, or where pedestrians will have to walk. How many drivers will detour is a rule of thumb, and every permit is checked on its own.
 
 ## 2. What RippleTwin does
 
-RippleTwin is a digital twin of the Melbourne CBD for temporary works. Place the barriers, signs and VMS boards you would actually hire, and see what drivers, bus riders and pedestrians will see, do and lose — on real data.
+RippleTwin is a digital twin of the Melbourne CBD for temporary works. Place the barriers, signs and VMS boards you would actually hire, and see what drivers, tram and bus riders and pedestrians will see, do and lose — on real data.
 
 | Step | What happens |
 |---|---|
-| **01 Plan** | Choose a street and hour, close lanes, place signs and VMS frames from a stand-in RPM catalogue. |
-| **02 Stress test** | A scripted illustration of an extreme scenario (labelled as scripted in the UI — it is not the engine). |
-| **03 Ripple trace** | See *why*: where the drivers went, which links slow down, which bus routes and footpaths absorb the cost. |
-| **04 Repair** | Build up to three plans (Minimum / Standard / Guided) with stock and assumed day rates, pick one, export it. |
+| **01 Plan** | Pick a street and an hour (or click any CBD street), close one lane or all lanes, keep or close the footpaths, and write the text on the VMS frames and the static sign. |
+| **02 Junction sim** | An animated micro-simulation in the browser (our own JavaScript). For works in the demo block it runs the four junctions around them (Lonsdale and Little Lonsdale × Swanston and Russell) and counts harsh braking; elsewhere it plays a scripted Swanston × La Trobe scene that also flags near-misses. Signal timing and turn shares are assumed; the headline numbers come from the engine, not from this animation. |
+| **03 Impact** | See *why*: the queue, the extra delay per vehicle, where drivers go instead, which streets slow down, what it costs tram and bus riders and pedestrians — and how each type of driver read the sign. |
+| **04 Improve** | A rule-based advisor suggests better sign wording and checks it with the engine. Compare three plans (A · Minimum, B · Standard, C · Guided) with equipment counts and assumed hire costs, choose one, and export a one-page pack. |
 
 ### One lane on Lonsdale Street, 8 am
 
 | Standard sign — `ROADWORK AHEAD` | One more frame — `USE RUSSELL ST` |
 |---|---|
-| <img src="docs/pitch-assets/01-before-vms.jpg" alt="Panel: queue with ROADWORK AHEAD only" width="334"> | <img src="docs/pitch-assets/01-after-vms.jpg" alt="Panel: queue after adding USE RUSSELL ST" width="334"> |
-| queue ≈ 900 m · ~8.5 min extra per car · ~175 vehicle-hours lost in that hour · 15 bus routes (~1,900 riders) slowed | queue ≈ 550 m · network delay −45% · bus riders −40% |
+| <img src="docs/pitch-assets/01-before-vms.jpg" alt="VMS frame 1: ROADWORK AHEAD; frame 2 empty" width="334"> | <img src="docs/pitch-assets/01-after-vms.jpg" alt="VMS frame 1: ROADWORK AHEAD; frame 2: USE RUSSELL ST" width="334"> |
+| queue ≈ 900 m · ~8.5 min extra per car · ~175 vehicle-hours lost in that hour · 15 tram and bus routes (~1,900 riders an hour) slowed | queue ≈ 540 m · ~4 min extra per car · ~94 vehicle-hours lost (−46%) · tram and bus riders' delay −41% |
 
-Same barriers, same sign board, same hire bill. Only the words changed. RippleTwin finds those words before the barriers go out.
+Same barriers, same sign board, same hire bill — only the words changed. RippleTwin lets you test the words before the barriers go out, and its rule-based advisor suggests better ones: with `USE / RUSSELL / SAVE 9 MIN` the engine puts the queue at about 215 m, if drivers trust the sign as much as we assume.
 
 ## 3. It's live, and the numbers are computed — not written into the page
 
-The engine runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. Nothing on screen is a hard-coded result: delete the engine and the page has no numbers. A language model's only job is to read a sign the way a driver does — noticed, understood, trusted, which way it points. In the live demo that reading comes from DeepSeek, called only from our own Cloudflare Worker (answers cached, calls capped per day); without a key or over the cap it falls back to a transparent keyword rule set, and the screen always says which source was used. Every minute and percentage still comes from the engine.
+The engine runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. No impact figure is typed into the page: every queue, delay, detour share and rider-minute is computed by the engine from the plan you draw, hire costs come from the equipment list's assumed day rates, and without the engine those panels stay empty. (The step 02 animation and the weather layer are separate from the engine, and the page labels their assumptions.)
+
+A language model does two jobs, and neither is arithmetic. It reads each sign the way a driver would — would they notice it, understand it, trust it, and which way does it send them? — and it words the plain-English explanation of the plan comparison, where any sentence with a number the engine did not produce is dropped. Both run on DeepSeek through our own Cloudflare Worker, so the key never reaches the browser. The demo's sign wordings were read ahead of time and ship with the site (labelled "LLM · precomputed"); any new wording you type is sent to DeepSeek, with answers cached and calls capped at 600 a day. Without a key, over the cap or on an error, both fall back to transparent rules, and the screen always says which source was used. The model's only numbers are each road user's chances of noticing, understanding and trusting a sign; the engine turns those into route choices, and every minute, queue length and detour share comes from the engine.
 
 ## 4. What's real and what's assumed
 
 We say which is which, on screen, everywhere.
 
-**Real, open data:** 1,513 CBD links with real geometry and speeds · 8 weeks of hourly SCATS volume data · PTV GTFS tram and bus timetables · City of Melbourne pedestrian counts · building footprints and floor counts. All downloaded ahead of time by scripts in `apps/roads/tools/`; **no data API is called at runtime.**
+**Real, open data:** 1,513 CBD road links (street segments) with real geometry and speeds · 8 weeks of hourly traffic-signal detector counts (SCATS, via DataVic) · Public Transport Victoria tram and bus timetables (GTFS) · City of Melbourne pedestrian counts · building footprints and floor counts · 8 weeks of hourly weather from Open-Meteo, used offline to back-test the weather layer. All downloaded ahead of time by scripts in `apps/roads/tools/`; **no data API is called at runtime.**
 
-**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items, each with its source URL) · the pull of "save 9 minutes" on driver choice is our model's assumption. Following a *named* detour is calibrated to a field trial — roughly one driver in five (Erke, Sagberg & Hagman, 2007).
+**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items: the 7 hire products link to their RPM Hire product pages, and the 9 static signs use Transport for NSW sign codes) · the pull of "save 9 minutes" on driver choice is our model's assumption. Following a *named* detour is calibrated to a field trial — roughly one driver in five (Erke, Sagberg & Hagman, 2007). The weather layer on the map is illustrative and labelled so; the engine ignores weather, and our back-test against 8 weeks of real hourly weather found that rain barely changes CBD car volumes.
 
 ## 5. How to run it
 
@@ -50,19 +53,16 @@ Requires Node ≥ 20, Python ≥ 3.9, git.
 
 ```bash
 git clone https://github.com/Zemmeng/hackathon.git && cd hackathon
-bash scripts/setup.sh                  # checks tools, enables hooks, creates .env
-bash scripts/check.sh --quick          # find the line "======== 汇总 0 ❌"
+bash scripts/setup.sh                  # checks tools, enables git hooks, creates .env
+bash scripts/check.sh --quick          # look for the line "======== 汇总 0 ❌ …" (汇总 = summary)
 
-# the web page (needs no API — it falls back to preset numbers)
-cd apps/web && python3 build.py && cd ../..
-python3 -m http.server 4175 -d apps/web/public
-# → http://localhost:4175
-
-# the whole same-origin site + the sign-reading Worker
+# the whole demo on one origin: page + engine + data + precomputed sign readings
 cd apps/site && npm ci && npm run dev  # → http://localhost:8790/web/public/
 ```
 
-`bash scripts/check.sh` runs the full suite (nine checks, all module tests). `bash scripts/check.sh --e2e` smoke-tests the deployed URL. Deployment goes through `apps/site` (one Cloudflare Worker that mounts every module's `public/` and proxies `/api/*` to the `api` Worker) — see `apps/site/README.md`.
+Serving `apps/web/public` on its own is only for UI work: without the other modules it cannot load the engine or the real city, so it shows no engine numbers.
+
+`bash scripts/check.sh` runs the full suite (nine checks, all module tests). `bash scripts/check.sh --e2e` smoke-tests the deployed URL. Deployment goes through `apps/site` (one Cloudflare Worker that mounts every module's `public/` and proxies `/api/*` to the API Worker, `apps/api`, deployed as `hackathon-api`) — see `apps/site/README.md`.
 
 ## 6. Tech stack
 
@@ -70,16 +70,19 @@ cd apps/site && npm ci && npm run dev  # → http://localhost:8790/web/public/
 |---|---|---|
 | Data preparation | Python + OSMnx, networkx, geopandas, shapely | Offline only, never shipped |
 | Road/traffic engine | Plain JavaScript, no framework | Runs in the browser and in Node; deterministic, <10 ms |
-| Web page | Hand-written HTML/CSS/JS, one build script (`apps/web/build.py`) | No CDN, no bundler, no runtime dependency |
-| Sign reading / explain API | Cloudflare Worker (`apps/api`) | Service binding behind the same origin |
+| Web page | Hand-written HTML/CSS/JS, one build script (`apps/web/build.py`) | No bundler and no JavaScript from a CDN; only the web fonts load from Google Fonts |
+| Sign reading / explain API | Cloudflare Worker (`apps/api`) calling DeepSeek, with a Cloudflare KV cache and rule fallback | Service binding behind the same origin; the key never reaches the browser |
+| Junction micro-sim, SUMO version (prototype) | Eclipse SUMO 1.27.1 + sumolib, Python (`apps/web/tools/sumo`) | Runs locally only; the step 02 animation on the live page is our own JavaScript |
 | Hosting | Cloudflare Workers (`apps/site`) | One origin, no CORS |
-| Fonts | Google Fonts (Inter, JetBrains Mono, Noto Sans SC, Space Grotesk, Barlow, IBM Plex Mono) | SIL OFL 1.1 |
+| Fonts | Google Fonts (Inter, JetBrains Mono, Noto Sans SC, Space Grotesk, Barlow, Barlow Condensed, IBM Plex Mono) | SIL OFL 1.1 |
 
-Everything under `apps/` is our own code. No map tiles, no CDN JavaScript, no stock images, no 3D assets — the map is drawn from our own JSON.
+All code under `apps/` was written during the event — by the team, with the AI coding assistants listed in §7 — except two small test helpers in `apps/api` copied from our pre-event template (see §7). SUMO and the Python libraries are installed, not copied in, and the data files under `apps/roads/public/` are built from the open datasets in §4. No map tiles, no CDN JavaScript, no stock images, no 3D assets — the map is drawn from that JSON.
 
 ## 7. Third-party material, APIs and AI tools
 
-The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL, DataVic / DTP and City of Melbourne CC BY), one paid service — the DeepSeek API, used by the deployed demo only to read sign text, on pay-as-you-go credit with a daily call cap — and no image or video generation models anywhere in the project.
+The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL; DataVic / Department of Transport and Planning and Open-Meteo CC BY 4.0; City of Melbourne open data — see the table for each dataset's terms); one paid API in the product — DeepSeek, called from our Cloudflare Worker to read sign text and to word the plan explanations, on pay-as-you-go credit with a daily call cap; one open-source simulator used offline (Eclipse SUMO); AI coding assistants (Claude Code, OpenAI Codex), listed there too; and no image or video generation models anywhere in the project.
+
+**Before the event.** Before 29 Sep 09:30 the repository held team-workflow tooling (process docs, git hooks, CI, check and deploy scripts, AI-assistant settings) and `starters/`: two generic code skeletons, a Cloudflare Worker room demo and a Python command-line tool, unrelated to this challenge. None of it was RippleTwin product code, design, graphics or data, and no feature was built from the skeletons. Two small test helpers (`apps/api/tests/mini.mjs`, `apps/api/test.sh`) were copied from `starters/web-worker` during the event; `starters/` itself was deleted in PR #65. Some process docs (such as `CONTRIBUTING.md` and `CLAUDE.md`) and the AI-assistant settings were removed from the working tree on 30 Sep (PR #89). All of it stays readable in the public git history. Details in [docs/submission.md](docs/submission.md) §3.
 
 ## 8. Team
 
@@ -87,13 +90,15 @@ Team **Uncapped**, five members. Module ownership and reviewers are in [`.github
 
 ## 9. Where things are
 
+Most internal docs are in Chinese; the English essentials are this README and [docs/submission.md](docs/submission.md).
+
 | Path | What |
 |---|---|
 | [`apps/`](apps/README.md) | Seven modules: `sim`, `roads`, `web`, `engine`, `api`, `params`, `site` |
 | [`docs/1-brief.md`](docs/1-brief.md) | The challenge we picked, the rules, the marking criteria |
 | [`docs/2-plan.md`](docs/2-plan.md) | Approach, module split, milestones |
 | [`docs/contract.md`](docs/contract.md) | Interfaces between modules |
-| [`docs/decisions.md`](docs/decisions.md) | Every product decision, with the alternatives we rejected |
+| [`docs/decisions.md`](docs/decisions.md) | Product decisions (in Chinese), each with the alternatives we rejected |
 | [`docs/arch/`](docs/arch/README.md) | Architecture and module PRDs |
 | [`docs/pitch-assets/`](docs/pitch-assets/README.md) | Pre-screening PDF, architecture diagrams, before/after screenshots |
 | [`docs/submission.md`](docs/submission.md) | Third-party list, AI use, what existed before the event |
@@ -179,6 +184,6 @@ git push -u origin HEAD && gh pr create --fill
 
 ## 披露与 License
 
-本仓库的构建脚本、分支守卫和 CI 是赛前准备的协作工具，不含业务代码；赛前写的 `starters/` 通用骨架已按 D-0929-1311 删掉，业务代码全部在比赛期间写。唯一例外：`apps/api/test.sh` 和 `apps/api/tests/mini.mjs` 是零依赖的测试运行器（不含业务逻辑），开赛后从赛前的 starter 拷过来，未改写。逐项说明与第三方清单见 [docs/submission.md](docs/submission.md)。
+本仓库的构建脚本、分支守卫和 CI 是赛前准备的协作工具，不含业务代码；赛前写的 `starters/` 通用骨架已按 D-0929-1311 删掉，业务代码全部在比赛期间写。唯一例外：`apps/api/test.sh` 和 `apps/api/tests/mini.mjs` 是零依赖的测试运行器（不含业务逻辑），开赛后从赛前的 starter 拷过来（`mini.mjs` 原样，`test.sh` 只改了临时目录名一行）。逐项说明与第三方清单见 [docs/submission.md](docs/submission.md)。
 
 `apps/roads/public/cbd/` 下的 `network.json`、`walk.json`、`buildings.json` 由 OpenStreetMap 衍生，按 **ODbL 1.0 share-alike** 分发，不是 MIT。其余代码见 [MIT](LICENSE)。
