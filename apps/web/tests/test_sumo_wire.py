@@ -108,5 +108,16 @@ check("T42：等待时不画浏览器 GridSim 的车和信号灯，地图中间�
       and "${su?sumoNote()+sumoCtl():wait?sumoWaitHTML():" in APP and 'class="spin"' in APP)
 check("T42：种子输入框（0–2147483647）、随机按钮、运行按钮；标签带 seed", 'id="sumoSeed"' in APP and 'id="sumoDice"' in APP and 'max="2147483647"' in APP and "seed ${s.seed}" in APP)
 check("T42：文字不叫「回放」，也不再先放预跑", "SUMO 回放" not in APP and "SUMO replay ·" not in APP and "先显示预先跑好的" not in APP and "Cloud SUMO · computed live" in APP)
+ENG = (ROOT / "src" / "js" / "6-engine.js").read_text(encoding="utf-8")
+imp = fn(APP, "sumoImpactHTML")
+check("T47：第 3 步在引擎数字上面放第 2 步 SUMO 这一次的结果（来源 + seed），引擎的数标「引擎估算 · 整个 CBD、1 小时」",
+      "${typeof sumoImpactHTML==='function'?sumoImpactHTML():''}" in ENG and "Engine estimate · whole CBD, 1 hour" in ENG and "引擎估算 · 整个 CBD、1 小时" in ENG
+      and "SU.index" in imp and "src.source==='live'&&isFinite(src.elapsedMs)" in imp and "seed ${sd}" in imp)
+check("T47：SUMO 表是原方案 / AI 方案两行：排队最长 / 平均、过施工段每车多花、绕行车；没跑过 SUMO 时提示去第 2 步", "row('original'" in imp and "row('ai'" in imp
+      and "works_queue_max_m" in imp and "works_traffic_extra_s" in imp and "detour_vehicles" in imp and "Run SUMO in step 2" in imp)
+check("T47：写明两个模型为什么差很多，不说是实证", "not measured proof" in imp and "不是实测证据" in imp)
+check("T47：跑之前设种子——第 1 步「保存并进入仿真」上面有种子框和随机按钮，进第 2 步就用 SU.seed 算",
+      "${typeof sumoPreHTML==='function'?sumoPreHTML():''}${navHTML()}" in APP and "engBind1();sumoPreBind();" in APP
+      and 'id="sumoSeedPre"' in APP and 'id="sumoDicePre"' in APP and "const tok=++SU.tok,seed=SU.seed" in APP)
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
