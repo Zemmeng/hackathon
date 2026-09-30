@@ -115,7 +115,8 @@ export async function mockAdvise(summary) {
     if (!ws || !best || !stay) continue;
     const save = Math.round(stay.now_min - best.now_min);
     if (!(save >= 1)) continue;
-    const frames = [['USE', shortName(best.name), ...(save <= 9 ? [`SAVE ${save} MIN`] : ['SAVE', `${Math.min(save, 99)} MIN`])]];
+    // 两帧、每帧 ≤ 3 行、每行 ≤ 8 字符（路名除外），过 T5 checkSigns 的软警告：原来一帧「SAVE 9 MIN」一行 10 个字符、省 10 分钟以上拆成 4 行，顾问自己的建议被自己的检查警告
+    const frames = [['USE', shortName(best.name)], ['SAVE', `${Math.min(save, 99)} MIN`]];
     const vms = vmsOf(ws, ap);
     if (vms && up(vms.frames?.flat().join(' ')) === up(frames.flat().join(' '))) continue;
     out.push({ kind: 'text', worksite: ws.id, equipment: vms ? vms.id : null, frames, ...(vms ? {} : { at_m: Math.min(2000, Math.round(((best.turn_m || 0) + 100) / 50) * 50) }),
