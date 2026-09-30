@@ -121,8 +121,9 @@ check("底图重画时调 emphasizeRoads（每次视图变化一次，不是每�
 # 09-30 @unicornnnnnny：面板底部按钮一直悬浮（不用滑到最下面）；左侧图层栏缩小、位置不变
 CLASH = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
 desk = CSS[CSS.index("@media (min-width:821px){"):]
-check("桌面：面板里的 .cta（找更好的方案 / 错开 N 天 / 复制处置手册）sticky 贴在面板底部，背景近乎不透明（滚过去的字不透出来）",
-      re.search(r"\.panel \.cta\{position:sticky;bottom:-20px;[^}]*color-mix\(in srgb,var\(--shell-solid\) 86%", desk) is not None)
+check("桌面：面板里的 .cta（找更好的方案 / 错开 N 天 / 复制处置手册）sticky 悬浮在面板底部，是液态玻璃卡片（离边 12 px、模糊、高光边），橙色按钮也是玻璃",
+      re.search(r"\.panel \.cta\{position:sticky;bottom:-8px;[^}]*border-radius:22px;[^}]*backdrop-filter:blur\(18px\)[^}]*var\(--rim\)", desk) is not None
+      and ".panel .cta .btn:not(.ghost):not(.danger):not(:disabled){" in desk and "color-mix(in srgb,var(--sun) 88%,transparent)" in desk)
 check("没有毛玻璃 / 减少透明度时，底部按钮条也是实心背景",
       all(".glass,.panel .cta{background:var(--shell-solid)" in blk for blk in [CSS[CSS.index("@supports not"):], CSS[CSS.index("prefers-reduced-transparency"):]]))
 check("「错开 N 天」挪进底部按钮条的 #clashAct 槽位（clashBtnHTML），叠加检查那一节只留说明",
@@ -146,7 +147,7 @@ check("第一次打开是深色：<html data-theme=\"dark\">（脚本跑之前�
 ENGJS = (SRC / "js" / "6-engine.js").read_text(encoding="utf-8")
 CMPJS = (SRC / "js" / "8-compare.js").read_text(encoding="utf-8")
 check("简洁模式隐藏来源脚注（.legend-src）、每套方案的 AI 解读（.cmp-explain）、倾向的理由（.cmp-lean-why）、重复的来源徽章（.eng-badges）、第 1 步的公交行人小行（.eng-impacts）和第 4 步节省量的单位说明（.eng-units，卡片和表头已标单位），详细模式照旧都在",
-      ".panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units{display:none}" in CSS
+      ".panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}" in CSS
       and "w.className='cmp-lean-why'" in CMPJS and 'class="cmp-explain"' in CMPJS)
 check("假设说明缩成一行，但意思不丢：读懂比例 · 绕行比例 · 路线选择模型 · 信任度是假设值",
       "of drivers understand the sign · `" in ENGJS and "(route-choice model; trust in signs is an assumed value)" in ENGJS

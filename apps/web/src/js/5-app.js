@@ -361,7 +361,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note note-more">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();

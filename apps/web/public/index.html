@@ -467,7 +467,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -518,7 +518,13 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
-  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
+  /* the step's buttons float at the foot of the panel as a liquid-glass card, 12 px in from its edges (09-30 ask); what scrolls
+     under them shows through faintly. A second backdrop blur does not stack inside the refracting panel (Chromium), so the frost
+     comes from the tint, the lit rim and the top highlight. The orange button is glass too: tinted, lit rim, soft glow */
+  .panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px;border-radius:22px;border:1px solid var(--shell-line);background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 70%,var(--hl-2)),color-mix(in srgb,var(--shell-solid) 74%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 14px 34px rgba(0,0,0,.34),var(--rim)}
+  .panel .cta .btn:not(.ghost):not(.danger):not(:disabled){background:linear-gradient(180deg,rgba(255,255,255,.22),transparent 55%),color-mix(in srgb,var(--sun) 88%,transparent);border-color:rgba(255,255,255,.4);-webkit-backdrop-filter:blur(10px) saturate(1.8);backdrop-filter:blur(10px) saturate(1.8);box-shadow:0 10px 26px color-mix(in srgb,var(--sun) 35%,transparent),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -10px 18px -12px rgba(0,0,0,.28)}
+  .panel .cta .btn.ghost{background:color-mix(in srgb,var(--shell-solid) 45%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .panel .cta .note{color:var(--fg-2)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -2419,7 +2425,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note note-more">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
