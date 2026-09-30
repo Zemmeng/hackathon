@@ -70,7 +70,7 @@ We found no map tiles, CDN JavaScript libraries, stock images, audio or 3D asset
 
 ## 3. What existed before the event (rule 3)
 
-The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits, from 2026-09-26 01:29 to 2026-09-29 09:12 (`git log --before=2026-09-29T09:30:00+10:00`). Almost all of it is team-workflow tooling; the one exception is `starters/`, two generic code skeletons unrelated to the challenge (see below). **None of it is RippleTwin product code, design, graphics or data**:
+The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits, from 2026-09-26 01:29 to 2026-09-29 09:12 (`git log --before=2026-09-29T09:30:00+10:00`). All of it is **team-workflow tooling, with no product code, design, graphics or data**:
 
 - **Process docs:**
   - `README`, `CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `KICKOFF.md`
@@ -82,7 +82,6 @@ The event started on 2026-09-29 at 09:30 AEST. Before that, `main` had 9 commits
   - `.github/` (CI check, manual-only deploy workflow, CODEOWNERS, PR template)
 - **AI assistant configuration:** `.claude/` (settings, 3 hooks, 6 slash commands, 2 agent definitions, launch.json).
 - **Onboarding check:** one teammate's T0 test PR (#3, 09:12), which only touched the task board and a handoff note.
-- **Generic code skeletons:** `starters/` (22 files: a Cloudflare Worker + Durable Object room demo and a Python CLI), deleted in PR #65 (details below).
 
 **Removed from the working tree on 09-30, still in git history.** On 2026-09-30 the team decided (D-0930-0200) to remove the collaboration-scaffold files that the project does not depend on: `KICKOFF.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `docs/onboarding.md`, `scripts/new-app.sh` and the whole `.claude/` directory. They were replaced by nothing: the three hard rules they carried now live in `README.md`, and the checks that enforced them (`scripts/check.sh`, `.githooks/`, CI) are unchanged.
 
