@@ -142,6 +142,11 @@ await t('advisor pieces', async () => {
     conflicts: [{ a: 'A', b: 'B', cost_min: 120 }] };
   const m = await mockAdvise(summary);
   ok(m.suggestions.map(s => s.kind).join() === 'text,move,shift' && m.suggestions.every(checkSuggestion), 'MOCK 顾问：改字 · 挪屏（屏在拐口之后）· 错开');
+  // T41：改字建议 = 两帧「USE / 路名」▸「SAVE / N MIN」，每帧 ≤ 3 行、第二帧每行 ≤ 8 字符（T5 checkSigns 的软上限，出自 RPM Hire VMS 产品页）；省 10 分钟以上也不拆成 4 行
+  const far = { ...summary, approaches: [{ ...summary.approaches[0], routes: [{ id: 'stay', name: 'La Trobe St', now_min: 25 }, summary.approaches[0].routes[1]] }] };
+  const [t3, t18] = [m, await mockAdvise(far)].map(x => x.suggestions.find(s => s.kind === 'text').frames);
+  ok(JSON.stringify(t3) === '[["USE","EXHIBITION"],["SAVE","3 MIN"]]' && JSON.stringify(t18) === '[["USE","EXHIBITION"],["SAVE","18 MIN"]]', `改字建议两帧：${JSON.stringify(t3)} · 省 18 分钟 ${JSON.stringify(t18)}`);
+  ok([t3, t18].every(fr => fr.length === 2 && fr.every(f => f.length <= 3) && fr[1].every(l => l.length <= 8)), '反向断言：没有一行超过 8 字符的「SAVE N MIN」，也没有 4 行的帧');
   const calm = { ...summary, approaches: [{ ...summary.approaches[0], routes: [{ id: 'stay', name: 'La Trobe St', now_min: 3 }, summary.approaches[0].routes[1]] }] };
   ok(!(await mockAdvise(calm)).suggestions.some(s => s.kind === 'text'), '不堵时（原路更快）不建议改字劝人绕');
 });

@@ -3,7 +3,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { ok, t, done } from './_t.mjs';
 import { connect, PATHS } from '../public/js/backend.js';
-import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS, tierNeeds, vmsRead } from '../public/js/options.js';
+import { vmsTextOk, daysOf, resolveNeeds, hireOf, TIERS, tierNeeds, vmsRead, guidedFrames, WARN_FRAME } from '../public/js/options.js';
 import { signsOn } from '../public/js/reading.js';
 const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -190,6 +190,24 @@ await t('全封、封人行道', async () => {
   const fb = e1.filter(e => e.type === 'barrier' && e.id.startsWith('B-F'));
   ok(fb.length === 2 && fb.every(e => INV.items.find(i => i.id === e.item).can_close.includes('footpath')) && e1.filter(e => e.item === 'sign_footpath_closed').length === 2, '两侧人行道：每侧一排能封人行道的护栏 + 一块 FOOTPATH CLOSED');
   ok(rp.options[0].result.peds && Number.isFinite(rp.options[0].result.peds.extra_min), `封了人行道 → 结果带行人绕行（多 ${rp.options[0].result.peds?.extra_min} 人·分钟）`);
+});
+
+await t('T41 引导档的 VMS 字过 T5 真实检查：顾问自己的建议不能被自己的检查警告（反向断言）', async () => {
+  ok(JSON.stringify(guidedFrames([['USE', 'RUSSELL'], ['SAVE', '9 MIN']])) === '[["USE","RUSSELL"],["SAVE","9 MIN"]]', '顾问给两帧 → 原样用，不再加「前方施工」（屏最多两帧，S-1 静态牌已写 ROADWORK AHEAD）');
+  ok(JSON.stringify(guidedFrames(['USE', 'RUSSELL'])) === JSON.stringify([WARN_FRAME, ['USE', 'RUSSELL']]) && JSON.stringify(guidedFrames([['USE', 'RUSSELL']])) === JSON.stringify([WARN_FRAME, ['USE', 'RUSSELL']]), '只给一帧（旧写法）→ 前面加「前方施工」');
+  ok(guidedFrames([['USE', 'RUSSELL'], ['SAVE', '9 MIN'], ['NOW']]) === null && guidedFrames([['TOO LONG LINE']]) === null && guidedFrames(null) === null && guidedFrames([]) === null, '三帧、一行超 10 字符、空 → null');
+  if (!has('/api/public/js/check.js')) { ok(false, '找不到 apps/api/public/js/check.js'); return; }
+  const bt = await connect({ fetch: fakeFetch, importer: repoImporter });
+  ok(bt.status().check === 't5', `用的是 T5 的真实 checkSigns（status().check = ${bt.status().check}）`);
+  const r = await bt.options(LON), o3 = r.options[2];
+  ok(o3.flags.guided, `Lonsdale 8 点有更快的绕行，引导档点了名：${vmsOf(o3).frames.map(f => f.join(' / ')).join(' ▸ ')}`);
+  const fr = vmsOf(o3).frames;
+  ok(fr.length === 2 && fr.every(f => f.length <= 3) && fr[1].every(l => l.length <= 8) && fr[1][0] === 'SAVE' && /^\d{1,2} MIN$/.test(fr[1][1]), '两帧、每帧 ≤ 3 行；第二帧 SAVE / N MIN 每行 ≤ 8 字符');
+  const warns = bt.check(o3.plan).flatMap(c => [...(c.ok ? [] : [c.error?.code]), ...(c.warnings || []).map(w => w.code)]);
+  ok(!warns.some(c => ['long_line', 'many_lines', 'frames_too_fast', 'line_too_long', 'too_many_lines', 'too_many_words'].includes(c)), `引导档的 VMS 没有超长 / 超行 / 轮播太快的警告（实际：${JSON.stringify(warns)}）`);
+  const adv = await bt.advise(be.demo('lonsdale'));
+  const texts = (adv.options || adv.suggestions || []).filter(o => o.kind === 'text' && o.frames);
+  ok(texts.length >= 1 && texts.every(o => o.frames.length <= 2 && o.frames.every(f => f.length <= 3)), `第 4 步顾问的改字建议也是 ≤ 2 帧 × ≤ 3 行（${texts.map(o => o.frames.map(f => f.join(' / ')).join(' ▸ ')).join('；')}）`);
 });
 
 done();
