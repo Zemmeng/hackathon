@@ -1,0 +1,2 @@
+eclipse-sumo==1.27.1
+sumolib==1.27.1
