@@ -342,15 +342,15 @@ if (typeof be.options !== 'function') {
   ok(q.join() === want.map(m => H(m.works_queue_equiv_end_m)).join() && ex.join() === want.map(m => H(m.works_traffic_extra_s)).join()
     && tot.join() === want.map(m => H(m.mean_extra_s * m.cohort_vehicles / 60)).join() && dv.join() === want.map(m => H(m.detour_vehicles)).join(),
     `T49 SUMO 的数逐格进表：09:00 排队 ${q.join(' / ')} m · 每车 ${ex.join(' / ')} s · 总延误 ${tot.join(' / ')} 车·分钟 · 绕行 ${dv.join(' / ')} 辆`);
-  ok(html.includes('≈ mean × vehicles') && /Trams &amp; buses|Trams & buses/.test(html) && /Pedestrians/.test(html) && (html.match(/not covered by SUMO/g) || []).length >= 6,
-    'T49 电车公交、行人两行每格写「not covered by SUMO」；总延误标「≈ mean × vehicles」');
+  ok(html.includes('≈ mean × vehicles') && !/Trams &amp; buses|Trams & buses/.test(html) && !/Pedestrians/.test(html) && !html.includes('not covered by SUMO') && html.includes('SUMO on the real CBD network around the works · cars only'),
+    'T51 SUMO 的 04 表不再有电车公交、行人两行，也不写「not covered by SUMO」；表尾写「cars only」；总延误标「≈ mean × vehicles」');
   const amt = H(kits5[1].hire - kits5[2].hire);
   ok(html.includes(`<i class="cmp-dup" data-eq data-lean>One VMS fewer than B, A$${amt} cheaper · just better wording</i>`) && !html.includes('Same traffic effect') && !html.includes('Same result as'),
     `T50 C 的标记：「One VMS fewer than B, A$${amt} cheaper · just better wording」；p 各不相同 → 没有「Same traffic effect」`);
   ok(/SUMO computed live in the cloud · 61\.2 s · seed 42/.test(html) && html.includes('Traffic 08:00–09:00 weekday · SUMO on the real CBD network') && !/engine on real CBD flows|Car, tram &amp; bus and on-foot numbers|Car, tram & bus and on-foot numbers/.test(html),
     'T49 表尾写 SUMO（现场计算 · 秒 · seed），不再写「引擎在真实 CBD 车流上算」');
   c.LANG.cur = 'zh'; const zh = c.cmpHTML(); c.LANG.cur = 'en';
-  ok(zh.includes(`比 B 少一块 VMS、便宜 A$${amt} · 只靠写对屏上的字`) && zh.includes('AI 读牌 → 会绕行的司机') && zh.includes('SUMO 暂不覆盖') && !leaks(zh).length, 'T50 中文：「比 B 少一块 VMS、便宜 A$… · 只靠写对屏上的字」、「AI 读牌 → 会绕行的司机」、「SUMO 暂不覆盖」');
+  ok(zh.includes(`比 B 少一块 VMS、便宜 A$${amt} · 只靠写对屏上的字`) && zh.includes('AI 读牌 → 会绕行的司机') && !zh.includes('SUMO 暂不覆盖') && zh.includes('只含机动车') && !leaks(zh).length, 'T50 中文：「比 B 少一块 VMS、便宜 A$… · 只靠写对屏上的字」、「AI 读牌 → 会绕行的司机」、「SUMO 暂不覆盖」');
   // T49-b 的「交通效果相同」只在 p 一样时出现（这里把 B 的读数换成 A 的）；B 比 A 多两块 VMS + 箭头板 → 说「多出来的设备」，不说只是箭头板
   const eqP = page(async () => cli); Object.assign(eqP.X.CP, { rows: [kits5[0], { ...kits5[1], s: kits5[0].s }, kits5[2]], key: 'k5eq' });
   const he2 = eqP.cmpHTML(), amtBA = H(kits5[1].hire - kits5[0].hire);
@@ -364,11 +364,11 @@ if (typeof be.options !== 'function') {
     const sug = x && Math.max(1, Math.min(14, (Date.parse(c.clashCur().time.to) - Date.parse(x.ws.time.from)) / 864e5 + 1));
     ok(x && x.r.flags.reliable && x.r.cost > 0 && c.X.CP.cl.cells.length === 0, `T49 04 叠加一行：挑中 ${x && x.o.id}（引擎在幕后挑），不再逐套算叠加成本`);
     ok(x && row.includes(cmpSpan(x.r.overlap.from, x.r.overlap.to, false)) && row.includes(cmpWin(x.r.overlap.days, x.r.hours.length, false)) && row.includes(`suggest staggering it ${sug} day`)
-      && (row.match(/combined impact not covered by SUMO/g) || []).length === 3 && !row.includes(H(x.r.cost)) && !leaks(row).length,
-      `T49 04 叠加一行：日期、「${x && cmpWin(x.r.overlap.days, x.r.hours.length, false)}」、建议错开 ${sug} 天、每格「combined impact not covered by SUMO」，没有 +${x && H(x.r.cost)}`);
+      && (row.match(new RegExp(`suggest staggering it ${sug} day`, 'g')) || []).length === 3 && !row.includes('not covered by SUMO') && !row.includes(H(x.r.cost)) && !leaks(row).length,
+      `T51 04 叠加一行：日期、「${x && cmpWin(x.r.overlap.days, x.r.hours.length, false)}」，每格写「建议错开 ${sug} 天」（不再写「combined impact not covered by SUMO」），没有 +${x && H(x.r.cost)}`);
     if (x) for (const v of [x.r.cost, x.r.a, x.r.b, x.r.ab]) if (Math.abs(v) >= 100) engNums.add(H(v));
     const full = c.cmpHTML();
-    ok(!leaks(full).length && full.includes('combined impact not covered by SUMO'), `T49 反向断言：叠加一行填好后整张 04 表还是没有引擎数（加查叠加的 D(A) / D(B) / D(A+B) / 成本）${leaks(full).length ? ' —— 漏了 ' + leaks(full) : ''}`);
+    ok(!leaks(full).length && !full.includes('not covered by SUMO'), `T49 / T51 反向断言：叠加一行填好后整张 04 表还是没有引擎数（加查叠加的 D(A) / D(B) / D(A+B) / 成本）${leaks(full).length ? ' —— 漏了 ' + leaks(full) : ''}`);
     // 03 附近施工页签（8-clash.js）同一口径
     c.S.ui = 3; c.X.CL.key = JSON.stringify(c.clashCur()); await c.clashRun();
     const h3 = c.clashHTML(), o3 = c.X.CL.other;
@@ -385,8 +385,8 @@ if (typeof be.options !== 'function') {
   // 05 导出（选中 C）：卡片上是 SUMO 的总延误，电车公交 / 行人「SUMO 暂不覆盖」
   c.S.ui = 5; c.X.CP.pick = 2;
   const h5 = c.cmpHTML();
-  ok(h5.includes('Extra delay · SUMO area') && h5.includes(H(want[2].mean_extra_s * 1565 / 60)) && (h5.match(/not covered by SUMO/g) || []).length >= 2 && !leaks(h5).length && h5.includes('Traffic numbers: SUMO'),
-    `T49 05 导出卡片：SUMO 范围延误增量 ${H(want[2].mean_extra_s * 1565 / 60)} 车·分钟，电车公交 / 行人 SUMO 暂不覆盖，没有引擎数`);
+  ok(h5.includes('Extra delay · SUMO area') && h5.includes(H(want[2].mean_extra_s * 1565 / 60)) && !h5.includes('Tram & bus') && !h5.includes('On foot') && !h5.includes('not covered by SUMO') && h5.includes('model estimates of car traffic') && !leaks(h5).length && h5.includes('Traffic numbers: SUMO'),
+    `T51 05 导出卡片：SUMO 范围延误增量 ${H(want[2].mean_extra_s * 1565 / 60)} 车·分钟，没有电车公交 / 行人两格，也不写「not covered by SUMO」（交付前确认写「只算机动车的模型估算」），没有引擎数`);
   c.S.ui = 4; c.X.CP.pick = null;
   // AI 解读：SUMO 方案不去要（explain.js 读的是引擎的数），「倾向」也不出
   let asked = 0; c.X.CP.mod = { ex: { explainOptions: () => { asked++; return Promise.resolve({}); }, optionFromRun: () => ({}) } };
