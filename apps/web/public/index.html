@@ -1794,20 +1794,35 @@ class Sim{
 }
 
 /* grid:begin */
-// Step 2 micro-simulation of a 2×2 grid of real signalised junctions (SCATS 2913 Little Lonsdale × Swanston,
-// 2912 Little Lonsdale × Russell, 2904 Lonsdale × Swanston, 2903 Lonsdale × Russell). Pure, no DOM: tests/grid_glue.mjs
-// runs this block in node. Page units throughout (1 m ≈ GRID_K units); speeds in page units / s.
+// Step 2 micro-simulation. COMPUTED: a 4×4 grid of real signalised junctions (GRID_SIM) — La Trobe / Little Lonsdale /
+// Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition, 16 SCATS sites. SHOWN: only the 2×2 around the
+// works (GRID_BOX: 2913 Little Lonsdale × Swanston, 2912 Little Lonsdale × Russell, 2904 Lonsdale × Swanston, 2903 Lonsdale ×
+// Russell) — `agents`, signalHeads(), harsh-braking counts and the risk field cover that 2×2 only; the outer ring exists so
+// cars reach it in signal platoons and a queue can spill back past it (`all` holds every car). Pure, no DOM:
+// tests/grid_glue.mjs runs this block in node. Page units throughout (1 m ≈ GRID_K units); speeds in page units / s.
 // ASSUMPTIONS (not measured): streets are straight axis-aligned lines at the median page coordinate of their links in
-// GRID_BOX; lane count per direction = the entry link's `lanes`; 90 s two-phase cycle at every junction (EW green 0–40,
-// amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound Lonsdale green wave at 11 m/s; 15 % of cars
+// GRID_SIM; lane count per direction = the entry link's `lanes`; 90 s two-phase cycle at every junction (EW green 0–40,
+// amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound green wave at 11 m/s; 15 % of cars
 // turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
 // IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
 const GRID_BOX={x0:-100,x1:300,y0:-300,y1:0};
+const GRID_SIM={x0:-300,x1:500,y0:-400,y1:100};
+// Cars drawn: GRID_BOX minus the La Trobe / Little Bourke carriageways on its edges (those junctions are outer ring)
+const GRID_VIEW={x0:GRID_BOX.x0,x1:GRID_BOX.x1,y0:GRID_BOX.y0+14,y1:GRID_BOX.y1-14};
 const GRID_K=0.862;
-const GRID_EW=['Lonsdale Street','Little Lonsdale Street'],GRID_NS=['Swanston Street','Russell Street'];
-const GRID_FALLBACK={'Lonsdale Street':-200,'Little Lonsdale Street':-100,'Swanston Street':0,'Russell Street':200};
-const GRID_JN=[['2913','Little Lonsdale Street','Swanston Street'],['2912','Little Lonsdale Street','Russell Street'],
-  ['2904','Lonsdale Street','Swanston Street'],['2903','Lonsdale Street','Russell Street']];
+const GRID_EW=['La Trobe Street','Little Lonsdale Street','Lonsdale Street','Little Bourke Street'],
+  GRID_NS=['Elizabeth Street','Swanston Street','Russell Street','Exhibition Street'];
+const GRID_FALLBACK={'La Trobe Street':0,'Little Lonsdale Street':-100,'Lonsdale Street':-200,'Little Bourke Street':-300,
+  'Elizabeth Street':-200,'Swanston Street':0,'Russell Street':200,'Exhibition Street':400};
+const GRID_JN=[['2922','La Trobe Street','Elizabeth Street'],['2921','La Trobe Street','Swanston Street'],
+  ['2920','La Trobe Street','Russell Street'],['2919','La Trobe Street','Exhibition Street'],
+  ['2914','Little Lonsdale Street','Elizabeth Street'],['2913','Little Lonsdale Street','Swanston Street'],
+  ['2912','Little Lonsdale Street','Russell Street'],['2911','Little Lonsdale Street','Exhibition Street'],
+  ['2906','Lonsdale Street','Elizabeth Street'],['2904','Lonsdale Street','Swanston Street'],
+  ['2903','Lonsdale Street','Russell Street'],['2902','Lonsdale Street','Exhibition Street'],
+  ['4606','Little Bourke Street','Elizabeth Street'],['4605','Little Bourke Street','Swanston Street'],
+  ['4604','Little Bourke Street','Russell Street'],['4603','Little Bourke Street','Exhibition Street']];
+function gridIn(B,x,y){return x>=B.x0&&x<=B.x1&&y>=B.y0&&y<=B.y1;}
 const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
 const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
   cycle:90,stopD:8,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
@@ -1822,7 +1837,7 @@ function gridSigState(spec,j,axis,t){
 }
 // network.json links + flows.json + hour + closes {link, lanes} → the grid the sim runs on
 function gridSpec(links,flows,hour,closes){
-  const B=GRID_BOX,F=(flows&&flows.days&&flows.days.wd)||flows||{},hr=clamp(Math.floor(+hour||0),0,23);
+  const B=GRID_SIM,F=(flows&&flows.days&&flows.days.wd)||flows||{},hr=clamp(Math.floor(+hour||0),0,23);
   const inB=(p,m)=>p[0]>=B.x0-m&&p[0]<=B.x1+m&&p[1]>=B.y0-m&&p[1]<=B.y1+m;
   const L=[];
   for(const l of links||[]){
@@ -1840,21 +1855,29 @@ function gridSpec(links,flows,hour,closes){
     for(const q of L)if(q.l.name===n)for(const p of q.P)if(inB(p,0))v.push(ew?p[1]:p[0]);
     v.sort((a,b)=>a-b);C[n]=v.length?v[v.length>>1]:GRID_FALLBACK[n];
   }
-  const junctions=GRID_JN.map(([id,ew,ns])=>({id,ew,ns,x:C[ns],y:C[ew],off:((B.x1-C[ns])/GRID_K/11)%GRID_P.cycle}));
-  const dirs=[];
+  const junctions=GRID_JN.map(([id,ew,ns])=>({id,ew,ns,x:C[ns],y:C[ew],shown:gridIn(GRID_VIEW,C[ns],C[ew]),off:((B.x1-C[ns])/GRID_K/11)%GRID_P.cycle}));
+  // Car link where direction d of street n passes (ox, oy): the one over it (longest ahead), else the first one after it
+  const pick=(n,d,ox,oy)=>{
+    const h=GRID_H[d],sOf=p=>(p[0]-ox)*h[0]+(p[1]-oy)*h[1];
+    const cs=L.filter(q=>q.l.name===n&&q.dir===d).map(q=>{const ss=q.P.map(sOf);return{q,a:Math.min(...ss),b:Math.max(...ss)};});
+    const e=cs.filter(c=>c.a<=1&&c.b>=-1).sort((u,w)=>w.b-u.b)[0]||cs.filter(c=>c.a>=0).sort((u,w)=>u.a-w.a)[0];
+    return e&&e.a<=40?e.q.l:null;
+  };
+  const vphOf=l=>{const f=F[l.id],v=Array.isArray(f)?+f[hr]:NaN;return isFinite(v)&&v>=0?v:null;};
+  const dirs=[],V=GRID_VIEW;
   for(const n of GRID_EW.concat(GRID_NS)){
-    const ew=GRID_EW.includes(n);
+    const ew=GRID_EW.includes(n),inner=ew?C[n]>=V.y0&&C[n]<=V.y1:C[n]>=V.x0&&C[n]<=V.x1; // runs through the shown 2×2
     for(const d of ew?['E','W']:['N','S']){
       const h=GRID_H[d],ox=d==='E'?B.x0:d==='W'?B.x1:C[n],oy=d==='N'?B.y0:d==='S'?B.y1:C[n];
-      const sOf=p=>(p[0]-ox)*h[0]+(p[1]-oy)*h[1];
-      const cs=L.filter(q=>q.l.name===n&&q.dir===d).map(q=>{const ss=q.P.map(sOf);return{q,a:Math.min(...ss),b:Math.max(...ss)};});
-      const e=cs.filter(c=>c.a<=1&&c.b>=-1).sort((u,w)=>w.b-u.b)[0]||cs.filter(c=>c.a>=0).sort((u,w)=>u.a-w.a)[0];
-      const car=!!(e&&e.a<=40),tram=n==='Swanston Street';
-      if(!car&&!tram)continue; // no car link on this side and no tram: nothing drives this way
-      const lanes=car?clamp(Math.round(+e.q.l.lanes||1),1,3):1;
-      const f=car?F[e.q.l.id]:null,v=Array.isArray(f)?+f[hr]:NaN;
-      dirs.push({street:n,dir:d,axis:ew?'EW':'NS',h,ox,oy,len:ew?B.x1-B.x0:B.y1-B.y0,lanes,entry:car?e.q.l.id:null,
-        vph:car?(isFinite(v)&&v>=0?v:GRID_P.fallback):0,src:car?(isFinite(v)?'flows':'fallback'):'none',tram,jn:[]});
+      // eB: the link at the GRID_BOX edge — what the 2×2 started from; its flows.json count is what must reach the 2×2
+      const bx=d==='E'?GRID_BOX.x0:d==='W'?GRID_BOX.x1:C[n],by=d==='N'?GRID_BOX.y0:d==='S'?GRID_BOX.y1:C[n];
+      const e0=pick(n,d,ox,oy),eB=inner?pick(n,d,bx,by):null,e=eB||e0,tram=n==='Swanston Street';
+      if(!e&&!tram)continue; // no car link on this side and no tram: nothing drives this way
+      const v0=e0?vphOf(e0):null,vB=eB?vphOf(eB):null,edge=e0?(v0==null?GRID_P.fallback:v0):0,target=eB?(vB==null?GRID_P.fallback:vB):null;
+      const vx=d==='E'?V.x0:d==='W'?V.x1:C[n],vy=d==='N'?V.y0:d==='S'?V.y1:C[n];
+      dirs.push({street:n,dir:d,axis:ew?'EW':'NS',h,ox,oy,len:ew?B.x1-B.x0:B.y1-B.y0,lanes:e?clamp(Math.round(+e.lanes||1),1,3):1,
+        entry:e?e.id:null,edge,target,vph:target==null?edge:target,src:!e?'none':(eB?vB:v0)==null?'fallback':'flows',
+        sV:(vx-ox)*h[0]+(vy-oy)*h[1],feeds:[],tram,jn:[]});
     }
   }
   const sAt=(D,x,y)=>(x-D.ox)*D.h[0]+(y-D.oy)*D.h[1];
@@ -1866,6 +1889,7 @@ function gridSpec(links,flows,hour,closes){
     const J=junctions[q.j],cross=D.axis==='EW'?J.ns:J.ew,E=dirs.findIndex(x=>x.dir===GRID_LEFT[D.dir]&&x.street===cross&&x.entry);
     if(E>=0){q.left=E;q.sE=sAt(dirs[E],J.x,J.y);}
   }
+  gridFeeds(dirs);
   let close=null;
   if(closes&&closes.link){
     const q=L.find(z=>z.l.id===closes.link),di=q?dirs.findIndex(x=>x.street===q.l.name&&x.dir===q.dir&&x.entry):-1;
@@ -1881,19 +1905,51 @@ function gridSpec(links,flows,hour,closes){
       }
     }
   }
-  return{box:B,hour:hr,junctions,dirs,close};
+  return{box:GRID_BOX,sim:B,hour:hr,junctions,dirs,close};
+}
+// Feeds of each direction: the GRID_SIM edge (s 0) and, for streets through the 2×2, a top-up just past the last outer
+// junction. Calibrated so the expected flow where a street enters the 2×2 (sV) equals `target` (its flows.json count at the
+// old 2×2 edge): expected = edge × k × Π(1 − turn) over left exits passed + cars turned in on the way + top-up; too much →
+// scale the edge down (k < 1), too little → top-up. Turned-in cars go straight on. Fixed point over all directions.
+function gridFeeds(dirs){
+  const p=GRID_P.turn,len=GRID_P.car[0];
+  for(const D of dirs){const o=D.jn.filter(q=>q.s<D.sV);D.sTop=o.length?Math.min(o[o.length-1].s+GRID_P.stopD+4,D.sV-len-2):0;D.k=1;D.top=0;}
+  // expected cars / h of D still free to turn when they reach stop line `at`
+  const elig=(D,at)=>{
+    let a=D.entry?D.edge*D.k:0,b=D.top;
+    for(const q of D.jn){if(q.stop>=at)break;if(q.left<0)continue;a*=1-p;if(q.stop>D.sTop+len)b*=1-p;}
+    return a+(D.sTop<at?b:0);
+  };
+  for(let it=0;it<12;it++)for(let di=0;di<dirs.length;di++){
+    const D=dirs[di];if(D.target==null||!D.entry)continue;
+    let pi=1,G=0;
+    for(const q of D.jn){
+      if(q.s>=D.sV)break;
+      if(q.left>=0)pi*=1-p;
+      for(const X of dirs)for(const r of X.jn)if(r.j===q.j&&r.left===di)G+=elig(X,r.stop)*p;
+    }
+    const base=D.edge*pi+G;
+    if(base<=D.target){D.k=1;D.top=D.target-base;}else{D.top=0;D.k=D.edge*pi>0?Math.max(0,(D.target-G)/(D.edge*pi)):1;}
+  }
+  for(const D of dirs){
+    D.feeds=[];if(!D.entry)continue;
+    if(D.edge*D.k>.5)D.feeds.push({s:0,vph:D.edge*D.k});
+    if(D.top>.5)D.feeds.push({s:D.sTop,vph:D.top});
+  }
 }
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
-    this.agents=[];this.events=[];this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
+    this.agents=[];this.all=[];this.events=[];this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
     this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
     const cl=spec.close;this.lanes=[];
     this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){
-      let rate=D.entry?Math.min(D.vph/D.lanes,GRID_P.cap):0;
-      if(cl&&cl.di===di&&k<cl.n&&cl.s0<45)rate=0; // works right at the box edge: nobody enters the closed lane
-      const ln={di,D,k,off:gridOff(D,k),cars:[],rate,pend:0,tpend:0,next:Infinity,tnext:Infinity};
-      if(rate>0)ln.next=this._exp(rate);
+      const feeds=D.feeds.map(f=>{
+        let rate=Math.min(f.vph/D.lanes,GRID_P.cap);
+        if(cl&&cl.di===di&&k<cl.n&&f.s>cl.s0-45&&f.s<cl.s1)rate=0; // works right past the feed: nobody enters the closed lane
+        return{s:f.s,rate,pend:0,next:rate>0?this._exp(rate):Infinity};
+      });
+      const ln={di,D,k,off:gridOff(D,k),cars:[],feeds,tpend:0,tnext:Infinity};
       if(D.tram&&k===D.lanes-1)ln.tnext=this.R()*GRID_P.tramHw;
       a.push(ln);this.lanes.push(ln);
     }return a;});
@@ -1911,17 +1967,21 @@ class GridSim{
     const P=GRID_P,w=this.wx,v=c.v,ss=P.s0+Math.max(0,v*P.T*w.T+v*dv/(2*Math.sqrt(P.a*P.b*w.b)));
     return P.a*(1-Math.pow(v/c.v0,4)-Math.pow(ss/Math.max(gap,.05),2));
   }
-  _insert(ln,type){
-    const P=GRID_P,[len,wid]=type==='tram'?P.tram:P.car,last=ln.cars[ln.cars.length-1];
-    if(last&&last.s-last.len<len+P.s0+1)return false;
+  // New vehicle with its rear at sp (0 = the GRID_SIM edge), if there is room ahead and behind
+  _insert(ln,type,sp){
+    const P=GRID_P,[len,wid]=type==='tram'?P.tram:P.car,a=ln.cars,s=sp+len;
+    let i=0;while(i<a.length&&a[i].s>s)i++;
+    const ld=i>0?a[i-1]:null,fo=a[i]||null;
+    if(ld&&ld.s-ld.len<s+P.s0+1)return false;
+    if(fo&&fo.s>sp-P.s0-fo.v*1.2)return false;
     const v0=(type==='tram'?P.vT:P.v0)*this.wx.v,D=ln.D;
-    const c={id:this.nid++,kind:'veh',type,x:0,y:0,hx:D.h[0],hy:D.h[1],v:last?Math.min(v0*.8,last.v+1):v0*.8,acc:0,len,wid,trail:[],
-      tag:null,blocked:false,ln,s:len,dist:0,t0:this.t,v0,turn:null,arc:null,dl:0,wall:Infinity,tt:-1};
+    const c={id:this.nid++,kind:'veh',type,x:0,y:0,hx:D.h[0],hy:D.h[1],v:ld?Math.min(v0*.8,ld.v+1):v0*.8,acc:0,len,wid,trail:[],
+      tag:null,blocked:false,ln,s,dist:0,t0:this.t,v0,turn:null,arc:null,dl:0,wall:Infinity,tt:-1};
     if(type==='car'){
-      for(let i=0;i<D.jn.length;i++)if(D.jn[i].left>=0&&this.R()<P.turn){c.turn=i;break;}
+      for(let i=0;i<D.jn.length;i++)if(D.jn[i].stop>s&&D.jn[i].left>=0&&this.R()<P.turn){c.turn=i;break;}
       const cl=this.spec.close;if(cl&&cl.all&&cl.di===ln.di&&(c.turn===null||c.turn>cl.force))c.turn=cl.force;
     }
-    ln.cars.push(c);this._pos(c);return true;
+    a.splice(i,0,c);this._pos(c);return true;
   }
   _exitBlocked(c,ln,q){
     const P=GRID_P,el=this.dl[q.left][0],r=Math.max(2,P.stopD-el.off),si=q.sE+ln.off+r-Math.PI/2*r;
@@ -1946,14 +2006,16 @@ class GridSim{
   _step(dt){
     const P=GRID_P,S=this.spec,t=this.t,cl=S.close;
     const sig=S.junctions.map((J,j)=>({EW:gridSigState(S,j,'EW',t),NS:gridSigState(S,j,'NS',t)}));
-    // 1 arrivals (Poisson per lane) and trams; enter when the first metres of the lane are free
+    // 1 arrivals (Poisson per lane and feed) and trams; enter when the lane is free at the feed
     for(const ln of this.lanes){
-      const E=this.entry[ln.di];
-      while(ln.next<=t){ln.pend++;E.arr++;ln.next=this._exp(ln.rate)+(ln.next-t);}
+      const E=this.entry[ln.di],D=ln.D;
+      for(const f of ln.feeds){
+        while(f.next<=t){f.pend++;E.arr++;f.next=this._exp(f.rate)+(f.next-t);}
+        if(f.pend&&cl&&cl.all&&cl.di===ln.di&&(cl.force<0||D.jn[cl.force].stop<=f.s+P.car[0])){E.div+=f.pend;this.stats.noRoute+=f.pend;f.pend=0;}
+      }
       while(ln.tnext<=t){ln.tpend++;ln.tnext+=P.tramHw;}
-      if(ln.pend&&cl&&cl.all&&cl.di===ln.di&&cl.force<0){E.div+=ln.pend;this.stats.noRoute+=ln.pend;ln.pend=0;}
-      if(ln.tpend&&this._insert(ln,'tram'))ln.tpend--;
-      else if(ln.pend&&this._insert(ln,'car')){ln.pend--;E.ins++;}
+      const tr=ln.tpend&&this._insert(ln,'tram',0);if(tr)ln.tpend--;
+      for(const f of ln.feeds)if(f.pend&&!(tr&&f.s===0)&&this._insert(ln,'car',f.s)){f.pend--;E.ins++;}
     }
     // 2 zipper: the car in the target lane just behind the one waiting at the works lets it in
     const yieldTo=new Map();
@@ -1991,7 +2053,7 @@ class GridSim{
         if(i>0){const ld=cars[i-1],mx=ld.s-ld.len-.05;if(s>mx){s=mx;v=Math.min(v,ld.v);}}
         c.s=s;c.v=v;c.dist+=Math.max(0,s-s0);
         const ra=(v-v1)/dt;c.acc=ra;
-        if(ra<P.harsh){if(!c.hb){c.hb=true;this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);}}
+        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);}}}
         else if(ra>-1)c.hb=false;
         for(const q of D.jn)if(s0<q.stop&&s>=q.stop){if(sig[q.j][D.axis]==='R')this.redRun++;if(this.onCross)this.onCross(c,ln,q,t);}
       }
@@ -2020,14 +2082,14 @@ class GridSim{
     }
     // 7 re-assert no overlap where cars were inserted
     for(const ln of this.lanes){if(!ln.fix)continue;ln.fix=false;const a=ln.cars;for(let i=1;i<a.length;i++){const mx=a[i-1].s-a[i-1].len-.05;if(a[i].s>mx){a[i].s=mx;a[i].v=Math.min(a[i].v,a[i-1].v);}}}
-    // 8 positions, trails, agent list
-    this.t=t+dt;const ag=[];const k=Math.exp(-3*dt);
+    // 8 positions, trails, agent lists: `all` = the whole 4×4, `agents` = what the page draws (the 2×2 in GRID_VIEW)
+    this.t=t+dt;const ag=[],all=[];const k=Math.exp(-3*dt);
     for(const ln of this.lanes)for(const c of ln.cars){
       c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
       if(this.t-c.tt>=.4){c.tt=this.t;c.trail.push(c.x,c.y);if(c.trail.length>24)c.trail.splice(0,2);}
-      ag.push(c);
+      all.push(c);if(gridIn(GRID_VIEW,c.x,c.y))ag.push(c);
     }
-    this.agents=ag;
+    this.agents=ag;this.all=all;
   }
   _pos(c){
     const ln=c.ln,D=ln.D,m=c.s-c.len/2,a=c.arc;
@@ -2042,13 +2104,13 @@ class GridSim{
     if(a&&c.s-c.len>=a.sEnd)c.arc=null;
     const p=gridPt(D,ln.off+c.dl,m);c.x=p[0];c.y=p[1];c.hx=D.h[0];c.hy=D.h[1];
   }
-  signalHeads(){
+  signalHeads(){ // the 2×2 shown only
     const S=this.spec,out=[];
-    for(const D of S.dirs)for(const q of D.jn){const p=gridPt(D,gridOff(D,0)+2.6,q.stop);
+    for(const D of S.dirs)for(const q of D.jn){if(!S.junctions[q.j].shown)continue;const p=gridPt(D,gridOff(D,0)+2.6,q.stop);
       out.push({x:p[0],y:p[1],axis:D.axis,state:gridSigState(S,q.j,D.axis,this.t),id:S.junctions[q.j].id,dir:D.dir});}
     return out;
   }
-  // Contiguous slow (v < 2) queue upstream of s0 on direction di, metres (max over its lanes)
+  // Contiguous slow (v < 2) queue upstream of s0 on direction di, metres (max over its lanes); runs on into the outer ring
   queueAt(di,s0){
     let best=0;
     for(const ln of this.dl[di]){let cur=s0;for(const c of ln.cars){if(c.s>=s0)continue;if(c.v<GRID_P.slow&&cur-c.s<12)cur=c.s-c.len;else break;}best=Math.max(best,s0-cur);}
@@ -2351,15 +2413,16 @@ function render(dt){
 /* ---------- workflow ---------- */
 const CLOCK_EVENT=23*60+40;
 function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,clock0:CLOCK_EVENT-45});s.setWeather(S.wx,WX);while(s.t<44.95)s.step(.05);s.resetStats();return s;}
-/* 2×2 junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs the
-   plan's own four junctions instead of the scripted La Trobe scene. Missing file or a throw → the La Trobe scene, as before. */
+/* Junction micro-sim (4b-grid.js): in step 2, when the plan's works link lies inside GRID_BOX, the page runs a 4×4 grid of
+   real junctions around it and shows only the 2×2 at the works, instead of the scripted La Trobe scene. Missing file or a
+   throw → the La Trobe scene, as before. */
 function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
-function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<120)s.step(.05);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
 function gridFly(d){flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;const was=gridShown(),g=gridOn()&&newGrid();if(!g)return;S.sim=g;if(!was)gridFly(.7);renderPanel();} // engine plan changed while on step 2
-function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4 junctions (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 4 个路口（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
-// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the 2×2 grid sim
+function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null;return L('Micro-sim · 4×4 junctions computed, the 2×2 at the works shown (Little Lonsdale / Lonsdale × Swanston / Russell) · signal timing and turn shares are assumed','微观仿真 · 算 4×4 个路口，显示施工处 2×2（Little Lonsdale / Lonsdale × Swanston / Russell）· 信号配时和转弯比例是假设值')+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
+// closed-lane polygons (works hatch) and signal heads (green / amber / red) of the grid sim's shown 2×2
 function drawJunctions(sim){
   if(!sim||!sim.isGrid)return;ctx.save();
   if(S.layers.works){const w=sim.works();for(const poly of(w&&w.polys)||[]){if(!poly||poly.length<3)continue;ctx.beginPath();poly.forEach((p,i)=>i?ctx.lineTo(V.X(p[0]),V.Y(p[1])):ctx.moveTo(V.X(p[0]),V.Y(p[1])));ctx.closePath();ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=1;ctx.stroke();}}

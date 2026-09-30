@@ -1,4 +1,5 @@
-// 2×2 grid micro-sim (src/js/4b-grid.js) on the real network: gridlock, works queue, red lights, overlaps, determinism.
+// Grid micro-sim (src/js/4b-grid.js) on the real network: 4×4 computed, the 2×2 at the works shown. Gridlock, works queue,
+// red lights, overlaps, determinism, flows entering the 2×2, and that nothing outside the 2×2 is handed to the page.
 // Called by tests/test_grid.py; one ✅ / ❌ line per assertion, no network access.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -16,23 +17,33 @@ function rng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(
 const WXP={clear:{v:1,T:1,b:1,ped:1,bike:1,wob:0,rate:1},storm:{v:.82,T:1.4,b:.72,ped:1.12,bike:.85,wob:.15,rate:.9}};
 const WORLD={x0:-320,x1:320,y0:-300,y1:300};const RISK_CELL=4,RNX=(WORLD.x1-WORLD.x0)/RISK_CELL,RNY=(WORLD.y1-WORLD.y0)/RISK_CELL;`;
 const ctx = {}; vm.createContext(ctx);
-vm.runInContext(stubs + '\n' + eng + '\n' + grid + '\n;globalThis.G={gridSpec,GridSim,GRID_BOX,gridSigState,GRID_K};', ctx);
+vm.runInContext(stubs + '\n' + eng + '\n' + grid + '\n;globalThis.geoToWorld=geoToWorld;globalThis.G={gridSpec,GridSim,GRID_BOX,GRID_SIM,GRID_VIEW,gridSigState,GRID_K};', ctx);
 const G = ctx.G;
 const net = JSON.parse(readFileSync(APPS + 'roads/public/cbd/network.json', 'utf8'));
 const flows = JSON.parse(readFileSync(APPS + 'roads/public/cbd/flows.json', 'utf8'));
-const B = G.GRID_BOX, W = { x0: -320, x1: 320, y0: -300, y1: 300 };
+const B = G.GRID_BOX, SB = G.GRID_SIM, VW = G.GRID_VIEW, W = { x0: -320, x1: 320, y0: -300, y1: 300 };
+const SHOWN = ['2913', '2912', '2904', '2903'];
 const WORKS = { link: 'l595594354_9756035316', lanes: 1 };
 
 const sp8 = G.gridSpec(net.links, flows, 8, null), sp8w = G.gridSpec(net.links, flows, 8, WORKS);
 ok(B.x0 >= W.x0 && B.x1 <= W.x1 && B.y0 >= W.y0 && B.y1 <= W.y1, 'GRID_BOX lies inside WORLD');
-ok(sp8.junctions.length === 4 && sp8.junctions.every(J => J.x > B.x0 && J.x < B.x1 && J.y > B.y0 && J.y < B.y1),
-  'four junctions inside GRID_BOX: ' + sp8.junctions.map(J => `${J.id} (${Math.round(J.x)},${Math.round(J.y)})`).join(' '));
+ok(SB.x0 < B.x0 && SB.x1 > B.x1 && SB.y0 < B.y0 && SB.y1 > B.y1 && VW.x0 >= B.x0 && VW.x1 <= B.x1 && VW.y0 >= B.y0 && VW.y1 <= B.y1,
+  'GRID_SIM (computed) contains GRID_BOX (shown), GRID_VIEW (cars drawn) lies inside GRID_BOX');
+ok(sp8.junctions.length === 16 && sp8.junctions.every(J => J.x > SB.x0 && J.x < SB.x1 && J.y > SB.y0 && J.y < SB.y1),
+  '16 junctions computed inside GRID_SIM: ' + sp8.junctions.map(J => `${J.id} (${Math.round(J.x)},${Math.round(J.y)})`).join(' '));
+const shown = sp8.junctions.filter(J => J.shown).map(J => J.id);
+ok(shown.length === 4 && SHOWN.every(id => shown.includes(id)) && sp8.junctions.filter(J => J.shown).every(J => J.x > B.x0 && J.x < B.x1 && J.y > B.y0 && J.y < B.y1),
+  `exactly the 2×2 at the works is shown: ${shown.join(' ')}`);
+const sites = JSON.parse(readFileSync(APPS + 'roads/public/cbd/signals.json', 'utf8')).sites;
+const far = sp8.junctions.filter(J => { const st = sites.find(x => x.site === J.id); if (!st) return true; const [x, y] = ctx.geoToWorld(st.lat, st.lon); return Math.hypot(x - J.x, y - J.y) > 15; });
+ok(far.length === 0, `every junction sits on its real SCATS site (signals.json, ≤ 15 units): ${far.map(J => J.id).join(' ') || 'all 16'}`);
 console.log('   dirs: ' + sp8.dirs.map(D => `${D.street.replace(' Street', '')} ${D.dir} ${D.lanes}L ${Math.round(D.vph)}/h`).join(' · '));
 ok(sp8w.close && sp8w.dirs[sp8w.close.di].street === 'Lonsdale Street' && sp8w.dirs[sp8w.close.di].dir === 'W' && sp8w.close.n === 1,
   `works link maps to Lonsdale St westbound kerb lane, s ${sp8w.close && Math.round(sp8w.close.s0)}..${sp8w.close && Math.round(sp8w.close.s1)}`);
 
 function run(spec, seed, secs, opt = {}) {
-  const sim = new G.GridSim(spec, { seed }); const r = { red: 0, overlap: 0, inPoly: 0, outBox: 0, maxStop: 0, q: [], samples: 0 };
+  const sim = new G.GridSim(spec, { seed }); const r = { red: 0, overlap: 0, inPoly: 0, outBox: 0, outer: 0, heads: new Set(), maxStop: 0, q: [], samples: 0 };
+  const cnt = spec.dirs.map(() => 0), prev = new WeakMap();
   sim.onCross = (c, ln, q, t) => { if (G.gridSigState(spec, q.j, ln.D.axis, t) === 'R') r.red++; };
   const polys = sim.works().polys;
   const pip = (x, y, P) => { let inside = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside; } return inside; };
@@ -40,17 +51,24 @@ function run(spec, seed, secs, opt = {}) {
   for (let k = 0; k < secs / 0.25; k++) {
     sim.step(0.25);
     for (const ln of sim.lanes) for (let i = 1; i < ln.cars.length; i++) if (ln.cars[i - 1].s - ln.cars[i - 1].len - ln.cars[i].s < 0) r.overlap++;
-    for (const a of sim.agents) {
-      if (a.x < B.x0 - 10 || a.x > B.x1 + 10 || a.y < B.y0 - 10 || a.y > B.y1 + 10) r.outBox++;
+    for (const a of sim.agents) if (a.x < VW.x0 || a.x > VW.x1 || a.y < VW.y0 || a.y > VW.y1) r.outBox++;
+    for (const a of sim.all) {
+      if (a.x < B.x0 || a.x > B.x1 || a.y < B.y0 || a.y > B.y1) r.outer++;
       for (const P of polys) if (pip(a.x, a.y, P)) r.inPoly++;
     }
+    if (sim.t > 300) for (const ln of sim.lanes) for (const c of ln.cars) {
+      if (c.type !== 'car') continue; const p = prev.get(c), sV = ln.D.sV;
+      if (p ? (p.ln === ln && p.s < sV && c.s >= sV) : (c.s >= sV && c.s < sV + 8 && !c.arc)) cnt[ln.di]++;
+      prev.set(c, { s: c.s, ln });
+    }
+    if (k % 40 === 0) for (const h of sim.signalHeads()) r.heads.add(h.id);
     if (k % 40 === 0 && sim.t > 300) {
       const n = sim.agents.length, st = sim.agents.filter(a => a.v < 0.5).length;
       if (n >= 10) r.maxStop = Math.max(r.maxStop, st / n);
       r.q.push(opt.qAt ? sim.queueAt(opt.qAt.di, opt.qAt.s0) : sim.works().queue_m); r.samples++;
     }
   }
-  r.ms = Date.now() - t0; r.sim = sim; r.qAvg = r.q.reduce((a, b) => a + b, 0) / Math.max(1, r.q.length); return r;
+  r.ms = Date.now() - t0; r.sim = sim; r.cnt = cnt; r.secs = secs - 300; r.qAvg = r.q.reduce((a, b) => a + b, 0) / Math.max(1, r.q.length); return r;
 }
 const served = sim => sim.entry.filter(e => e.arr > 0).map(e => ({ e, f: e.ins / e.arr }));
 
@@ -61,6 +79,11 @@ console.log(`   1 simulated hour took ${A.ms} ms (${(3600 / (A.ms / 1000)).toFix
 ok(sA.every(x => x.f >= 0.8), '08:00 no works: every entry served ≥ 80 % of demand — ' + sA.map(x => `${x.e.street.replace(' Street', '')} ${x.e.dir} ${x.e.ins}/${x.e.arr}`).join(', '));
 ok(A.maxStop < 0.9 && A.sim.stats.done > 1000, `08:00 no works: no gridlock — stopped share peaks at ${(A.maxStop * 100).toFixed(0)} % (< 90 %), ${A.sim.stats.done} cars through`);
 ok(A.ms < 20000, `1 simulated hour runs in ${A.ms} ms (< 20 s)`);
+const inflow = R => R.sim.spec.dirs.map((D, i) => ({ D, got: R.cnt[i] * 3600 / R.secs })).filter(x => x.D.target != null && x.D.entry);
+const fA = inflow(A);
+ok(fA.length === 7 && fA.every(x => Math.abs(x.got - x.D.target) <= Math.max(45, 0.15 * x.D.target)),
+  '08:00: cars entering the 2×2 match flows.json at its edge (±15 %) — ' + fA.map(x => `${x.D.street.replace(' Street', '')} ${x.D.dir} ${Math.round(x.got)}/${Math.round(x.D.target)}`).join(', '));
+ok(A.outer > 0 && A.sim.all.length > A.sim.agents.length, `the outer ring is computed: ${A.sim.all.length} cars in the 4×4, ${A.sim.agents.length} handed to the page`);
 
 // 2 hour 8 with the demo works (Lonsdale St westbound, 1 lane)
 const Bw = run(sp8w, 7, 3600);
@@ -73,7 +96,8 @@ ok(Bw.sim.works().polys.length === 1, 'works() returns one closed-lane polygon f
 ok(A.inPoly + Bw.inPoly === 0, `reverse: no car centre ever inside a closed-lane polygon (${Bw.inPoly} hits)`);
 ok(A.red + Bw.red === 0 && A.sim.redRun + Bw.sim.redRun === 0, `reverse: no car crosses a stop line on red (${A.red + Bw.red} independent, ${A.sim.redRun + Bw.sim.redRun} self-reported)`);
 ok(A.overlap + Bw.overlap === 0, `reverse: no overlaps on any lane (gap ≥ 0) — ${A.overlap + Bw.overlap} violations`);
-ok(A.outBox + Bw.outBox === 0, `every agent always inside GRID_BOX ± 10 (${A.outBox + Bw.outBox} outside)`);
+ok(A.outBox + Bw.outBox === 0, `reverse: the page is never handed a car outside the 2×2 view (${A.outBox + Bw.outBox} outside GRID_VIEW)`);
+ok([...A.heads, ...Bw.heads].every(id => SHOWN.includes(id)) && A.heads.size === 4, `reverse: signal heads only at the 4 shown junctions (${[...A.heads].join(' ')})`);
 
 // 6 determinism
 const d1 = run(sp8w, 42, 600), d2 = run(sp8w, 42, 600);
@@ -81,6 +105,8 @@ ok(JSON.stringify(d1.sim.stats) === JSON.stringify(d2.sim.stats) && d1.sim.agent
 
 // 7 hour 17
 const sp17 = G.gridSpec(net.links, flows, 17, null), C = run(sp17, 3, 3600), sC = served(C.sim);
+const fC = inflow(C);
+ok(fC.every(x => Math.abs(x.got - x.D.target) <= Math.max(45, 0.15 * x.D.target)), '17:00: cars entering the 2×2 match flows.json (±15 %) — ' + fC.map(x => `${x.D.dir}${x.D.street[0]} ${Math.round(x.got)}/${Math.round(x.D.target)}`).join(' '));
 ok(C.maxStop < 0.9 && sC.every(x => x.f >= 0.8) && C.red + C.overlap + C.outBox === 0, `17:00: no gridlock — stopped share peaks at ${(C.maxStop * 100).toFixed(0)} %, ${C.sim.stats.done} cars, entries ≥ 80 %`);
 const Cw = run(G.gridSpec(net.links, flows, 17, WORKS), 3, 1800);
 ok(Cw.maxStop < 0.9 && Cw.inPoly + Cw.red + Cw.overlap === 0, `17:00 with works: no gridlock (${(Cw.maxStop * 100).toFixed(0)} %), no car in the works, none on red`);
@@ -92,7 +118,7 @@ ok(s.isGrid === true && s.risk.constructor.name === "Float32Array" && s.risk.len
 ok(a0 && ['id', 'kind', 'type', 'x', 'y', 'hx', 'hy', 'v', 'acc', 'len', 'wid', 'trail', 'tag', 'blocked'].every(k => k in a0) && a0.trail.length <= 24,
   'agents carry id, kind, type, x, y, hx, hy, v, acc, len, wid, trail (≤ 24), tag, blocked');
 ok(h.length >= 8 && h.every(x => (x.axis === 'EW' || x.axis === 'NS') && 'GAR'.includes(x.state)), `signalHeads(): ${h.length} heads with axis and G / A / R`);
-ok(s.agents.some(a => a.type === 'tram'), 'trams run on Swanston St');
+ok(s.all.some(a => a.type === 'tram'), 'trams run on Swanston St');
 s.setWeather('storm', null); s.step(5); ok(s.wxk === 'storm', 'setWeather switches the weather multipliers');
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
