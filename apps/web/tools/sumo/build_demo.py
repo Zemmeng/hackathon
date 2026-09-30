@@ -60,7 +60,9 @@ def binaries():
     bins = {name: str(exe/name) if (exe/name).exists() else shutil.which(name) for name in ['sumo','netconvert']}
     if not all(bins.values()):
         raise RuntimeError('Install tools/sumo/requirements.txt in a virtual environment first.')
-    version = command([bins['sumo'],'--version'], ROOT).splitlines()[0]
+    # Under an unsupported locale SUMO prints "Warning: Could not set locale to 'C'." before the version line.
+    out = command([bins['sumo'],'--version'], ROOT)
+    version = next((l.strip() for l in out.splitlines() if l.startswith('Eclipse SUMO')), out.strip()[:200])
     if VERSION not in version:
         raise RuntimeError('Expected SUMO '+VERSION+', got '+version)
     return bins, version
@@ -329,8 +331,9 @@ def validate_config(value):
     if not isinstance(value,dict) or set(value)-set(DEFAULT_CONFIG):
         raise ValueError('Unknown configuration field')
     config={**DEFAULT_CONFIG,**value}
+    # Measured on seed 42: demand_scale >=1.5 always fails (collision / not cleared); clearance <600 s fails for short demand.
     for key,lo,hi,integer in [('seed',0,2147483647,True),('demand_duration_s',10,600,True),
-                              ('clearance_s',60,2400,True),('demand_scale',.1,3,False),('diversion_share',0,1,False)]:
+                              ('clearance_s',600,2400,True),('demand_scale',.1,1.2,False),('diversion_share',0,1,False)]:
         n=config[key]
         if type(n) not in (int,float) or not math.isfinite(n) or not lo<=n<=hi or (integer and type(n) is not int):
             raise ValueError(f'{key} must be {"an integer" if integer else "a number"} in [{lo}, {hi}]')

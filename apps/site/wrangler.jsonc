@@ -1,4 +1,4 @@
-// site —— 一个 Worker 挂全部模块：/<模块>/public/… 是各模块 public/ 的原样拷贝（build.mjs 拷到 out/），/api/* 交给 T5 的 api Worker
+// site —— 一个 Worker 挂全部模块：/<模块>/public/… 是各模块 public/ 的原样拷贝（build.mjs 拷到 out/），/api/sumo/* 交给 hackathon-sumo，其余 /api/* 交给 T5 的 api Worker
 // 部署只走 bash scripts/deploy.sh all（DEPLOYER，D-0929-1322）；它会跑 npm run deploy = node build.mjs && wrangler deploy
 // 密钥不放这里：大模型 key 由部署人在 T5 的 api Worker 上 npx wrangler secret put <NAME>。详见 README.md、docs/deploy-cloudflare.md
 {
@@ -20,14 +20,19 @@
     // build.mjs 的产物（已 gitignore），不是源码；npm run dev / deploy 会先重新生成
     "directory": "out",
     "binding": "ASSETS",
-    // /api/* 先进 Worker（转给 T5）；但 /api/public/* 是 apps/api/public/ 的静态文件（reader.js 等），照常走静态资源
+    // /api/* 先进 Worker（/api/sumo/* 转给 hackathon-sumo，其余转给 T5）；但 /api/public/* 是 apps/api/public/ 的静态文件（reader.js 等），照常走静态资源
     "run_worker_first": ["/api/*", "!/api/public/*"]
   },
 
   // ---- 接 T5 的 api Worker（D-0929-1436，T19 打开）----
   // service = apps/api/wrangler.jsonc 的 "name"（改名两边一起改，tests/config.test.mjs 查）。
   // hackathon.conf 的 DEPLOY_MODULES=api site：api 必须排在前面，绑定的目标 Worker 得先存在，否则部署报 Could not resolve service binding
+  // ---- 接现场 SUMO（T37）：/api/sumo、/api/sumo/* 交给 hackathon-sumo（apps/sumo，Cloudflare Container），worker.js 先判它再判 /api/* ----
+  // service = apps/sumo/wrangler.jsonc 的 "name"（tests/config.test.mjs 查）。hackathon-sumo 必须在 site 部署前就存在：
+  // lead 先在本机（要 Docker）cd apps/sumo && npx wrangler deploy，再部署 site；否则 site 部署报 Could not resolve service binding。
+  // hackathon.conf 的 DEPLOY_MODULES 故意还是「api site」、不加 sumo：sumo 的镜像要 Docker 构建，只由 lead 在装了 Docker 的机器上手动部署
   "services": [
-    { "binding": "API", "service": "hackathon-api" }
+    { "binding": "API", "service": "hackathon-api" },
+    { "binding": "SUMO", "service": "hackathon-sumo" }
   ]
 }

@@ -1,7 +1,7 @@
-# site —— 同源网站外壳：一个网址挂全部模块，/api/* 留给 T5
+# site —— 同源网站外壳：一个网址挂全部模块，/api/sumo/* 给现场 SUMO，其余 /api/* 留给 T5
 Owner: @unicornnnnnny（部署人，D-0929-1322）· 代码：@Zemmeng
 
-一个 Cloudflare Worker = 整个 demo 网址。部署时 `build.mjs` 把 `apps/<模块>/public/` 里 **git 已跟踪的文件**原样拷到 `/<模块>/public/`（契约 `docs/contract.md`：「lead 部署时把每个模块的 `public/` 原样挂到 `/<模块>/public/`」）。这样网页面板、引擎 JS、路网数据和路口仿真都在同一个网址下，互相 `fetch` / `import` 不用跨域。`/api/*` 转给 T5 的 api Worker（服务绑定，D-0929-1436），T5 上线前先回占位。
+一个 Cloudflare Worker = 整个 demo 网址。部署时 `build.mjs` 把 `apps/<模块>/public/` 里 **git 已跟踪的文件**原样拷到 `/<模块>/public/`（契约 `docs/contract.md`：「lead 部署时把每个模块的 `public/` 原样挂到 `/<模块>/public/`」）。这样网页面板、引擎 JS、路网数据和路口仿真都在同一个网址下，互相 `fetch` / `import` 不用跨域。`/api/sumo/*` 转给现场 SUMO 的 `hackathon-sumo`（`apps/sumo`，T37），其余 `/api/*` 转给 T5 的 api Worker（服务绑定，D-0929-1436），T5 上线前先回占位。
 
 ## 部署（高h 照做）
 
@@ -78,7 +78,7 @@ git pull && bash scripts/check.sh --e2e
 | `permission` / `403` / `not authorized` | 可能是 Workers 角色的权限不够（还没实测过）。把报错原文发给 lead，lead 去后台调角色 |
 | 问你要不要注册 workers.dev 子域 | 先别选，问 lead（lead 的账号应该已经有了） |
 | `A Worker with this name already exists` 之类的重名 | 改 `wrangler.jsonc` 的 `name`（走 lead 分支），告诉 lead 新网址 |
-| `Could not resolve service binding` | T5 的 api Worker 还没部署，或 `DEPLOY_MODULES` 里 `api` 没排在 `site` 前面（见下一节） |
+| `Could not resolve service binding` | 绑定的 Worker 还没部署：`hackathon-api`（`DEPLOY_MODULES` 里 `api` 要排在 `site` 前面，见下一节），或 `hackathon-sumo`（lead 先手动部署 `apps/sumo`，见「接现场 SUMO」） |
 | 部署成功但 `--e2e` 红 | `cd apps/site && npx wrangler tail` 开着，浏览器再点一次，看报错 |
 | 线上坏了、演示快到了 | `deploy.sh` 失败时会打印回滚命令：切到上一个 `demo-*` tag 重新部署 |
 
@@ -95,6 +95,15 @@ git pull && bash scripts/check.sh --e2e
 
 本地同时起两个也能联调：先在 `apps/api` 里 `npm run dev`（8788），再起 site（8790），wrangler 会在本机把两个连起来（尚未实测）。
 
+## 接现场 SUMO（T37，C + Cloudflare Containers）
+
+1. `apps/site/wrangler.jsonc` 的 `services` 加了第二个绑定 `{ "binding": "SUMO", "service": "hackathon-sumo" }`，`hackathon-sumo` = `apps/sumo/wrangler.jsonc` 的 `name`（`tests/config.test.mjs` 查）
+2. **顺序**：`hackathon-sumo` 必须先存在，site 才能部署（否则 `Could not resolve service binding`）。镜像要 Docker 构建，所以由 **lead 在装了 Docker 的机器上**先 `cd apps/sumo && npx wrangler deploy`，之后才跑 `bash scripts/deploy.sh all`
+3. `DEPLOY_MODULES` 故意还是 `api site`，不加 `sumo`：`deploy.sh` 不管 sumo
+4. `worker.js` 先判 `/api/sumo`、`/api/sumo/*`（`/api/sumoX` 不算），再判其余 `/api/*`。原请求原样转给 `hackathon-sumo`，删 Origin / Cookie、白名单、限流都在那边做
+5. 没绑 SUMO → 503 `sumo_off`；`hackathon-sumo` 抛错 → 502 `sumo_down`。网页见到这两个（或 `sumo_busy` / `sumo_rate` 等）就改用预先跑好的结果 `/sumo/public/baked/…`，那是静态文件，和现场服务无关
+6. 验证：`<网址>/api/sumo/v1/health` 是 hackathon-sumo 的响应（不是 T5 api Worker 回的）
+
 ## 怎么跑
 
 - 手动：`cd apps/site && npm ci && npm run dev`，浏览器开 http://localhost:8790
@@ -103,9 +112,9 @@ git pull && bash scripts/check.sh --e2e
 
 ## 怎么测
 
-- `bash apps/site/test.sh`：不需要 `npm ci`、不联网，3 个文件共 69 条断言
+- `bash apps/site/test.sh`：不需要 `npm ci`、不联网，3 个文件共 89 条断言
   - `build.test.mjs`：各模块 `public/` 拷到 `/<模块>/public/`、首页有 `data-smoke`、有 web 就跳、不清空别人的目录
-  - `worker.test.mjs`：假 ASSETS / API 绑定下的路由、503 / 502 错误格式、没有 CORS 头
+  - `worker.test.mjs`：假 ASSETS / API / SUMO 绑定下的路由（`/api/sumo/*` 先于 `/api/*`）、503 / 502 错误格式、没有 CORS 头
   - `config.test.mjs`：`wrangler.jsonc`、`package.json`、锁文件的关键项
 - `cd apps/site && npm run dry-run`：打包但不上传，看配置和绑定对不对（需要先 `npm ci`；想关掉 wrangler 的匿名统计就在前面加 `WRANGLER_SEND_METRICS=false`）
 
@@ -116,7 +125,8 @@ git pull && bash scripts/check.sh --e2e
 | `/` | 首页，含 `data-smoke`。有 `apps/web/public/index.html` 就用 JS 跳 `/web/public/`（`/?list` 不跳，看模块目录） |
 | `/<模块>/public/…` | `apps/<模块>/public/` 里 `git ls-files` 列出的文件原样挂上；被 gitignore 的（keys.json、*.pem、raw/、node_modules/）、没 git add 的、点开头的、符号链接都不拷；模块目录或 `public/` 是符号链接 → 整个模块跳过。git 不可用或不在仓库里 → build 报错不构建。新模块只要有 `public/` 就自动挂上，不用改 site |
 | `/api/health` | 没绑 API：`{"ok":true,"v":"site-0.1","mock":true,"api":false}`；绑了：T5 的响应 |
-| `/api/*`（`/api/public/*` 除外） | 绑了 API：原样转发（方法、查询串、请求体不变）；没绑：503 `{"ok":false,"error":"api_not_deployed","msg":"…"}`；API 抛错：502 `api_unreachable`，不带内部报错 |
+| `/api/sumo`、`/api/sumo/*` | 绑了 SUMO：原样转给 `hackathon-sumo`（路径前缀不剥）；没绑：503 `{"ok":false,"error":"sumo_off","msg":"…"}`；抛错：502 `sumo_down`，不带内部报错。网页收到就用 `/sumo/public/baked/` |
+| `/api/*`（`/api/public/*`、`/api/sumo/*` 除外） | 绑了 API：原样转发（方法、查询串、请求体不变）；没绑：503 `{"ok":false,"error":"api_not_deployed","msg":"…"}`；API 抛错：502 `api_unreachable`，不带内部报错 |
 | `/api/public/*` | `apps/api/public/` 的静态文件 |
 
 故意不加 CORS 头：所有东西在同一个网址下。
@@ -138,8 +148,8 @@ Cloudflare Workers（静态资源 + 服务绑定）。账号是 lead 的，登�
 | 文件 | 一句话 |
 |---|---|
 | `build.mjs` | 各模块 `public/` → `out/<模块>/public/`，生成首页 `out/index.html`；每次先清空 `out/` |
-| `src/worker.js` | `/api/*` 转发或占位，其余交给 ASSETS |
-| `wrangler.jsonc` | Worker 名 `hackathon-site`（部署人可以改）、`assets.directory = out`、`run_worker_first`、`services`（API → `hackathon-api`） |
+| `src/worker.js` | `/api/sumo/*` 转 SUMO，其余 `/api/*` 转 API 或占位，其余交给 ASSETS |
+| `wrangler.jsonc` | Worker 名 `hackathon-site`（部署人可以改）、`assets.directory = out`、`run_worker_first`、`services`（API → `hackathon-api`，SUMO → `hackathon-sumo`） |
 | `package.json` / `package-lock.json` | 只有 wrangler（锁 4.143.0）；`build` / `dev` / `dry-run` / `deploy` / `test` |
 | `test.sh` + `tests/*.test.mjs` | 见「怎么测」 |
 | `out/` | 构建产物，已 gitignore，不手改 |
@@ -149,10 +159,12 @@ Cloudflare Workers（静态资源 + 服务绑定）。账号是 lead 的，登�
 - 🔒 `src/worker.js` 只导出 `default`（workerd 把具名导出当入口；`worker.test.mjs` 第一条查它）
 - 🔒 `out/` 是产物：不进 git、不手改；`dev` / `deploy` 前自动重新 build
 - 🔒 `/api/public/*` 永远是静态文件；`wrangler.jsonc` 的 `run_worker_first` 和 `worker.js` 两处都这么处理，改一处要改两处
+- 🔒 `/api/sumo/*` 的判断排在 `/api/*` 前面；挪到后面就全被 API 吃掉（`worker.test.mjs` 查）
 - 首页不许出现 localhost（`check.sh --e2e` 会查）
 
 ## 已知问题
 
 - 尚未验证：只给 Workers 角色的成员，能不能部署带静态资源的 Worker（第一次部署时就知道了）
 - 尚未验证：绑上 T5 后的真实转发（T19 打开了绑定，要等第一次 `deploy.sh all`）。目前只用假绑定测过
+- 尚未验证：绑上 `hackathon-sumo` 后的真实转发（T37）。目前只用假绑定测过；`wrangler deploy --dry-run` 能看到 `env.SUMO (hackathon-sumo)`
 - `hackathon-site` 这个名字在 lead 的账号里有没有被占用，第一次部署时才知道

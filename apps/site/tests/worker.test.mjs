@@ -1,4 +1,4 @@
-// 用途：用假的 ASSETS / API 绑定测 src/worker.js —— 静态文件直通、/api/* 转发或 503、/api/health 自报、没有 CORS
+// 用途：用假的 ASSETS / API / SUMO 绑定测 src/worker.js —— 静态文件直通、/api/sumo/* 转 SUMO 或 503 / 502、/api/* 转发或 503、/api/health 自报、没有 CORS
 // 用法：node tests/worker.test.mjs（test.sh 会自动跑）；不需要 wrangler、不联网；最后一行固定「N passed, M failed」
 import * as mod from '../src/worker.js';
 
@@ -79,6 +79,67 @@ try {
     const body = JSON.parse(text);
     ok(res.status === 502 && body.ok === false && body.error === 'api_unreachable', 'API Worker 抛错 → 502 JSON api_unreachable');
     ok(!text.includes('INTERNAL-DETAIL-xyz') && !text.includes('at '), '反向：502 响应里没有内部报错文本和调用栈');
+  }
+
+  // ---- 5. T37：/api/sumo、/api/sumo/* 交给 SUMO（hackathon-sumo），先于 /api/* → API ----
+  {
+    const ASSETS = fake('assets'), API = fake('api'), SUMO = fake('sumo');
+    const env = { ASSETS, API, SUMO };
+    const q = req('/api/sumo/v1/health');
+    const res = await worker.fetch(q, env);
+    ok(res.status === 200 && (await res.text()) === 'sumo:/api/sumo/v1/health' && res.headers.get('x-from') === 'sumo', '绑了 SUMO：/api/sumo/v1/health 的响应原样来自 SUMO Worker');
+    ok(SUMO.seen[0] === q && API.seen.length === 0 && ASSETS.seen.length === 0, '反向：/api/sumo/v1/health 没交给 API、也没交给 ASSETS，SUMO 收到的是同一个请求');
+
+    // POST 带 Origin / Cookie：site 不删头、不改路径，原样转（删头、白名单在 hackathon-sumo 里做）
+    const p = req('/api/sumo/v1/runs?x=1', { method: 'POST', headers: { 'content-type': 'application/json', origin: BASE, cookie: 'a=1' }, body: '{"seed":42}' });
+    await worker.fetch(p, env);
+    const got = SUMO.seen[1];
+    ok(got === p && got.method === 'POST' && new URL(got.url).pathname === '/api/sumo/v1/runs' && new URL(got.url).search === '?x=1' && (await got.text()) === '{"seed":42}', 'POST /api/sumo/v1/runs：转发的是原请求，路径前缀 /api/sumo 不剥、查询串和请求体不变');
+
+    const bare = await worker.fetch(req('/api/sumo'), env);
+    ok((await bare.text()) === 'sumo:/api/sumo' && SUMO.seen.length === 3, '/api/sumo（不带斜杠）也交给 SUMO');
+
+    for (const x of ['/api/sumoX', '/api/sumo-v1/health', '/api/sumo.json']) {
+      const r = await worker.fetch(req(x), env);
+      ok((await r.text()) === `api:${x}`, `反向：${x} 不是 /api/sumo/*，照常交给 API`);
+    }
+    ok(SUMO.seen.length === 3, '反向：上面三个 /api/sumoX 类路径一个都没进 SUMO');
+
+    const h = await worker.fetch(req('/api/health'), env);
+    const rd = await worker.fetch(req('/api/read', { method: 'POST', body: '{}' }), env);
+    ok((await h.text()) === 'api:/api/health' && (await rd.text()) === 'api:/api/read', '绑了 SUMO 以后 /api/health、/api/read 仍交给 API（原来的转发不变）');
+    const s = await worker.fetch(req('/api/public/js/reader.js'), env);
+    const b = await worker.fetch(req('/sumo/public/baked/baked.json'), env);
+    ok((await s.text()) === 'assets:/api/public/js/reader.js' && (await b.text()) === 'assets:/sumo/public/baked/baked.json' && SUMO.seen.length === 3,
+      '/api/public/* 和预先跑好的 /sumo/public/baked/* 仍是静态文件，不进 SUMO');
+  }
+
+  // ---- 6. 没绑 SUMO（hackathon-sumo 没部署 / 绑定被删）：503 sumo_off，网页改用预先跑好的结果；不落到 API ----
+  {
+    const ASSETS = fake('assets'), API = fake('api');
+    for (const [label, env] of [['绑了 API 没绑 SUMO', { ASSETS, API }], ['两个都没绑', { ASSETS }], ['SUMO 不是绑定', { ASSETS, API, SUMO: {} }]]) {
+      const res = await worker.fetch(req('/api/sumo/v1/runs', { method: 'POST', body: '{}' }), env);
+      const body = await res.json();
+      ok(res.status === 503 && body.ok === false && body.error === 'sumo_off' && /预先跑好/.test(body.msg || '') && res.headers.get('cache-control') === 'no-store',
+        `${label}：POST /api/sumo/v1/runs → 503 sumo_off，msg 让网页用预先跑好的结果（${body.msg}）`);
+    }
+    const h = await worker.fetch(req('/api/sumo/v1/health'), { ASSETS, API });
+    ok(h.status === 503 && (await h.json()).error === 'sumo_off', '没绑 SUMO：/api/sumo/v1/health 也是 503 sumo_off（不会被 API 回成 404 之类的）');
+    ok(API.seen.length === 0 && ASSETS.seen.length === 0, '反向：没绑 SUMO 时 /api/sumo/* 既没交给 API 也没交给 ASSETS');
+  }
+
+  // ---- 7. SUMO Worker 抛错：502 sumo_down，不把内部报错吐给浏览器 ----
+  {
+    const API = fake('api');
+    const SUMO = { fetch: async () => { throw new Error('INTERNAL-SUMO-detail'); } };
+    const origErr = console.error; console.error = () => {};
+    const res = await worker.fetch(req('/api/sumo/v1/runs', { method: 'POST', body: '{}' }), { ASSETS: fake('assets'), API, SUMO });
+    console.error = origErr;
+    const text = await res.text();
+    const body = JSON.parse(text);
+    ok(res.status === 502 && body.ok === false && body.error === 'sumo_down' && /预先跑好/.test(body.msg || ''), 'SUMO Worker 抛错 → 502 JSON sumo_down，msg 让网页用预先跑好的结果');
+    ok(!text.includes('INTERNAL-SUMO-detail') && !text.includes('at ') && noCors(res), '反向：502 响应里没有内部报错文本、调用栈和 CORS 头');
+    ok(API.seen.length === 0, '反向：SUMO 抛错后没有退回去找 API');
   }
 } catch (e) {
   F++;
