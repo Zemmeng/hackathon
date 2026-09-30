@@ -1,7 +1,7 @@
 # Submission notes: third-party material, AI use, pre-event prep
 
 > For the judges (FEIT Hackathon 2026, Challenge 5, RPM Hire). Covers competition **rules 3, 5 and 6**: no development before the event, public code repository, and a list of every third-party asset and API.
-> Compiled 2026-09-29 22:05 AEST from what the repository itself shows; updated 2026-09-30 (live LLM, Open-Meteo, SUMO).
+> Compiled 2026-09-29 22:05 AEST from what the repository itself shows; updated 2026-09-30 (live LLM, Open-Meteo, SUMO; 18:40: SUMO running in a Cloudflare Container, OSM vector basemap, Workers Paid plan).
 
 ## 1. Third-party data, assets, APIs and software
 
@@ -20,6 +20,7 @@
 | Open-Meteo Historical Weather API (`archive-api.open-meteo.com`), model `ecmwf_ifs` | Hourly weather 2026-08-01 to 09-27 for an offline back-test of the weather layer (`apps/roads/public/cbd/weather_hourly.json`, `weather_backtest.json`); not shown on the page | CC BY 4.0 data, fetched once through the free API, whose terms allow non-commercial use (a student hackathon back-test) | Weather data by Open-Meteo.com |
 | Bureau of Meteorology: daily weather observations, Melbourne (Olympic Park) | Manual cross-check of rain days for that back-test; downloaded by hand, not committed | © Commonwealth of Australia, reference only | Bureau of Meteorology |
 | RPM Hire website product pages (checked 2026-09-29) | Equipment types and specifications (16 items in `equipment.json`: the 7 hire products link to their product pages, the 9 static signs use TfNSW sign codes). **Quantities and day rates are our own assumptions** because the site publishes no prices. No images or text were copied | Reference only | RPM Hire (challenge sponsor) |
+| OpenMapTiles vector tiles served by OpenFreeMap (`tiles.openfreemap.org`), built from OpenStreetMap | Background map layers around the fine window: water, green space, land use, rail and tram lines. Six z14 tiles fetched at build time by `apps/roads/tools/fetch_vectormap.py` and decoded into our own `apps/roads/public/cbd/vectormap.json` (PR #111); the page never contacts the tile server | OpenMapTiles schema CC BY 4.0; data ODbL 1.0 | Vector basemap © OpenMapTiles / OpenFreeMap, data © OpenStreetMap contributors |
 | TfNSW sign register (codes T1-1, T2-16) | Sign codes in `equipment.json` | Reference only | Transport for NSW |
 
 On the web page, source credits appear next to the layers that use them: "OSM · City of Melbourne" on the building layer, "Timetabled trips from PTV GTFS" in the tram panel and "City of Melbourne pedestrian counts" in the pedestrian panel.
@@ -46,7 +47,10 @@ The papers behind our design choices (Meister 2024, Xiong 2024, Wang et al. 2025
 
 | Item | Role | Licence / terms |
 |---|---|---|
-| Cloudflare Workers (+ service binding between the `site` and `api` Workers) | Hosting of the demo at `hackathon-site.zemmmeng.workers.dev` | Cloudflare terms |
+| Cloudflare Workers (+ service bindings from `site` to the `api` and `sumo` Workers) | Hosting of the demo at `hackathon-site.zemmmeng.workers.dev`. Workers Paid plan since 2026-09-30 (see "Paid purchases") | Cloudflare terms |
+| Cloudflare Containers | Runs the SUMO service (`apps/sumo`, Worker `hackathon-sumo`, one `standard-2` instance with 1 vCPU) behind `/api/sumo/v1/*`; per-IP rate limit via the Workers rate-limit binding (D-0930-1700) | Cloudflare terms |
+| `@cloudflare/containers` 0.3.7 (npm) | Container class and routing in `apps/sumo/src/worker.js` | MIT OR Apache-2.0 |
+| Docker official image `python:3.12-slim` (Docker Hub) + Debian packages (libX11, libGL and friends, libatomic) | Base of `apps/sumo/Dockerfile`; the image was built on the lead's Mac with colima + Docker CLI (Homebrew) | PSF and Debian package licences |
 | Wrangler CLI (npm, dev dependency of `apps/api`, `apps/site`, `apps/web`) | Local dev and deploy | MIT / Apache-2.0 |
 | GitHub Actions: `actions/checkout`, `actions/setup-node`, `actions/setup-python`, `cloudflare/wrangler-action` | CI checks and the manual-only deploy workflow (`.github/workflows/`) | Open source, see each action's repository |
 | OSMnx (+ networkx, geopandas, shapely, requests) | Offline data preparation only (`apps/roads/requirements.txt`), not shipped | MIT / BSD-3 |
@@ -54,11 +58,11 @@ The papers behind our design choices (Meister 2024, Xiong 2024, Wang et al. 2025
 | Google Fonts: Inter, JetBrains Mono, Noto Sans SC, Space Grotesk (`apps/web`); Barlow, Barlow Condensed, IBM Plex Mono (`apps/sim`) | UI type, loaded from fonts.googleapis.com | SIL OFL 1.1 |
 | DeepSeek API (`deepseek-flash`, OpenAI-compatible) | **In use in the deployed demo**, server-side only in `apps/api`: it reads sign text (`/api/read`) and words the plan-comparison explanation (`/api/explain`), where any sentence with a number the engine did not produce is dropped (`sanitizeExplain`). Answers are cached in KV, the demo's sign readings are precomputed, and calls are capped at 600 a day; without a key, over the cap or on an error it falls back to rules, and the page labels which source was used (D-0929-2307, D-0929-1830). During development, two team members made a small number of test calls with their own keys and personal credit (see "Paid purchases" below; `docs/llm-apis/`) | DeepSeek API terms |
 | Alibaba Cloud Model Studio (Bailian) | Evaluated (PR #28), then dropped (PR #37). Not used | — |
-| Eclipse SUMO 1.27.1 + sumolib (PyPI `eclipse-sumo`, `sumolib`) | Prototype backend for a four-junction micro-simulation (`apps/web/tools/sumo`, PR #96). Runs locally only; not wired into the page and not part of the deployed demo | EPL-2.0 OR GPL-2.0-or-later (dual licence) |
+| Eclipse SUMO 1.27.1 + sumolib (PyPI `eclipse-sumo`, `sumolib`) | Micro-simulation backend (`apps/web/tools/sumo`, PR #96), **deployed** as a cloud service on 2026-09-30 (Cloudflare Container above, PR #112) at `/api/sumo/v1/*`. Results pre-computed with the same image are served as a labelled fallback (`apps/sumo/public/baked/`). The network is a **synthetic** 2×2 grid with assumed demand, not calibrated to Melbourne. The web page does not display SUMO results yet (no UI card) | EPL-2.0 OR GPL-2.0-or-later (dual licence) |
 
-We found no map tiles, CDN JavaScript libraries, stock images, audio or 3D assets under `apps/`: a grep for tile, CDN and font URLs returned only the Google Fonts above. The map is drawn from our own JSON.
+We found no CDN JavaScript libraries, stock images, audio or 3D assets under `apps/`, and the page loads no map tiles: a grep for tile, CDN and font URLs returns only the Google Fonts above, the OpenFreeMap attribution link in the page credits, and the tile template recorded as the source inside `vectormap.json` (the page never requests it; `apps/web/tests/test_web.py` checks that every fetch is same-origin). The map is drawn from our own JSON, including the vector basemap above, which was converted from tiles at build time.
 
-**Paid purchases.** DeepSeek API credit only. @jinmingq topped up ¥10 from a personal account for development test calls (`docs/llm-apis/jinmingq-deepseek.md`). @louisxie316-dotcom made test calls on credit in a personal DeepSeek account; the amount is not recorded in the repo (`docs/llm-apis/louisxie316-dotcom-deepseek.md`). The team's own estimate for a full set of 10 demo sign texts is about ¥0.2 (PR #37). For the deployed demo, the lead set a DeepSeek key as a Cloudflare secret; precomputing the demo sign readings cost about ¥0.54 (estimate, ledger in `docs/3-tasks.md`), and live calls are capped at 600 a day. Members also used AI coding assistants on their own subscriptions (Claude Code, OpenAI Codex; see §2). No other paid services, data or assets were bought.
+**Paid purchases.** DeepSeek API credit and a Cloudflare plan. On 2026-09-30 the lead upgraded the team's Cloudflare account to **Workers Paid (US$5 a month)**, because Cloudflare Containers, which run SUMO, are not available on the free plan; container time is billed on top while the instance is awake (the `standard-2` instance is roughly US$0.05 an hour, about US$2–3 over the event; the exact amount will be taken from the Cloudflare invoice). The lead will delete the container and cancel the plan after judging. @jinmingq topped up ¥10 from a personal account for development test calls (`docs/llm-apis/jinmingq-deepseek.md`). @louisxie316-dotcom made test calls on credit in a personal DeepSeek account; the amount is not recorded in the repo (`docs/llm-apis/louisxie316-dotcom-deepseek.md`). The team's own estimate for a full set of 10 demo sign texts is about ¥0.2 (PR #37). For the deployed demo, the lead set a DeepSeek key as a Cloudflare secret; precomputing the demo sign readings cost about ¥0.54 (estimate, ledger in `docs/3-tasks.md`), and live calls are capped at 600 a day. Members also used AI coding assistants on their own subscriptions (Claude Code, OpenAI Codex; see §2). No other paid services, data or assets were bought.
 
 ## 2. AI tools used
 
@@ -134,7 +138,7 @@ Checked 2026-09-29 ~22:05:
 5. 问 @jinmingq 和 @louisxie316-dotcom：各自在 DeepSeek 上一共充了多少、花了多少。jinmingq 的卡写的是自费充值 ¥10，louis 的卡写「余额多少没看」。有出入就改第 1 节「Paid purchases」那段。
 6. 问 @Unzzip：T12（`apps/params`）查文献用了什么工具（AI 搜索也算），补进第 2 节。
 7. 行人计数数据集页面没写许可证，提交前再确认一次，确认后改第 1 节那一格。
-8. Cloudflare 用的是哪个套餐没查，需要的话补进第 1 节。
+8. ✅ Cloudflare 套餐：09-30 lead 升级 Workers Paid（US$5/月）跑 SUMO 容器，已写进第 1 节（软件表、Paid purchases）。**决赛后**：照 `apps/sumo/README.md`「关掉」第 1、2 步：先去掉 site 的 `SUMO` 绑定（测试要一起放宽）再部署 site，然后删 Worker `hackathon-sumo`、容器和镜像，最后后台退订 Workers Paid，按账单补实际容器花费。
 9. ✅ 大模型已打开（线上 `/api/health` → `mode: llm`）：第 1 节 DeepSeek 那行已改成「演示中在用」，花费写进「Paid purchases」（09-30）。
 10. 初筛 PDF 三页的队名、`docs/4-demo.md`「要全队拍板（提交前）」1–4 待全队定。
 11. 线上 DeepSeek key 是谁的账户、一共充了多少：问 lead，补进第 1 节「Paid purchases」（现在只写了预算读数约 ¥0.54 和每天 600 次上限）。
