@@ -103,6 +103,8 @@ apps/roads/.venv/bin/python -u apps/roads/tools/fetch_buildings.py   # 第一次
 
 不调接口，全是提前下载的公开数据，来源和坑见 `PRD.md` 第 6 节。不需要任何 key。
 
+⚠️ **许可**：`public/cbd/` 下的 `network.json`、`walk.json`、`buildings.json` 由 OpenStreetMap 衍生，按 **ODbL 1.0 share-alike** 分发，**不是 MIT**（署名「© OpenStreetMap contributors」）。要再分发这些文件，得连许可一起给。其余数据和代码的许可见 `docs/submission.md` 与根 `README.md`。
+
 ## 结构
 
 | 文件 | 一句话 |

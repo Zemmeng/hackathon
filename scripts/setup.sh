@@ -4,7 +4,7 @@
 # 用途：[1/7] 检查工具（git、gh、node ≥20、python3 ≥3.9 必需；wrangler、uv 可选），缺什么打印安装命令，不中断
 #       [2/7] gh 登录状态
 #       [3/7] 启用仓库自带的 git hooks（core.hooksPath=.githooks）并补可执行位
-#       [4/7] 没有 .env 就从 .env.example 复制（不覆盖已有的）；建 logs/ out/ scratch/ .claude/agent-out/
+#       [4/7] 没有 .env 就从 .env.example 复制（不覆盖已有的）；建 logs/ out/ scratch/
 #       [5/7] 身份：hack.me = GitHub handle；user.email 为空或是 *.local 主机名邮箱时只打印建议命令，不替你改
 #       [6/7] docs/3-tasks.md 里有没有你的「## @handle」节；hackathon.conf 倒计时
 #       [7/7] bash scripts/check.sh --quick，打印汇总
@@ -89,7 +89,7 @@ echo "[4/7] .env 与本地目录"
 if [ -f .env ]; then ok ".env 已存在，不覆盖"
 elif [ -f .env.example ]; then cp .env.example .env && ok "已从 .env.example 复制出 .env —— 值自己填，🔒 别发群、别贴 issue / PR / 交接单"
 else warn "没有 .env.example，跳过"; fi
-mkdir -p logs out scratch .claude/agent-out && ok "logs/ out/ scratch/ .claude/agent-out/ 已就绪（都在 .gitignore 里）"
+mkdir -p logs out scratch && ok "logs/ out/ scratch/ 已就绪（都在 .gitignore 里）"
 
 # ---------------------------------------------------------------- [5/7] 身份
 echo "[5/7] 身份"

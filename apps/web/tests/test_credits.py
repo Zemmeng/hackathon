@@ -61,8 +61,9 @@ check(f"apps/roads/public/cbd/*.json 里记的来源都在署名里", not missin
 # 3. 放在哪
 check("页面页脚：#credits 由 renderCredits() 按当前语言填，开机和切语言都会重画",
       'id="credits"' in BODY and APP.count("renderCredits();") >= 2)
-check("桌面在地图右下角、玻璃面板外（right: --safe-r），手机是页面最底下的一行",
-      re.search(r"\.credits\{position:fixed;z-index:4;right:var\(--safe-r\);bottom:calc\(var\(--safe-b\)", CSS) is not None
+check("桌面在地图可见区域下方居中（--safe-l 和 --safe-r 之间）、不加玻璃框，手机是页面最底下的一行",
+      re.search(r"\.credits\{position:fixed;z-index:4;left:calc\(var\(--safe-l\) \+ \(100vw - var\(--safe-l\) - var\(--safe-r\)\)/2\);transform:translateX\(-50%\);bottom:calc\(var\(--safe-b\)", CSS) is not None
+      and '<div class="credits" id="credits"' in BODY
       and ".credits{grid-area:credits;padding:12px 16px 20px;" in CSS and 'grid-template-areas:"top" "map" "time" "panel" "credits"' in CSS)
 check("执行包打印页：页脚上方有「数据来源」一节", "<section class=\"pd-src\"><h2>${esc(L('Data sources','数据来源'))}</h2>" in CMP and "credits:creditLines()" in CMP)
 check("执行包复制的文字末尾带数据来源", "packText(p,lang)+`\\n\\n${L('Data sources','数据来源')}\\n`+creditLines()" in CMP)

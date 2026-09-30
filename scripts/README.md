@@ -8,7 +8,6 @@
 | `check.sh` | **唯一的检查 / 测试入口**：[1]–[9] 九项检查，末尾固定「`======== 汇总 X ❌ Y ⚠️`」，写 `logs/last-check.txt`，有 ❌ 退出 1 | 每个人；Stop hook、pre-push、CI 自动调 | 每完成一小步；commit / push 前；收工前 |
 | `secret-scan.sh` | 扫 key / token / 私钥，只输出「文件:行号:模式名」，绝不打印值 | pre-commit、check [1] 自动调；lead 手动跑 `--history` | 每次 commit（自动）；仓库转 public 前（`--history` 必跑） |
 | `sync.sh` | 零 token 实况对齐：各分支最近提交、开着的 PR 和 CI、没落账的交接单、3-tasks 里的 🔨、main 最近 5 条、倒计时 | lead；Codex / 不用 AI 的人 | lead 每次开口前；任何人开工前 |
-| `new-app.sh` | **已停用**：原来从 `starters/` 生成模块，`starters/` 按 D-0929-1311 删掉后只打印手工建模块的步骤并退出 1 | — | — |
 | `deploy.sh` | 前置检查（DEPLOYER 本人、工作区干净、在 main 或 tag 上且与 origin 一致、冻结期只从 `demo-*` tag、全量 check 无 ❌）→ 逐个模块部署 → `check --e2e` 冒烟 → 记 `logs/deploy.log`；失败打印回滚命令 | DEPLOYER（不在时 BACKUP_LEAD）；🔒 AI 执行前必须先问人 | M1 部署打通；每个集成点；打 `demo-*` tag 后 |
 | `.githooks/pre-commit` | `secret-scan.sh --staged`；拦暂存区里的 `.env` / `.dev.vars` / `settings.local.json` / `keys.json`；拦单个 >1MB 的文件 | git 自动（`setup.sh` 启用后） | 每次 `git commit` |
 | `.githooks/pre-push` | 目标是 `main` 且没设 `ALLOW_MAIN=1` 就拒绝；跑 `check.sh --quick`（限时 90 秒），有 ❌ 就拒绝并打印汇总节 | git 自动 | 每次 `git push` |
@@ -42,8 +41,8 @@
 | [3] | 分支与越界（分支名 `<handle>/<模块>/T<n>-<slug>` 推出模块；模块 `pitch` 另可写 `docs/4-demo.md`、`docs/pitch-assets/`） | main 上有改动；分支名不合约定且有改动；改了模块范围外的文件；decisions / pitfalls 有删除行；改了别人的交接单或新建的交接单前缀不是自己；`docs/llm-apis/` 里改 / 删了别人的卡、新建的卡不以自己的 handle 开头、卡的文件名不是 ASCII 或后缀不是 `.md` / `.json`、动了 `README.md` `TEMPLATE.md` 或建了子目录 | 还没有提交 / 没有 base；`lead/*` 分支但你不是 LEAD / BACKUP_LEAD；`ALLOW_CROSS=1` 放行 |
 | [4] | 模块结构 | `apps/*` 缺 README、缺 `Owner:` 行、缺可执行的 `test.sh` | Owner 没填 |
 | [5] | 模块测试（单个限时 `CHECK_TEST_TIMEOUT`，默认 120 秒） | 退出码非 0；最后一行不是 `N passed, M failed`；超时 | 一个 `test.sh` 都没有；test.sh 留了后台进程（已清理） |
-| [6] | 仓库卫生 | 跟踪文件 >1MB（`apps/<模块>/public/` 下的 `.json` 数据文件 >2MB，不报 500KB 提醒）；`.claude/agents/*.md` 的 frontmatter 不是恰好一行 `model: opus`，或文件里出现 `fable` | 跟踪文件 >500KB；`*.sh` / hooks 缺可执行位或是 CRLF；shell 文件里 `$变量` 后面紧跟中文 / 全角字符（macOS 上会崩，改成 `${变量}`） |
-| [7] | RULES 块一致（README / CONTRIBUTING / AGENTS / KICKOFF） | 缺 BEGIN / END 标记、有多个 BEGIN、块内容不逐字相同 | 某个文件不存在 |
+| [6] | 仓库卫生 | 跟踪文件 >1MB（`apps/<模块>/public/` 下的 `.json` 数据文件 >2MB，不报 500KB 提醒） | 跟踪文件 >500KB；`*.sh` / hooks 缺可执行位或是 CRLF；shell 文件里 `$变量` 后面紧跟中文 / 全角字符（macOS 上会崩，改成 `${变量}`） |
+| [7] | RULES 块一致（README.md 里恰好一对 BEGIN / END） | 缺 BEGIN / END 标记、有多个 BEGIN | — |
 | [8] | 交接单格式 | — | 文件名不对；缺四节；根目录有超过 12 小时没处理的单 |
 | [9] | hackathon.conf | 解析不了；TZ 无效；时间格式不对 | DEADLINE 未设置；DEMO_URL 有值但 README 里没有 |
 

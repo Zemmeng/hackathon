@@ -132,5 +132,15 @@ check("左侧图层栏缩小（50 px 宽、按钮 36 px、图标 17 px），仍�
       "left:12px;width:50px;" in desk and "translateY(-50%)" in desk[desk.index("  .rail{"):desk.index("  .rail{") + 200]
       and ".rail button{width:36px;height:36px;" in CSS and ".rail button svg{width:17px;height:17px}" in CSS)
 
+# 09-30 @unicornnnnnny：数据来源不要边框、居中在地图下方；网页默认英文
+cr = desk[desk.index("  .credits{"):desk.index("}", desk.index("  .credits{"))]
+check("数据来源一行：不是 .glass（没有框和底），桌面居中在地图可见区域下方，文字带一圈底色光晕保证看得清",
+      'class="credits" id="credits"' in BODY and "translateX(-50%)" in cr and "justify-content:center" in cr
+      and "text-shadow:0 0 2px var(--shell-solid)" in cr and "border-radius" not in cr and "padding" not in cr)
+check("第一次打开是英文：只认用户自己点过的 中文（rt-lang），不再按浏览器语言切中文",
+      "LANG.cur=lg==='zh'?'zh':'en';" in APP and "navigator.language" not in APP and "const LANG={cur:'en'}" in (SRC / "js" / "0-i18n.js").read_text(encoding="utf-8"))
+check("第一次打开是深色：<html data-theme=\"dark\">（脚本跑之前不闪浅色），开机只认用户自己点过的浅色（rt-theme），不跟系统设置",
+      '<html lang="en" data-theme="dark">' in PAGE and "document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark';" in APP)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

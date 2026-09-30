@@ -73,6 +73,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 | T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
+| T33 | 第 2 步微观仿真改成 2×2 四个路口（D-0930-1036）：Little Lonsdale / Lonsdale × Swanston / Russell（SCATS 2913 / 2912 / 2904 / 2903），主演示 Lonsdale 西行封 1 道的施工段在 2904 和 2903 之间；新文件 `apps/web/src/js/4b-grid.js`（纯函数 GridSim：真车道数、`flows.json` 流量、两相位 90 s 配时和 15% 左转是假设值、不许堵路口、施工段拉链并道），只在引擎方案是 Lonsdale 时的第 2 步用；La Trobe 场景和第 3、4 步不动 | 🔨 | `lead/grid2x2` | 09-30 10:36 |
 
 卡住了：
 
@@ -125,7 +126,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T28 | 引擎 `raw.links` 每条多给 `extra_min`（车·分钟，和同一小时不施工比，可 < 0），页面画变慢路段不再把 Flinders / King St 本来的排队算成涟漪；`docs/arch/T26-T27-web-PRD.md` 第 0 节 | ✅ 已合 #79，已上线（lead 部署） | `unicornnnnnny/engine/T28-extra-min` | 09-30 00:10 |
 | T26 | T20 收尾（PRD 第 2 节）：顶栏场景名跟着施工走、「回到施工区」飞回施工区、第 1 步 VMS 输入框紧贴 4 个大数字（不用滚动）、取景让开图例、假设两行说清楚（读懂 ≠ 照做、信任度是假设值、全封也有一行、「绕行的车」不标绿）、步骤条和「智能体」字样改掉 | ✅ 已合 #80，已上线（lead 部署） | `unicornnnnnny/web/T26-t20-tail` | 09-30 00:40 |
 | T27 | 地图放下整个 CBD（PRD 第 3 节阶段 1）：精细窗口不动，外面垫一层预渲染的全城路网 + 建筑（`6c-city.js`；`CITY` 北边放到 Franklin St，装下 La Trobe 17:00 的绕行），放开拖动 / 缩放（缩放 < 1 不画天气、小人、经纬网，不能点图挪施工区），引擎线改用 `CITY`，排队线沿同名路段按 `len_m` 画到街没了为止（标签照写引擎的数），比例尺按 1 m ≈ 0.862 页面单位，变慢路段的筛选和标红只看 `extra_min`（#82），引擎标签避开地图控件、施工段和彼此（375 px 不再出屏）；顺带 T26 审查两处字样；交接单 `handoff/unicornnnnnny-T27-0930-0202.md` | ✅ 已合 #85，已上线 bad055d（09-30 01:59 @unicornnnnnny 部署，e2e 0 ❌） | `unicornnnnnny/web/T27-full-cbd` | 09-30 00:37 |
-| T32 | （@unicornnnnnny 09-30 自提，编号自取：T29 已被 #89 用、T30 留给 #85 小修、T31 是天气回测；lead 可改）右侧面板三处：第 3 步「AI 路人 · 各自读到了什么」改成 2 × 2 小方块（看到 / 看懂 / 相信 + 路线建议），点一个在下面展开它的完整卡片；面板底部按钮（找更好的方案、错开 N 天、复制处置手册）桌面上一直悬浮，「错开 N 天」挪进底部按钮条；左侧图层栏缩小、位置不变 | 🔨 | `unicornnnnnny/web/T32-ai-tiles` | 09-30 09:55 |
+| T32 | （@unicornnnnnny 09-30 自提，编号自取：T29 已被 #89 用、T30 留给 #85 小修、T31 是天气回测；lead 可改）右侧面板三处：第 3 步「AI 路人 · 各自读到了什么」改成 2 × 2 小方块（看到 / 看懂 / 相信 + 路线建议），点一个在下面展开它的完整卡片；面板底部按钮（找更好的方案、错开 N 天、复制处置手册）桌面上一直悬浮，「错开 N 天」挪进底部按钮条；左侧图层栏缩小、位置不变（#91）；数据来源一行去掉边框、居中在地图底边，第一次打开默认英文（#93）；第一次打开默认深色 | 🔨 | `unicornnnnnny/web/T32-ai-tiles`、`T32-credits-en`、`T32-default-dark` | 09-30 09:55 |
 
 卡住了：
 
