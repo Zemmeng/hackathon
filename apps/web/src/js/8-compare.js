@@ -71,7 +71,7 @@ function cmpClashOther(x,st){
 // T51: SUMO plan, nearby works cell — what to do about it (dates only, same for every plan), not "not covered by SUMO"
 function cmpSuStagger(x){
   if(x.days!=null)return L('staggered','已错开');
-  const n=clashDays(x.ws);return`<span class="cmp-num">${L(`suggest staggering it ${n} day${n===1?'':'s'}`,`建议错开 ${n} 天`)}</span>`;
+  const n=clashDays(x.ws);return`<span class="cmp-sug">${L(`suggest staggering it ${n} day${n===1?'':'s'}`,`建议错开 ${n} 天`)}</span>`;
 }
 function cmpClashWhen(x,zh,hour){
   const hrs=x.r.hours.map(hour).join(' & ');

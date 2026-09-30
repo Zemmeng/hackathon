@@ -715,6 +715,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
 /* T43: a plan that costs more for exactly the same traffic result; the Nearby works cells' unit */
 .cmp-table .cmp-dup{display:block;width:max-content;max-width:100%;margin:7px auto 0;padding:4px 7px;border-radius:7px;font:700 10px/1.3 var(--f-mono);font-style:normal;color:var(--risk);background:color-mix(in srgb,var(--risk) 13%,transparent)}
+.cmp-table .cmp-sug{font:600 12.5px/1.35 var(--f-body);color:var(--fg)} /* T51: nearby works advice in body text, not the big number face */
 .cmp-table td .cmp-u{display:block;margin-top:3px;font:400 10px/1.2 var(--f-mono);color:var(--fg-3)}
 /* T49 (the SUMO plan): same p = same SUMO run — neutral, not the red "wasted" badge; what SUMO does not cover; the options run */
 .cmp-table .cmp-dup[data-eq]{color:var(--fg-2);background:color-mix(in srgb,var(--fg) 8%,transparent)}
