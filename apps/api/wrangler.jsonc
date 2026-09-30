@@ -32,7 +32,8 @@
     "LLM_BASE_URL": "https://api.deepseek.com",
     "LLM_MODEL": "deepseek-flash",
     // 每个 Worker 实例每分钟最多调几次（尽力而为，不是账单上限）；演示方案一页约 20 条请求 × 3 次 = 60
-    "LLM_MAX_CALLS_PER_MIN": "60",
+    // D-1001-0125：lead 让一起调大 → 600（演示一页的 10 倍，试验台连着改字、AI 解读每次记 5 次也碰不到）
+    "LLM_MAX_CALLS_PER_MIN": "600",
     // 全局每天最多调几次（BUDGET 计数，所有实例一本账，UTC 0 点清零），超了当天只用规则。
     // D-1001-0125：lead 说不用设上限（DeepSeek 余额约 ¥100）→ 调到 50000 次（一次约 ¥0.002，≈ ¥100），真正的闸是服务商余额；余额用完 DeepSeek 报错，同样回规则
     "LLM_MAX_CALLS_PER_DAY": "50000"

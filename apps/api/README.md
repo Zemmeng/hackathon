@@ -55,7 +55,7 @@ curl -s -X POST https://hackathon-site.zemmmeng.workers.dev/api/read -H 'content
 
 **花钱的上限**（`/api/read` 是公开的，谁都能 POST，换个 `read_s` 就绕过缓存）：
 - 全局每天 `LLM_MAX_CALLS_PER_DAY`（默认 600 次 ≈ ¥1.2，最坏约 ¥2.4；读屏一次调用记 1 次，AI 解读一次调用记 5 次，全花在解读上是 120 次、最坏约 ¥1.8）：所有实例、所有入口记同一本账（`src/budget.js` 的 Durable Object，SQLite 后端，免费版可用，随 `deploy.sh api` 一起建好，不用另外操作）。要调就改 `wrangler.jsonc` 再部署；改成 `"0"` = 一次都不调。**线上现在是 `"50000"`**（D-1001-0125：lead 说不用设上限，DeepSeek 余额约 ¥100 就是真正的闸）
-- 每个实例每分钟 `LLM_MAX_CALLS_PER_MIN`（默认 60 = 演示一页 20 条请求 × 3 次）：只防一分钟里把一天的额度用光，不是账单上限
+- 每个实例每分钟 `LLM_MAX_CALLS_PER_MIN`（默认 60 = 演示一页 20 条请求 × 3 次；**线上现在是 `"600"`**，D-1001-0125）：只防一分钟里把一天的额度用光，不是账单上限
 - api Worker 关了自己的 `workers.dev` 网址（`workers_dev: false`），公开入口只有 site 的 `/api/*`
 - 最后一道闸是服务商余额（第 0 步）
 
@@ -94,7 +94,7 @@ node apps/api/tools/precompute.mjs --check                # 校验；然后提�
 | `MOCK` | `wrangler.jsonc` vars | `"1"` | 只有 `"0"` 才调用 |
 | `LLM_BASE_URL` / `LLM_MODEL` | vars | DeepSeek | 必须 https |
 | `LLM_MAX_CALLS_PER_DAY` | vars | `600`（线上 `50000`，D-1001-0125） | **全局**每天（UTC），真封顶；`0` = 不调用 |
-| `LLM_MAX_CALLS_PER_MIN` | vars | `60` | 每实例每分钟，尽力而为，不是账单上限 |
+| `LLM_MAX_CALLS_PER_MIN` | vars | `60`（线上 `600`，D-1001-0125） | 每实例每分钟，尽力而为，不是账单上限 |
 | `LLM_TIMEOUT_MS` | vars（可不设） | `6000` | 每次调用；浏览器等 8 秒 |
 | `BUDGET` | Durable Object 绑定（`wrangler.jsonc` 里已配） | 类 `LlmBudget` | 每日计数；没绑上 = 不调用 |
 | `READINGS` | KV 绑定（推荐） | 无 | 读数缓存 30 天 |
