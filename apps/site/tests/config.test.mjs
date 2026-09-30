@@ -1,6 +1,6 @@
-// 用途：核对 wrangler.jsonc / package.json 的关键项 —— 静态目录是 out、/api/* 先进 Worker、/api/public/* 例外、脚本先 build
+// 用途：核对 wrangler.jsonc / package.json 的关键项 —— 静态目录是 out、/api/* 先进 Worker、/api/public/* 例外、API / SUMO 两个服务绑定、脚本先 build
 // 用法：node tests/config.test.mjs（test.sh 会自动跑）；不需要 npm i；最后一行固定「N passed, M failed」
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 let P = 0, F = 0;
 const ok = (cond, msg) => { if (cond) { P++; console.log('✅ ' + msg); } else { F++; console.log('❌ ' + msg); } };
@@ -31,8 +31,18 @@ try {
   // T19：services 绑定打开了。service 必须等于 apps/api/wrangler.jsonc 的 name，否则部署报 Could not resolve service binding
   const api = parseJsonc(readFileSync(new URL('../../api/wrangler.jsonc', import.meta.url), 'utf8'));
   const svc = Array.isArray(w.services) ? w.services : [];
-  ok(svc.length === 1 && svc[0].binding === 'API', `services 只有一个绑定，名字 API（worker.js 读 env.API）：${JSON.stringify(svc)}`);
-  ok(svc[0]?.service === api.name && api.name === 'hackathon-api', `API 绑的是 T5 的 Worker：service = ${svc[0]?.service}，apps/api/wrangler.jsonc name = ${api.name}`);
+  const byName = Object.fromEntries(svc.map((s) => [s.binding, s.service]));
+  ok(svc.length === 2 && Object.keys(byName).sort().join(',') === 'API,SUMO', `services 正好两个绑定 API、SUMO（worker.js 读 env.API、env.SUMO）：${JSON.stringify(svc)}`);
+  ok(byName.API === api.name && api.name === 'hackathon-api', `API 绑的是 T5 的 Worker：service = ${byName.API}，apps/api/wrangler.jsonc name = ${api.name}`);
+  // T37：SUMO 绑现场 SUMO 容器的 Worker。apps/sumo 在 T37 里和本文件同时写，还没有 wrangler.jsonc 时只查 service 名
+  ok(byName.SUMO === 'hackathon-sumo', `SUMO 绑的是 hackathon-sumo：service = ${byName.SUMO}`);
+  const sumoCfg = new URL('../../sumo/wrangler.jsonc', import.meta.url);
+  if (existsSync(sumoCfg)) {
+    const sumo = parseJsonc(readFileSync(sumoCfg, 'utf8'));
+    ok(sumo.name === byName.SUMO, `apps/sumo/wrangler.jsonc name = ${sumo.name}，和 SUMO 绑定的 service 一致（改名两边一起改）`);
+  } else {
+    console.log('⏭️  apps/sumo/wrangler.jsonc 还不存在，跳过「name = hackathon-sumo」这一条');
+  }
   const conf = readFileSync(new URL('../../../hackathon.conf', import.meta.url), 'utf8');
   const mods = (conf.match(/^DEPLOY_MODULES=(.*)$/m)?.[1] || '').trim().split(/\s+/);
   ok(mods.includes('api') && mods.includes('site') && mods.indexOf('api') < mods.indexOf('site'), `hackathon.conf DEPLOY_MODULES = ${mods.join(' ')}：api 排在 site 前面（绑定的目标 Worker 要先存在）`);
