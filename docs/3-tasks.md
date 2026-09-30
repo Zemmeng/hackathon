@@ -73,6 +73,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T22 | 按库存出 3 套方案（D-0929-2011 ③）：引擎 `be.options(施工, { n: 3 })`，从 `equipment.json` 配设备、不超 `qty`、带 `day_rate_aud` 租金（标假设值） | ✅ | `lead/t22-options` | 09-29 21:35 |
 | T24 | `contract:` PR（D-0929-2011 ⑤）：§施工方案 加登记表字段（#53）和 `equipment[].item / qty`（#55）；§HTTP API 补 `/api/worksites` 四个、`/api/explain`、health 的 `register`；`options[]` 等 T22 | ✅ | `lead/t24-contract` | 09-29 21:32 |
 | T15 | 初筛 3 页 PDF 草稿（`docs/pitch-assets/00-prescreen.pdf`）：4 个 agent 核实数字 → 2 版草稿 → 三路挑错 → 定稿；要全队拍板的 8 件事在 `docs/4-demo.md`「初筛 3 页」 | ✅ 草稿 | `Zemmeng/pitch/T15-prescreen` | 09-29 16:43 |
+| T33 | 第 2 步微观仿真改成 2×2 四个路口（D-0930-1036）：Little Lonsdale / Lonsdale × Swanston / Russell（SCATS 2913 / 2912 / 2904 / 2903），主演示 Lonsdale 西行封 1 道的施工段在 2904 和 2903 之间；新文件 `apps/web/src/js/4b-grid.js`（纯函数 GridSim：真车道数、`flows.json` 流量、两相位 90 s 配时和 15% 左转是假设值、不许堵路口、施工段拉链并道），只在引擎方案是 Lonsdale 时的第 2 步用；La Trobe 场景和第 3、4 步不动 | 🔨 | `lead/grid2x2` | 09-30 10:36 |
 
 卡住了：
 
