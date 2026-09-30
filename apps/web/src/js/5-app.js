@@ -312,7 +312,7 @@ function drawJunctions(sim){
       ctx.fillStyle=TK.worksTint;ctx.fill();ctx.fillStyle=PAT.hatch;ctx.fill();ctx.strokeStyle=TK.works;ctx.lineWidth=2;ctx.stroke();
       for(const p of poly){cx+=p[0];cy+=p[1];n++;}
     }
-    if(n){const cl=sim.spec.close,px=V.X(cx/n),py=V.Y(cy/n);drawTag(ctx,px,py,0,-34,L(`WORKS · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'all lanes':(cl?cl.n:1)+' lane'} closed`,`施工 · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'全封':'封 '+(cl?cl.n:1)+' 条道'}`),TK.works);}
+    if(n){const cl=sim.spec.close,px=V.X(cx/n),py=V.Y(cy/n);drawTag(ctx,px,py,0,-34,L(`WORKS · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'all lanes':(cl?cl.n:1)+((cl?cl.n:1)>1?' lanes':' lane')} closed`,`施工 · ${shortSt(EP.street)||'Lonsdale'} · ${cl&&cl.all?'全封':'封 '+(cl?cl.n:1)+' 条道'}`),TK.works);}
   }
   const r=Math.max(2.5,.9*V.s),col={G:TK.light?'#2e8c50':'#3f9b5a',A:TK.works,R:TK.risk};
   for(const h of sim.signalHeads()){const px=V.X(h.x),py=V.Y(h.y);if(px<-20||py<-20||px>V.w+20||py>V.h+20)continue;ctx.fillStyle=col[h.state]||TK.fg3;ctx.strokeStyle=TK.light?'#fff':'#0b1215';ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.stroke();}
