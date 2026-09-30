@@ -12,7 +12,7 @@
    · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
    ============================================================ */
 const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
-function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b'),cr:px('--cr-h')};return GL.ins;}
 function insets(){return GL.ins;}
 /* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
 function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
