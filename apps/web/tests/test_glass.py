@@ -139,6 +139,8 @@ check("数据来源一行：不是 .glass（没有框和底），桌面居中在
       and "text-shadow:0 0 2px var(--shell-solid)" in cr and "border-radius" not in cr and "padding" not in cr)
 check("第一次打开是英文：只认用户自己点过的 中文（rt-lang），不再按浏览器语言切中文",
       "LANG.cur=lg==='zh'?'zh':'en';" in APP and "navigator.language" not in APP and "const LANG={cur:'en'}" in (SRC / "js" / "0-i18n.js").read_text(encoding="utf-8"))
+check("第一次打开是深色：<html data-theme=\"dark\">（脚本跑之前不闪浅色），开机只认用户自己点过的浅色（rt-theme），不跟系统设置",
+      '<html lang="en" data-theme="dark">' in PAGE and "document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark';" in APP)
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
