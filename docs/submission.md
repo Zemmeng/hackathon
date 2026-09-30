@@ -26,18 +26,19 @@ On the web page, source credits appear next to the layers that use them: "OSM ·
 
 **Numbers from the literature** (`apps/params/public/params.json`). Every value has a source and a confidence rating, and low-confidence values are labelled "assumed" on the page (D-0929-1536). Sources:
 
-- ATAP Parameter Values: travel time
-- City of Melbourne VISTA report (car occupancy 1.09)
-- ABS Census 2016, via Huda et al. 2025
-- ABS Survey of Motor Vehicle Use
-- Chatterjee 2002 (TR Part A)
+- ATAP PV2 Road parameter values (2016): travel time
+- City of Melbourne, Update of the strategic transport evidence base (car occupancy 1.09, from the 2016 Census journey to work)
+- ABS Census 2016 and ABS Survey of Motor Vehicle Use, for the road-user mix, which is a labelled assumption (not re-checked on 30 Sep)
+- Chatterjee, Hounsell, Firmin & Bonsall 2002 (TR Part C)
 - Erke, Sagberg & Hagman 2007 (TR Part F)
-- Bonsall 1999
-- Wardman 1996
-- Austroads GTM Part 10 / AS 4852
-- NSW TSI-SP-008
-- Dudek 2001 (NJDOT VMS manual)
-- O'Fallon & Sullivan
+- Bonsall & Palmer 1999 (book chapter)
+- Wardman, Bonsall & Shires 1996 (ITS Leeds Working Paper 475)
+- Austroads GTM Part 10 (2020); AS 4852.1:2019 and AS 4852.2:2019
+- Transport for NSW TSI-SP-008 (2021)
+- Dudek 2001 (NJDOT VMS operations manual)
+- O'Fallon & Sullivan 2007 (Land Transport NZ Research Report 316)
+
+Full citations with DOI or URL, each checked on 2026-09-30, are in README §10.
 
 The papers behind our design choices (Meister 2024, Xiong 2024, Wang et al. 2025, Song et al. 2025, Liu, Li & Yin 2026) are cited in `docs/decisions.md` only. We use their numbers and cite them; we do not reproduce their text.
 
