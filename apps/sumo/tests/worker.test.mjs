@@ -62,7 +62,7 @@ try {
     ok(c instanceof fake.Container, 'SumoContainer 继承 @cloudflare/containers 的 Container');
     ok(c.defaultPort === 8080 && c.envVars.PORT === String(c.defaultPort), `defaultPort = 8080 = envVars.PORT（${c.defaultPort} / ${c.envVars.PORT}）`);
     ok(c.sleepAfter === '12h', `sleepAfter = 12h（${c.sleepAfter}）`);
-    ok(JSON.stringify(c.envVars) === JSON.stringify({ HOST: '0.0.0.0', PORT: '8080', SUMO_DATA_DIR: '/data', SUMO_KEEP_RUNS: '20' }), `容器环境变量 ${JSON.stringify(c.envVars)}`);
+    ok(JSON.stringify(c.envVars) === JSON.stringify({ HOST: '0.0.0.0', PORT: '8080', SUMO_DATA_DIR: '/data', SUMO_KEEP_RUNS: '20', SUMO_REAL_JOBS: '4' }), `容器环境变量 ${JSON.stringify(c.envVars)}`);
     ok(!('ALLOW_ORIGINS' in c.envVars) && !('SUMO_API_KEY' in c.envVars), '反向：不传 ALLOW_ORIGINS / SUMO_API_KEY（Origin 在 Worker 里删掉，容器没有公网入口）');
     ok(/\/sumo\/v1\/health$/.test(c.pingEndpoint), `启动探针打 serve.py 的 health（${c.pingEndpoint}）`);
 

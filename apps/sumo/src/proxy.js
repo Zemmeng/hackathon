@@ -12,7 +12,7 @@ export const IMMUTABLE = 'public, max-age=86400, immutable'; // 运行 id 是随
 export const STRIP_HEADERS = ['origin', 'cookie', 'authorization']; // Origin 不删的话 serve.py 回 403（ALLOW_ORIGINS 是空的）
 
 // 容器启动时的环境变量（worker.js 的 SumoContainer.envVars；Dockerfile 的 ENV 也是这几个值，两边一起改）
-export const CONTAINER_ENV = Object.freeze({ HOST: '0.0.0.0', PORT: '8080', SUMO_DATA_DIR: '/data', SUMO_KEEP_RUNS: '20' });
+export const CONTAINER_ENV = Object.freeze({ HOST: '0.0.0.0', PORT: '8080', SUMO_DATA_DIR: '/data', SUMO_KEEP_RUNS: '20', SUMO_REAL_JOBS: '4' }); // 4 = standard-4 的核数
 
 const GET = Object.freeze(['GET', 'HEAD']); // HEAD 只是不要响应体的 GET，serve.py 支持
 const ID = '[0-9a-f]{32}';
