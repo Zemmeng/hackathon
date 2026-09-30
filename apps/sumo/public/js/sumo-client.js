@@ -14,7 +14,7 @@
 // 真实 CBD 路网（contract v2，T40）：
 //   const real = await sumo.loadReal();                               // {source:'baked', network:'real', index}，/sumo/public/real/index.json
 //   const m = await sumo.realManifest(real, 'original'); const c = await sumo.realChunk(real, 'original', m.chunks[0]);
-//   const r = await sumo.runReal({ seed, p_original: 0.14, p_ai: 0.53 }, { onStatus, signal, timeoutMs: 90000 });
+//   const r = await sumo.runReal({ seed, p_original: 0.14, p_ai: 0.53 }, { onStatus, signal, timeoutMs: 180000 });
 //   // → {source:'live', runId, elapsedMs, index} 或 {source:'baked', reason, index}（reason：health_down / sumo_rate / sumo_busy / timeout / sumo_failed / network / not_found / cancelled …）
 //   sourceLabel(r, 'en') → 'Cloud · live · 31.4 s' | 'SUMO · pre-computed'；realLabels[lang].caveats 是必须同屏的说明
 // 浏览器和 node 都能跑（node 里传 fetch 和绝对地址）；不依赖任何库
@@ -32,7 +32,7 @@ const KNOWN = new Set(['sumo_off', 'sumo_down', 'sumo_starting', 'sumo_rate', 's
 // 真实路网（contract v2）：情景 id、默认绕行比例（引擎对「ROADWORK AHEAD」/「USE RUSSELL / SAVE 9 MIN」的读数）
 export const REAL_SCENARIOS = Object.freeze(['baseline', 'original', 'ai']);
 export const REAL_DEFAULTS = Object.freeze({ p_original: 0.14, p_ai: 0.53 });
-const REAL_TIMEOUT_MS = 90000; // 一次真实路网三情景：本机 ≤ 30 s，云端约 1.5–2 倍，再留冷启动
+export const REAL_TIMEOUT_MS = 180000; // 一次真实路网三情景（T48：整整 08:00–09:00 一小时）：云端约 40–60 s，再留冷启动和排队
 const REAL_HEALTH_MS = 12000;  // 用户点了「云端重跑」才查活，容器刚醒可以多等一会儿
 const LIVE = Symbol('live');   // drive() 成功的标记，和回退结果区分（回退结果是普通对象）
 

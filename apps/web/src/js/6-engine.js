@@ -109,6 +109,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmtN=n=>Math.round(Number(n)||0).toLocaleString('en-AU');
 const pctS=x=>`${Math.round((Number(x)||0)*100)}%`;
 const engHour=h=>`${String(h).padStart(2,'0')}:00`;
+// T48: the engine's queue is where its point queue stands at the END of the scored hour (D/D/1 over 60 min): 08:00 → "09:00"
+const engEndH=s=>engHour((clamp(Math.floor(+(s&&s.when?s.when.hour:EP.hour)||0),0,23)+1)%24);
 const shortSt=n=>String(n||'').replace(/ Street\b/,' St');
 const TYPES4=['commuter','local','tourist','delivery'];
 const TYPE_L={commuter:['Commuters','通勤者'],local:['Locals','本地人'],tourist:['Visitors','游客'],delivery:['Delivery','送货车']};
@@ -366,8 +368,8 @@ function engPanel3(){
   if(EP.view3==='clash')return top+`<div class="stack"><h2>${L('Other works on the same dates','同期的其他施工')}</h2><p class="small eng-assume">${L('Registered works that overlap this plan, scored together with it on the real network: the clash cost is the delay that exists only because both run at once.','登记表里和本方案时间重叠的施工，和本方案一起在真实路网上算：叠加冲突 = 只因两处同时施工才多出来的延误。')}</p></div>${navHTML()}`;
   if(EP.view3==='evidence')return top+engEvidence(s,f)+navHTML();
   return top+`
-  ${typeof sumoImpactHTML==='function'?sumoImpactHTML():''}
-  <div class="stack"><span class="eyebrow">${L('Engine estimate · whole CBD, 1 hour','引擎估算 · 整个 CBD、1 小时')}</span><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
+  ${typeof sumoImpactHTML==='function'?sumoImpactHTML(s):''}
+  <div class="stack"><span class="eyebrow">${L(`Engine estimate · whole CBD · queue at ${engEndH(s)}`,`引擎估算 · 整个 CBD · ${engEndH(s)} 时的排队`)}</span><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack eng-where"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
@@ -576,7 +578,7 @@ function engLabels(){
   TAGS.boxes=[[wx0,wy0,Math.max(...wx)+8-wx0,Math.max(...wy)+8-wy0]];TAGS.q=[];TAGS.on=true;
   // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
   drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
-  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis),TK.risk);}
+  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis,true),TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}
   }
@@ -593,9 +595,10 @@ function engReach(){
   const p=engPath(),R=p&&p.pts.length>1?p.reach:2000,inC=q=>q[0]>=CITY.x0&&q[0]<=CITY.x1&&q[1]>=CITY.y0&&q[1]<=CITY.y1;
   if(inC(engUp(R)))return R;let lo=0,hi=R;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(inC(engUp(mid)))lo=mid;else hi=mid;}return lo;
 }
-function engQueueTxt(s,vis){
+// at: the tag says when (T48: "· 09:00" — the queue at the end of the hour, as SUMO's 09:00 number in step 3)
+function engQueueTxt(s,vis,at){
   const p=engPath(),cut=s.queue_m>engReach()+1,end=p&&p.end?shortSt(p.end):null;
-  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
+  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(at?L(` · ${engEndH(s)}`,` · ${engEndH(s)} 时`):'')+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
 }
 // How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
 function engVisible(){

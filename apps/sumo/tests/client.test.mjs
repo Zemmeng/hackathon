@@ -3,7 +3,8 @@
 //       真实 CBD 路网（contract v2）：loadReal / runReal / realManifest / realChunk 两种来源、回退原因、文案（§11–§15）
 // 用法：node apps/sumo/tests/client.test.mjs（test.sh 会自动跑）；不联网、不需要 wrangler；最后一行固定「N passed, M failed」
 import { createHash } from 'node:crypto';
-import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS, realLabels, realSourceLabel, REAL_SCENARIOS, REAL_DEFAULTS } from '../public/js/sumo-client.js';
+import { readFileSync } from 'node:fs';
+import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS, realLabels, realSourceLabel, REAL_SCENARIOS, REAL_DEFAULTS, REAL_TIMEOUT_MS } from '../public/js/sumo-client.js';
 
 let P = 0, F = 0;
 const ok = (cond, msg) => { if (cond) { P++; console.log('✅ ' + msg); } else { F++; console.log('❌ ' + msg); } };
@@ -397,6 +398,9 @@ try {
     ok(realLabels.en.note === 'SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed' && realLabels.zh.note.includes('OSM'), `面板备注：${realLabels.en.note}`);
     ok(Object.isFrozen(realLabels) && Object.isFrozen(realLabels.en.caveats) && Object.isFrozen(REAL_SCENARIOS) && Object.isFrozen(REAL_DEFAULTS), 'realLabels / REAL_SCENARIOS / REAL_DEFAULTS 冻结');
     ok(JSON.stringify(REAL_SCENARIOS) === '["baseline","original","ai"]' && REAL_DEFAULTS.p_original === 0.14 && REAL_DEFAULTS.p_ai === 0.53, 'REAL_SCENARIOS 和默认绕行比例 0.14 / 0.53 按 contract v2');
+    { const src = readFileSync(new URL('../public/js/sumo-client.js', import.meta.url), 'utf8');
+      ok(REAL_TIMEOUT_MS === 180000 && /async function runReal\(params = \{\}, \{ onStatus, signal, timeoutMs: limitMs = REAL_TIMEOUT_MS \} = \{\}\)/.test(src),
+        `T48：runReal 不传 timeoutMs 时默认等 ${REAL_TIMEOUT_MS / 1000} s（整整一小时云端约 40–60 s，再留冷启动）`); }
     const forged = { network: 'real', source: 'baked', elapsedMs: 1234, runId: RID };
     ok(sourceLabel(forged, 'en') === 'SUMO · pre-computed' && realSourceLabel(forged, 'zh') === 'SUMO · 预先跑好', '反向：baked 结果就算带了 elapsedMs / runId，文案也还是「pre-computed」');
     ok(realSourceLabel({ network: 'real', source: 'live' }, 'en') === realLabels.en.none && realSourceLabel(undefined, 'zh') === realLabels.zh.none, '反向：live 但没有用时 / 空值 → 不显示「Cloud · live」');

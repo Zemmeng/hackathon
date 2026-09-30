@@ -808,6 +808,25 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .sumo-imp thead th{font:600 10px/1.3 var(--f-mono);letter-spacing:.04em;text-transform:uppercase;color:var(--fg-3)}
 .sumo-imp tr.cur th[scope=row]{color:var(--works)}
 .sumo-imp-wrap{overflow-x:auto}
+/* T48: the full-hour table leads with the 09:00 queue counted the engine's way; one generated sentence sets it against the engine */
+.sumo-imp.hour{font-size:11.5px}
+.sumo-imp.hour th,.sumo-imp.hour td{padding:5px 4px}
+.sumo-imp.hour td.k{font-weight:700;color:var(--fg)}
+.sumo-imp.hour thead th{font-size:9px;letter-spacing:.02em}
+.sumo-cmp{margin:0;padding:8px 10px;border-left:2px solid var(--works);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;gap:6px}
+.sumo-cmp p{margin:0}
+.sumo-qchart{width:100%;height:auto;display:block;overflow:visible}
+.sumo-qchart polyline,.sumo-qchart line{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.sumo-qchart .ax{stroke:var(--line-2);stroke-width:1}
+.sumo-qchart .eng{stroke:var(--risk);stroke-dasharray:4 3}
+.sumo-qchart .equiv{stroke:var(--works);stroke-width:2}
+.sumo-qchart .phys{stroke:var(--fg-3)}
+.sumo-qchart text{font:500 8px var(--f-mono);fill:var(--fg-3)}
+.sumo-qkey{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--fg-3)}
+.sumo-qkey i{display:inline-block;width:12px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+.sumo-qkey i.equiv{border-color:var(--works)}
+.sumo-qkey i.phys{border-color:var(--fg-3)}
+.sumo-qkey i.eng{border-color:var(--risk);border-top-style:dashed}
 </style>
 </head>
 <body>
@@ -2282,25 +2301,32 @@ class GridSim{
 /* sumo:begin */
 // Step 2 on the REAL network (T40): a replay of Eclipse SUMO runs on the CBD network built from OSM (network.json) with
 // SCATS weekday 08:00 flows — baked (/sumo/public/real/) or a live cloud run, both in the v2 replay format
-// (docs/contract.md §HTTP API): per scenario a manifest (vehicle table, signal heads, chunks, metrics) and ~60 s chunks of
-// 1 s samples [i, lon×1e6, lat×1e6, angle°, speed cm/s] + every signal's state string + the works queue (m).
+// (docs/contract.md §HTTP API): per scenario a manifest (vehicle table, signal heads, chunks, metrics) and chunks of
+// samples every sample_s (1 or 2 s) [i, lon×1e6, lat×1e6, angle°, speed cm/s] + every signal's state string + the works queue (m).
 // SumoReplay wears the same surface the page already draws from GridSim (4b-grid.js): isGrid, t, step(), all / agents,
 // signalHeads(), works(), stats, minute, risk … so drawAgents / drawJunctions / updateLive / gridPick need no SUMO branch.
 // It needs a GridSim spec for the same works link (junction positions for click-to-zoom, the closed-lane polygon); the page
 // passes the one it already runs. Positions are linear between samples; the heading is SUMO's angle turned through the
-// local map of geoToWorld (page x / y are fitted to the Hoddle grid, not due east / north). Plays to the last loaded sample
-// and waits there while later chunks load; loops once all are in. Pure, no DOM: tests/sumo_glue.mjs runs this block in node.
+// local map of geoToWorld (page x / y are fitted to the Hoddle grid, not due east / north). Pure, no DOM: tests/sumo_glue.mjs
+// runs this block in node.
+// T48 (lead's option B): SUMO runs the whole hour 08:00–09:00, t 0 ↔ 08:00:00 + clock0_s. The page loads what want() names —
+// the chunk at the playhead and the two after it, then the rest in time order — and plays as soon as the playhead's chunk is
+// in; playing into a chunk that is not in yet holds on the last sample before it (never jumps). Decoded samples are kept up to
+// SUMO_MEM bytes: beyond that the chunks farthest from the playhead are dropped (only after their harsh-braking scan) and named
+// by want() again when the playhead nears them (seek, or playing on). A replay under 30 minutes (the old 12-minute runs)
+// loops; the full hour stops at its end, as the grid sim does. A manifest with no chunks (baseline: metrics only) never plays.
 // Safety marks (T46, lead's call): the v2 samples carry no lane, so there is no leader and no gap — conflicts / critical (TTC)
 // are not computed (stats null, the page shows —), only harsh braking, by the grid sim's rule (4b-grid.js): one vehicle's
-// speed drops faster than GRID_P.harsh (3.5 m/s²) between consecutive 1 s samples → one event per braking episode (it ends
+// speed drops faster than GRID_P.harsh (3.5 m/s²) between consecutive samples → one event per braking episode (it ends
 // once the deceleration eases below 1 page unit / s², as there), at the first sample of the drop, counted only inside the
 // 2×2 the grid sim counts (GRID_VIEW); sim.events, kind 'harsh', so the page's map marks (and their 60 s fade) need no SUMO
 // branch. Found once per sample as chunks arrive (addChunk, in time order); step() / seek() only move pointers along the
 // sorted lists.
 // Timeline, like the grid sim (mSeen / mHit per minute of the hour): each vehicle once, in the minute it first enters
-// GRID_VIEW; hit = it braked harshly there. The replay is 12 minutes (08:03–08:15), so bins = 2-minute bars starting at its
-// first minute (6 bars; the grid sim's 10-minute bars would give two, one of them half empty).
+// GRID_VIEW; hit = it braked harshly there. A replay of 30 minutes or more (T48: the hour) gets the grid sim's 10-minute bars
+// from 08:00; a shorter one 2-minute bars from its first minute (12 minutes → 6 bars, not two with one half empty).
 const SUMO_LINK='l595594354_9756035316';
+const SUMO_MEM=48e6; // T48: bytes of decoded samples one replay keeps (24 per vehicle and sample; an hour of 1 s samples on the extended network is > 100 MB)
 // SUMO angle (0 = north, clockwise) at lat / lon → unit heading in page coordinates
 function sumoHead(lat,lon,p,a){
   const r=a*Math.PI/180,d=1e-5,q=geoToWorld(lat+Math.cos(r)*d,lon+Math.sin(r)*d/Math.cos(lat*Math.PI/180));
@@ -2322,7 +2348,7 @@ function sumoLanePoly(shape){
   return L.concat(R.reverse());
 }
 class SumoReplay{
-  // index: index.json · scenario id · manifest: <id>/manifest.json · opts {spec, polys (used when the manifest has no works.lane_shape_e6), src {source, elapsedMs, reason}}
+  // index: index.json · scenario id · manifest: <id>/manifest.json · opts {spec, polys (used when the manifest has no works.lane_shape_e6), src {source, elapsedMs, reason}, memBytes (default SUMO_MEM)}
   constructor(index,scenario,manifest,opts={}){
     const M=manifest||{};
     if(!M||!Array.isArray(M.agents)||!Array.isArray(M.chunks))throw new Error('bad SUMO manifest');
@@ -2331,39 +2357,75 @@ class SumoReplay{
     this.dt=+M.sample_s>0?+M.sample_s:1;this.clock0=+M.clock0_s||0;this.dur=+M.duration_s||0;
     this.meta=M.agents.map(a=>({id:String(a.id),type:a.type==='bus'?'bus':'car',len:Math.max(2,(+a.length_m||5)*GRID_K),wid:Math.max(1,(+a.width_m||1.8)*GRID_K)}));
     this.heads=(M.signal_heads||[]).map(h=>{const p=geoToWorld(h.lat_e6/1e6,h.lon_e6/1e6);return{x:p[0],y:p[1],tls:h.tls,idx:h.idx||[],id:h.id};});
-    this.frames=[];this.nLoaded=0;this.nChunks=M.chunks.length;this.chunksIn=0;
+    // T48 chunks: cF0 = first frame of chunk k (manifest start, in seconds; the frames it really holds once in), cF = [first, last]
+    // frame once in, cHave = its frames are in memory now, cSeen = it has arrived at least once (scanned); frames[i] = sample i
+    // (t = i·dt), ever[i] = it has been in; nLoaded = samples 0 … nLoaded − 1 have all been in; nF = samples in the replay
+    this.nChunks=M.chunks.length;this.cF0=M.chunks.map(c=>Math.max(0,Math.round((+(c&&c.start)||0)/this.dt)));this.cF=M.chunks.map(()=>null);
+    this.cHave=new Uint8Array(this.nChunks);this.cSeen=new Uint8Array(this.nChunks);this.chunksIn=0;this.nDropped=0;this.mem=0;this.memMax=+opts.memBytes>0?+opts.memBytes:SUMO_MEM;
+    this.frames=[];this.ever=[];this.nLoaded=0;this.nF=Math.max(0,Math.round(this.dur/this.dt));this.loops=this.dur>0&&this.dur<1800;this.waiting=false;
     this.t=0;this.cars=new Map();this.all=[];this.agents=this.all;this.events=[];this.critical=null;
     this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.minute=new Float32Array(60);this.tlsNow={};this.q=0;
     // T46 harsh braking: evAll (events), vIn (first entry into GRID_VIEW per vehicle), vHit (first harsh braking there), all by t;
     // per vehicle: last sample scanned (frame, v, x, y), braking episode on, index into vIn
     const nA=this.meta.length;this.evAll=[];this.vIn=[];this.vHit=[];this.nScan=0;
     this._lf=new Int32Array(nA).fill(-1);this._lv=new Float32Array(nA);this._lx=new Float32Array(nA);this._ly=new Float32Array(nA);this._hb=new Uint8Array(nA);this._in=new Int32Array(nA).fill(-1);
-    this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);this.bins={m0:Math.floor(this.clock0/60),n:2};
+    this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);this.bins=this.dur>=1800?{m0:0,n:10}:{m0:Math.floor(this.clock0/60),n:2};
     this.resetStats();
   }
   get metrics(){const s=(this.index.scenarios||[]).find(x=>x.id===this.scenario);return Object.assign({},s&&s.metrics,this.man.metrics);}
-  get ready(){return this.nLoaded>0;}
-  get complete(){return this.chunksIn>=this.nChunks&&this.nLoaded===this.frames.length;}
-  // Chunk k (frames-NNN.json) → page coordinates once, up front; frames are placed by t, so chunks may arrive in any order
+  get tEnd(){return Math.max(0,(this.nF-1)*this.dt);} // time of the last sample
+  _fi(t){return clamp(Math.floor(t/this.dt+1e-9),0,Math.max(0,this.nF-1));} // sample at or before t
+  get ready(){return this.nChunks>0&&!!this.frames[this._fi(this.t)];} // the playhead's sample is in: something to draw
+  get complete(){return this.chunksIn>=this.nChunks&&this.nLoaded>=this.nF;}
+  get atEnd(){return !this.loops&&this.complete&&this.t>=this.tEnd-1e-6;} // the full hour played out (the page pauses there, as at 09:00 in the grid sim)
+  _cAt(i){let k=this.nChunks-1;while(k>0&&this.cF0[k]>i)k--;return Math.max(0,k);} // chunk holding sample i
+  // Chunk k (frames-NNN.json) → page coordinates once, up front; frames are placed by t, so chunks may arrive in any order.
+  // Arriving again (asked for after a drop) it only puts its samples back
   addChunk(k,data){
-    const F=(data&&data.frames)||[],n=this.meta.length;
+    const F=(data&&data.frames)||[],n=this.meta.length;let f0=Infinity,f1=-1;
     for(const f of F){
+      const fi=Math.round((+f.t||0)/this.dt);if(fi<0||fi>1e5)continue;
       const a=Array.isArray(f.a)?f.a:[],m=a.length,ids=new Int32Array(m),x=new Float32Array(m),y=new Float32Array(m),hx=new Float32Array(m),hy=new Float32Array(m),v=new Float32Array(m);
       let j=0;
       for(const r of a){const i=r[0]|0;if(i<0||i>=n)continue;const lat=r[2]/1e6,lon=r[1]/1e6,p=geoToWorld(lat,lon),h=sumoHead(lat,lon,p,+r[3]||0);
         ids[j]=i;x[j]=p[0];y[j]=p[1];hx[j]=h[0];hy[j]=h[1];v[j]=Math.max(0,+r[4]||0)/100*GRID_K;j++;}
-      const fi=Math.round((+f.t||0)/this.dt);if(fi<0||fi>1e5)continue;
+      const old=this.frames[fi];if(old)this.mem-=old.ids.length*24;
       this.frames[fi]={ids:ids.subarray(0,j),x:x.subarray(0,j),y:y.subarray(0,j),hx:hx.subarray(0,j),hy:hy.subarray(0,j),v:v.subarray(0,j),tls:f.tls||null,q:+f.q||0};
+      this.mem+=j*24;this.ever[fi]=1;if(fi<f0)f0=fi;if(fi>f1)f1=fi;if(fi>=this.nF)this.nF=fi+1;
     }
-    this.chunksIn++;while(this.frames[this.nLoaded])this.nLoaded++;
-    this._harsh(this.nLoaded);this._stats();
-    if(this.nLoaded&&this.all.length===0)this._pose();
+    if(k>=0&&k<this.nChunks){if(f1>=0){this.cF[k]=[f0,f1];this.cF0[k]=f0;}this.cHave[k]=1;if(!this.cSeen[k]){this.cSeen[k]=1;this.chunksIn++;}}
+    while(this.ever[this.nLoaded])this.nLoaded++;
+    if(this.chunksIn>=this.nChunks&&this.nLoaded<this.nF&&this.nLoaded>0)this.nF=this.nLoaded; // all in: the replay ends at its last sample
+    this._harsh(this.nLoaded);this._stats();this._trim();this._pose();
   }
+  // T48: the next chunk to load, or −1: the playhead's chunk and the two after it when not in memory (never loaded, or
+  // dropped), else the first that never arrived, in time order
+  want(){
+    if(!this.nChunks)return-1;
+    const c=this._cAt(this._fi(this.t));
+    for(let k=c;k<=Math.min(this.nChunks-1,c+2);k++)if(!this.cHave[k]&&(this.cF[k]||!this.cSeen[k]))return k;
+    for(let k=0;k<this.nChunks;k++)if(!this.cSeen[k])return k;
+    return-1;
+  }
+  // T48: over SUMO_MEM, drop the chunks farthest from the playhead — never the one before it, its own or the two after it,
+  // nor one whose samples are not scanned for harsh braking yet
+  _trim(){
+    const c=this._cAt(this._fi(this.t));
+    while(this.mem>this.memMax){
+      let best=-1,bd=0;
+      for(let k=0;k<this.nChunks;k++){const r=this.cF[k];if(!this.cHave[k]||!r||r[1]>=this.nScan||(k>=c-1&&k<=c+2))continue;const d=Math.abs(k-c);if(d>bd){bd=d;best=k;}}
+      if(best<0)break;
+      const r=this.cF[best];for(let i=r[0];i<=r[1];i++){const f=this.frames[i];if(f){this.mem-=f.ids.length*24;this.frames[i]=undefined;}}
+      this.cHave[best]=0;this.nDropped++;
+    }
+  }
+  // The page gave up on the chunks still missing (3 misses in a row): the replay ends at the last sample that arrived in order
+  truncate(){for(let k=0;k<this.nChunks;k++)if(!this.cSeen[k]){this.cSeen[k]=1;this.chunksIn++;}this.nF=Math.max(1,this.nLoaded);if(this.t>this.tEnd)this.seek(this.tEnd);}
   // T46: harsh braking in GRID_VIEW over frames nScan … n − 1 (loaded, contiguous from 0), each sample once, in time order
   _harsh(n){
     const P=GRID_P,V=GRID_VIEW,dt=this.dt,mOf=u=>clamp(Math.floor((this.clock0+u)/60),0,59);
     for(let i=this.nScan;i<n;i++){
-      const F=this.frames[i],t=i*dt;
+      const F=this.frames[i],t=i*dt;if(!F)continue;
       for(let j=0;j<F.ids.length;j++){
         const id=F.ids[j],x=F.x[j],y=F.y[j],v=F.v[j];
         if(this._lf[id]===i-1){const a=(v-this._lv[id])/dt; // page units / s², as GRID_P.harsh
@@ -2386,7 +2448,8 @@ class SumoReplay{
   }
   // Counts up to the replay's moment t (T46): harsh = events so far (in GRID_VIEW), minute[] = those per minute of the hour,
   // mSeen / mHit = vehicles into GRID_VIEW / of them braked harshly, per entry minute; events = the last evKeep s. Pointers
-  // only move forward; a loop or a seek back starts them again from 0
+  // only move forward; a loop or a seek back starts them again from 0. Samples scanned later (T48: a seek ahead of the
+  // loading) are counted on the next call — the lists only grow at their end
   _stats(){
     const t=this.t,E=this.evAll,S=this.vIn,H=this.vHit,mOf=u=>clamp(Math.floor((this.clock0+u)/60),0,59);
     if(t<this._pt){this._pe=this._ps=this._ph=this._lo=0;this.events=[];this.minute.fill(0);this.mSeen.fill(0);this.mHit.fill(0);}
@@ -2399,16 +2462,28 @@ class SumoReplay{
     this.stats.harsh=this._pe;
   }
   setWeather(){} // SUMO ran in clear weather; the page's weather layer is drawn over it unchanged
-  seek(t){const end=Math.max(0,(this.nLoaded-1)*this.dt);this.t=clamp(+t||0,0,end);for(const c of this.cars.values())c.trail.length=0;this._stats();this._pose();}
+  // Jump to t (timeline click), anywhere in the replay: a chunk not in yet is named first by want(); until it is in, the
+  // vehicles on screen stay as they were (waiting)
+  seek(t){if(!this.nChunks)return;this.t=clamp(+t||0,0,this.tEnd);for(const c of this.cars.values())c.trail.length=0;this._stats();this._pose();}
+  // T48: the latest time in [t0, t1] reachable from t0 through samples in memory — a missing sample holds on the one before it
+  _reach(t0,t1){
+    const F=this.frames;let i=this._fi(t0);if(!F[i])return t0;
+    const i1=this._fi(t1);while(i<i1&&F[i+1])i++;
+    if(i<i1)return i*this.dt;
+    return i1+1<this.nF&&!F[i1+1]?Math.max(t0,i1*this.dt):t1;
+  }
   step(dt){
-    if(!(dt>0)||!this.nLoaded)return;
-    const end=(this.nLoaded-1)*this.dt;this.t+=dt;
-    if(this.t>end){if(this.complete&&end>0){this.t%=end;for(const c of this.cars.values())c.trail.length=0;this.resetStats();}else this.t=end;} // loop, or wait for the next chunk
-    this._stats();this._pose();
+    if(!(dt>0)||!this.nChunks)return;
+    const end=this.tEnd;if(this.t>end)this.t=end;let t=this.t+dt;if(!this.loops&&t>end-1e-6&&t<end)t=end; // float steps: land on the last sample (09:00 reads 08:59:58, not :57)
+    if(t>end){
+      if(this.loops&&this.complete&&end>0&&this.frames[0]){this.t=this._reach(0,t%end);for(const c of this.cars.values())c.trail.length=0;this.resetStats();this._pose();return;} // loop (short replays)
+      t=end; // the hour ends here (or waits for the chunk that ends it)
+    }
+    this.t=this._reach(this.t,t);this._stats();this._pose();
   }
   _pose(){
-    const n=this.nLoaded;if(!n)return;
-    const u0=this.t/this.dt,i=clamp(Math.floor(u0),0,n-1),A=this.frames[i],B=i+1<n?this.frames[i+1]:null,u=B?u0-i:0;
+    const i=this._fi(this.t),A=this.frames[i];this.waiting=this.nChunks>0&&!A;if(!A)return; // T48: hold what is on screen until that chunk is in
+    const B=i+1<this.nF&&this.frames[i+1]||null,u=B?clamp(this.t/this.dt-i,0,1):0;
     const nx=new Int32Array(this.meta.length).fill(-1);if(B)for(let j=0;j<B.ids.length;j++)nx[B.ids[j]]=j;
     if(A.tls)this.tlsNow=Object.assign({},this.tlsNow,A.tls);this.q=B?A.q+(B.q-A.q)*u:A.q;
     const seen=new Set(),all=[];
@@ -2726,10 +2801,10 @@ function render(dt){
   if(wx)WX.drawFlash(ctx,V);
 }
 
-// T42: spinner in the middle of the visible map while the cloud SUMO run computes
+// T42: spinner in the middle of the visible map while the cloud SUMO run computes (T48: the whole hour, about a minute)
 function drawSumoWait(){
-  const I=GL.ins,mx=(I.l+V.w-I.r)/2,my=(I.t+V.h-I.b)/2,el=SU.busy?Math.round((performance.now()-SU.t0)/1000):0;
-  const t1=L(`SUMO computing in the cloud · ${el} s`,`SUMO 正在云端计算 · ${el} s`),t2=L(`real CBD network · seed ${SU.seed}`,`真实 CBD 路网 · seed ${SU.seed}`);
+  const I=GL.ins,mx=(I.l+V.w-I.r)/2,my=(I.t+V.h-I.b)/2,el=SU.busy?Math.round((performance.now()-SU.t0)/1000):0,w0=sumoWin();
+  const t1=L(`SUMO simulating ${w0} in the cloud · ${el} s (about 1 min)`,`SUMO 正在云端模拟 ${w0} · ${el} s（约 1 分钟）`),t2=L(`real CBD network · seed ${SU.seed}`,`真实 CBD 路网 · seed ${SU.seed}`);
   ctx.save();ctx.font=`600 12px ${FONT_MONO}`;const w=Math.max(ctx.measureText(t1).width,ctx.measureText(t2).width)+72,h=58;
   ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,mx-w/2,my-h/2,w,h,10);ctx.fill();ctx.stroke();
   const cx=mx-w/2+28,a=performance.now()/1000*5;ctx.lineWidth=3;ctx.strokeStyle=TK.line2||TK.fg3;ctx.beginPath();ctx.arc(cx,my,11,0,7);ctx.stroke();
@@ -2799,6 +2874,10 @@ function gridBindMap(){
 const SU={cli:null,cliP:null,mod:null,ref:{source:'baked'},src:{source:'baked'},index:null,baked:null,scen:'original',grid:null,tok:0,busy:false,t0:0,liveKey:'',liveAt:0,seed:42,failed:false};
 const sumoErr=e=>e&&e.code?`${e.code}: ${String(e.message||'').slice(0,120)}`:String((e&&e.message)||e).slice(0,160); // one short line (a 404 page body is long)
 function sumoWant(){return typeof SumoReplay==='function'&&gridOn()&&EP.link===SUMO_LINK&&!EP.all&&EP.lanes===1;} // the replay closes 1 lane of this link
+// T48: the hour SUMO simulates, "08:00–09:00" — index.params.hour_window of the run on hand, else index.hour, else 8
+function sumoWin(idx){const I=idx||SU.index,w=I&&I.params&&I.params.hour_window,h=I&&isFinite(+I.hour)?+I.hour:8,a=Array.isArray(w)&&w.length===2&&isFinite(+w[0])&&isFinite(+w[1])?[+w[0],+w[1]]:[h,h+1];
+  return`${engHour(a[0]%24)}–${engHour(a[1]%24)}`;}
+const sumoNap=ms=>new Promise(r=>setTimeout(r,ms));
 function sumoClient(){
   if(!SU.cliP)SU.cliP=import('/sumo/public/js/sumo-client.js').then(m=>{SU.mod=m;SU.cli=typeof m.createSumoClient==='function'?m.createSumoClient():m;return SU.cli;},e=>{SU.cliP=null;throw e;});
   return SU.cliP;
@@ -2815,23 +2894,36 @@ async function sumoBaked(reason){
   const r=await SU.cli.loadReal();if(!r||!r.index)throw new Error('no baked index');
   SU.index=SU.baked=r.index;SU.ref={source:'baked'};SU.src={source:'baked',reason:reason||'network',seed:r.index.seed};
 }
-// Manifest + first chunk of SU.scen → swap S.sim (same camera), then the other chunks in the background
+// Manifest + the chunk at the playhead of SU.scen → swap S.sim (same camera), then the rest of the hour in the background (sumoFeed)
 async function sumoPlay(tok){
   const c=SU.cli,ref=SU.ref,scen=SU.scen,idx=SU.index,base=S.sim&&S.sim.isGrid&&!S.sim.isSumo?S.sim:SU.grid;
   if(!c||!idx||!base||!base.spec)throw new Error('no client, index or grid spec');
   if(idx.works&&idx.works.link&&idx.works.link!==EP.link)throw new Error('the replay is for another works link');
   const man=await c.realManifest(ref,scen);if(tok!==SU.tok)return;
-  const R=new SumoReplay(idx,scen,man,{spec:base.spec,polys:base.works().polys,src:Object.assign({},SU.src)}),ch=man.chunks;
-  if(!ch.length)throw new Error('manifest has no chunks');
-  // switching plan (chips) keeps the moment on screen: load up to the chunk holding it before the swap
-  const keepT=S.sim&&S.sim.isSumo?S.sim.t:0;let k=0;
-  do{R.addChunk(k,await c.realChunk(ref,scen,ch[k]));k++;if(tok!==SU.tok)return;}while(k<ch.length&&+ch[k].start<=keepT); // the chunk entry: the client checks its sha256
+  const ch=man&&man.chunks;if(!Array.isArray(ch)||!ch.length)throw new Error('manifest has no chunks'); // T48: baseline is metrics only ("chunks": []) — never played
+  const R=new SumoReplay(idx,scen,man,{spec:base.spec,polys:base.works().polys,src:Object.assign({},SU.src)});
+  // switching plan (chips) keeps the moment on screen: the replay seeks there first, so want() names the chunk holding it
+  const keepT=S.sim&&S.sim.isSumo?S.sim.t:0;if(keepT)R.seek(keepT);
+  for(let n=0;!R.ready&&n<=ch.length;n++){const k=R.want();if(k<0)break;R.addChunk(k,await c.realChunk(ref,scen,ch[k]));if(tok!==SU.tok)return;} // the chunk entry: the client checks its sha256
   if(!gridShown()||!sumoWant())return;
   if(!R.ready)throw new Error('first chunk has no frames');
-  if(keepT)R.seek(keepT);
   SU.grid=base;S.sim=R;S.clock=R.clock();renderPanel();
-  try{for(;k<ch.length;k++){const d=await c.realChunk(ref,scen,ch[k]);if(tok!==SU.tok)return;R.addChunk(k,d);}}
-  catch(e){R.nChunks=R.chunksIn;console.info('SUMO: later chunks unavailable, looping what arrived:',sumoErr(e));}
+  sumoFeed(R,tok,ref,scen,ch).catch(e=>console.info('SUMO: loading stopped:',sumoErr(e)));
+}
+// T48: loads what the replay on screen names (R.want(): the playhead's chunk and the two after it, then the rest of the hour in
+// time order; later, chunks it dropped to save memory as the playhead nears them again) until it leaves the screen or a newer
+// request takes over. The first pass missing 3 times in a row → the replay ends at what arrived; a dropped chunk that will not
+// come back → the playhead waits there (the timeline still seeks elsewhere)
+async function sumoFeed(R,tok,ref,scen,ch){
+  let miss=0;
+  while(tok===SU.tok&&S.sim===R){
+    const k=R.want();
+    if(k<0){if(R.complete&&!R.nDropped)return;await sumoNap(400);continue;}
+    try{const d=await SU.cli.realChunk(ref,scen,ch[k]);if(tok!==SU.tok||S.sim!==R)return;R.addChunk(k,d);miss=0;}
+    catch(e){if(tok!==SU.tok)return;miss++;
+      if(miss>=3&&!R.cF[k]){R.truncate();miss=0;console.info('SUMO: later chunks unavailable, playing what arrived:',sumoErr(e));}
+      else await sumoNap(Math.min(5000,500*miss));}
+  }
 }
 function sumoScen(id){if(id===SU.scen)return;SU.scen=id;renderPanel();const tok=++SU.tok;sumoPlay(tok).catch(e=>{if(tok===SU.tok)console.info('SUMO scenario switch failed:',sumoErr(e));});}
 // Detour share for the AI plan: the engine's advisor comparison when it has one (step 04), else 0.53 (USE RUSSELL / SAVE 9 MIN)
@@ -2847,7 +2939,7 @@ async function sumoRerun(){
   if(S.sim&&S.sim.isSumo&&SU.grid)S.sim=SU.grid; // T42: the old run leaves the screen while the new one computes
   renderPanel();
   let r=null;
-  try{r=await SU.cli.runReal({seed,p_original:.14,p_ai:sumoPAi()},{timeoutMs:90000});}
+  try{r=await SU.cli.runReal({seed,p_original:.14,p_ai:sumoPAi()},{timeoutMs:180000});} // T48: the whole hour takes ~40–60 s in the cloud
   catch(e){console.info('SUMO run failed:',sumoErr(e));}
   SU.busy=false;if(tok!==SU.tok)return;
   try{
@@ -2860,21 +2952,55 @@ async function sumoRerun(){
   }catch(e){if(tok!==SU.tok)return;SU.failed=true;console.info('SUMO unavailable, keeping the browser grid sim:',sumoErr(e));}
   renderPanel();
 }
+// T48: the queue through the hour, minute by minute (metrics.queue_series [[minute, physical m, engine-method m] …]), next to
+// the engine's point queue — constant demand over constant capacity, so it grows in a straight line to its number at the end
+// of the hour (eg). Inline SVG, colours from the theme; '' when the series is missing or too short
+function sumoQChart(qs,eg,w0){
+  if(!Array.isArray(qs)||qs.length<2)return'';
+  const Q=qs.filter(r=>Array.isArray(r)&&isFinite(+r[0])&&isFinite(+r[1])&&isFinite(+r[2])).map(r=>[+r[0],+r[1],+r[2]]);if(Q.length<2)return'';
+  const W=240,H=56,m1=Math.max(60,Q[Q.length-1][0]),top=Math.max(1,eg>0?eg:0,...Q.map(r=>Math.max(r[1],r[2])))*1.08;
+  const X=v=>(v/m1*W).toFixed(1),Y=v=>(H-v/top*H).toFixed(1),pl=k=>Q.map(r=>`${X(r[0])},${Y(r[k])}`).join(' '),[a,b]=w0.split('–');
+  return`<svg class="sumo-qchart" viewBox="0 0 ${W} ${H+12}" role="img" aria-label="${L(`Works queue ${w0}: SUMO counted the engine's way, SUMO on Lonsdale, and the engine`,`${w0} 施工排队：SUMO（引擎算法）、SUMO（Lonsdale 上实际）、引擎`)}">
+    <line x1="0" y1="${H}" x2="${W}" y2="${H}" class="ax"/>${eg>0?`<line x1="0" y1="${H}" x2="${W}" y2="${Y(eg)}" class="eng"/>`:''}
+    <polyline points="${pl(1)}" class="phys"/><polyline points="${pl(2)}" class="equiv"/>
+    <text x="0" y="${H+10}">${a}</text><text x="${W}" y="${H+10}" text-anchor="end">${b}</text></svg>
+    <div class="sumo-qkey small"><span><i class="equiv"></i>${L('SUMO · engine method','SUMO · 引擎算法')}</span><span><i class="phys"></i>${L('SUMO · on Lonsdale','SUMO · Lonsdale 上实际')}</span>${eg>0?`<span><i class="eng"></i>${L('Engine (point queue)','引擎（点排队）')}</span>`:''}</div>`;
+}
 // T47: step 3 shows the SUMO run from step 2 (the one on screen: live or pre-computed, with its seed) above the engine's
-// numbers, so a SUMO run is visibly used and the two models are not confused (engine: whole CBD, 1 h; SUMO: 16 junctions, ~12 min)
-function sumoImpactHTML(){
+// numbers, so a SUMO run is visibly used and the two models are not confused. T48: SUMO runs the whole hour too, so the table
+// leads with its 09:00 queue counted the engine's way (works_queue_equiv_end_m) and the physical queue on Lonsdale then,
+// and one sentence sets it against the engine's queue at 09:00 (s: the engine summary step 3 shows) — all from the data. The
+// sentence sits outside the foldable block, so the compact panel (7-glass.js folds tall blocks) still shows it; an older
+// replay without those fields (12 minutes) keeps the T47 columns and note
+function sumoImpactHTML(s){
   if(EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';
   const idx=SU.index,src=SU.src||{};
   if(!idx||!Array.isArray(idx.scenarios))return`<div class="card eng-note sumo-impact"><b>${L('SUMO','SUMO')}</b><span>${L('Run SUMO in step 2 to see its result for this plan here, next to the engine estimate.','在第 2 步跑一次 SUMO，这里会并排显示它对这个方案的结果。')}</span></div>`;
-  const m=id=>(idx.scenarios.find(x=>x.id===id)||{}).metrics||null,n=v=>v!=null&&isFinite(+v),r=v=>n(v)?fmtN(Math.round(+v)):'—';
+  const sc=id=>idx.scenarios.find(x=>x.id===id)||{},m=id=>sc(id).metrics||null,n=v=>v!=null&&isFinite(+v),r=v=>n(v)?fmtN(Math.round(+v)):'—';
   const live=src.source==='live'&&isFinite(src.elapsedMs),sd=isFinite(src.seed)?src.seed:idx.seed;
   const tag=live?L(`Cloud SUMO · computed live · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`,`云端 SUMO · 现场计算 · ${(src.elapsedMs/1000).toFixed(1)} s · seed ${sd}`):L(`SUMO · pre-computed · seed ${sd}`,`SUMO · 预先跑好 · seed ${sd}`);
-  const row=(id,name)=>{const x=m(id);if(!x)return'';const ex=n(x.works_traffic_extra_s)?x.works_traffic_extra_s:x.mean_extra_s;
-    return`<tr${id===SU.scen?' class="cur"':''}><th scope="row">${name}</th><td>${r(x.works_queue_max_m)} / ${r(x.works_queue_mean_m)} m</td><td>${n(ex)?(ex>0?'+':'')+Math.round(ex)+' s':'—'}</td><td>${r(x.detour_vehicles)}</td></tr>`;};
+  const P=idx.params||{},mo=m('original'),hour=!!(mo&&n(mo.works_queue_equiv_end_m)),w0=sumoWin(idx),end=w0.split('–')[1];
+  const ex=x=>{const e=n(x.works_traffic_extra_s)?x.works_traffic_extra_s:x.mean_extra_s;return n(e)?(e>0?'+':'')+Math.round(e)+' s':'—';};
+  const row=(id,name)=>{const x=m(id);if(!x)return'';
+    const q=hour?`<td class="k">${r(x.works_queue_equiv_end_m)} m</td><td>${r(x.works_queue_end_m)} m</td><td>${r(x.works_queue_max_m)} m</td>`:`<td>${r(x.works_queue_max_m)} / ${r(x.works_queue_mean_m)} m</td>`;
+    return`<tr${id===SU.scen?' class="cur"':''}><th scope="row">${name}</th>${q}<td>${ex(x)}</td><td>${r(x.detour_vehicles)}</td></tr>`;};
+  const th=hour?`<th>${L(`${end} queue (engine method)`,`${end} 排队（引擎算法）`)}</th><th>${L(`Physical queue on Lonsdale at ${end}`,`${end} Lonsdale 上实际排队`)}</th><th>${L('Max (physical)','最长（实际）')}</th>`:`<th>${L('Works queue max / mean','施工排队 最长 / 平均')}</th>`;
+  let note,cmpP='';
+  if(hour){
+    const eq=+mo.works_queue_equiv_end_m,eg=s&&n(s.queue_m)?+s.queue_m:null,ps=n(sc('original').diversion_share)?pctS(+sc('original').diversion_share):null,pe=s&&n(s.detour_share)?pctS(+s.detour_share):null;
+    const cmp=eg==null?'':eg>0?L(`At ${end}, SUMO's original plan holds ${fmtN(Math.round(eq))} m of queue counted the engine's way (vehicles held up by the works × 7 m ÷ 2 lanes) — ${Math.round(eq/eg*100)}% of the engine's ${fmtN(Math.round(eg))} m below${ps&&pe&&ps!==pe?` (detour share: SUMO ${ps}, engine ${pe})`:''}.`,`${end} 时，SUMO 原方案按引擎算法（被施工拦住的车 × 7 m ÷ 2 条道）排队 ${fmtN(Math.round(eq))} m，是下面引擎 ${fmtN(Math.round(eg))} m 的 ${Math.round(eq/eg*100)}%${ps&&pe&&ps!==pe?`（绕行比例：SUMO ${ps}，引擎 ${pe}）`:''}。`)
+      :L(`At ${end}, SUMO's original plan holds ${fmtN(Math.round(eq))} m of queue counted the engine's way; the engine below has no queue this hour.`,`${end} 时，SUMO 原方案按引擎算法排队 ${fmtN(Math.round(eq))} m；下面的引擎这个小时不排队。`);
+    const cap=n(mo.works_capacity_assumption_vph)?fmtN(Math.round(+mo.works_capacity_assumption_vph)):null,thr=n(mo.works_throughput_vph)?fmtN(Math.round(+mo.works_throughput_vph)):null;
+    const g=n(P.green_2935)?Math.round(+P.green_2935<=1?+P.green_2935*100:+P.green_2935):null,ext=P.network_extent?esc(String(L(P.network_extent,P.network_extent_zh||P.network_extent))):'';
+    const how=L(`SUMO simulated ${w0} in full${ext?` (network: ${ext})`:''}${g!=null?`, signal 2935 at ${g}% green`:''}${cap?`; works capacity assumed ${cap} veh/h, as in the engine`:''}${thr?`, ${thr} vehicles actually got through the works in the hour`:''}.`,
+      `SUMO 完整模拟了 ${w0}${ext?`，路网：${ext}`:''}${g!=null?`，2935 信号 ${g}% 绿灯`:''}${cap?`；施工段通行能力按 ${cap} 辆/时假设，和引擎一样`:''}${thr?`，这一小时实际过了施工段 ${thr} 辆`:''}。`);
+    note=`<p class="small eng-assume">${how} ${L('Both are models — a cross-check, not measured proof.','两个都是模型，是交叉验证，不是实测证据。')}</p>`;
+    if(cmp)cmpP=`<div class="sumo-cmp"><p class="small">${cmp}</p>${sumoQChart(mo.queue_series,eg,w0)}</div>`;
+  }else note=`<p class="small eng-assume">${L('Why the engine says more: SUMO covers the 16 junctions around the works for ~12 minutes with signal 2935 assumed 70% green; the engine below covers the whole CBD for a full hour at 50% green, so its queue keeps growing through the hour. Both are models — a cross-check, not measured proof.','为什么引擎的数大：SUMO 只算施工附近 16 个路口、约 12 分钟，2935 信号按 70% 绿灯假设；下面的引擎算整个 CBD、整整 1 小时、50% 绿灯，排队会在这一小时里一直变长。两个都是模型，是交叉验证，不是实测证据。')}</p>`;
   return`<div class="stack sumo-impact"><div class="row between"><span class="eyebrow">${L('SUMO · this run from step 2','SUMO · 第 2 步这一次的结果')}</span><span class="pill${live?' ok':''}">${tag}</span></div>
-    <div class="sumo-imp-wrap"><table class="sumo-imp"><thead><tr><th></th><th>${L('Works queue max / mean','施工排队 最长 / 平均')}</th><th>${L('Extra per vehicle through the works','过施工段每车多花')}</th><th>${L('Detoured','绕行的车')}</th></tr></thead>
+    <div class="sumo-imp-wrap"><table class="sumo-imp${hour?' hour':''}"><thead><tr><th></th>${th}<th>${L('Extra per vehicle through the works','过施工段每车多花')}</th><th>${L('Detoured','绕行的车')}</th></tr></thead>
     <tbody>${row('original',L('Original · ROADWORK AHEAD','原方案 · ROADWORK AHEAD'))}${row('ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL'))}</tbody></table></div>
-    <p class="small eng-assume">${L('Why the engine says more: SUMO covers the 16 junctions around the works for ~12 minutes with signal 2935 assumed 70% green; the engine below covers the whole CBD for a full hour at 50% green, so its queue keeps growing through the hour. Both are models — a cross-check, not measured proof.','为什么引擎的数大：SUMO 只算施工附近 16 个路口、约 12 分钟，2935 信号按 70% 绿灯假设；下面的引擎算整个 CBD、整整 1 小时、50% 绿灯，排队会在这一小时里一直变长。两个都是模型，是交叉验证，不是实测证据。')}</p></div>`;
+    ${note}</div>${cmpP}`;
 }
 // T47: pick the seed BEFORE the run — on 01 Configure, right above 「Save & simulate」; entering step 2 runs SUMO with it
 function sumoPreHTML(){
@@ -2891,18 +3017,19 @@ function sumoPreBind(){
 }
 const sumoReason=k=>SU.mod&&typeof SU.mod.reasonLabel==='function'?SU.mod.reasonLabel(k,LANG.cur):k;
 function sumoNote(){const R=S.sim,v=(/(\d+\.\d+\.\d+)/.exec((R.index&&R.index.engine)||'')||[0,'1.27.1'])[1],h=String(R.hour).padStart(2,'0'),A=R.index&&R.index.assumptions,as=A&&(LANG.cur==='zh'?A.zh:A.en);
-  return`<p class="eng-assume"${Array.isArray(as)&&as.length?` title="${esc(as.join(' · '))}"`:''}>${L(`SUMO ${v} · real CBD network (OSM) + SCATS ${h}:00 flows · signal timing and turn shares assumed`,`SUMO ${v} · 真实 CBD 路网（OSM）+ SCATS ${h}:00 车流 · 信号配时和转弯比例是假设值`)}</p>`;}
+  const full=R.dur>=1800?` · ${sumoWin(R.index)}`:''; // T48: the whole hour
+  return`<p class="eng-assume"${Array.isArray(as)&&as.length?` title="${esc(as.join(' · '))}"`:''}>${L(`SUMO ${v} · real CBD network (OSM) + SCATS ${h}:00 flows${full} · signal timing and turn shares assumed`,`SUMO ${v} · 真实 CBD 路网（OSM）+ SCATS ${h}:00 车流${full} · 信号配时和转弯比例是假设值`)}</p>`;}
 // Source of the replay on screen: live only when the client said so for this very run
 function sumoPill(){const s=S.sim.src||{},sd=isFinite(s.seed)?` · seed ${s.seed}`:'';
   if(s.source==='live'&&isFinite(s.elapsedMs))return`<span class="pill ok" data-sumo-src="live">${L('Cloud SUMO · computed live','云端 SUMO · 现场计算')} · ${(s.elapsedMs/1000).toFixed(1)} s${sd}</span>`;
   return`<span class="pill" data-sumo-src="baked">${L('SUMO · pre-computed (cloud unavailable)','SUMO · 预先跑好的（云端没算成）')}${sd}</span>${s.reason?`<span class="small muted">${esc(sumoReason(s.reason))}</span>`:''}`;}
 // Seed box + run button (T42): the lead picks the random seed; the same seed gives the same run
 function sumoSeedHTML(){const dis=SU.busy?' disabled':'';
-  return`<div class="row sumo-seed"><label class="eyebrow" for="sumoSeed">${L('Seed','种子')}</label><input id="sumoSeed" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"${dis}><button type="button" class="btn ghost" id="sumoDice"${dis}>${L('Random','随机')}</button><button type="button" class="btn sumo-run" id="sumoRerun"${dis}>${SU.busy?L('Computing…','计算中…'):L('▶ Run SUMO (~15 s)','▶ 运行 SUMO（约 15 s）')}</button></div>`;}
+  return`<div class="row sumo-seed"><label class="eyebrow" for="sumoSeed">${L('Seed','种子')}</label><input id="sumoSeed" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"${dis}><button type="button" class="btn ghost" id="sumoDice"${dis}>${L('Random','随机')}</button><button type="button" class="btn sumo-run" id="sumoRerun"${dis}>${SU.busy?L('Computing…','计算中…'):L('▶ Run SUMO (~1 min)','▶ 运行 SUMO（约 1 分钟）')}</button></div>`;}
 // While the cloud run computes: no cars from anywhere else, just a spinner (panel + map)
 function sumoWaiting(){return gridShown()&&!!S.sim&&!S.sim.isSumo&&sumoWant()&&!SU.failed;}
-function sumoWaitHTML(){return`<p class="eng-assume">${L('SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed','SUMO 1.27.1 · 真实 CBD 路网（OSM）+ SCATS 08:00 车流 · 信号配时和转弯比例是假设值')}</p>
-    <div class="sumo-wait" role="status"><span class="spin" aria-hidden="true"></span><span>${L('SUMO is computing this run in the cloud','SUMO 正在云端计算这一次')} · <span data-live="suEl">0</span> s</span></div>${sumoSeedHTML()}`;}
+function sumoWaitHTML(){const w0=sumoWin();return`<p class="eng-assume">${L('SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed','SUMO 1.27.1 · 真实 CBD 路网（OSM）+ SCATS 08:00 车流 · 信号配时和转弯比例是假设值')}</p>
+    <div class="sumo-wait" role="status"><span class="spin" aria-hidden="true"></span><span>${L(`SUMO simulating ${w0} in the cloud`,`SUMO 正在云端模拟 ${w0}`)} · <span data-live="suEl">0</span> s ${L('(about 1 min)','（约 1 分钟）')}</span></div>${sumoSeedHTML()}`;}
 function sumoCtl(){
   const have=new Set(((S.sim.index&&S.sim.index.scenarios)||[]).map(x=>x.id)),ch=[['original',L('Original plan · ROADWORK AHEAD','原方案 · ROADWORK AHEAD')],['ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL')]].filter(([k])=>have.has(k));
   return`<div class="row sumo-src">${sumoPill()}</div>
@@ -3100,7 +3227,7 @@ function updateLive(force){
     set('agents',(sim.isGrid&&sim.all?sim.all:sim.agents).length);set('conf',sim.stats.conflicts==null?'—':sim.stats.conflicts);set('crit',sim.stats.critical==null?'—':sim.stats.critical);set('harsh',sim.stats.harsh); // null = not computed (SUMO, T46)
     const crit=!!sim.critical,wl=wxLabel(S.wx);
     if(SU.busy)set('suEl',Math.round((performance.now()-SU.t0)/1000));
-    const lb=$('#stLabel');if(lb){const txt=sim.isSumo?L('SUMO · real CBD network','SUMO · 真实 CBD 路网'):sumoWaiting()?L('SUMO · computing in the cloud','SUMO · 云端计算中'):crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
+    const lb=$('#stLabel');if(lb){const txt=sim.isSumo?(sim.waiting?L('SUMO · loading this part of the hour…','SUMO · 正在载入这一段…'):L('SUMO · real CBD network','SUMO · 真实 CBD 路网')):sumoWaiting()?L('SUMO · computing in the cloud','SUMO · 云端计算中'):crit?L(`Micro-simulation · paused · ${wl}`,`微观仿真 · 已暂停 · ${wl}`):L(`Micro-simulation · running · ${wl}`,`微观仿真 · 运行中 · ${wl}`);if(lb.textContent!==txt)lb.textContent=txt;}
   }
   if(S.step===4&&S.simAfter){set('liveB',S.sim.stats.conflicts);set('liveA',S.simAfter.stats.conflicts);}
 }
@@ -3217,8 +3344,8 @@ function drawHist(){
 }
 // T44 step 2 (4×4): one bar per 10 minutes, all the same height = the vehicles that entered the 2×2 in them; red = the share
 // that braked harshly or were in a conflict there, grey = the rest (through without either). Each part carries its share.
-// T46: the SUMO replay (12 minutes) sets sim.bins {m0, n}: n-minute bars from minute m0 (2 minutes from 08:03, 6 bars), each
-// over its own minutes on the hour axis the clock hand runs along. A label too wide for its slot drops to whole percent, then goes
+// T46: the SUMO replay sets sim.bins {m0, n}: n-minute bars from minute m0 (T48: the full hour 10 minutes from 08:00, as here;
+// a 12-minute replay 2 minutes from 08:03, 6 bars), each over its own minutes on the hour axis the clock hand runs along. A label too wide for its slot drops to whole percent, then goes
 function histShare(c,sim,top,bot){
   const B=sim.bins||{m0:0,n:10},mw=hw/60,W=B.n*mw,bw=Math.min(W*(B.n<10?.7:.42),96),H=bot-top;
   c.fillStyle=TK.line;c.fillRect(0,Math.round(top+H/2),hw,1); // 50 %
@@ -3252,7 +3379,7 @@ function bindInput(){
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute('aria-pressed',String(S.layers[k]));baseKey='';});
   document.querySelectorAll('#basemap button').forEach(b=>b.onclick=()=>{S.basemap=b.dataset.bm;updateBasemapUI();baseKey='';if(b.dataset.bm!=='streets'&&!IMG[b.dataset.bm]){$('#loading').hidden=false;$('#loading').textContent=b.dataset.bm==='nir'?L('RENDERING NIR COMPOSITE…','正在渲染近红外合成…'):L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');setTimeout(()=>{imagery(b.dataset.bm);$('#loading').hidden=true;},30);}});
   document.querySelectorAll('#speed button').forEach(b=>b.onclick=()=>{S.speed=+b.dataset.speed;S.playing=true;});
-  $('#play').onclick=()=>{S.playing=!S.playing;if(S.playing&&S.clock>=3599)S.clock=0;};
+  $('#play').onclick=()=>{S.playing=!S.playing;if(S.playing&&S.clock>=3599)S.clock=0;if(S.playing&&S.sim&&S.sim.isSumo&&S.sim.atEnd)S.sim.seek(0);}; // T48: the SUMO hour played out → again from 08:00
   hc.addEventListener('click',e=>{S.clock=clamp(e.offsetX/hw*3600,0,3599);if(S.sim&&S.sim.isSumo)S.sim.seek(S.clock-S.sim.clock0);});
   $('#langToggle').onclick=()=>setLang(LANG.cur==='zh'?'en':'zh');
   $('#themeToggle').onclick=()=>{const next=TK.light?'dark':'light';document.documentElement.dataset.theme=next;ls.set('rt-theme',next);};
@@ -3274,7 +3401,7 @@ function loop(now){
   let sp=S.playing?S.speed:0;
   if(S.slow>0){S.slow-=dt;sp=.2;if(S.slow<=0){S.playing=false;sp=0;onCritical();}}
   if(sp>0){const sd=dt*sp,n=Math.ceil(sd/.05),h=sd/n;for(let i=0;i<n;i++)for(const s of activeSims())s.step(h);S.clock=Math.min(3599,S.clock+sd);if(S.clock>=3599)S.playing=false;}
-  if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock(); // T40: the clock reads the replay's own time (it loops)
+  if(S.sim&&S.sim.isSumo){S.clock=S.sim.clock();if(S.sim.atEnd)S.playing=false;} // T40: the clock reads the replay's own time; T48: the full hour stops at its end, as the grid sim at 09:00
   WX.clock=fmtClock(S.clock);WX.update(dt,S.clock/3600);
   if(S.step===2&&S.sim&&S.sim.critical&&!S.alertShown){S.alertShown=true;S.slow=1.2;}
   render(dt);placeAlert();
@@ -3421,6 +3548,8 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmtN=n=>Math.round(Number(n)||0).toLocaleString('en-AU');
 const pctS=x=>`${Math.round((Number(x)||0)*100)}%`;
 const engHour=h=>`${String(h).padStart(2,'0')}:00`;
+// T48: the engine's queue is where its point queue stands at the END of the scored hour (D/D/1 over 60 min): 08:00 → "09:00"
+const engEndH=s=>engHour((clamp(Math.floor(+(s&&s.when?s.when.hour:EP.hour)||0),0,23)+1)%24);
 const shortSt=n=>String(n||'').replace(/ Street\b/,' St');
 const TYPES4=['commuter','local','tourist','delivery'];
 const TYPE_L={commuter:['Commuters','通勤者'],local:['Locals','本地人'],tourist:['Visitors','游客'],delivery:['Delivery','送货车']};
@@ -3678,8 +3807,8 @@ function engPanel3(){
   if(EP.view3==='clash')return top+`<div class="stack"><h2>${L('Other works on the same dates','同期的其他施工')}</h2><p class="small eng-assume">${L('Registered works that overlap this plan, scored together with it on the real network: the clash cost is the delay that exists only because both run at once.','登记表里和本方案时间重叠的施工，和本方案一起在真实路网上算：叠加冲突 = 只因两处同时施工才多出来的延误。')}</p></div>${navHTML()}`;
   if(EP.view3==='evidence')return top+engEvidence(s,f)+navHTML();
   return top+`
-  ${typeof sumoImpactHTML==='function'?sumoImpactHTML():''}
-  <div class="stack"><span class="eyebrow">${L('Engine estimate · whole CBD, 1 hour','引擎估算 · 整个 CBD、1 小时')}</span><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
+  ${typeof sumoImpactHTML==='function'?sumoImpactHTML(s):''}
+  <div class="stack"><span class="eyebrow">${L(`Engine estimate · whole CBD · queue at ${engEndH(s)}`,`引擎估算 · 整个 CBD · ${engEndH(s)} 时的排队`)}</span><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
   <div class="stack eng-where"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
@@ -3888,7 +4017,7 @@ function engLabels(){
   TAGS.boxes=[[wx0,wy0,Math.max(...wx)+8-wx0,Math.max(...wy)+8-wy0]];TAGS.q=[];TAGS.on=true;
   // works near the foot of the open map (phones: the legend sits there) → the tag goes above the works instead of under the legend
   drawTag(ctx,mx,my,engDx(mx,36),my+80>V.h-GL.ins.b-(matchMedia('(min-width: 821px)').matches?0:104)?-50:54,`W-1 · ${shortSt(EP.street||L('Unnamed road','无名道路')).toUpperCase()} ${L(EP.dir+'B',dirL(EP.dir))} · ${EP.all?L('CLOSED','全封'):L('1 LANE','封 1 道')}`,TK.works);
-  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis),TK.risk);}
+  if(s&&s.queue_m>0){const q=engUp(Math.min(s.queue_m,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,24),-40,engQueueTxt(s,vis,true),TK.risk);}
   if(S.step===1){
     if(parseFrame(EP.f1).length||parseFrame(EP.f2).length){const q=engUp(Math.min(EP.vmsAt,vis)),px=V.X(q[0]);drawTag(ctx,px,V.Y(q[1]),engDx(px,20),46,`VMS-1 · ${EP.vmsAt} m${EP.vmsAt>vis?' →':''}`,TK.works);}
   }
@@ -3905,9 +4034,10 @@ function engReach(){
   const p=engPath(),R=p&&p.pts.length>1?p.reach:2000,inC=q=>q[0]>=CITY.x0&&q[0]<=CITY.x1&&q[1]>=CITY.y0&&q[1]<=CITY.y1;
   if(inC(engUp(R)))return R;let lo=0,hi=R;for(let i=0;i<24;i++){const mid=(lo+hi)/2;if(inC(engUp(mid)))lo=mid;else hi=mid;}return lo;
 }
-function engQueueTxt(s,vis){
+// at: the tag says when (T48: "· 09:00" — the queue at the end of the hour, as SUMO's 09:00 number in step 3)
+function engQueueTxt(s,vis,at){
   const p=engPath(),cut=s.queue_m>engReach()+1,end=p&&p.end?shortSt(p.end):null;
-  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
+  return`${L('QUEUE','排队')} ${fmtN(s.queue_m)} m`+(at?L(` · ${engEndH(s)}`,` · ${engEndH(s)} 时`):'')+(cut?L(` · drawn to ${end||'the edge of the network'}`,end?` · 画到 ${end} 为止`:' · 画到路网边上为止'):s.queue_m>vis?' →':'');
 }
 // How far upstream stays on screen (for placing tags): inside the world and the current view, with room for the tag
 function engVisible(){
