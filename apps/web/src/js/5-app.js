@@ -223,7 +223,7 @@ function drawGrid(){
 function drawScale(){
   // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
   const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-(GL.ins.cr||0)-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -561,9 +561,9 @@ function loop(now){
 
 /* ---------- boot ---------- */
 function boot(){
-  const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
+  document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark'; // dark unless the viewer picked light with the toggle (not the OS setting)
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
-  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
+  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -196,6 +196,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 .btn.ghost{background:var(--raised);color:var(--fg);border-color:var(--line-2)}
 .btn.danger{background:var(--risk-tint);color:var(--risk);border-color:var(--risk)}
 .cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
+.cta-act:empty{display:none}
+.cta-act .btn{width:100%}
 .cta .note{font:400 9.5px/1.3 var(--f-mono);color:var(--fg-3);text-align:center}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .metric{background:var(--raised);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
@@ -408,9 +410,11 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .chip,.theme-toggle,.lang-toggle{background:var(--raised);border-color:var(--line);box-shadow:inset 0 1px 0 var(--hl-edge)}
 
 /* layer rail */
-.rail button{width:42px;height:42px;border-radius:14px;transition:background .18s,color .18s}
+.rail button{width:36px;height:36px;border-radius:12px;transition:background .18s,color .18s}
+.rail button svg{width:17px;height:17px}
+.rail .sep{width:20px;margin:2px 0}
 .rail button[aria-pressed="true"]{color:var(--on-sun);background:var(--sun);border-color:rgba(255,255,255,.3);box-shadow:0 6px 16px rgba(255,159,10,.22),inset 0 1px 0 rgba(255,255,255,.45)}
-.rail button[data-tip]:hover::after{left:54px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+.rail button[data-tip]:hover::after{left:46px;padding:7px 10px;border-radius:10px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:var(--shadow)}
 
 /* map HUDs */
 .wx,.basemap,.zoom,.probe,.toast{border-radius:999px}
@@ -491,7 +495,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
 .app.no-time .timeline{display:none}
 
-/* data credits (OSM / DataVic / City of Melbourne): bottom-right of the open map on desktop, a footer line on phones */
+/* data credits (OSM / DataVic / City of Melbourne): plain text centred along the foot of the open map on desktop (no frame,
+   09-30 ask; a soft halo in the shell colour keeps it legible over imagery). It gets its own band (--cr-h): the scale bar,
+   weather chip, probe and toast sit above it, so it never runs into them however it wraps. A footer line on phones */
 .credits{font:400 10.5px/1.45 var(--f-body);color:var(--fg-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
 .credits a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
 .credits a:hover{color:var(--fg)}
@@ -502,13 +508,14 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
-  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px;--cr-h:30px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
-  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:60px;border-radius:24px;padding:9px 0;gap:6px}
+  .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
+  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -520,10 +527,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
   .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
   .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
-  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 44px)}
-  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
-  .credits{position:fixed;z-index:4;right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 300px);justify-content:flex-end;padding:5px 11px;border-radius:12px}
-  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + var(--cr-h) + 44px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + var(--cr-h) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .credits{position:fixed;z-index:4;left:calc(var(--safe-l) + (100vw - var(--safe-l) - var(--safe-r))/2);transform:translateX(-50%);bottom:calc(var(--safe-b) + 2px);width:max-content;max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 24px);justify-content:center;text-align:center;text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + var(--cr-h) + 48px)}
   .swipe .tag{top:calc(var(--safe-t) + 60px)}
 }
 /* narrower desktops: fewer HUDs, a slimmer panel */
@@ -541,10 +548,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
@@ -664,6 +671,26 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+/* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
+.ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ai-tile:hover{border-color:var(--fg-3)}
+.ai-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ai-tile.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),inset 0 1px 0 var(--hl-edge)}
+.ai-tile:disabled{cursor:default;opacity:.7}
+.ai-th{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ai-th .eyebrow{font-size:11px;letter-spacing:.06em;color:var(--fg-2)}
+.ai-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--works)}
+.ai-dot.ok{background:var(--accent)}
+.ai-dot.risk{background:var(--risk)}
+.ai-ns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.ai-n{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ai-n b{font:700 19px/1 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ai-n b small{font-size:10px;font-weight:400;color:var(--fg-3);margin-left:1px}
+.ai-n em{font-style:normal;font-size:10.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-tadv{font-size:11.5px;color:var(--fg-2);overflow-wrap:anywhere}
+.ai-tnote{font-size:11.5px;color:var(--fg-3)}
+.ai-detail .ai-p{border-color:var(--accent)}
 .ai-log{border:1px solid var(--line);border-radius:6px;background:var(--raised);min-width:0}
 .ai-log summary{cursor:pointer;padding:9px 12px;font:600 11px/1.2 var(--f-mono);letter-spacing:.04em}
 .ai-log-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 12px 8px}
@@ -738,7 +765,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   <section class="panel" id="panel" aria-live="polite"></section>
   <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
 
-  <div class="credits glass" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
+  <div class="credits" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -1979,7 +2006,7 @@ function drawGrid(){
 function drawScale(){
   // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
   const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-(GL.ins.cr||0)-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -2317,9 +2344,9 @@ function loop(now){
 
 /* ---------- boot ---------- */
 function boot(){
-  const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
+  document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark'; // dark unless the viewer picked light with the toggle (not the OS setting)
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
-  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
+  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
@@ -2990,7 +3017,7 @@ function citySeam(c,V,light){
    · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
    ============================================================ */
 const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
-function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b'),cr:px('--cr-h')};return GL.ins;}
 function insets(){return GL.ins;}
 /* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
 function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
@@ -3173,19 +3200,29 @@ function clashHTML(){
   const st=CL.st,b=st&&st.best;
   if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
   else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
-  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<p class="small muted">${CL.stErr?L('Stagger failed — try again (button at the bottom of the panel).','错开没算成，再点一次面板底部的按钮。'):L(`“Stagger by ${n} day${n===1?'':'s'}” at the bottom of the panel moves ${title} later, re-scored by the engine day by day.`,`面板底部的「错开 ${n} 天」把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
   return`${head}${metrics}${sub}${why}${act}${more}`;
+}
+// The stagger button lives in the panel's sticky footer next to "Find a better plan" (09-30: always in reach, no scrolling),
+// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet
+function clashBtnHTML(){
+  const x=CL.other,st=CL.st;
+  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0))return'';
+  const n=clashDays(x.ws);
+  return`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button>`;
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
-  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
+  a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }
 // Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
 function clashMount(){
   const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
   const box=document.createElement('div');box.id='clashBox';box.className='stack';
   const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(cta){const a=document.createElement('div');a.id='clashAct';a.className='cta-act';cta.prepend(a);} // slot for the stagger button
   if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
   clashRender();
 }
@@ -3512,6 +3549,17 @@ function aiPersonaHTML(t,p){
     <div class="ai-adv">→ ${esc(aiAdvice(r))}</div><q class="ai-why" data-aiwhy="${esc(t)}"></q>${p.fallback?`<span class="small muted">${L('Reader error → keyword rules','读屏出错 → 改用关键词规则')}</span>`:''}`
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
+// One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
+function aiTileHTML(t,p,sel){
+  const nm=esc(aiWho(t)),r=p&&p.reading;
+  const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
+  const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
+    :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+  const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
+  return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
+}
 function aiTime(t){const d=new Date(t);return Number.isNaN(d.getTime())?'—':d.toTimeString().slice(0,8);}
 // One call-log row (every string through esc())
 function aiLogRowHTML(e){
@@ -3533,7 +3581,7 @@ function aiLogJSON(log,meta){
 }
 /* pure:end */
 
-const AI={log:[],open:false,timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
+const AI={log:[],open:false,sel:'',timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
 
 // Subscribe once the backend is up: snapshot + subscribe in the same tick, so no call is missed
 BE.ready.then(()=>{
@@ -3568,10 +3616,13 @@ const AI_NO={err:['No readings — the engine could not score this plan.','没�
   bad:['No readings — fix the sign text in step 1 first.','没有读数 —— 先回第 1 步把屏上文字改合规范。'],
   wait:['Readings appear once the engine has scored this plan.','引擎算完这个方案后，这里显示各类路人的读数。']};
 function aiHTML(rd,st){
-  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  const so=rd&&st==='ok'?aiSrcOf(rd):null;
+  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
-  const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
-    <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
+  const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+    ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
+    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }
@@ -3593,6 +3644,10 @@ function aiRender(){
   const d=el.querySelector('#aiLogBox');if(d)d.addEventListener('toggle',()=>{AI.open=d.open;});
   const nr=el.querySelector('.ai-rows');if(nr)nr.scrollTop=keepScroll;
   const b=el.querySelector('#aiDl');if(b)b.onclick=aiDownload;
+  el.querySelectorAll('[data-aip]').forEach(x=>x.onclick=()=>{
+    AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();
+    const d=el.querySelector('#aiDetail');if(d)d.scrollIntoView({block:'nearest',behavior:'smooth'}); // bring the opened card into view
+  });
 }
 // JSON built here and handed to the browser as a file: no upload, no network
 function aiDownload(){

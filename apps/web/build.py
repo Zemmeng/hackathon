@@ -20,7 +20,7 @@ def bundle():
     script = "<script>\n'use strict';\n" + js + "\n</script>\n"
     style = "<style>\n" + css + "</style>\n"
     page = (
-        '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+        '<!doctype html>\n<html lang="en" data-theme="dark">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
         + head + style + "</head>\n<body>\n" + body + script + "</body>\n</html>\n"
     )

@@ -7,7 +7,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 ## 现在停在哪（只有 lead 改，写时间）
 
 - 里程碑：M0 完成，M1 未到（09-29 15:48）· 倒计时 44h · main：绿（`check.sh` 全量 `0 ❌`，8 个模块 728 passed）· 冻结：否
-- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `7e035d9`（#60 T20：删写死的假数 + 天气标示意 + 模拟评委 5 条）· 09-29 22:13 由 @unicornnnnnny 部署；线上冒烟 0 ❌；`/api/health` = `llm.mode rules`（没放 key）
+- 线上版本：https://hackathon-site.zemmmeng.workers.dev · commit `bad055d`（#85 T27：地图放下整个 CBD）· 09-30 01:59 由 @unicornnnnnny 部署；线上冒烟 0 ❌；`/api/health` = `llm.mode llm`（deepseek-flash）
 - main 上已有：T3/T7 路网 + 行人 / 公交 / 设备、T11 临街建筑、T9 引擎（契约 v3）、T5 读屏规则版、T12 有出处的参数、`docs/llm-apis/` 百炼卡
 - **没有开着的 PR**；最大缺口是 T2 网页还没把这些串起来（R5）
 - 交接：`handoff/Zemmeng-T6-0929-1548.md`（17:00 集成点的待办和要拍板的事）
@@ -51,6 +51,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T26 | 给 @unicornnnnnny：**T20 收尾**——顶栏场景名还写 La Trobe、「回到施工区」飞回 La Trobe、1440×900 改 VMS 要滚动、375 px 施工标签被图例盖、「53% 照屏走」说错且没标假设值、「绕行 14%→61%」固定标绿、步骤条和几处按钮名不副实。**要求全在 `docs/arch/T26-T27-web-PRD.md` 第 1、2、4 节**；合并顺序 #72 → `lead/ai-panel` → T26；分支 `unicornnnnnny/web/T26-t20-tail` | 1.5h | #72、`lead/ai-panel` |
 | T27 | 给 @unicornnnnnny：**地图放下整个 CBD**（D-0929-2354）——精细窗口不动，外面加一层预渲染的全城路网 + 建筑（Hoddle Grid 外扩约 150 m），放开拖动和缩放，排队线 / 绕行线 / 公交线画全，全 CBD 路段可点。**要求全在 `docs/arch/T26-T27-web-PRD.md` 第 3、4 节**；时间盒 09-30 22:00，没绿就不合、走兜底；分支 `unicornnnnnny/web/T27-full-cbd` | 5h（阶段 1） | T26、T28 |
 | T28 | 给 @unicornnnnnny（D-0930-0005，原挂 @Zemmeng）：**引擎 `raw.links` 每条加 `extra_min`**（和同一小时不施工时比，`apps/engine/public/js/pipeline.js:214` 已算好）——页面「变慢路段」现在和自由流比，T27 视野放开后 Flinders / King St 本来就有的排队会在每个方案里被画成施工涟漪；加反向断言。**要求在 `docs/arch/T26-T27-web-PRD.md` 第 0 节**；分支 `unicornnnnnny/engine/T28-extra-min`，不碰 `apps/web`，现在就能做；`apps/engine` 归 lead，PR 由 lead 审过再合；T27 合并前要进 main | 1h | — |
+| T31 | 给 @louisxie316-dotcom：**真实天气回测**（D-0930-1003）——拿 2026-08-01..09-27 墨尔本逐小时真实天气（Open-Meteo，BoM 逐日核对）对上你手上的 SCATS 原始流量、2921 自行车检测器和行人计数，算雨天车 / 自行车 / 行人比晴天少多少、高峰通行能力掉多少（带 95% 区间和安慰剂检验），和页面微观仿真编的 `WXP` 倍数对照；阶段 2 可选：拉长到 2025-01 起补高温、大风、大雨。只改 `apps/roads`，不改页面。**要求全在 `docs/arch/T31-weather-backtest-PRD.md`**；分支 `louisxie316-dotcom/roads/T31-weather-backtest`；阶段 1 09-30 16:00 前 PR 绿 | 2h | T3、T7（SCATS / 行人原始数据） |
 
 认领：在自己那节加一行标 🔨；「未认领」里对应那行由 lead 下一轮清掉。
 
@@ -123,6 +124,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T28 | 引擎 `raw.links` 每条多给 `extra_min`（车·分钟，和同一小时不施工比，可 < 0），页面画变慢路段不再把 Flinders / King St 本来的排队算成涟漪；`docs/arch/T26-T27-web-PRD.md` 第 0 节 | ✅ 已合 #79，已上线（lead 部署） | `unicornnnnnny/engine/T28-extra-min` | 09-30 00:10 |
 | T26 | T20 收尾（PRD 第 2 节）：顶栏场景名跟着施工走、「回到施工区」飞回施工区、第 1 步 VMS 输入框紧贴 4 个大数字（不用滚动）、取景让开图例、假设两行说清楚（读懂 ≠ 照做、信任度是假设值、全封也有一行、「绕行的车」不标绿）、步骤条和「智能体」字样改掉 | ✅ 已合 #80，已上线（lead 部署） | `unicornnnnnny/web/T26-t20-tail` | 09-30 00:40 |
 | T27 | 地图放下整个 CBD（PRD 第 3 节阶段 1）：精细窗口不动，外面垫一层预渲染的全城路网 + 建筑（`6c-city.js`；`CITY` 北边放到 Franklin St，装下 La Trobe 17:00 的绕行），放开拖动 / 缩放（缩放 < 1 不画天气、小人、经纬网，不能点图挪施工区），引擎线改用 `CITY`，排队线沿同名路段按 `len_m` 画到街没了为止（标签照写引擎的数），比例尺按 1 m ≈ 0.862 页面单位，变慢路段的筛选和标红只看 `extra_min`（#82），引擎标签避开地图控件、施工段和彼此（375 px 不再出屏）；顺带 T26 审查两处字样；交接单 `handoff/unicornnnnnny-T27-0930-0202.md` | ✅ 已合 #85，已上线 bad055d（09-30 01:59 @unicornnnnnny 部署，e2e 0 ❌） | `unicornnnnnny/web/T27-full-cbd` | 09-30 00:37 |
+| T32 | （@unicornnnnnny 09-30 自提，编号自取：T29 已被 #89 用、T30 留给 #85 小修、T31 是天气回测；lead 可改）右侧面板三处：第 3 步「AI 路人 · 各自读到了什么」改成 2 × 2 小方块（看到 / 看懂 / 相信 + 路线建议），点一个在下面展开它的完整卡片；面板底部按钮（找更好的方案、错开 N 天、复制处置手册）桌面上一直悬浮，「错开 N 天」挪进底部按钮条；左侧图层栏缩小、位置不变（#91）；数据来源一行去掉边框、居中在地图底边，第一次打开默认英文（#93）；第一次打开默认深色 | 🔨 | `unicornnnnnny/web/T32-ai-tiles`、`T32-credits-en`、`T32-default-dark` | 09-30 09:55 |
 
 卡住了：
 
