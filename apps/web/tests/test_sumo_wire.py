@@ -50,7 +50,8 @@ check("sumoWant()：gridOn() && EP.link===SUMO_LINK，封 1 条道", "gridOn()" 
 g2 = re.search(r"if\(n===2\)\{(.*?)\n", APP)
 check("goStep(2)：先起 GridSim（立刻有车），再 sumoStart()", bool(g2) and g2.group(1).index("gridOn()&&newGrid()") < g2.group(1).index("sumoStart()"))
 start = fn(APP, "sumoStart")
-check("sumoStart() 出错只打一行 console.info，留在 GridSim", "console.info('SUMO replay unavailable, keeping the browser grid sim:'" in start and "catch(e)" in start)
+check("sumoStart() 客户端载不进来只打一行 console.info、SU.failed 退回 GridSim", "console.info('SUMO client unavailable, keeping the browser grid sim:'" in start and "SU.failed=true" in start)
+check("T42：sumoStart() 不先放预跑——同一种子 + 方案 10 分钟内现场算过就播那次，否则 sumoRerun()（转圈）", "if(!sumoStale())" in start and "return sumoRerun();" in start and "loadReal" not in start)
 play = fn(APP, "sumoPlay")
 check("sumoPlay()：第一块到了才换 S.sim，换前再确认还在第 2 步 / 还要 SUMO / 没被新请求顶掉",
       "R.addChunk(k,await c.realChunk(ref,scen,ch[k]))" in play and "if(!gridShown()||!sumoWant())return;" in play and "if(tok!==SU.tok)return;}while(" in play
@@ -64,14 +65,15 @@ pill = fn(APP, "sumoPill")
 check("来源标签读屏上回放自己的 src，live 要 source==='live' 且有用时", "S.sim.src" in pill and "s.source==='live'&&isFinite(s.elapsedMs)" in pill)
 check("预跑标签写 SUMO · pre-computed / 预先跑好，带原因", "SUMO · pre-computed" in pill and "SUMO · 预先跑好" in pill and "sumoReason(s.reason)" in pill)
 rr = fn(APP, "sumoRerun")
-check("重跑：runReal({seed, p_original:.14, p_ai})，只有 source==='live' 且有 runId 才记成 live",
-      "runReal({seed:" in rr and "p_original:.14" in rr and "p_ai:sumoPAi()" in rr and "if(r.source==='live'&&r.runId)" in rr)
+check("运行：runReal({seed（面板上设的）, p_original:.14, p_ai})，只有 source==='live' 且有 runId 才记成 live",
+      "const tok=++SU.tok,seed=SU.seed" in rr and "runReal({seed,p_original:.14,p_ai:sumoPAi()}" in rr and "r.source==='live'&&r.runId" in rr)
+check("T42：云端没算成才换预跑（sumoBaked 带原因），预跑也没有就 SU.failed 退回 GridSim", "await sumoBaked(r&&r.reason)" in rr and "await sumoBaked('not_found')" in rr and "SU.failed=true" in rr)
 check("p_ai：引擎顾问对比的绕行比例，没有就 0.53", "return isFinite(p)&&p>=0&&p<=1?" in APP and ":.53;}" in APP)
 check("第 2 步面板 SUMO 模式：说明、两个方案按钮、重跑按钮、四个指标",
       "real CBD network (OSM) + SCATS" in APP and "Original plan · ROADWORK AHEAD" in APP and "AI plan · USE RUSSELL" in APP
-      and "↻ Run again in the cloud (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
-check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "在云端再算一次", "地图上的车"]))
-check("不在 SUMO 模式时第 2 步原来的四个 GridSim 指标还在", "${su?sumoTiles():`" in APP and "L('Road users','道路使用者')" in APP and "TTC &lt; 1.5 s" in APP)
+      and "▶ Run SUMO (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
+check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "运行 SUMO（约 15 s）", "地图上的车"]))
+check("不在 SUMO 模式时第 2 步原来的四个 GridSim 指标还在", "${su?sumoTiles():wait?'':`" in APP and "L('Road users','道路使用者')" in APP and "TTC &lt; 1.5 s" in APP)
 check("时钟跟回放走（clock0_s + t），时间轴点击跳过去，时段用回放的 hour",
       "if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock();" in APP and "S.sim.seek(S.clock-S.sim.clock0)" in APP and "S.sim.isSumo?S.sim.hour:" in APP)
 
@@ -98,10 +100,13 @@ else:
     if code != 0 and passed + failed == n0:
         check(f"sumo_glue.mjs 退出码 {code}", False, out[-400:])
 
-st = fn(APP, "sumoStart")
-check("T41：预跑上屏后自动在云端现场算（sumoStale() 为真才算：同一 AI 绕行比例 10 分钟内算过就不重算）",
-      "if(tok===SU.tok&&sumoStale())sumoRerun();" in st and "function sumoStale(){return !(SU.ref.source==='live'&&SU.liveKey===String(sumoPAi())&&performance.now()-SU.liveAt<600000);}" in APP)
-check("T41：现场算成功才记 liveKey / liveAt", "SU.liveKey=String(sumoPAi());SU.liveAt=performance.now();" in fn(APP, "sumoRerun"))
-check("T41：文字不再叫「回放」，计算中写明先显示预先跑好的", "SUMO 回放" not in APP and "SUMO replay ·" not in APP and "先显示预先跑好的" in APP and "Cloud SUMO · computed live" in APP)
+check("T42：同一种子 + 同一 AI 绕行比例 10 分钟内算过就不重算；现场算成功才记 liveKey / liveAt",
+      "const sumoKey=()=>`${SU.seed}|${sumoPAi()}`;" in APP and "SU.liveKey===sumoKey()&&performance.now()-SU.liveAt<600000" in APP and "SU.liveKey=sumoKey();SU.liveAt=performance.now();" in fn(APP, "sumoRerun"))
+check("T42：等待时不画浏览器 GridSim 的车和信号灯，地图中间转圈，面板转圈 + 种子",
+      "if(walkers&&!wait){drawAgents(S.sim);drawEvents(S.sim);}if(grid)drawJunctions(S.sim,wait);if(wait)drawSumoWait();" in APP
+      and "if(!noHeads)for(const h of sim.signalHeads())" in APP and "function sumoWaiting(){return gridShown()&&!!S.sim&&!S.sim.isSumo&&sumoWant()&&!SU.failed;}" in APP
+      and "${su?sumoNote()+sumoCtl():wait?sumoWaitHTML():" in APP and 'class="spin"' in APP)
+check("T42：种子输入框（0–2147483647）、随机按钮、运行按钮；标签带 seed", 'id="sumoSeed"' in APP and 'id="sumoDice"' in APP and 'max="2147483647"' in APP and "seed ${s.seed}" in APP)
+check("T42：文字不叫「回放」，也不再先放预跑", "SUMO 回放" not in APP and "SUMO replay ·" not in APP and "先显示预先跑好的" not in APP and "Cloud SUMO · computed live" in APP)
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

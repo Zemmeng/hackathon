@@ -62,7 +62,7 @@ check("goStep(2) 网格分支把 S.stress 置空（第 3 步会自己重建 La T
 check("drawRisk / fogRings 遇到 isGrid 直接返回",
       "if(!sim||sim.isGrid)return;" in APP and "if(!sim||sim.isGrid||S.wx!=='fog'" in APP)
 check("render 第 2 步网格不画 La Trobe 施工，画网格的施工和信号灯（T38：缩小也画）",
-      "if(micro&&!grid)drawWorks('before')" in APP and "if(grid)drawJunctions(S.sim)" in APP)
+      "if(micro&&!grid)drawWorks('before')" in APP and "if(grid)drawJunctions(S.sim,wait)" in APP)
 check("T38：第 2 步网格缩放 < 1 也画车（walkers 含 gridShown()），La Trobe 场景仍只在 fine 里画",
       "walkers=micro&&(fine||gridShown())" in APP)
 check("T38：网格仿真画整个 4×4（sim.all），统计仍用 sim.agents（施工处 2×2）",
