@@ -467,7 +467,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -675,6 +675,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
 .ai-note{margin:0;font-size:11px;line-height:1.4;color:var(--fg-3)}
+.ai-noadv{margin:0;font-size:12.5px;font-weight:600;color:var(--works)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
 .ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
@@ -3058,7 +3059,7 @@ function eng4HTML(){
     return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}<small>${a.window.single_hour?L('this hour','这一小时'):L('whole works','全施工期')}</small>`}</span></button>`;}).join('');
   if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
-  <p class="eng-assume">${engWindowTxt(a.window)}</p>`;
+  <p class="eng-assume eng-units">${engWindowTxt(a.window)}</p>`;
   const o=a.options[EP.pick];
   if(o){
     const c=EP.cmp;
@@ -3360,7 +3361,7 @@ function applyGlass(){
 
 /* ---------- compact analysis panel ---------- */
 const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
-const SEC_FOLD='#clashBox,.eng-where'; // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
+const SEC_FOLD='#clashBox,.eng-where,#cmp4'; // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -3699,13 +3700,14 @@ function cmpExplainRender(el){
   const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
   // the pick in bold; its reason (model text, often long) only in Details mode (.cmp-lean-why, styles.css)
   if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.replaceChildren();
-    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}}
+    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}
+    const hd=el.querySelector('[data-cmphead]');if(hd)hd.textContent=row?L('Leaning: ','倾向：')+cmpLabel(row):engHour(EP.hour);} // the folded header says the pick
   if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
 }
 
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
-  const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
+  const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
   if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
   const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
@@ -3734,7 +3736,7 @@ function cmpHTML(){
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
   cmpUpdate();cmpExplainUpdate();
-  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);
+  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
@@ -3848,13 +3850,14 @@ function aiPersonaHTML(t,p){
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
 // One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
-// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
-function aiTileHTML(t,p,sel){
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open.
+// adv false → no advice line (the panel says once, under the tiles, that none of them got any)
+function aiTileHTML(t,p,sel,adv){
   const nm=esc(aiWho(t)),r=p&&p.reading;
   const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
   const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
     :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
-    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span>${adv===false?'':`<span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`}`;
   const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
   return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
 }
@@ -3918,7 +3921,8 @@ function aiHTML(rd,st){
   const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
   const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
-  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+  const none=L('no route advice','没给路线建议'),noAdv=TYPES4.every(t=>!ps[t]||!ps[t].reading||aiAdvice(ps[t].reading)===none); // said once, not four times
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel,!noAdv)).join('')}</div>${noAdv?`<p class="ai-noadv">→ ${L('None of them was told which way to go','屏上没告诉任何人该走哪条路')}</p>`:''}
     ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
     <p class="ai-note">${L(`The LLM only reads the signs · the engine computes every number · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · 数字都由引擎算 · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;

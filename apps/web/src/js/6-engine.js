@@ -402,7 +402,7 @@ function eng4HTML(){
     return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}<small>${a.window.single_hour?L('this hour','这一小时'):L('whole works','全施工期')}</small>`}</span></button>`;}).join('');
   if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
-  <p class="eng-assume">${engWindowTxt(a.window)}</p>`;
+  <p class="eng-assume eng-units">${engWindowTxt(a.window)}</p>`;
   const o=a.options[EP.pick];
   if(o){
     const c=EP.cmp;

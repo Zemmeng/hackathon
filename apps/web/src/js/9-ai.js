@@ -76,13 +76,14 @@ function aiPersonaHTML(t,p){
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
 // One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
-// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
-function aiTileHTML(t,p,sel){
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open.
+// adv false → no advice line (the panel says once, under the tiles, that none of them got any)
+function aiTileHTML(t,p,sel,adv){
   const nm=esc(aiWho(t)),r=p&&p.reading;
   const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
   const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
     :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
-    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span>${adv===false?'':`<span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`}`;
   const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
   return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
 }
@@ -146,7 +147,8 @@ function aiHTML(rd,st){
   const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
   const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
-  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+  const none=L('no route advice','没给路线建议'),noAdv=TYPES4.every(t=>!ps[t]||!ps[t].reading||aiAdvice(ps[t].reading)===none); // said once, not four times
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel,!noAdv)).join('')}</div>${noAdv?`<p class="ai-noadv">→ ${L('None of them was told which way to go','屏上没告诉任何人该走哪条路')}</p>`:''}
     ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
     <p class="ai-note">${L(`The LLM only reads the signs · the engine computes every number · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · 数字都由引擎算 · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;

@@ -167,13 +167,14 @@ function cmpExplainRender(el){
   const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
   // the pick in bold; its reason (model text, often long) only in Details mode (.cmp-lean-why, styles.css)
   if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.replaceChildren();
-    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}}
+    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}
+    const hd=el.querySelector('[data-cmphead]');if(hd)hd.textContent=row?L('Leaning: ','倾向：')+cmpLabel(row):engHour(EP.hour);} // the folded header says the pick
   if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
 }
 
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
-  const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
+  const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
   if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
   const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
@@ -202,7 +203,7 @@ function cmpHTML(){
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
   cmpUpdate();cmpExplainUpdate();
-  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);
+  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});

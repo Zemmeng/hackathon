@@ -72,7 +72,7 @@ check("中英：面板标题和日志标题两边都有", "L('AI road users · w
 # 7 四个小方块（09-30 @unicornnnnnny：面板在右侧不显眼 → 2 × 2 方块，点一个展开它的详细卡片）
 ah = body("aiHTML", AI)
 check("四类路人画成 2 × 2 小方块（aiTileHTML），点开的那一个在方块下面画完整卡片（aiPersonaHTML）",
-      "TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel))" in ah and "aiPersonaHTML(sel,ps[sel])" in ah and ".ai-tiles{display:grid;grid-template-columns:1fr 1fr" in (HERE.parent / "src" / "styles.css").read_text(encoding="utf-8"))
+      "TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel,!noAdv))" in ah and "aiPersonaHTML(sel,ps[sel])" in ah and ".ai-tiles{display:grid;grid-template-columns:1fr 1fr" in (HERE.parent / "src" / "styles.css").read_text(encoding="utf-8"))
 rr = body("aiRender", AI)
 check("点方块切换 AI.sel（再点一次收起），重画后把卡片滚进视野；签名里带着选中状态（HTML 里有 .on）",
       "AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();" in rr and "scrollIntoView" in rr and "class=\"metric ai-tile${sel?' on':''}\"" in AI)
