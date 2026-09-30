@@ -97,6 +97,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
 | T12 | 引擎参数找依据：`apps/params/public/params.json` + 出处表 + `test.sh`；字段已对齐引擎 `applyParams`（familiar 等） | ✅ | `Unzzip/params/T12-evidence` / PR #31 | 09-29 15:20 |
+| T35 | （@Unzzip 09-30 自提，编号自取：T34 已被 #96 用）细窗以外的「矢量」底图原来只有真楼 + 真路，不是真的 OSM 矢量图：新增 `apps/roads/tools/fetch_vectormap.py` 从 OpenFreeMap 的 OpenMapTiles 矢量瓦片构建期拉下水域 / 绿地 / 用地 / 铁路 → `apps/roads/public/cbd/vectormap.json`（同源、运行时不出网），`apps/web` 的 CITY 层（`6c-city.js`）垫在楼下当底图，浅 / 深两套配色；编排、验收、越界说明见交接单 `handoff/Unzzip-T35-0930-1723.md`。**跨模块**（apps/roads + apps/web + 根 README / docs/submission.md 待 lead 落实），需 `cross-module` 标签 | 🔨 | `Unzzip/web/T35-osm-vectormap` | 09-30 17:00 |
 
 卡住了：无。#5（Canvas 材料）已按 lead 留言拆完，等 `cross-module` 标签。
 

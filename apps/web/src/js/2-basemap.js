@@ -156,9 +156,12 @@ function renderImagery(W,pal){
 
 const VEC={
   light:{land:'#EEF1F0',foot:'#F7F8F7',road:'#FFFFFF',casing:'#D2D9D8',lane:'#F9FAFA',park:'#D5E8D2',tree:'rgba(142,190,138,.55)',tram:'#AEB9BC',bike:'#CDE7D5',zebra:'#E1E7E6',bldg:'#DEE3E2',bldgEdge:'#C5CDCC',bldgSide:'#CFD6D5',plaza:'#F1F1EC',label:'#4F6064',halo:'rgba(255,255,255,.92)',poi:'#6E7F84',dome:'#C9D6CD',glass:'#CFE0EA',marking:'#DDE3E2',platform:'#E4E6E1',
-    bldgTall:'#C3CCCB',use:{public:'#E4E1D6',education:'#E6DDD8',retail:'#E8E1D2',residential:'#DCDFE8',office:'#D5DEE7',hotel:'#E2DAE4',parking:'#D7D9D7'}},
+    bldgTall:'#C3CCCB',use:{public:'#E4E1D6',education:'#E6DDD8',retail:'#E8E1D2',residential:'#DCDFE8',office:'#D5DEE7',hotel:'#E2DAE4',parking:'#D7D9D7'},
+    /* real OSM vector-tile layers (roads/buildings/6c-city.js) — water, green, land use, rail */
+    vmap:{water:'#BFDCEF',waterway:'#BFDCEF',wood:'#C3DFBC',grass:'#D8EAD2',park:'#CFE6C7',sport:'#D6E9CD',sand:'#EDE6CE',aeroway:'#E2E2DF',civic:'#E7E3D9',urban:'#E8E6E0',rail:'#A9B1B0',transit:'#C2CAC8'}},
   dark:{land:'#0D1215',foot:'#151C21',road:'#20292F',casing:'#2C383F',lane:'#1A2328',park:'#132519',tree:'rgba(64,112,74,.45)',tram:'#3A4951',bike:'#1B3527',zebra:'#34424A',bldg:'#1A2328',bldgEdge:'#2A363E',bldgSide:'#0A0F12',plaza:'#171F24',label:'#9AABB2',halo:'rgba(9,13,16,.92)',poi:'#7C8E97',dome:'#2B3A33',glass:'#1B2E3A',marking:'#35434B',platform:'#28323A',
-    bldgTall:'#2C3943',use:{public:'#232B26',education:'#29242A',retail:'#2A2720',residential:'#1D2233',office:'#182835',hotel:'#251F2C',parking:'#1D1F20'}}};
+    bldgTall:'#2C3943',use:{public:'#232B26',education:'#29242A',retail:'#2A2720',residential:'#1D2233',office:'#182835',hotel:'#251F2C',parking:'#1D1F20'},
+    vmap:{water:'#0F2531',waterway:'#0F2531',wood:'#14291A',grass:'#182B1B',park:'#152A19',sport:'#172C1B',sand:'#2A2820',aeroway:'#1A2126',civic:'#1C2225',urban:'#161D22',rail:'#3B4852',transit:'#2D3A43'}}};
 /* flat top of a real building on the vector map: taller = further from the base tone, a light hint of its use */
 function vecRgb(b,pal){let c=mixRgb(hexRgb(pal.bldg),hexRgb(pal.bldgTall),clamp((b.h-10)/120,0,1));const u=pal.use&&pal.use[b.use];if(u)c=mixRgb(c,hexRgb(u),.35);return c;}
 

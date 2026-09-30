@@ -46,8 +46,9 @@ check(f"import() / fetch() 只用同源的固定路径（{len(loads)} 处）", l
 check("JS 里没有 XMLHttpRequest / WebSocket / sendBeacon", not re.search(r"XMLHttpRequest|WebSocket|sendBeacon", JS))
 hosts = set(re.findall(r"https?://([a-zA-Z0-9.-]+)", PAGE))
 allowed = {"fonts.googleapis.com", "fonts.gstatic.com", "www.w3.org"}
-# 许可要求的数据署名（OSM、DataVic、墨尔本市）是给人点的链接，不是页面去取的东西：只准出现在 CREDITS 的 href 里
-CREDIT_HOSTS = {"www.openstreetmap.org", "discover.data.vic.gov.au", "data.melbourne.vic.gov.au"}
+# 许可要求的数据署名（OSM、OpenMapTiles / OpenFreeMap、DataVic、墨尔本市）是给人点的链接，不是页面去取的东西：
+# 只准出现在 CREDITS 的 href 里（矢量瓦片是 tools/fetch_vectormap.py 在构建期拉的，页面不连它）
+CREDIT_HOSTS = {"www.openstreetmap.org", "openfreemap.org", "discover.data.vic.gov.au", "data.melbourne.vic.gov.au"}
 check("外部地址只有 Google Fonts（另有署名链接，见下一条）", hosts <= allowed | CREDIT_HOSTS, f"多出 {sorted(hosts - allowed - CREDIT_HOSTS)}")
 stray = [h for h in CREDIT_HOSTS if PAGE.count("https://" + h) != len(re.findall(r"href:'https://" + re.escape(h), PAGE))]
 check("署名链接只出现在 CREDITS 的 href 里，不被 fetch / import / src 加载", not stray, str(stray))

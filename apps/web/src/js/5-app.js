@@ -23,12 +23,15 @@ const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
 /* ---------- data credits ----------
-   The licences ask for attribution: OpenStreetMap (ODbL), DataVic (CC BY 4.0), City of Melbourne (CC BY). One list, the same
-   sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the execution pack and in the playbook
-   (creditLines). The hosts are plain links for people to follow — nothing is fetched from them. */
+   The licences ask for attribution: OpenStreetMap (ODbL), OpenMapTiles (CC BY 4.0), DataVic (CC BY 4.0), City of Melbourne
+   (CC BY). One list, the same sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the
+   execution pack and in the playbook (creditLines). The hosts are plain links for people to follow — nothing is fetched
+   from them: the vector basemap tiles are pulled at build time by tools/fetch_vectormap.py, not by the page. */
 const CREDITS=[
   {href:'https://www.openstreetmap.org/copyright',short:['© OpenStreetMap contributors','© OpenStreetMap contributors'],
     full:['© OpenStreetMap contributors, ODbL — road and walking network, building outlines','© OpenStreetMap contributors，ODbL 许可 —— 路网、人行网、建筑轮廓']},
+  {href:'https://openfreemap.org',short:['Vector basemap © OpenMapTiles / OpenFreeMap','矢量底图 © OpenMapTiles / OpenFreeMap'],
+    full:['Vector basemap layers (water, green space, land use, rail) from the OpenMapTiles schema © OpenMapTiles (CC BY 4.0), vector tiles served by OpenFreeMap, data © OpenStreetMap contributors (ODbL)','矢量底图图层（水域、绿地、用地、铁路）来自 OpenMapTiles schema © OpenMapTiles（CC BY 4.0），矢量瓦片由 OpenFreeMap 提供，数据 © OpenStreetMap contributors（ODbL）']},
   {href:'https://discover.data.vic.gov.au/dataset/traffic-signal-volume-data',short:['SCATS volumes © State of Victoria (DTP), DataVic CC BY 4.0','SCATS 车流 © 维多利亚州交通与规划部，DataVic CC BY 4.0'],
     full:['Traffic Signal Volume Data (SCATS) and Victorian traffic signals © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — hourly traffic at signals','交通信号车流数据（SCATS）和维州信号灯站点（Traffic Signal Volume Data、Victorian traffic signals）© 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 路口逐时车流']},
   {href:'https://discover.data.vic.gov.au/dataset/gtfs-schedule',short:['PTV GTFS, DataVic CC BY 4.0','PTV 时刻表，DataVic CC BY 4.0'],
@@ -510,6 +513,15 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
+/* The real OSM vector basemap for the whole-CBD layer (T35, /roads/public/cbd/vectormap.json): water, green space, land use
+   and rail from OpenFreeMap's OpenMapTiles vector tiles. Only the CITY layer draws it, so it loads on its own rather than
+   joining loadBuildings()' first-frame race — the city layer re-renders itself when it lands. Same failure story: same-origin
+   only, and a miss just leaves the flat city layer as it was. */
+function loadVectorMap(){
+  return fetch('/roads/public/cbd/vectormap.json').then(r=>r.ok?r.json():null).then(d=>{
+    cityVector(d);if(d)console.info('vectormap: real OSM vector basemap',d.polygons.length+' polygon layers /',d.lines.length+' line layers');return !!d;
+  }).catch(e=>{console.info('vectormap: plain city layer',e&&e.message);return false;});
+}
 function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));}
 
 /* ---------- histogram ---------- */
@@ -595,5 +607,6 @@ function boot(){
   /* wait up to 1.2 s for the real footprints so the first frame is already the real city; slower → start synthetic, swap on arrival */
   let go=false;const once=()=>{if(go)return;go=true;if(S.basemap==='streets')start();else setTimeout(start,40);};
   loadBuildings().then(once);setTimeout(once,1200);
+  loadVectorMap();
 }
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(boot,boot);

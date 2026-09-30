@@ -1295,9 +1295,12 @@ function renderImagery(W,pal){
 
 const VEC={
   light:{land:'#EEF1F0',foot:'#F7F8F7',road:'#FFFFFF',casing:'#D2D9D8',lane:'#F9FAFA',park:'#D5E8D2',tree:'rgba(142,190,138,.55)',tram:'#AEB9BC',bike:'#CDE7D5',zebra:'#E1E7E6',bldg:'#DEE3E2',bldgEdge:'#C5CDCC',bldgSide:'#CFD6D5',plaza:'#F1F1EC',label:'#4F6064',halo:'rgba(255,255,255,.92)',poi:'#6E7F84',dome:'#C9D6CD',glass:'#CFE0EA',marking:'#DDE3E2',platform:'#E4E6E1',
-    bldgTall:'#C3CCCB',use:{public:'#E4E1D6',education:'#E6DDD8',retail:'#E8E1D2',residential:'#DCDFE8',office:'#D5DEE7',hotel:'#E2DAE4',parking:'#D7D9D7'}},
+    bldgTall:'#C3CCCB',use:{public:'#E4E1D6',education:'#E6DDD8',retail:'#E8E1D2',residential:'#DCDFE8',office:'#D5DEE7',hotel:'#E2DAE4',parking:'#D7D9D7'},
+    /* real OSM vector-tile layers (roads/buildings/6c-city.js) — water, green, land use, rail */
+    vmap:{water:'#BFDCEF',waterway:'#BFDCEF',wood:'#C3DFBC',grass:'#D8EAD2',park:'#CFE6C7',sport:'#D6E9CD',sand:'#EDE6CE',aeroway:'#E2E2DF',civic:'#E7E3D9',urban:'#E8E6E0',rail:'#A9B1B0',transit:'#C2CAC8'}},
   dark:{land:'#0D1215',foot:'#151C21',road:'#20292F',casing:'#2C383F',lane:'#1A2328',park:'#132519',tree:'rgba(64,112,74,.45)',tram:'#3A4951',bike:'#1B3527',zebra:'#34424A',bldg:'#1A2328',bldgEdge:'#2A363E',bldgSide:'#0A0F12',plaza:'#171F24',label:'#9AABB2',halo:'rgba(9,13,16,.92)',poi:'#7C8E97',dome:'#2B3A33',glass:'#1B2E3A',marking:'#35434B',platform:'#28323A',
-    bldgTall:'#2C3943',use:{public:'#232B26',education:'#29242A',retail:'#2A2720',residential:'#1D2233',office:'#182835',hotel:'#251F2C',parking:'#1D1F20'}}};
+    bldgTall:'#2C3943',use:{public:'#232B26',education:'#29242A',retail:'#2A2720',residential:'#1D2233',office:'#182835',hotel:'#251F2C',parking:'#1D1F20'},
+    vmap:{water:'#0F2531',waterway:'#0F2531',wood:'#14291A',grass:'#182B1B',park:'#152A19',sport:'#172C1B',sand:'#2A2820',aeroway:'#1A2126',civic:'#1C2225',urban:'#161D22',rail:'#3B4852',transit:'#2D3A43'}}};
 /* flat top of a real building on the vector map: taller = further from the base tone, a light hint of its use */
 function vecRgb(b,pal){let c=mixRgb(hexRgb(pal.bldg),hexRgb(pal.bldgTall),clamp((b.h-10)/120,0,1));const u=pal.use&&pal.use[b.use];if(u)c=mixRgb(c,hexRgb(u),.35);return c;}
 
@@ -2087,12 +2090,15 @@ const IMG={};
 function imagery(k){if(!IMG[k])IMG[k]=renderImagery(W,k==='nir'?PAL_NIR:PAL_RGB);return IMG[k];}
 
 /* ---------- data credits ----------
-   The licences ask for attribution: OpenStreetMap (ODbL), DataVic (CC BY 4.0), City of Melbourne (CC BY). One list, the same
-   sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the execution pack and in the playbook
-   (creditLines). The hosts are plain links for people to follow — nothing is fetched from them. */
+   The licences ask for attribution: OpenStreetMap (ODbL), OpenMapTiles (CC BY 4.0), DataVic (CC BY 4.0), City of Melbourne
+   (CC BY). One list, the same sources apps/roads/public/cbd/*.json record, shown on the page (renderCredits), in the
+   execution pack and in the playbook (creditLines). The hosts are plain links for people to follow — nothing is fetched
+   from them: the vector basemap tiles are pulled at build time by tools/fetch_vectormap.py, not by the page. */
 const CREDITS=[
   {href:'https://www.openstreetmap.org/copyright',short:['© OpenStreetMap contributors','© OpenStreetMap contributors'],
     full:['© OpenStreetMap contributors, ODbL — road and walking network, building outlines','© OpenStreetMap contributors，ODbL 许可 —— 路网、人行网、建筑轮廓']},
+  {href:'https://openfreemap.org',short:['Vector basemap © OpenMapTiles / OpenFreeMap','矢量底图 © OpenMapTiles / OpenFreeMap'],
+    full:['Vector basemap layers (water, green space, land use, rail) from the OpenMapTiles schema © OpenMapTiles (CC BY 4.0), vector tiles served by OpenFreeMap, data © OpenStreetMap contributors (ODbL)','矢量底图图层（水域、绿地、用地、铁路）来自 OpenMapTiles schema © OpenMapTiles（CC BY 4.0），矢量瓦片由 OpenFreeMap 提供，数据 © OpenStreetMap contributors（ODbL）']},
   {href:'https://discover.data.vic.gov.au/dataset/traffic-signal-volume-data',short:['SCATS volumes © State of Victoria (DTP), DataVic CC BY 4.0','SCATS 车流 © 维多利亚州交通与规划部，DataVic CC BY 4.0'],
     full:['Traffic Signal Volume Data (SCATS) and Victorian traffic signals © State of Victoria (Department of Transport and Planning), DataVic, CC BY 4.0 — hourly traffic at signals','交通信号车流数据（SCATS）和维州信号灯站点（Traffic Signal Volume Data、Victorian traffic signals）© 维多利亚州交通与规划部，DataVic，CC BY 4.0 —— 路口逐时车流']},
   {href:'https://discover.data.vic.gov.au/dataset/gtfs-schedule',short:['PTV GTFS, DataVic CC BY 4.0','PTV 时刻表，DataVic CC BY 4.0'],
@@ -2574,6 +2580,15 @@ function loadBuildings(){
     await nextTask();rebuildWorld(nw,g,imgs);console.info('buildings: real footprints',nw.count);return true;
   }).catch(e=>{console.info('buildings: synthetic city',e&&e.message);return false;});
 }
+/* The real OSM vector basemap for the whole-CBD layer (T35, /roads/public/cbd/vectormap.json): water, green space, land use
+   and rail from OpenFreeMap's OpenMapTiles vector tiles. Only the CITY layer draws it, so it loads on its own rather than
+   joining loadBuildings()' first-frame race — the city layer re-renders itself when it lands. Same failure story: same-origin
+   only, and a miss just leaves the flat city layer as it was. */
+function loadVectorMap(){
+  return fetch('/roads/public/cbd/vectormap.json').then(r=>r.ok?r.json():null).then(d=>{
+    cityVector(d);if(d)console.info('vectormap: real OSM vector basemap',d.polygons.length+' polygon layers /',d.lines.length+' line layers');return !!d;
+  }).catch(e=>{console.info('vectormap: plain city layer',e&&e.message);return false;});
+}
 function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;document.querySelectorAll('#basemap button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.bm===S.basemap)));}
 
 /* ---------- histogram ---------- */
@@ -2659,6 +2674,7 @@ function boot(){
   /* wait up to 1.2 s for the real footprints so the first frame is already the real city; slower → start synthetic, swap on arrival */
   let go=false;const once=()=>{if(go)return;go=true;if(S.basemap==='streets')start();else setTimeout(start,40);};
   loadBuildings().then(once);setTimeout(once,1200);
+  loadVectorMap();
 }
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(boot,boot);
 
@@ -3258,26 +3274,59 @@ function engBindMap(){
 
 /* ============================================================
    Whole-CBD layer (T27, docs/arch/T26-T27-web-PRD.md §3). The fine window (WORLD: orthophoto, weather, the junction
-   micro-model) stays as it is. Around it the whole Hoddle Grid (+~150 m, CITY in 1-world.js) is drawn from the real data:
-   the road network the engine runs on (flat carriageways; a two-way street's pair of links drawn once) and every building
-   footprint (flat — no extrusion, no edge). Pre-rendered once per theme to an off-screen canvas: a full redraw is ~46 ms,
-   pasting the cache ~2 ms, and the base map is redrawn on every frame of a drag. renderBase() pastes it under the fine window.
+   micro-model) stays as it is. Around it the whole Hoddle Grid (+~150 m, CITY in 1-world.js) is drawn from real data:
+   the real OSM vector basemap underneath (T35 — water, green space, land use, rail from OpenFreeMap's OpenMapTiles vector
+   tiles, /roads/public/cbd/vectormap.json), then every building footprint (flat — no extrusion, no edge), then the road
+   network the engine runs on (flat carriageways; a two-way street's pair of links drawn once).
+   Pre-rendered once per theme to an off-screen canvas: a full redraw is ~46 ms, pasting the cache ~2 ms, and the base map
+   is redrawn on every frame of a drag. renderBase() pastes it under the fine window.
    ============================================================ */
 const CITY_PX=1.6; // canvas pixels per page unit in the cache (≈ 6 Mpx)
-const CITYL={bld:null,cv:{}};
+const CITYL={bld:null,vec:null,cv:{}};
 // buildings.json as loadBuildings() fetched it (the fine window clips its own copy to WORLD)
 function cityData(d){if(d&&Array.isArray(d.buildings)){CITYL.bld=d.buildings;CITYL.cv={};baseKey='';}}
+// vectormap.json as loadVectorMap() fetched it: the real OSM vector basemap for the whole grid
+function cityVector(d){if(d&&Array.isArray(d.polygons)){CITYL.vec=d;CITYL.cv={};baseKey='';}}
 // Carriageway width in page units by road class — the city layer is context, the fine window has the detailed streets
 const CITY_W={trunk:20,primary:20,secondary:17,tertiary:14,unclassified:10,residential:9,living_street:6};
-function cityKey(){return(engNet()?'n':'')+(CITYL.bld?'b':'');}
+function cityKey(){return(engNet()?'n':'')+(CITYL.bld?'b':'')+(CITYL.vec?'v':'');}
+/* The real OSM vector basemap: fill every polygon of a kind in one path (polygons meeting at a tile edge then share an
+   edge instead of showing a seam), then stroke the lines. Order is the basemap order — land use, then green, then water. */
+const VMAP_FILL=['urban','civic','aeroway','sport','park','wood','grass','sand','water'];
+const VMAP_LINE=['waterway','rail','transit'];
+function vecLayers(g,pal,X,Y){
+  const v=CITYL.vec;if(!v)return;
+  for(const kind of VMAP_FILL){
+    const col=pal.vmap[kind];if(!col)continue;
+    g.fillStyle=col;g.beginPath();
+    for(const layer of v.polygons){if(layer.kind!==kind)continue;for(const poly of layer.polys)for(const ring of poly){
+      ring.forEach((q,i)=>{const p=geoToWorld(+q[0],+q[1]);if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});
+      g.closePath();}}
+    g.fill('nonzero');
+  }
+  g.lineCap='round';g.lineJoin='round';
+  for(const kind of VMAP_LINE){
+    const col=pal.vmap[kind];if(!col)continue;
+    g.strokeStyle=col;
+    if(kind==='waterway'){g.setLineDash([]);g.lineWidth=Math.max(1,CITY_PX*1.4);}
+    else if(kind==='rail'){g.setLineDash([CITY_PX*2.5,CITY_PX*2.5]);g.lineWidth=Math.max(1,CITY_PX*1.1);}
+    else{g.setLineDash([]);g.lineWidth=Math.max(1,CITY_PX*.7);}
+    g.beginPath();
+    for(const layer of v.lines){if(layer.kind!==kind)continue;for(const pts of layer.pts){
+      pts.forEach((q,i)=>{const p=geoToWorld(+q[0],+q[1]);if(i)g.lineTo(X(p[0]),Y(p[1]));else g.moveTo(X(p[0]),Y(p[1]));});}}
+    g.stroke();
+  }
+  g.setLineDash([]);
+}
 function cityCanvas(light){
-  const net=engNet(),key=(light?'L':'D')+cityKey();if(!net&&!CITYL.bld)return null;
+  const net=engNet(),key=(light?'L':'D')+cityKey();if(!net&&!CITYL.bld&&!CITYL.vec)return null;
   if(CITYL.cv[key])return CITYL.cv[key];
   // streets palette; in the dark theme the carriageways are lifted above the roofs so the roads read first (09-29 ask)
   const v=VEC[light?'light':'dark'],pal=light?v:{...v,bldg:'#161E23',road:'#34414A',casing:'#252F37'},w=Math.round((CITY.x1-CITY.x0)*CITY_PX),h=Math.round((CITY.y1-CITY.y0)*CITY_PX);
   const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');
   const X=x=>(x-CITY.x0)*CITY_PX,Y=y=>(CITY.y1-y)*CITY_PX;
   g.fillStyle=pal.land;g.fillRect(0,0,w,h);
+  vecLayers(g,pal,X,Y);
   if(CITYL.bld){
     g.fillStyle=pal.bldg;g.beginPath();
     for(const b of CITYL.bld){const fp=b&&b.footprint;if(!Array.isArray(fp)||fp.length<3)continue;
