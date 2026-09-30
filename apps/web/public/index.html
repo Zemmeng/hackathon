@@ -467,7 +467,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more,.panel.compact .eng-assume{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -692,6 +692,36 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ov-plan small{font:400 11px/1.3 var(--f-mono);color:var(--fg-3)}
 .ov-plan[aria-pressed="true"]{border-color:var(--accent)}
 .eng-evd .val{font-size:11.5px;color:var(--fg-2);text-align:right}
+/* 04 Compare table (template: plans across, measures down); the recommended plan's column is tinted */
+.cmp-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--raised)}
+.cmp-table{width:100%;border-collapse:collapse;min-width:520px}
+.cmp-table th,.cmp-table td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+.cmp-table thead th{vertical-align:top}
+.cmp-table th[scope=row]{text-align:left;font:500 12.5px/1.3 var(--f-body);color:var(--fg-2);min-width:128px}
+.cmp-table th[scope=row] small{display:block;margin-top:2px;font-size:10.5px;color:var(--fg-3)}
+.cmp-table thead b{display:block;font-size:13.5px}
+.cmp-table thead small{display:block;margin-top:4px;font:400 10px/1.35 var(--f-mono);color:var(--fg-3)}
+.cmp-tag{display:inline-block;margin-bottom:6px;padding:3px 10px;border:1px solid var(--line-2);border-radius:999px;font-size:10.5px;color:var(--fg-2)}
+.cmp-num{font:700 17px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
+.cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
+.cmp-rec{background:color-mix(in srgb,var(--sun) 12%,transparent)}
+.cmp-pickbtn{border:1px solid var(--line-2);background:var(--raised);color:var(--fg);border-radius:999px;padding:9px 16px;font:600 12px/1 var(--f-body);cursor:pointer}
+.cmp-pickbtn[aria-pressed="true"]{background:var(--sun);color:var(--on-sun);border-color:transparent}
+.cmp-cap{padding:10px 12px;font-size:11px;color:var(--fg-3)}
+.app.ui-wide .panel{transition:width .3s cubic-bezier(.2,.8,.2,1)}
+.app.ui-wide .panel .panel-tools{order:-2}
+.app.ui-wide .panel #cmp4{order:-1}
+/* 01 Configure · Site: lanes / hour / footpath as three labelled rows; Checks: budget + must-keep conditions */
+.opt-rows{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+/* hour chips: four fit on one line next to the label */
+.opt-row .chips button{padding-left:9px;padding-right:9px}
+.opt-row{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.opt-k{font:600 10.5px/1.2 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+:lang(zh) .opt-k{letter-spacing:.02em}
+.chk-list{display:flex;flex-direction:column;gap:9px}
+.chk{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}
+.chk input{width:16px;height:16px;accent-color:var(--sun);margin:0}
 .ai-noadv{margin:0;font-size:12.5px;font-weight:600;color:var(--works)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
@@ -2498,7 +2528,7 @@ function drawJunctions(sim){
   const nm=j=>`${shortSt(j.ew)} × ${shortSt(j.ns)}`.toUpperCase();
   if(hv&&!(on&&hv===fo)){const px=V.X(hv.x),py=V.Y(hv.y),ring=Math.max(14,24*V.s);ctx.setLineDash([5,4]);ctx.strokeStyle=TK.fg;ctx.globalAlpha=.85;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,ring,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
     drawTag(ctx,px,py-ring,0,-18,`${nm(hv)} · ${L('click to zoom','点击放大')}`,TK.fg);}
-  if(on)drawTag(ctx,V.X(fo.x),V.Y(fo.y)-Math.max(14,24*V.s),0,-18,`${nm(fo)} · SCATS ${fo.id}`,TK.fg);
+  if(on)drawTag(ctx,V.X(fo.x),V.Y(fo.y)-Math.max(14,24*V.s),0,-18,`${nm(fo)} · SCATS ${fo.id} · ${L('click again to zoom out','再点一次缩小')}`,TK.fg);
   ctx.restore();
 }
 // Step 2 (4×4): a click (not a drag) on a junction flies in on it; ⌖ (gridFly) goes back to all 16 (09-30 ask). Junctions sit
@@ -2515,7 +2545,7 @@ function gridBindMap(){
   cv.addEventListener('pointerdown',e=>{clearTimeout(pending);down=[e.offsetX,e.offsetY];});
   cv.addEventListener('dblclick',()=>clearTimeout(pending)); // a double-click zooms (bindInput), not a pick
   cv.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
-    const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(gridShown())gridFocus(j);},250);});
+    const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(!gridShown())return;if(S.gridJ===j.id&&V.s>=2.5)gridFly(.8);else gridFocus(j);},250);}); // again → back out
 }
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
@@ -2562,7 +2592,7 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();setWide(S.ui===4);
   if(S.step===1&&S.ui===0){ // 00 Overview
     P.innerHTML=overviewHTML()+navHTML();
     P.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{if(BE.api)engPreset(b.dataset.preset);goUi(1);});
@@ -2580,6 +2610,8 @@ function renderPanel(){
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     ${navHTML()}`;
     P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
+    const bi=$('#budgetIn');if(bi)bi.oninput=()=>{EP.budget=Math.max(0,+bi.value||0);};
+    P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
     engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown();
@@ -2627,6 +2659,14 @@ const UI_STEP=[1,1,2,3,4,4],UI_NEXT=[['Set up the plan →','配置施工 →'],
 function goUi(n){n=clamp(n,0,5);S.ui=n;const st=UI_STEP[n];if(S.step===st){updateSteps();renderPanel();}else goStep(st);}
 // the foot of every step: ← Back · (extra) · Next →
 function navHTML(extra='',note=''){const n=S.ui,nx=UI_NEXT[n];return`<div class="cta"><div class="row nav-row">${n>0?`<button type="button" class="btn ghost nav-back" data-go="${n-1}">← ${L('Back','上一步')}</button>`:''}${extra}${nx?`<button type="button" class="btn nav-next" data-go="${n+1}">${L(nx[0],nx[1])}</button>`:''}</div>${note?`<span class="note">${note}</span>`:''}</div>`;}
+// 04 Compare: the panel widens to the left for the comparison table (desktop); the glass insets follow, so the map and its
+// controls stay in the open part
+function setWide(on){
+  const a=$('#app');on=on&&matchMedia('(min-width: 821px)').matches;
+  if(on){const w=Math.round(Math.min(900,innerWidth-(GL.ins.l||84)-60));a.style.setProperty('--panel-w',w+'px');a.style.setProperty('--safe-r',(w+24)+'px');}
+  else if(a.classList.contains('ui-wide')){a.style.removeProperty('--panel-w');a.style.removeProperty('--safe-r');}
+  a.classList.toggle('ui-wide',on);readInsets();
+}
 function worksDates(){const loc=LANG.cur==='zh'?'zh-CN':'en-AU',o={day:'numeric',month:'short'},d=x=>new Date(x+'T00:00:00').toLocaleDateString(loc,o);return`${d(WORKS_TIME.from)} – ${d(WORKS_TIME.to)}`;}
 // 00 Overview: where the next works go, the plans to pick up (the two demo plans) and the data under the map
 function overviewHTML(){
@@ -2643,8 +2683,16 @@ function overviewHTML(){
 // 01 Configure · Checks: what has to hold before simulating — every line is the plan's current state
 function checksHTML(){
   const s=EP.sum,row=(ok,k,v)=>`<div><i class="dot" style="background:${ok==null?'var(--fg-3)':ok?'var(--accent)':'var(--risk)'}"></i><span class="grow">${k}</span><span class="val">${v}</span></div>`;
-  const foot={none:L('open','照常'),left:L('works side closed','施工侧封'),both:L('both sides closed','两侧都封')}[EP.foot]||'—',ran=s&&!EP.busy&&!EP.runErr;
-  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before simulating','仿真前检查')}</span></div><div class="list eng-evd">
+  const foot={none:L('open','照常'),left:L('works side closed','施工侧封'),both:L('both sides closed','两侧都封')}[EP.foot]||'—',ran=s&&!EP.busy&&!EP.runErr,k=EP.keep;
+  const blk=s&&s.transit&&s.transit.blocked_routes||0,chk=(key,t)=>`<label class="chk"><input type="checkbox" data-keep="${key}"${k[key]?' checked':''}><span>${t}</span></label>`;
+  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Budget · equipment & layout','设备与布置预算')}</span><span class="eyebrow">${L('works period','整个施工期')}</span></div>
+    <label class="eng-field"><span class="eyebrow">${L('Upper limit · AUD','上限 · 澳元')}</span><input type="number" id="budgetIn" min="0" step="100" inputmode="numeric" value="${+EP.budget||0}"></label></div>
+  <div class="stack"><div class="row between"><span class="eyebrow">${L('Must keep','必须满足的通行条件')}</span></div><div class="chk-list">
+    ${chk('foot',L('Continuous footpath','保留连续行人通道'))}${chk('transit',L('Trams and buses keep running','保留公交通行条件'))}${chk('emerg',L('Emergency vehicle lane','保留应急车辆通道'))}</div></div>
+  <div class="stack eng-checklist"><div class="row between"><span class="eyebrow">${L('Before simulating','仿真前检查')}</span></div><div class="list eng-evd">
+    ${k.foot&&EP.foot!=='none'?row(false,L('Footpath must stay open','行人通道要保留'),foot):''}
+    ${k.transit&&s?row(!blk,L('Trams and buses','公交通行'),blk?L(`${blk} route${blk===1?'':'s'} stopped`,`${blk} 条线停运`):L('keep running','照常运行')):''}
+    ${k.emerg?row(!EP.all,L('Emergency lane','应急车道'),EP.all?L('all lanes closed','全封了'):L('a lane stays open','留有一条道')):''}
     ${row(!!EP.link,L('Work zone','施工区'),EP.link?`${esc(shortSt(EP.street))} ${dirL(EP.dir)}`:L('not placed','还没放'))}
     ${row(true,L('Works period','施工期'),`${worksDates()} · ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}`)}
     ${row(EP.foot==='none'?true:null,L('Footpath','人行道'),foot)}
@@ -2956,7 +3004,7 @@ function pathSub(p,m){const out=[p.pts[0]];for(let i=1;i<p.pts.length&&p.cum[i]<
 const BE={api:null,err:null};
 const EP={preset:'lonsdale',link:null,pts:null,street:null,dir:null,lanes:1,lanesMax:1,all:false,hour:8,time:null,
   f1:'ROADWORK\nAHEAD',f2:'',vmsAt:300,sign:'RIGHT LANE CLOSED',signAt:100,arrowAt:60,foot:'none',walkGeo:null,walkLoading:false,
-  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',view3:'traffic',tab1:'site',mix:null,idx:null,alts:[],altsKey:'',
+  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',view3:'traffic',tab1:'site',budget:3500,keep:{foot:true,transit:true,emerg:true},mix:null,idx:null,alts:[],altsKey:'',
   adv:null,advKey:'',advBusy:false,pick:-1,cmp:null,cmpKey:'',cmpBusy:false};
 BE.ready=import('/engine/public/js/backend.js')
   .then(m=>m.connect()) // road network + flows + T12 parameters + T5 sign reader + engine, loaded once
@@ -3162,9 +3210,10 @@ function engSiteHTML(){
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Work zone','施工区')}</span><span class="eyebrow">${L('click a street to move it','点地图上的街可以挪')}</span></div>
     <div class="chips">${presets.map(([k,t])=>`<button type="button" data-preset="${k}" aria-pressed="${EP.preset===k}">${t}</button>`).join('')}${EP.preset==='custom'?`<button type="button" aria-pressed="true">${L('Picked on map','地图上选的')}</button>`:''}</div>
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
-    <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
-    <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
-    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>`;
+    <div class="opt-rows">
+    <div class="opt-row"><span class="opt-k">${L('Lanes','车道')}</span><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div></div>
+    <div class="opt-row"><span class="opt-k">${L('Hour','时段')}</span><div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
+    <div class="opt-row"><span class="opt-k">${L('Footpath','人行道')}</span><div class="chips">${[['none',L('Open','照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div></div></div>`;
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
@@ -3615,7 +3664,7 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox,.eng-checklist,#cmp4';
 const SEC_FOLD='.eng-where'; // 6-step UI: nearby works and compare have their own tab / step now // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
@@ -3976,9 +4025,23 @@ function cmpHTML(){
       <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
       ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
         :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}),cards=cardsA.join('');
+  // 04 Compare: one table, plans across and measures down (the team template's horizontal comparison); the panel widens for it
+  const lean=CP.explain&&CP.explain.lean?CP.explain.lean.option:null,budget=+EP.budget||0,lo=(B,k,i)=>!!(B[k]&&B[k].includes(i));
+  const ext=CP.rows.map(r=>({md:r.s&&Number.isFinite(r.s.mean_delay_s)?r.s.mean_delay_s:null,q:r.s&&Number.isFinite(r.s.queue_m)?r.s.queue_m:null})),best2=cmpBest(ext,['md','q']);
+  const tag=(r,i)=>r.id===lean?L('Recommended','综合推荐'):lo(best,'hire',i)?L('Cheapest','最省'):i===0?L('Baseline','比较基准'):'';
+  const rc=i=>CP.rows[i].id===lean?' class="cmp-rec"':'';
+  const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
+    [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
+  const days=CP.rows[0].days;
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}>${tag(r,i)?`<span class="cmp-tag">${tag(r,i)}</span>`:''}<b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+    ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
+    <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
+    <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
+    <tr><th scope="row">${L('Choose','选定方案')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}><button type="button" class="cmp-pickbtn" data-cmppick="${i}" aria-pressed="${CP.pick===i}" ${r.s?'':'disabled'}>${CP.pick===i?L('Chosen','已选择'):L('Choose','选择')}</button></td>`).join('')}</tr>
+  </tbody></table><div class="cmp-cap">${L(`Traffic ${engHour(EP.hour)}–${engHour(EP.hour+1)} · engine on real CBD flows · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(EP.hour)}–${engHour(EP.hour+1)} · 引擎在真实 CBD 车流上算 · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)}</div></div>`;
   if(exp&&!(CP.pick!=null&&CP.rows[CP.pick]))return head+`<div class="card eng-note"><b>${L('Choose a plan first','先选一套方案')}</b><span>${L('Pick one in 04 Compare, or here:','在 04 比较方案里选，或者直接在这里选：')}</span></div><div class="chips">${CP.rows.map((x,i)=>`<button type="button" data-cmppick="${i}" aria-pressed="false">${String.fromCharCode(65+i)} · ${esc(cmpLabel(x))}</button>`).join('')}</div><p class="cmp-lean" data-cmplean></p>`;
   const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
-  let h=head+`<div class="cmp-cards">${exp?cardsA[CP.pick]:cards}</div><p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
+  let h=head+`${exp?`<div class="cmp-cards">${cardsA[CP.pick]}</div>`:table}<p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
     <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
   if(exp&&CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>

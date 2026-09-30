@@ -60,7 +60,7 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox,.eng-checklist,#cmp4';
 const SEC_FOLD='.eng-where'; // 6-step UI: nearby works and compare have their own tab / step now // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;

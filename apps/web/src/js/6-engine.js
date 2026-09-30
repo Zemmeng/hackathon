@@ -97,7 +97,7 @@ function pathSub(p,m){const out=[p.pts[0]];for(let i=1;i<p.pts.length&&p.cum[i]<
 const BE={api:null,err:null};
 const EP={preset:'lonsdale',link:null,pts:null,street:null,dir:null,lanes:1,lanesMax:1,all:false,hour:8,time:null,
   f1:'ROADWORK\nAHEAD',f2:'',vmsAt:300,sign:'RIGHT LANE CLOSED',signAt:100,arrowAt:60,foot:'none',walkGeo:null,walkLoading:false,
-  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',view3:'traffic',tab1:'site',mix:null,idx:null,alts:[],altsKey:'',
+  sum:null,busy:false,seq:0,runErr:null,checks:[],badText:false,tab3:'net',view3:'traffic',tab1:'site',budget:3500,keep:{foot:true,transit:true,emerg:true},mix:null,idx:null,alts:[],altsKey:'',
   adv:null,advKey:'',advBusy:false,pick:-1,cmp:null,cmpKey:'',cmpBusy:false};
 BE.ready=import('/engine/public/js/backend.js')
   .then(m=>m.connect()) // road network + flows + T12 parameters + T5 sign reader + engine, loaded once
@@ -303,9 +303,10 @@ function engSiteHTML(){
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Work zone','施工区')}</span><span class="eyebrow">${L('click a street to move it','点地图上的街可以挪')}</span></div>
     <div class="chips">${presets.map(([k,t])=>`<button type="button" data-preset="${k}" aria-pressed="${EP.preset===k}">${t}</button>`).join('')}${EP.preset==='custom'?`<button type="button" aria-pressed="true">${L('Picked on map','地图上选的')}</button>`:''}</div>
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
-    <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
-    <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
-    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>`;
+    <div class="opt-rows">
+    <div class="opt-row"><span class="opt-k">${L('Lanes','车道')}</span><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div></div>
+    <div class="opt-row"><span class="opt-k">${L('Hour','时段')}</span><div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
+    <div class="opt-row"><span class="opt-k">${L('Footpath','人行道')}</span><div class="chips">${[['none',L('Open','照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div></div></div>`;
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>

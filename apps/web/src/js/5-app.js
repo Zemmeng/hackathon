@@ -321,7 +321,7 @@ function drawJunctions(sim){
   const nm=j=>`${shortSt(j.ew)} × ${shortSt(j.ns)}`.toUpperCase();
   if(hv&&!(on&&hv===fo)){const px=V.X(hv.x),py=V.Y(hv.y),ring=Math.max(14,24*V.s);ctx.setLineDash([5,4]);ctx.strokeStyle=TK.fg;ctx.globalAlpha=.85;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,ring,0,7);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
     drawTag(ctx,px,py-ring,0,-18,`${nm(hv)} · ${L('click to zoom','点击放大')}`,TK.fg);}
-  if(on)drawTag(ctx,V.X(fo.x),V.Y(fo.y)-Math.max(14,24*V.s),0,-18,`${nm(fo)} · SCATS ${fo.id}`,TK.fg);
+  if(on)drawTag(ctx,V.X(fo.x),V.Y(fo.y)-Math.max(14,24*V.s),0,-18,`${nm(fo)} · SCATS ${fo.id} · ${L('click again to zoom out','再点一次缩小')}`,TK.fg);
   ctx.restore();
 }
 // Step 2 (4×4): a click (not a drag) on a junction flies in on it; ⌖ (gridFly) goes back to all 16 (09-30 ask). Junctions sit
@@ -338,7 +338,7 @@ function gridBindMap(){
   cv.addEventListener('pointerdown',e=>{clearTimeout(pending);down=[e.offsetX,e.offsetY];});
   cv.addEventListener('dblclick',()=>clearTimeout(pending)); // a double-click zooms (bindInput), not a pick
   cv.addEventListener('pointerup',e=>{const d=down;down=null;if(!d||Math.hypot(e.offsetX-d[0],e.offsetY-d[1])>5)return;
-    const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(gridShown())gridFocus(j);},250);});
+    const j=gridPick(e.offsetX,e.offsetY);if(j)pending=setTimeout(()=>{if(!gridShown())return;if(S.gridJ===j.id&&V.s>=2.5)gridFly(.8);else gridFocus(j);},250);}); // again → back out
 }
 function activeSims(){if(!microOn())return[];return S.step===4?[S.sim,S.simAfter].filter(Boolean):S.sim?[S.sim]:[];}
 function goStep(n){
@@ -385,7 +385,7 @@ function placeAlert(){const al=$('#alert');if(al.hidden||!S.sim||!S.sim.critical
 const icon=(k,sz=16)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${WX_ICON[k]}</svg>`;
 const wxCol=k=>WX_META[k][TK.light?'light':'dark'];
 function renderPanel(){
-  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();
+  const P=$('#panel'),wl=wxLabel(S.wx);syncMicro();updateScene();setWide(S.ui===4);
   if(S.step===1&&S.ui===0){ // 00 Overview
     P.innerHTML=overviewHTML()+navHTML();
     P.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>{if(BE.api)engPreset(b.dataset.preset);goUi(1);});
@@ -403,6 +403,8 @@ function renderPanel(){
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     ${navHTML()}`;
     P.querySelectorAll('[data-tab1]').forEach(b=>b.onclick=()=>{EP.tab1=b.dataset.tab1;renderPanel();});
+    const bi=$('#budgetIn');if(bi)bi.oninput=()=>{EP.budget=Math.max(0,+bi.value||0);};
+    P.querySelectorAll('[data-keep]').forEach(c=>c.onchange=()=>{EP.keep[c.dataset.keep]=c.checked;renderPanel();});
     engBind1();
   }else if(S.step===2){
     const crit=S.sim&&S.sim.critical,grid=gridShown();
@@ -450,6 +452,14 @@ const UI_STEP=[1,1,2,3,4,4],UI_NEXT=[['Set up the plan →','配置施工 →'],
 function goUi(n){n=clamp(n,0,5);S.ui=n;const st=UI_STEP[n];if(S.step===st){updateSteps();renderPanel();}else goStep(st);}
 // the foot of every step: ← Back · (extra) · Next →
 function navHTML(extra='',note=''){const n=S.ui,nx=UI_NEXT[n];return`<div class="cta"><div class="row nav-row">${n>0?`<button type="button" class="btn ghost nav-back" data-go="${n-1}">← ${L('Back','上一步')}</button>`:''}${extra}${nx?`<button type="button" class="btn nav-next" data-go="${n+1}">${L(nx[0],nx[1])}</button>`:''}</div>${note?`<span class="note">${note}</span>`:''}</div>`;}
+// 04 Compare: the panel widens to the left for the comparison table (desktop); the glass insets follow, so the map and its
+// controls stay in the open part
+function setWide(on){
+  const a=$('#app');on=on&&matchMedia('(min-width: 821px)').matches;
+  if(on){const w=Math.round(Math.min(900,innerWidth-(GL.ins.l||84)-60));a.style.setProperty('--panel-w',w+'px');a.style.setProperty('--safe-r',(w+24)+'px');}
+  else if(a.classList.contains('ui-wide')){a.style.removeProperty('--panel-w');a.style.removeProperty('--safe-r');}
+  a.classList.toggle('ui-wide',on);readInsets();
+}
 function worksDates(){const loc=LANG.cur==='zh'?'zh-CN':'en-AU',o={day:'numeric',month:'short'},d=x=>new Date(x+'T00:00:00').toLocaleDateString(loc,o);return`${d(WORKS_TIME.from)} – ${d(WORKS_TIME.to)}`;}
 // 00 Overview: where the next works go, the plans to pick up (the two demo plans) and the data under the map
 function overviewHTML(){
@@ -466,8 +476,16 @@ function overviewHTML(){
 // 01 Configure · Checks: what has to hold before simulating — every line is the plan's current state
 function checksHTML(){
   const s=EP.sum,row=(ok,k,v)=>`<div><i class="dot" style="background:${ok==null?'var(--fg-3)':ok?'var(--accent)':'var(--risk)'}"></i><span class="grow">${k}</span><span class="val">${v}</span></div>`;
-  const foot={none:L('open','照常'),left:L('works side closed','施工侧封'),both:L('both sides closed','两侧都封')}[EP.foot]||'—',ran=s&&!EP.busy&&!EP.runErr;
-  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before simulating','仿真前检查')}</span></div><div class="list eng-evd">
+  const foot={none:L('open','照常'),left:L('works side closed','施工侧封'),both:L('both sides closed','两侧都封')}[EP.foot]||'—',ran=s&&!EP.busy&&!EP.runErr,k=EP.keep;
+  const blk=s&&s.transit&&s.transit.blocked_routes||0,chk=(key,t)=>`<label class="chk"><input type="checkbox" data-keep="${key}"${k[key]?' checked':''}><span>${t}</span></label>`;
+  return`<div class="stack"><div class="row between"><span class="eyebrow">${L('Budget · equipment & layout','设备与布置预算')}</span><span class="eyebrow">${L('works period','整个施工期')}</span></div>
+    <label class="eng-field"><span class="eyebrow">${L('Upper limit · AUD','上限 · 澳元')}</span><input type="number" id="budgetIn" min="0" step="100" inputmode="numeric" value="${+EP.budget||0}"></label></div>
+  <div class="stack"><div class="row between"><span class="eyebrow">${L('Must keep','必须满足的通行条件')}</span></div><div class="chk-list">
+    ${chk('foot',L('Continuous footpath','保留连续行人通道'))}${chk('transit',L('Trams and buses keep running','保留公交通行条件'))}${chk('emerg',L('Emergency vehicle lane','保留应急车辆通道'))}</div></div>
+  <div class="stack eng-checklist"><div class="row between"><span class="eyebrow">${L('Before simulating','仿真前检查')}</span></div><div class="list eng-evd">
+    ${k.foot&&EP.foot!=='none'?row(false,L('Footpath must stay open','行人通道要保留'),foot):''}
+    ${k.transit&&s?row(!blk,L('Trams and buses','公交通行'),blk?L(`${blk} route${blk===1?'':'s'} stopped`,`${blk} 条线停运`):L('keep running','照常运行')):''}
+    ${k.emerg?row(!EP.all,L('Emergency lane','应急车道'),EP.all?L('all lanes closed','全封了'):L('a lane stays open','留有一条道')):''}
     ${row(!!EP.link,L('Work zone','施工区'),EP.link?`${esc(shortSt(EP.street))} ${dirL(EP.dir)}`:L('not placed','还没放'))}
     ${row(true,L('Works period','施工期'),`${worksDates()} · ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}`)}
     ${row(EP.foot==='none'?true:null,L('Footpath','人行道'),foot)}
