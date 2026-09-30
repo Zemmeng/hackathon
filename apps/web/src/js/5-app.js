@@ -186,13 +186,20 @@ function drawBody(a){
   else if(a.type!=='bike'){ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(L/2-Math.max(2,L*.24),-Wd/2+1,Math.max(1,L*.08),Wd-2);}
   ctx.restore();
 }
+const EV_KEEP_GRID=60; // step 2 (4×4): safety marks stay this many sim seconds (conflicts are rare there)
+// A safety mark is a diamond, never a dot (signal heads are red / amber / green dots); a dark rim keeps it readable on any basemap
+function evDiamond(px,py,r,fill){ctx.fillStyle=fill;ctx.strokeStyle=TK.bg;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(px,py-r);ctx.lineTo(px+r,py);ctx.lineTo(px,py+r);ctx.lineTo(px-r,py);ctx.closePath();ctx.fill();ctx.stroke();}
 function drawEvents(sim){
-  if(!sim)return;ctx.save();
-  for(const e of sim.events){const age=sim.t-e.t;if(age>25||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
+  if(!sim)return;ctx.save();const keep=sim.isGrid?EV_KEEP_GRID:25;
+  for(const e of sim.events){const age=sim.t-e.t;if(age>keep||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
     if(e.kind==='noroute'){ctx.strokeStyle=TK.aWc;ctx.lineWidth=2;ctx.globalAlpha=Math.max(.3,1-age/25);ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.stroke();if(age<7){ctx.globalAlpha=1;drawTag(ctx,px,py,-30,-40,L('NO STEP-FREE ROUTE','无障碍路线中断'),TK.aWc);}continue;}
-    const col=e.sev===2?TK.risk:TK.works;
+    if(e.kind==='harsh'){ // T44: harsh braking — a diamond in the text colour, one ring as it happens
+      if(age<1.6){const f=age/1.6;ctx.globalAlpha=1-f;ctx.strokeStyle=TK.fg;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,6+f*16,0,7);ctx.stroke();}
+      ctx.globalAlpha=Math.max(.25,1-age/keep);evDiamond(px,py,6,TK.fg);continue;}
+    const col=e.sev===2?TK.risk:TK.works; // conflict amber, critical red — diamonds like harsh braking
     if(age<2.4){const f=age/2.4;ctx.strokeStyle=col;ctx.lineWidth=2;for(const k of[0,.33,.66]){const ff=(f+k)%1;ctx.globalAlpha=(1-ff)*(1-f*.5);ctx.beginPath();ctx.arc(px,py,4+ff*34,0,7);ctx.stroke();}}
-    ctx.globalAlpha=Math.max(.2,1-age/25);ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,e.sev===2?4.5:3,0,7);ctx.fill();
+    ctx.globalAlpha=Math.max(.2,1-age/keep);evDiamond(px,py,sim.isGrid?(e.sev===2?7.5:6.5):(e.sev===2?5:4),col);
+    if(sim.isGrid&&e.ttc!=null&&age<8){ctx.globalAlpha=1;drawTag(ctx,px,py,-24,-30,`TTC ${e.ttc.toFixed(1)} s`,col);}
   }
   ctx.restore();
 }
@@ -307,11 +314,11 @@ function newStress(layout){const s=new Sim(layout,{script:true,t0:45,seed:4218,c
    real junctions around it and shows only the 2×2 at the works, instead of the scripted La Trobe scene. Missing file or a
    throw → the La Trobe scene, as before. */
 function gridOn(){return typeof GridSim==='function'&&!!(BE.api&&engNet())&&S.step===2&&!!EP.pts&&EP.pts.every(p=>p[0]>=GRID_BOX.x0&&p[0]<=GRID_BOX.x1&&p[1]>=GRID_BOX.y0&&p[1]<=GRID_BOX.y1);}
-function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
+function newGrid(){try{const s=new GridSim(gridSpec([...engNet().links.values()],BE.api.engine.flows,EP.hour,{link:EP.link,lanes:EP.lanes}),{seed:4218});s.setWeather(S.wx,WX);while(s.t<180)s.step(.25);s.resetStats();s.clock0=CLOCK_EVENT-s.t;return s;}catch(e){console.warn('grid sim failed, showing the La Trobe scene',e);return null;}}
 function gridShown(){return S.step===2&&!!(S.sim&&S.sim.isGrid);}
 function gridFly(d){S.gridJ=null;flyTo((GRID_BOX.x0+GRID_BOX.x1)/2,(GRID_BOX.y0+GRID_BOX.y1)/2,Math.max(1,Math.min(3,(V.w-420)/420)),d);}
 function gridRebuild(){if(S.step!==2)return;if(S.sim&&S.sim.isSumo&&sumoWant())return; // engine plan changed while on step 2 (T40: the SUMO replay only depends on the works link)
-  const was=gridShown(),g=gridOn()&&newGrid();if(!g){if(S.sim&&S.sim.isSumo&&SU.grid){SU.tok++;S.sim=SU.grid;renderPanel();}return;}S.sim=g;if(!was)gridFly(.7);renderPanel();sumoStart();}
+  const was=gridShown(),g=gridOn()&&newGrid();if(!g){if(S.sim&&S.sim.isSumo&&SU.grid){SU.tok++;S.sim=SU.grid;renderPanel();}return;}g.clock0=S.clock-g.t;S.sim=g;if(!was)gridFly(.7);renderPanel();sumoStart();}
 function gridNote(){const w=S.sim.works(),q=w&&isFinite(w.queue_m)?w.queue_m:null,hr=engHour(EP.hour);return L(`Micro-sim · 16 junctions (La Trobe – Little Bourke × Elizabeth – Exhibition), weekday ${hr} flows · counts below cover the 2×2 at the works · signal timing and turn shares are assumed`,`微观仿真 · 16 个路口（La Trobe – Little Bourke × Elizabeth – Exhibition），工作日 ${hr} 车流 · 下面的计数只算施工处 2×2 · 信号配时和转弯比例是假设值`)+(q==null?'':` · ${L('works queue','施工排队')} <span data-live="gq">${Math.round(q)}</span> m`);}
 // closed-lane polygons (works hatch, T38: halo + pulsing outline + a label so the closure stands out among 16 junctions)
 // and signal heads (green / amber / red) of all 16 junctions
@@ -508,7 +515,7 @@ function renderPanel(){
     const tabs1=`<div class="eng-seg eng-seg3" role="tablist" aria-label="${L('Plan setup','方案设置')}">${[['site',L('Site','施工信息')],['signs',L('Signs','设备诱导')],['checks',L('Checks','约束检查')]].map(([k,n])=>`<button type="button" role="tab" data-tab1="${k}" aria-selected="${t===k}">${n}</button>`).join('')}</div>`;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan · draft','施工方案 · 草稿')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engOutSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engOutSec()):engOfflineCard()}
+    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engStateSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engStateSec()):engOfflineCard()}
     ${microOn()&&t==='site'?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
@@ -528,7 +535,8 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
-      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div>`}</div>
+      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; ${grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'} m/s²</small></div></div>`}</div>
+    ${grid&&!su&&!wait?`<div class="eng-legend ev-legend"><span><i class="ev-dia" style="background:var(--works)"></i>${L('Conflict','冲突')}</span><span><i class="ev-dia" style="background:var(--risk)"></i>${L('Critical','严重')}</span><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span>${L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per 10 min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 10 分钟车辆占比`)}</span></div>`:''}
     ${navHTML()}`;if(su||wait)sumoBind();
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -729,13 +737,32 @@ function updateBasemapUI(){document.documentElement.dataset.bm=S.basemap;documen
 const hc=$('#hist'),hctx=hc.getContext('2d');let hw=0,hh=0;
 function sizeHist(){const r=hc.getBoundingClientRect();hw=r.width;hh=r.height;const d=Math.min(2,devicePixelRatio||1);hc.width=Math.max(1,Math.round(hw*d));hc.height=Math.max(1,Math.round(hh*d));hctx.setTransform(d,0,0,d,0,0);}
 function drawHist(){
-  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,live=S.sim?S.sim.minute:null;
-  const sumo=!!(S.sim&&S.sim.isSumo&&live),mx=sumo?Math.max(...live):0,cap=sumo?Math.max(3,mx):3,hi=sumo?Math.max(2,mx*.67):2; // T40: SUMO counts the whole real network (tens per minute): scale to this run's max
-  for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
-    const v=live?live[m]:0;if(v>0){const lh=(bot-top)*Math.min(1,v/cap);c.fillStyle=v>=hi?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}
+  if(!hw)return;const c=hctx;c.clearRect(0,0,hw,hh);const top=4,bot=hh-16,bw=hw/60,sim=S.sim,live=sim?sim.minute:null;
+  const sumo=!!(sim&&sim.isSumo&&live),aria=sim&&sim.mSeen?L('Share of vehicles into the works junctions that braked harshly or were in a conflict, per 10 minutes. Click to jump.','每 10 分钟驶入施工处路口的车里，急刹或卷入冲突的占比。点击可跳转。'):sumo?L('Harsh braking per minute in the SUMO run. Click to jump.','SUMO 仿真每分钟急刹次数，点击可跳转。'):L('Conflicts per minute, 17:00 to 18:00. Click to jump.','17:00–18:00 每分钟冲突数，点击可跳转');
+  if(hc.getAttribute('aria-label')!==aria)hc.setAttribute('aria-label',aria);
+  if(sim&&sim.mSeen)histShare(c,sim,top,bot);
+  else{ // SUMO replay (T40): harsh braking per minute over the real network; La Trobe scene: conflicts per minute. Both scale to
+        // the busiest minute so far (at least 3, the old full height), so minutes can be told apart
+    let top1=0;if(live)for(let m=0;m<60;m++)top1=Math.max(top1,live[m]);const mx=Math.max(3,top1),hi=sumo?Math.max(2,top1*.67):2;
+    for(let m=0;m<60;m++){c.fillStyle=TK.line;c.fillRect(m*bw+1,bot-2,bw-2,2);
+      const v=live?live[m]:0;if(v>0){const lh=(bot-top)*v/mx;c.fillStyle=v>=hi?TK.risk:TK.works;c.fillRect(m*bw+1,bot-lh,bw-2,lh);}}}
   c.fillStyle=TK.line2;c.fillRect(0,bot,hw,1);c.font=`400 9px ${FONT_MONO}`;c.fillStyle=TK.fg3;c.textBaseline='top';
   const H=clockHour();for(let k=0;k<=6;k++){const x=k*hw/6;c.textAlign=k===0?'left':k===6?'right':'center';c.fillText(k===6?`${String((H+1)%24).padStart(2,'0')}:00`:`${String(H).padStart(2,'0')}:${String(k*10).padStart(2,'0')}`,x,bot+4);}
   const px=S.clock/3600*hw;c.fillStyle=TK.accent;c.fillRect(px-1,top-2,2,bot-top+4);
+}
+// T44 step 2 (4×4): one bar per 10 minutes, all the same height = the vehicles that entered the 2×2 in them; red = the share
+// that braked harshly or were in a conflict there, grey = the rest (through without either). Each part carries its share.
+function histShare(c,sim,top,bot){
+  const n=6,W=hw/n,bw=Math.min(W*.42,96),H=bot-top;
+  c.fillStyle=TK.line;c.fillRect(0,Math.round(top+H/2),hw,1); // 50 %
+  c.font=`500 9.5px ${FONT_MONO}`;c.textAlign='center';c.textBaseline='middle';
+  for(let b=0;b<n;b++){
+    let seen=0,hit=0;for(let m=b*10;m<b*10+10;m++){seen+=sim.mSeen[m];hit+=sim.mHit[m];}if(!(seen>0))continue;
+    const p=Math.min(1,hit/seen),x=b*W+(W-bw)/2,cx=x+bw/2,hr=H*p,inRed=hr>=13,pct=v=>`${(v*100).toFixed(1)}%`;
+    c.globalAlpha=.45;c.fillStyle=TK.fg3;c.fillRect(x,top,bw,H-hr);c.globalAlpha=.9;c.fillStyle=TK.risk;c.fillRect(x,bot-hr,bw,hr);c.globalAlpha=1;
+    if(inRed){c.fillStyle=TK.fg;c.fillText(pct(p),cx,bot-hr/2);}else{c.fillStyle=TK.risk;c.fillText(pct(p),cx,bot-hr-7);} // a thin red part: its share just above it
+    const g1=inRed?bot-hr:bot-hr-14;if(g1-top>=12){c.fillStyle=TK.fg;c.fillText(pct(1-p),cx,(top+g1)/2);}
+  }
 }
 // The 1 h sim window's hour: the plan's hour on the step-2 grid sim (T38; it runs that hour's flows), else the La Trobe scene's 17:00
 function clockHour(){return gridShown()?(S.sim.isSumo?S.sim.hour:clamp(Math.floor(+EP.hour||0),0,23)):17;} // T40: a SUMO replay runs its own hour (index.hour)

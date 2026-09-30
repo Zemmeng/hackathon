@@ -11,6 +11,10 @@
 // amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound green wave at 11 m/s; 15 % of cars
 // turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
 // IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
+// Safety events (T44), 2×2 only, each with x, y for the map (sim.events): harsh braking < −3.5 m/s²; conflict = a follower
+// moving ≥ 1.5 m/s closing on its leader in the same lane at ≥ 1 m/s with time-to-collision < 1.5 s (critical < 1.0 s), once
+// per pair within 6 s — the La Trobe scene's definition (4-sim.js). Rear-end only: signals keep crossing streams apart and
+// there are no pedestrians here; IDM keeps safe gaps, so conflicts are rare and most marks are harsh braking.
 // Stop lines sit just behind the zebra 2-basemap.js draws (GRID_W); nobody enters a junction unless all of the vehicle fits
 // past the far zebra; left turns go straight past the stop line, then a quarter circle of radius ≤ rTurn into the kerb lane.
 const GRID_BOX={x0:-100,x1:300,y0:-300,y1:0};
@@ -33,7 +37,8 @@ const GRID_JN=[['2922','La Trobe Street','Elizabeth Street'],['2921','La Trobe S
 function gridIn(B,x,y){return x>=B.x0&&x<=B.x1&&y>=B.y0&&y<=B.y1;}
 const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
 const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
-  cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
+  cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25,
+  ttc:1.5,ttcCrit:1,ttcV:1.5*GRID_K,ttcDv:1*GRID_K,evKeep:120}; // safety events (T44); evKeep: seconds of events kept
 // Street widths (page units) as 1-world.js draws them. 2-basemap.js puts the zebra w/2 + 0.4 … w/2 + 4.0 from the crossing
 // street's centre line and the stop line at w/2 + 4.6 … w/2 + 5.0, so a junction's stop line is w/2 + stopGap before it and
 // its far-side zebra ends w/2 + 4 after it
@@ -161,7 +166,7 @@ function gridStopsAt(o){return o.s-o.len+(o.v<1||o.v<GRID_P.slow&&o.acc<=.1?0:o.
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
-    this.agents=[];this.all=[];this.events=[];this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
+    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60); // T44: per minute, vehicles into the 2×2 / of them with a safety event
     this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
     const cl=spec.close;this.lanes=[];
     this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){
@@ -178,8 +183,9 @@ class GridSim{
   }
   _exp(rate){return this.t-Math.log(1-this.R())*3600/(rate*((this.wx&&this.wx.rate)||1));}
   resetStats(){
-    this.events=[];this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
-    this.minute.fill(0);this.risk.fill(0);this.riskVer++;this.redRun=0;
+    this.events=[];this.recent=new Map();this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
+    this.minute.fill(0);this.mSeen.fill(0);this.mHit.fill(0);this.risk.fill(0);
+    for(const ln of this.lanes||[])for(const c of ln.cars){c.inV=false;c.hit=false;} // cars already in the 2×2 count again from herethis.riskVer++;this.redRun=0;
     this.entry=this.spec.dirs.map(D=>({id:D.entry,street:D.street,dir:D.dir,vph:D.vph,arr:0,ins:0,div:0}));
   }
   setWeather(k,env){this.wxk=k;this.wx=WXP[k]||WXP.clear;this.env=env;}
@@ -283,6 +289,18 @@ class GridSim{
         c.acc=acc;c.wall=wall;
       }
     }
+    // 3b conflicts, on the state before this step's move (as 4-sim.js does: IDM here has no braking limit, a car can stop
+    //   within one step, so after the move the closing speed is gone): same-lane follower closing on its leader, TTC < 1.5 s
+    //   (critical < 1.0 s), once per pair within 6 s
+    for(const ln of this.lanes){const a=ln.cars;for(let i=1;i<a.length;i++){
+      const c=a[i],ld=a[i-1],dv=c.v-ld.v;if(c.v<P.ttcV||dv<P.ttcDv||!gridIn(GRID_VIEW,c.x,c.y))continue;
+      const ttc=Math.max(.1*GRID_K,ld.s-ld.len-c.s)/dv;if(ttc>=P.ttc)continue;
+      const key=c.id+'-'+ld.id,prev=this.recent.get(key);
+      if(prev&&t-prev.t<6){if(ttc<prev.ttc){prev.ttc=ttc;if(ttc<P.ttcCrit&&prev.sev<2){prev.sev=2;this.stats.critical++}}continue;}
+      const ev={t,x:(c.x+ld.x)/2,y:(c.y+ld.y)/2,ttc,sev:ttc<P.ttcCrit?2:1,kind:'conflict',types:[c.type,ld.type]};
+      this.recent.set(key,ev);this.events.push(ev);this.stats.conflicts++;if(ev.sev===2)this.stats.critical++;
+      const mi=clamp(Math.floor((this.clock0+t)/60),0,59);this.minute[mi]+=1;if(!c.hit){c.hit=true;this.mHit[mi]+=1;}this._splat(ev.x,ev.y,ev.sev===2?1.6:1);
+    }}
     // 4 move; hard walls and no-overlap are enforced, stop-line crossings reported
     for(const ln of this.lanes){
       const D=ln.D,cars=ln.cars;
@@ -292,7 +310,7 @@ class GridSim{
         if(i>0){const ld=cars[i-1],mx=ld.s-ld.len-.05;if(s>mx){s=mx;v=Math.min(v,ld.v);}}
         c.s=s;c.v=v;c.dist+=Math.max(0,s-s0);
         const ra=(v-v1)/dt;c.acc=ra;
-        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);}}}
+        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;const mi=clamp(Math.floor((this.clock0+t)/60),0,59);this.minute[mi]+=1;if(!c.hit){c.hit=true;this.mHit[mi]+=1;}this._splat(c.x,c.y,.6);this.events.push({t,x:c.x,y:c.y,kind:'harsh',sev:0,type:c.type});}}}
         else if(ra>-1)c.hb=false;
         for(const q of D.jn)if(s0<q.stop&&s>=q.stop){if(sig[q.j][D.axis]==='R')this.redRun++;if(this.onCross)this.onCross(c,ln,q,t);}
       }
@@ -327,9 +345,12 @@ class GridSim{
     for(const ln of this.lanes)for(const c of ln.cars){
       c.dl*=k;if(Math.abs(c.dl)<.01)c.dl=0;this._pos(c);
       if(this.t-c.tt>=.4){c.tt=this.t;c.trail.push(c.x,c.y);if(c.trail.length>24)c.trail.splice(0,2);}
-      all.push(c);if(gridIn(GRID_VIEW,c.x,c.y))ag.push(c);
+      all.push(c);if(gridIn(GRID_VIEW,c.x,c.y)){ag.push(c);if(!c.inV){c.inV=true;this.mSeen[clamp(Math.floor((this.clock0+this.t)/60),0,59)]+=1;}}
     }
     this.agents=ag;this.all=all;
+    // forget events older than evKeep (the counts keep them)
+    if(this.events.length&&this.t-this.events[0].t>P.evKeep)this.events=this.events.filter(e=>this.t-e.t<=P.evKeep);
+    if(this.recent.size>64)for(const[k,e]of this.recent)if(this.t-e.t>=6)this.recent.delete(k);
   }
   _pos(c){
     const ln=c.ln,D=ln.D,m=c.s-c.len/2,a=c.arc;

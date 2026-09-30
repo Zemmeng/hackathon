@@ -280,7 +280,7 @@ function engMoreHTML(){
   const stale=EP.busy||EP.badText||!!EP.runErr;
   return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
-function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML],['engState',engStateHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -307,6 +307,15 @@ function engSiteHTML(){
     <div class="opt-row"><span class="opt-k">${L('Lanes','车道')}</span><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div></div>
     <div class="opt-row"><span class="opt-k">${L('Hour','时段')}</span><div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
     <div class="opt-row"><span class="opt-k">${L('Footpath','人行道')}</span><div class="chips">${[['none',L('Open','照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div></div></div>`;
+}
+// 01 Site / Signs (09-30 @unicornnnnnny): the four engine figures are off these two tabs; only what needs doing shows here
+// (no street picked yet, or the engine could not score the plan). The figures are in 03 Impact and 04 Compare.
+function engStateSec(){return'<div id="engState" class="stack"></div>';}
+function engStateHTML(){
+  if(!BE.api)return'';
+  if(!EP.link)return`<div class="card eng-note warn"><b>${L('Click a street on the map to place the work zone','在地图上点一条街来放施工区')}</b></div>`;
+  if(EP.runErr)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  return'';
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>

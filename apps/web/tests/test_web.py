@@ -245,5 +245,24 @@ check("T43②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.ap
 check("T43②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
       "CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other" in CMP)
 
+# 11. T44（@unicornnnnnny 09-30）：01 施工信息 / 设备诱导不放引擎四个数；02 仿真的冲突 / 严重 / 急刹在地图上标出来
+GRIDJS = (SRC / "js" / "4b-grid.js").read_text(encoding="utf-8")
+check("T44：01 施工信息 / 设备诱导两个页签不再放「引擎 · 真实 CBD 车流」四个数，只在没选街 / 引擎算不了时留一行提示",
+      "engOutSec()" not in app_js and app_js.count("engStateSec()") == 2 and "function engStateHTML(){" in ENG and "['engState',engStateHTML]" in ENG)
+check("T44：4×4 仿真的急刹和冲突都带位置记进 sim.events（冲突 TTC < 1.5 s、严重 < 1.0 s，只算 2×2）；地图 drawEvents 画出来",
+      "kind:'harsh'" in GRIDJS and "kind:'conflict'" in GRIDJS and "ttc:1.5,ttcCrit:1" in GRIDJS and "if(e.kind==='harsh'){" in app_js
+      and "const keep=sim.isGrid?EV_KEEP_GRID:25" in app_js)
+check("T44 反向断言：02 面板急刹写的阈值来自 4×4 仿真自己的 GRID_P.harsh（3.5），不再写旧场景的 4.2",
+      "-GRID_P.harsh/GRID_K" in app_js and "grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'" in app_js)
+check("T44：02 面板有图例说明地图和时间轴上的标记（中英成对）；冲突 / 严重也画成菱形，不和信号灯的圆点混",
+      "L(`map: last ${EV_KEEP_GRID} s · timeline: share of vehicles, per 10 min`,`地图标最近 ${EV_KEEP_GRID} 秒 · 时间轴：每 10 分钟车辆占比`)" in app_js and 'class="eng-legend ev-legend"' in app_js
+      and "evDiamond(px,py,sim.isGrid?(e.sev===2?7.5:6.5)" in app_js and "ev-dot" not in app_js)
+check("T44：02 时间轴改成每 10 分钟一根的 100% 堆叠柱（红 = 急刹或卷入冲突的车占比，灰 = 其余），两段都标百分比；其他步骤按最忙的一分钟缩放（不再按每分钟 3 次封顶）",
+      "function histShare(c,sim,top,bot){" in app_js and "hit/seen" in app_js and "pct(1-p)" in app_js
+      and "Math.min(1,v/3)" not in app_js[app_js.index("function drawHist(){"):app_js.index("function histShare(")] and "const mx=Math.max(3,top1)" in app_js
+      and "this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);" in GRIDJS and "mBy" not in GRIDJS + app_js)
+check("T44：02 的 4×4 仿真按时钟记分钟（clock0 = 时钟 − 仿真秒数），时间轴柱子和时钟指针对得上",
+      "s.clock0=CLOCK_EVENT-s.t;return s;" in app_js and "g.clock0=S.clock-g.t;" in app_js)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
