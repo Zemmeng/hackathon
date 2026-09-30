@@ -495,7 +495,9 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 /* T20 addendum 4: the 17:00 timeline belongs to the junction micro-model; hidden when that scene is not on screen */
 .app.no-time .timeline{display:none}
 
-/* data credits (OSM / DataVic / City of Melbourne): bottom-right of the open map on desktop, a footer line on phones */
+/* data credits (OSM / DataVic / City of Melbourne): plain text centred along the foot of the open map on desktop (no frame,
+   09-30 ask; a soft halo in the shell colour keeps it legible over imagery). It gets its own band (--cr-h): the scale bar,
+   weather chip, probe and toast sit above it, so it never runs into them however it wraps. A footer line on phones */
 .credits{font:400 10.5px/1.45 var(--f-body);color:var(--fg-2);display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px}
 .credits a{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
 .credits a:hover{color:var(--fg)}
@@ -506,7 +508,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- floating layout (desktop) ---------- */
 @media (min-width:821px){
-  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px}
+  .app{display:block;position:relative;height:100%;--safe-t:84px;--safe-b:112px;--safe-l:84px;--safe-r:396px;--panel-w:372px;--cr-h:30px}
   .map{position:fixed;inset:0;z-index:0}
   .top{position:fixed;z-index:6;top:12px;left:12px;right:12px;height:60px;border-radius:22px;padding:0 12px 0 16px}
   .rail{position:fixed;z-index:5;top:calc(var(--safe-t) + (100vh - var(--safe-t) - var(--safe-b))/2);transform:translateY(-50%);left:12px;width:50px;border-radius:20px;padding:7px 0;gap:4px}
@@ -525,10 +527,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .wx{top:calc(var(--safe-t) + 2px);left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 24px)}
   .basemap{top:calc(var(--safe-t) + 2px);right:var(--safe-r)}
   .zoom{right:var(--safe-r);top:calc(var(--safe-t) + (100% - var(--safe-t) - var(--safe-b))/2)}
-  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + 44px)}
-  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
-  .credits{position:fixed;z-index:4;right:var(--safe-r);bottom:calc(var(--safe-b) + 2px);max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 300px);justify-content:flex-end;padding:5px 11px;border-radius:12px}
-  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + 48px)}
+  .legend{left:var(--safe-l);bottom:calc(var(--safe-b) + var(--cr-h) + 44px)}
+  .probe{right:var(--safe-r);bottom:calc(var(--safe-b) + var(--cr-h) + 54px);max-width:calc(100% - var(--safe-l) - var(--safe-r) - 300px)}
+  .credits{position:fixed;z-index:4;left:calc(var(--safe-l) + (100vw - var(--safe-l) - var(--safe-r))/2);transform:translateX(-50%);bottom:calc(var(--safe-b) + 2px);width:max-content;max-width:calc(100vw - var(--safe-l) - var(--safe-r) - 24px);justify-content:center;text-align:center;text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
+  .toast{left:calc(var(--safe-l) + (100% - var(--safe-l) - var(--safe-r))/2);bottom:calc(var(--safe-b) + var(--cr-h) + 48px)}
   .swipe .tag{top:calc(var(--safe-t) + 60px)}
 }
 /* narrower desktops: fewer HUDs, a slimmer panel */
@@ -763,7 +765,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   <section class="panel" id="panel" aria-live="polite"></section>
   <button type="button" class="panel-open" id="panelOpen" hidden aria-label="Show the analysis panel" data-zh-aria-label="展开分析面板"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg><span data-zh="分析面板">Analysis</span></button>
 
-  <div class="credits glass" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
+  <div class="credits" id="credits" aria-label="Data sources" data-zh-aria-label="数据来源"></div>
 
   <footer class="timeline">
     <button type="button" class="play" id="play" aria-label="Play simulation"></button>
@@ -2004,7 +2006,7 @@ function drawGrid(){
 function drawScale(){
   // metres, not page units: geoToWorld draws 1 m as K_UPM (~0.862) units (T27)
   const target=110/(V.s*K_UPM),pw=Math.pow(10,Math.floor(Math.log10(target)));let m=pw;for(const k of[1,2,5])if(k*pw<=target)m=k*pw;
-  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
+  const px=m*K_UPM*V.s,x=GL.ins.l+22,y=V.h-GL.ins.b-(GL.ins.cr||0)-20;ctx.save();ctx.fillStyle=TK.glass;ctx.strokeStyle=TK.glassLine;rr(ctx,x-10,y-18,px+64,30,5);ctx.fill();ctx.stroke();
   ctx.fillStyle=TK.fg;ctx.fillRect(x,y,px/2,4);ctx.strokeStyle=TK.fg;ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,px-1,3);
   ctx.font=`500 9px ${FONT_MONO}`;ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.fillText('0',x,y-4);ctx.fillText(String(m/2),x+px/2,y-4);ctx.fillText(`${m} m`,x+px,y-4);
   const nx=x+px+30,ny=y-1;ctx.beginPath();ctx.moveTo(nx,ny-13);ctx.lineTo(nx+6,ny+4);ctx.lineTo(nx,ny);ctx.lineTo(nx-6,ny+4);ctx.closePath();ctx.fill();ctx.font=`700 8.5px ${FONT_MONO}`;ctx.fillText('N',nx+13,ny-4);ctx.restore();
@@ -2344,7 +2346,7 @@ function loop(now){
 function boot(){
   const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
-  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'||lg==='en'?lg:((navigator.language||'').toLowerCase().startsWith('zh')?'zh':'en');
+  const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
   $('#pVal').textContent=L('Move over the map','将鼠标移到地图上');$('#loading').textContent=L('RENDERING ORTHOPHOTO…','正在渲染正射影像…');
   $('#legend').classList.add('collapsed'); // the legend opens folded to its title line; the ^ button unfolds it
@@ -3015,7 +3017,7 @@ function citySeam(c,V,light){
    · Roads over buildings (09-29 ask): roofs are washed back and carriageways lifted and edged, once per view change.
    ============================================================ */
 const GL={ins:{l:0,r:0,t:0,b:0},mode:'compact',open:new Map(),def:new Map(),fx:[],obs:null};
-function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b')};return GL.ins;}
+function readInsets(){const el=document.getElementById('app');if(!el)return GL.ins;const cs=getComputedStyle(el),px=k=>parseFloat(cs.getPropertyValue(k))||0;GL.ins={l:px('--safe-l'),r:px('--safe-r'),t:px('--safe-t'),b:px('--safe-b'),cr:px('--cr-h')};return GL.ins;}
 function insets(){return GL.ins;}
 /* fraction of the canvas width at the middle of the uncovered map (swipe divider start) */
 function visibleMid(){const I=insets();return clamp((I.l+(V.w-I.r))/2/Math.max(1,V.w),.1,.9);}
