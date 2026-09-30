@@ -52,7 +52,7 @@ check("B2 第 2 步没有假进度、「变体 22/30」和变体清单", not re.
 check("B2 没有「智能体决策 / 秒」（= 智能体数 × 10 × 倍速）", "agent decisions" not in APP and "智能体决策" not in APP)
 check("B2 第 2 步写明是路口微观仿真、计数来自这一次运行，不是方案的引擎数字", "Junction micro-simulation" in APP and "不是方案的引擎数字" in APP)
 check("B3 没有「AI 红队」「250 个智能体 × 30 种行为变体」「随机种子 4218」字样", not re.search(r"red team|红队|250 agents|250 个智能体|seed 4218|随机种子|行为变体|behaviour variations", PAGE, re.I))
-check("B3 按钮改名「运行路口仿真」", "Run the junction simulation" in APP and "运行路口仿真" in APP)
+check("B3 按钮改名：配置施工的下一步是「保存并进入仿真」（6 步工作台），不再叫 AI 红队", "Save & simulate" in APP and "保存并进入仿真" in APP and "red team" not in APP.lower())
 check("第 3 步回放不再写「复现 n / 50 个种子」，告警卡也不写", "Reproduced in" not in APP and "SEEDS" not in APP)
 check("时间轴只画这次仿真数到的冲突，没有编出来的「预期」曲线", "PROFILE" not in APP and "hash2(m,7" not in APP)
 
@@ -73,7 +73,8 @@ check("1 第 1、3、4 步进来都调 engFly()", all(re.search(rf"if\(n==={n}\)
 # ---- 补充 2：引擎数字默认展开 ----
 check("2 SEC_KEEP 带上 #engOut / #eng4（数字异步到，也不会被判成可折叠）", "#engOut" in GLASS and "#eng4" in GLASS and "sec.matches(SEC_KEEP)" in GLASS)
 p1 = fn(ENG, "engPanel1")
-check("2 第 1 步引擎那节在施工区表单下面、屏幕文字上面", p1.index('id="engOut"') < p1.index('id="vmsF1"') and p1.index('data-foot') < p1.index('id="engOut"'))
+check("2 第 1 步引擎那节在施工区表单下面、屏幕文字上面（engPanel1 = 施工区 + 引擎 + 屏）",
+      "engSiteHTML()+engOutSec()+engSignsHTML()" in p1 and "data-foot" in fn(ENG, "engSiteHTML") and 'id="engOut"' in fn(ENG, "engOutSec") and 'id="vmsF1"' in fn(ENG, "engSignsHTML"))
 
 # ---- 补充 3：单位 ----
 check("3 顾问的节省量标「全施工期」，并写清天数 × 采样小时", "whole works" in ENG and "全施工期" in ENG and "engWindowTxt" in ENG and "天 × 每天采样" in ENG)
@@ -83,7 +84,7 @@ check("3 对比表写明「这一小时」，全网延误标「车·分钟（这
 check("4 microOn() 决定画不画 La Trobe 微观场景（护栏、小人、标注、Δ；T27 起小人 / 标注再加一条：缩放 ≥ 1，T38 第 2 步网格仿真例外）", all(x in APP for x in ["if(micro)drawWorks('before')", "&&walkers)planNotes()", "&&micro)drawDeltas()", "walkers=micro&&(fine||gridShown())", "if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);"]))
 check("4 引擎连着且方案不在 La Trobe 时不画微观场景；连接中也不先闪一下", re.search(r"if\(!BE\.api\)return false;.*?return /la trobe/i\.test\(EP\.street", fn(APP, "microOn"), re.S) is not None)
 check("4 时间轴跟着微观场景走（.app.no-time 隐藏，桌面上 --safe-b 收回）", "classList.toggle('no-time',!on)" in APP and ".app.no-time .timeline{display:none}" in CSS and ".app.no-time{--safe-b:24px}" in CSS)
-check("4 第 1 步的 La Trobe 设备清单 / 道路使用者只在微观场景显示", "${microOn()?`<div class=\"stack\"><div class=\"row between\"><span class=\"eyebrow\">${L('Junction micro-model" in APP)
+check("4 第 1 步的 La Trobe 设备清单 / 道路使用者只在微观场景显示（配置施工 · 施工信息页签）", "${microOn()&&t==='site'?`<div class=\"stack\"><div class=\"row between\"><span class=\"eyebrow\">${L('Junction micro-model" in APP)
 check("4 滑动对比的标签不再写「AI 修复后 · v2」", "AI 修复后" not in BODY and 'data-zh="修改后">AFTER' in BODY)
 
 # ---- 补充 5：假设亮出来 ----

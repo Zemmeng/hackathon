@@ -56,8 +56,9 @@ check("2.2 反向：#zoomHome 不再只飞 HOME —— 引擎方案时 engFly()"
 
 # 2.3 第 1 步：4 个大数字 → 紧跟 VMS 输入框 → 其余说明
 p1 = fn(ENG, "engPanel1")
-check("2.3 第 1 步顺序：施工区 → 引擎 4 个数字 → VMS 输入框 → 说明 / 公交行人 / 徽章",
-      p1.index("data-foot") < p1.index('id="engOut"') < p1.index('id="vmsF1"') < p1.index('id="engMore"'))
+check("2.3 第 1 步顺序：施工区 → 引擎 4 个数字 → VMS 输入框 → 说明 / 公交行人 / 徽章（engPanel1 由三段拼成）",
+      "engSiteHTML()+engOutSec()+engSignsHTML()+'<div id=\"engMore\"" in p1 and "data-foot" in fn(ENG, "engSiteHTML")
+      and 'id="engOut"' in fn(ENG, "engOutSec") and 'id="vmsF1"' in fn(ENG, "engSignsHTML"))
 out = fn(ENG, "engOutHTML")
 check("2.3 #engOut 只放 4 个大数字（说明、公交行人、徽章挪到 #engMore）",
       "engMetrics(s)" in out and "engWhy(s)" not in out and "engImpacts(s)" not in out and "engBadges(" not in out)
@@ -86,14 +87,14 @@ check("2.5 第 4 步绕行前提那一行也不写「T12 参数」", "T12" not i
 check("2.5 「每车多等」旁的车数写明是主进口道的", "${L('main approach','主进口道')} ${fmtN(s.vehicles)}" in ENG)
 
 # 2.6 名不副实的字
-check("2.6 步骤条：路口仿真 / 影响 / 改进（Junction sim / Impact / Improve）",
-      all(x in BODY for x in ['data-zh="路口仿真">Junction sim', 'data-zh="影响">Impact', 'data-zh="改进">Improve'])
+check("2.6 步骤条（09-30 换成 6 步工作台）：路况总览 / 配置施工 / 仿真评估 / 影响分析 / 比较方案 / 确认导出",
+      all(x in BODY for x in ['data-zh="路况总览">Overview', 'data-zh="配置施工">Configure', 'data-zh="仿真评估">Simulate', 'data-zh="影响分析">Impact', 'data-zh="比较方案">Compare', 'data-zh="确认导出">Export'])
       and not re.search(r"Stress test|Ripple trace|>Repair<|压力测试|涟漪追踪|\"修复\"", BODY))
 check("2.6（审查）第 3 步面板小标题跟步骤条一样叫「影响 / Impact」，反向：页面上不再有「Ripple trace / 涟漪追踪」",
       "L('Impact · network','影响 · 路网')" in ENG and not re.search(r"Ripple trace|涟漪追踪", PAGE))
 check("2.5（审查）参数角标写「T12（信任度是假设值）」，反向：不再写「T12 sources / 有出处」",
       "L('Parameters · T12 (trust is assumed)','参数 · T12（信任度是假设值）')" in ENG and not re.search(r"T12 sources|T12 with sources|有出处", PAGE))
-check("2.6 路口回放的按钮：看改过的布局（v2 是预设布局，不是生成的）", "L('See the revised layout →','看改过的布局 →')" in APP and "Generate a safer layout" not in APP)
+check("2.6 反向：没有「生成更安全的布局」这类说法（v2 是预设布局，不是生成的）", "Generate a safer layout" not in APP)
 check("2.6 反向：页面上不再说「智能体」（会让人以为用了 AI）", "智能体" not in APP and "Agents involved" not in APP and "AGENT IMPACT" not in APP)
 
 # AI 面板的挂钩（PRD 4.3：T26 不删不挪）

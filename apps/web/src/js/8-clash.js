@@ -79,7 +79,7 @@ function clashRender(){
 }
 // Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
 function clashMount(){
-  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
+  const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net'||EP.view3!=='clash')return; // 03 Impact · Nearby works tab
   const box=document.createElement('div');box.id='clashBox';box.className='stack';
   const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
   if(cta){const a=document.createElement('div');a.id='clashAct';a.className='cta-act';cta.prepend(a);} // slot for the stagger button

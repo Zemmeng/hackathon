@@ -150,8 +150,8 @@ check("街名注记只标在真路网有的那段：drawLabels 按 W.real && STR
 check("源码里没有 key / token", not re.search(r"(sk-[A-Za-z0-9]{16,}|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9])", JS + BODY, re.I))
 
 # 5. 四步流程都在
-steps = re.findall(r'data-step="(\d)"', BODY)
-check("stepper 有 01–04 四步", steps == ["1", "2", "3", "4"], str(steps))
+steps = re.findall(r'data-ui="(\d)"', BODY)
+check("stepper 有 00–05 六步（路况总览 → 配置施工 → 仿真评估 → 影响分析 → 比较方案 → 确认导出）", steps == ["0", "1", "2", "3", "4", "5"], str(steps))
 
 # 6. 六种天气：每种都有颜色、图标、图例、影响说明（对比结果、复现种子是写死的假数，T20 删了）
 for k in WX_KINDS:

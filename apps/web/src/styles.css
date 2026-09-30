@@ -457,7 +457,7 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel.compact p.muted{display:none}
 /* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
    the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
-.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more,.panel.compact .eng-assume{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -671,6 +671,54 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
 .ai-note{margin:0;font-size:11px;line-height:1.4;color:var(--fg-3)}
+/* 6-step workbench (templates/workflow-preview): Back / Next at the foot, overview plan cards, evidence / check lists */
+.nav-row{display:flex;gap:8px;align-items:stretch}
+.nav-row .btn{width:auto}
+.nav-row .nav-next{flex:1;min-width:0}
+.nav-row .nav-back,.nav-row .btn.ghost{flex:0 0 auto;padding-left:14px;padding-right:14px}
+.ov-plans{display:flex;flex-direction:column;gap:8px}
+.ov-plan{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;text-align:left;font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line)}
+.ov-plan b{font-size:13px}
+.ov-plan small{font:400 11px/1.3 var(--f-mono);color:var(--fg-3)}
+.ov-plan[aria-pressed="true"]{border-color:var(--accent)}
+.eng-evd .val{font-size:11.5px;color:var(--fg-2);text-align:right}
+/* 04 Compare table (template: plans across, measures down); the recommended plan's column is tinted */
+.cmp-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--raised)}
+.cmp-table{width:100%;border-collapse:separate;border-spacing:0;min-width:520px;table-layout:fixed} /* fixed: the plan columns share the width equally */
+.cmp-table thead th:first-child{width:140px}
+.cmp-table th,.cmp-table td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+.cmp-table thead th{vertical-align:top}
+.cmp-table th[scope=row]{text-align:left;font:500 12.5px/1.3 var(--f-body);color:var(--fg-2);min-width:128px}
+.cmp-table th[scope=row] small{display:block;margin-top:2px;font-size:10.5px;color:var(--fg-3)}
+.cmp-table thead b{display:block;font-size:13.5px}
+.cmp-table thead small{display:block;margin-top:4px;font:400 10px/1.35 var(--f-mono);color:var(--fg-3)}
+.panel.compact .cmp-table thead .cmp-what{display:none} /* the kit list under each plan: Details only */
+.cmp-num{font:700 17px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.cmp-table .cmp-best,.cmp-table .cmp-over{display:block;margin-top:4px}
+.cmp-over{font:700 8.5px/1 var(--f-mono);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:var(--risk)}
+/* the picked plan's whole column is lit (else the recommended one); any cell of a column picks it */
+.cmp-table [data-cmpcol]{cursor:pointer;transition:background .15s}
+.cmp-table [data-cmpcol]:hover{background:color-mix(in srgb,var(--fg) 5%,transparent)}
+.cmp-table .cmp-sel,.cmp-table .cmp-sel:hover{background:color-mix(in srgb,var(--sun) 14%,transparent)}
+.cmp-table thead th.cmp-sel{border-radius:12px 12px 0 0}
+.cmp-table tbody tr:last-child>*{border-bottom:0}
+.cmp-table tbody tr:last-child td.cmp-sel{border-radius:0 0 12px 12px}
+.cmp-pickbtn{border:1px solid var(--line-2);background:var(--raised);color:var(--fg);border-radius:999px;padding:9px 16px;font:600 12px/1 var(--f-body);cursor:pointer}
+.cmp-pickbtn[aria-pressed="true"]{background:var(--sun);color:var(--on-sun);border-color:transparent}
+.cmp-cap{padding:10px 12px;font-size:11px;color:var(--fg-3)}
+.app.ui-wide .panel{transition:width .3s cubic-bezier(.2,.8,.2,1)}
+.app.ui-wide .panel .panel-tools{order:-2}
+.app.ui-wide .panel #cmp4{order:-1}
+/* 01 Configure · Site: lanes / hour / footpath as three labelled rows; Checks: budget + must-keep conditions */
+.opt-rows{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+/* hour chips: four fit on one line next to the label */
+.opt-row .chips button{padding-left:9px;padding-right:9px}
+.opt-row{display:grid;grid-template-columns:58px minmax(0,1fr);align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--raised)}
+.opt-k{font:600 10.5px/1.2 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--fg-3)}
+:lang(zh) .opt-k{letter-spacing:.02em}
+.chk-list{display:flex;flex-direction:column;gap:9px}
+.chk{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}
+.chk input{width:16px;height:16px;accent-color:var(--sun);margin:0}
 .ai-noadv{margin:0;font-size:12.5px;font-weight:600;color:var(--works)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}

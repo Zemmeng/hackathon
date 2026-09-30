@@ -174,29 +174,52 @@ function cmpExplainRender(el){
 
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
-  const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
+  const exp=S.ui===5; // 05 Export (6-step UI) shows the picked plan + the decision; 04 Compare shows all of them
+  const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${exp?L('Confirm & export','确认导出'):L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
   if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
   const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
   const mark=(k,i)=>best[k]&&best[k].includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:'';
   const cell=(k,i,v,unit)=>`<div><span class="eyebrow">${{car:L('Car delay','车延误'),transit:L('Tram & bus','电车公交'),peds:L('On foot','行人'),hire:L('Hire','租金')}[k]}</span><b>${v}</b><small>${unit}</small>${mark(k,i)}</div>`;
-  const cards=CP.rows.map((r,i)=>{
+  const cardsA=CP.rows.map((r,i)=>{
     const n=nums[i],ok=!!r.s,picked=CP.pick===i,f=r.flags||{};
     const warn=[f.stock_ok===false?L('Not enough stock for this kit','库存不够配这一套'):'',f.inactive?L('No works this hour — numbers are 0','这个时段不施工 —— 数字是 0'):''].filter(Boolean);
     return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
       <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
       ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
-        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}).join('');
+        :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}),cards=cardsA.join('');
+  // 04 Compare: one table, plans across and measures down (the team template's horizontal comparison); the panel widens for it
+  const lean=CP.explain&&CP.explain.lean?CP.explain.lean.option:null,budget=+EP.budget||0,lo=(B,k,i)=>!!(B[k]&&B[k].includes(i));
+  const ext=CP.rows.map(r=>({md:r.s&&Number.isFinite(r.s.mean_delay_s)?r.s.mean_delay_s:null,q:r.s&&Number.isFinite(r.s.queue_m)?r.s.queue_m:null})),best2=cmpBest(ext,['md','q']);
+  // marks under a plan's name, all in the same small teal as "lowest": Recommended / Baseline here, Cheapest below
+  const tag=(r,i)=>r.id===lean?L('Recommended','综合推荐'):i===0&&!lo(best,'hire',i)?L('Baseline','比较基准'):'';
+  // the highlighted column: the plan picked (click anywhere in its column), else the recommended one
+  const sel=CP.pick!=null&&CP.rows[CP.pick]?CP.pick:CP.rows.findIndex(r=>r.id===lean),rc=i=>` data-cmpcol="${i}"${i===sel?' class="cmp-sel"':''}`;
+  const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
+    [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
+  const days=CP.rows[0].days;
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+    ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
+    <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
+    <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
+    <tr><th scope="row">${L('Choose','选定方案')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}><button type="button" class="cmp-pickbtn" data-cmppick="${i}" aria-pressed="${CP.pick===i}" ${r.s?'':'disabled'}>${CP.pick===i?L('Chosen','已选择'):L('Choose','选择')}</button></td>`).join('')}</tr>
+  </tbody></table><div class="cmp-cap">${L(`Traffic ${engHour(EP.hour)}–${engHour(EP.hour+1)} · engine on real CBD flows · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(EP.hour)}–${engHour(EP.hour+1)} · 引擎在真实 CBD 车流上算 · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)}</div></div>`;
+  if(exp&&!(CP.pick!=null&&CP.rows[CP.pick]))return head+`<div class="card eng-note"><b>${L('Choose a plan first','先选一套方案')}</b><span>${L('Pick one in 04 Compare, or here:','在 04 比较方案里选，或者直接在这里选：')}</span></div><div class="chips">${CP.rows.map((x,i)=>`<button type="button" data-cmppick="${i}" aria-pressed="false">${String.fromCharCode(65+i)} · ${esc(cmpLabel(x))}</button>`).join('')}</div><p class="cmp-lean" data-cmplean></p>`;
   const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
-  let h=head+`<div class="cmp-cards">${cards}</div><p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
+  let h=head+`${exp?`<div class="cmp-cards">${cardsA[CP.pick]}</div>`:table}<p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
     <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
-  if(CP.pick!=null&&CP.rows[CP.pick]){
+  if(exp&&CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
       <div class="chips">${[['contractor',L('Contractor','施工方')],['council',L('Council','市政')]].map(([k,t])=>`<button type="button" data-cmpby="${k}" aria-pressed="${CP.by===k}">${t}</button>`).join('')}</div>
       <textarea id="cmpReason" rows="2" maxlength="280" aria-label="${L('Why this plan','为什么选这套')}" placeholder="${L('Why this plan? e.g. shortest queue, trams keep running','为什么选这套？例如排队最短、电车照常运行')}"></textarea>
       <button type="button" class="btn" id="cmpExport" ${CP.mod&&CP.inv?'':'disabled'}>${L('Export one-page pack →','导出一页执行包 →')}</button>
       ${CP.invErr?`<p class="small" style="color:var(--risk)">${L('Equipment inventory not loaded — the pack needs it for the equipment list and hire quote.','设备库存没加载上 —— 执行包要用它列设备清单和报价。')}</p>`:''}</div>`;
   }
+  if(exp){const row=(t,ok)=>`<div><i class="dot" style="background:${ok?'var(--accent)':'var(--works)'}"></i><span class="grow">${t}</span></div>`;
+    h+=`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before handing over','交付前确认')}</span><span class="eyebrow">${L('a person signs off','由人确认')}</span></div><div class="list eng-evd">
+      ${row(L(`Numbers: engine, ${engHour(EP.hour)}, real CBD flows — model estimates, not field-validated`,`数字：引擎在真实 CBD 车流上算的 ${engHour(EP.hour)} —— 模型估算，未经实地验证`),1)}
+      ${row(L('Trust in signs, riders per trip and hire day rates are assumed values','对标志的信任度、每班乘客、日租价是假设值'),0)}
+      ${row(L('Traffic management plan and site checks by the responsible engineer','交通组织方案和现场条件由负责工程师复核'),0)}</div></div>`;}
   return h;
 }
 
@@ -206,6 +229,7 @@ function cmpRender(){
   const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
+  el.querySelectorAll('[data-cmpcol]').forEach(c=>c.onclick=()=>{const i=+c.dataset.cmpcol;if(CP.pick!==i&&CP.rows[i]&&CP.rows[i].s){CP.pick=i;cmpRender();}});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
   const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
   const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
