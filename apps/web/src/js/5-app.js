@@ -412,7 +412,7 @@ function sumoCtl(){
   const have=new Set(((S.sim.index&&S.sim.index.scenarios)||[]).map(x=>x.id)),ch=[['original',L('Original plan · ROADWORK AHEAD','原方案 · ROADWORK AHEAD')],['ai',L('AI plan · USE RUSSELL','AI 方案 · USE RUSSELL')]].filter(([k])=>have.has(k));
   return`<div class="row sumo-src">${sumoPill()}</div>
     ${ch.length?`<div class="eng-seg sumo-seg" role="tablist" aria-label="${L('Plan shown','显示的方案')}">${ch.map(([k,n])=>`<button type="button" role="tab" data-sumo="${k}" aria-selected="${SU.scen===k}">${n}</button>`).join('')}</div>`:''}
-    <button type="button" class="btn ghost sumo-run" id="sumoRerun"${SU.busy?' disabled':''}>${SU.busy?`${L('SUMO running in the cloud','SUMO 正在云端计算')} · <span data-live="suEl">0</span> s`:L('▶ Re-run live in the cloud (~40 s)','▶ 在云端重新实时运行（约 40 s）')}</button>`;
+    <button type="button" class="btn ghost sumo-run" id="sumoRerun"${SU.busy?' disabled':''}>${SU.busy?`${L('SUMO running in the cloud','SUMO 正在云端计算')} · <span data-live="suEl">0</span> s`:L('▶ Re-run live in the cloud (~15 s)','▶ 在云端重新实时运行（约 15 s）')}</button>`;
 }
 function sumoTiles(){const m=S.sim.metrics,ex=m.mean_extra_s,dv=m.detour_vehicles,okN=v=>v!=null&&isFinite(+v);
   return`<div class="metric"><span class="eyebrow">${L('Vehicles on map','地图上的车')}</span><div class="v"><span data-live="agents">0</span></div></div>
