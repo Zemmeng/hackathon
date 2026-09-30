@@ -465,6 +465,9 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
 .panel-hide:hover{color:var(--fg)}
 .panel.compact p.muted{display:none}
+/* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
+   the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -515,7 +518,13 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
-  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
+  /* the step's buttons float at the foot of the panel (09-30 ask): no band, no card, no orange — each button is one dark
+     liquid-glass pill like the weather chip (.glass). A second backdrop blur does not stack inside the refracting panel
+     (Chromium), so the frost is a near-solid tint + the chip's top-left highlight, lit rim and shadow */
+  .panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px 8px 8px;background:none;border:0;box-shadow:none}
+  .panel .cta .btn:not(:disabled){background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),color-mix(in srgb,var(--shell-solid) 95%,transparent);color:var(--fg);border:1px solid var(--glass-line);border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,.28),var(--rim)}
+  .panel .cta .btn:not(:disabled):hover{filter:none;border-color:var(--line-2)}
+  .panel .cta .note{color:var(--fg-2);text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -548,10 +557,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
@@ -671,6 +680,8 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+.ai-note{margin:0;font-size:11px;line-height:1.4;color:var(--fg-3)}
+.ai-noadv{margin:0;font-size:12.5px;font-weight:600;color:var(--works)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
 .ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
@@ -2414,7 +2425,7 @@ function renderPanel(){
       <div><i class="sw" style="background:var(--a-bus)"></i><span class="grow">${L('Bus stop 250','250 路公交站')}</span><span class="val">${L('at the squeeze exit','位于收窄段出口')}</span></div></div></div>
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Road users on the map now','地图上的道路使用者')}</span><span class="eyebrow" style="color:var(--sun-ink)" data-live="popTotal">—</span></div><div class="bars" id="popBars"></div></div>`:''}
     <div class="stack"><div class="row between"><span class="eyebrow">${L('Weather · illustrative','天气 · 示意')}</span><span class="eyebrow">${wl}</span></div><div class="chips" id="wxChips">${WX_KINDS.map(k=>`<button type="button" data-wx="${k}" aria-pressed="${k===S.wx}">${icon(k,13)}${wxLabel(k)}</button>`).join('')}</div></div>
-    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note">${L('Micro-simulation of the La Trobe × Swanston junction · scripted road users','La Trobe × Swanston 路口微观仿真 · 预设的道路使用者')}</span></div>`;
+    <div class="cta"><button type="button" class="btn" id="runBtn">${L('Run the junction simulation →','运行路口仿真 →')}</button><span class="note note-more">${L('Nearby junctions · scripted road users','附近路口 · 预设的道路使用者')}</span></div>`;
     $('#runBtn').onclick=()=>goStep(2);
     P.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>setWeather(b.dataset.wx));
     engBind1();
@@ -2427,7 +2438,7 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
-    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: trace the ripple →','下一步：追踪涟漪 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
+    <div class="cta"><button type="button" class="btn danger" id="traceBtn" ${crit||grid?'':'disabled'}>${grid?L('Next: see the impact →','下一步：看影响 →'):crit?L('Explain the critical ripple →','解释这次严重涟漪 →'):L('Waiting for a critical event…','等待严重事件出现…')}</button></div>`;
     $('#traceBtn').onclick=()=>goStep(3);
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -2451,7 +2462,7 @@ function renderPanel(){
       <div class="row"><span class="delta">Δ3</span><span class="small">${L('Keep a 1.8 m step-free footpath corridor','保留 1.8 m 无障碍人行通道')}</span></div>
       <div class="row"><span class="delta">Δ4</span><span class="small">${L('Move VMS-1 80 m further upstream','VMS-1 再往上游移 80 m')}</span></div></div></div>
     <div class="card" style="padding:10px 12px"><div class="row between"><span class="eyebrow">${L('Conflicts in this run · before vs v2','本次仿真冲突数 · 原方案 vs v2')}</span><span class="mono small"><span style="color:var(--risk)" data-live="liveB">0</span> vs <span style="color:var(--accent)" data-live="liveA">0</span></span></div></div>`:''}
-    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Engine figures are model estimates on real CBD flows, not field-validated. Weather is illustrative.','引擎数字是在真实 CBD 车流上的模型估算，未经实地验证。天气为示意。')}</span><div id="copyFallback"></div></div>`;
+    <div class="cta"><div class="row" style="gap:8px"><button type="button" class="btn" id="copyBtn">${L('Copy playbook','复制处置手册')}</button><button type="button" class="btn ghost" id="swipeBtn" aria-pressed="${!$('#swipe').hidden}">${L('Swipe compare','滑动对比')}</button></div><span class="note">${L('Model estimates on real CBD flows · not field-validated','真实 CBD 车流上的模型估算 · 未经实地验证')}</span><div id="copyFallback"></div></div>`;
     $('#copyBtn').onclick=copyPlaybook;engRender4();$('#swipeBtn').onclick=()=>{const sw=$('#swipe');sw.hidden=!sw.hidden;S.swipe=sw.hidden?0:visibleMid();$('#swipeBtn').setAttribute('aria-pressed',String(!sw.hidden));};
   }
   updateLive(true);
@@ -2889,12 +2900,12 @@ function engInformed(s){const a=s.approaches&&s.approaches[s.main];if(!a)return 
 function engWhy(s){
   const l=((s.raw&&s.raw.links)||[]).find(x=>x.id===EP.link),inf=engInformed(s),st=esc(shortSt(EP.street)),ap=s.approaches&&s.approaches[s.main],out=[];
   // total flow still using the works section (after detours) against what fits past it: the gap is the queue
-  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h still use the works section, which passes ${fmtN(l.cap)} veh/h with ${EP.all?'all lanes':'one lane'} closed${over?' — the excess queues':' — enough, no queue there'}.`,`${st} 施工段仍有 ${fmtN(l.v)} 辆/时要过，封${EP.all?'全部车道':'一条道'}后只能过 ${fmtN(l.cap)} 辆/时${over?'，多出来的就排队':'，够用，这一段不排队'}。`));}
+  if(l&&l.cap>0&&l.v>0){const over=l.v>l.cap;out.push(L(`${st}: ${fmtN(l.v)} veh/h arrive, ${fmtN(l.cap)} veh/h get past${over?' → the rest queue':' → no queue'}.`,`${st}：来车 ${fmtN(l.v)} 辆/时，只能过 ${fmtN(l.cap)} 辆/时${over?' → 多出的排队':' → 不排队'}。`));}
   // full closure: nothing fits past the works (cap 0) — say where the queue comes from instead of dropping the line (T26 2.5)
-  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} is shut at the works: the ${vol}veh/h on the main approach have to detour${s.blocked_vph>0?`, and ${fmtN(s.blocked_vph)} veh/h have no way round`:''} — the queue builds on the streets they turn into.`,`${st} 施工段全封、过不去：主进口道 ${vol}辆/时只能绕行${s.blocked_vph>0?`，其中 ${fmtN(s.blocked_vph)} 辆/时无路可绕`:''} —— 排队出在它们拐进去的那几条街上。`));}
+  else if(EP.all||(l&&l.cap===0)){const vol=ap&&ap.volume>0?fmtN(ap.volume)+' ':'';out.push(L(`${st} fully closed: ${vol}veh/h must detour${s.blocked_vph>0?` (${fmtN(s.blocked_vph)} veh/h have no way round)`:''} → queues on the detour streets.`,`${st} 施工段全封：${vol}辆/时全部绕行${s.blocked_vph>0?`（${fmtN(s.blocked_vph)} 辆/时无路可绕）`:''} → 排队出在绕行的街上。`));}
   // inf = the share who read and understand the sign — not who obey it. Whether they turn is the route-choice model's call, and
   // how far drivers trust signs has no source yet (T12 sign_trust is null): an assumed value (D-0929-1536)
-  out.push(L(`${inf!=null?`About ${pctS(inf)} of drivers read and understand the sign. `:''}Whether they change route comes from the route-choice model's per-driver-type parameters (trust in signs is an assumed value) — this time ${pctS(s.detour_share)} detour.`,`${inf!=null?`约 ${pctS(inf)} 的司机读懂屏上的字；`:''}改不改道由路线选择模型按各类司机的参数算（对标志的信任度是假设值），这次 ${pctS(s.detour_share)} 绕行。`));
+  out.push(L(`${inf!=null?`${pctS(inf)} of drivers understand the sign · `:''}${pctS(s.detour_share)} detour (route-choice model; trust in signs is an assumed value).`,`${inf!=null?`${pctS(inf)} 的司机读懂屏上的字 · `:''}${pctS(s.detour_share)} 绕行（路线选择模型算；对标志的信任度是假设值）。`));
   return`<div class="eng-assume">${out.map(t=>`<p>${t}</p>`).join('')}</div>`;
 }
 const MODE_L={tram:['Tram','电车'],bus:['Bus','公交']};
@@ -2956,7 +2967,7 @@ function engPanel1(){
     <div class="row eng-zone"><i class="sw" style="background:var(--works)"></i><span class="grow"><b>${esc(EP.street||L('Unnamed road','无名道路'))}</b> · ${dirL(EP.dir)}</span></div>
     <div class="row between eng-wrap"><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div>
     <div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
-    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works-side footpath closed','施工侧人行道封闭')],['both',L('Both footpaths closed','两侧人行道都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
+    <div class="chips">${[['none',L('Footpath open','人行道照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div>
   <div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
     <div class="eng-vms"><textarea id="vmsF1" rows="4" spellcheck="false" aria-label="${L('VMS frame 1','屏幕第 1 帧')}" placeholder="${L('FRAME 1','第 1 帧')}">${esc(EP.f1)}</textarea><textarea id="vmsF2" rows="4" spellcheck="false" aria-label="${L('VMS frame 2','屏幕第 2 帧')}" placeholder="${L('FRAME 2 (optional)','第 2 帧（可空）')}">${esc(EP.f2)}</textarea></div>
@@ -2983,7 +2994,7 @@ function engBind1(){
 // Step 3, network tab: where the queue goes, who is hit and why (why = T5 reading, always set with textContent)
 function engTabs3(){
   if(!BE.api)return'';
-  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network ripple · engine','路网涟漪 · 引擎')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay · micro-sim','路口回放 · 微观仿真')}</button></div>`;
+  return`<div class="eng-seg" role="tablist" aria-label="${L('Impact view','影响视图')}"><button type="button" role="tab" data-tab3="net" aria-selected="${EP.tab3==='net'}">${L('Network','路网')}</button><button type="button" role="tab" data-tab3="micro" aria-selected="${EP.tab3==='micro'}">${L('Junction replay','路口回放')}</button></div>`;
 }
 function engBindTabs3(){document.querySelectorAll('#panel [data-tab3]').forEach(b=>b.onclick=()=>{EP.tab3=b.dataset.tab3;renderPanel();if(EP.tab3==='net')engFly(.7);else if(S.event)flyTo(S.event.x+16,S.event.y+2,Math.min(8,V.w/150),.7);});}
 function engHeadline(s){
@@ -3008,7 +3019,7 @@ function engPanel3(){
   <div class="stack"><h2>${engHeadline(s)}</h2><p class="muted small">${L(`${cap(dirL(EP.dir))} · weekday ${engHour(s.when.hour)} · real hourly flows on 1,513 CBD links. Every number below is recomputed by the engine.`,`${dirL(EP.dir)} · 工作日 ${engHour(s.when.hour)} · 1513 个 CBD 路段的真实逐时车流。下面每个数都是引擎现算的。`)}</p></div>
   ${engMetrics(s)}${engWhy(s)}${engBadges(f,s)}
   <div class="eng-legend"><span><i style="background:var(--risk)"></i>${L('Queue','排队')}</span><span><i style="background:var(--works)"></i>${L('Slower links','变慢的路段')}</span><span><i style="background:var(--accent)"></i>${L('Detours · width = share','绕行 · 线宽 = 占比')}</span></div>
-  <div class="stack"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
+  <div class="stack eng-where"><div class="row between"><span class="eyebrow">${L('Where drivers go','车往哪走')}</span><span class="eyebrow">${L('now vs usual','现在 vs 平时')}</span></div><div class="eng-routes">${routes}</div></div>
   <div class="stack"><div class="row between"><span class="eyebrow">${L('Who is hit · and why','谁受影响 · 为什么')}</span><span class="eyebrow">${L('per person','人均')}</span></div><div class="list eng-types">${types}</div>
     ${mix?`<p class="small muted">${L(`Road-user mix ${mixTxt} (%)${lowConf?' is an assumption — T12 confidence low; ranges shown per type.':'.'}`,`路人占比 ${mixTxt}（%）${lowConf?'是假设值 —— T12 置信度低，每类后面是区间。':'。'}`)}</p>`:''}</div>
   ${engTransit3(s)}${engPeds3(s)}
@@ -3025,7 +3036,7 @@ function engTransit3(s){
 }
 function engPeds3(s){
   if(!hasPeds(s))return'';const p=s.peds;
-  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="stack"><span class="eyebrow">${L('People on foot','行人')}</span><div class="card eng-note"><b>${L('Footpath stays open — close it in step 1 to see the detour','人行道照常通行 —— 在第 1 步把人行道封掉就能看到绕行')}</b></div></div>`;
+  if(p.footpath==='none'||!(p.closed||[]).length)return`<div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${L('Footpath open · no detour','人行道照常 · 不用绕')}</span></div>`;
   const sensorTxt=p.sensor?L(`nearest counter ${esc(p.sensor.name)}: ${fmtN(p.sensor.ped_h)}/h`,`最近的计数器 ${esc(p.sensor.name)}：每小时 ${fmtN(p.sensor.ped_h)} 人`):'';
   return`<div class="stack"><div class="row between"><span class="eyebrow">${L('People on foot','行人')}</span><span class="eyebrow">${p.measured?L('measured','实测'):L('estimated','估算')}</span></div>
   <div class="metrics"><div class="metric"><span class="eyebrow">${L('On the closed footpath','封闭段人流')}</span><div class="v">${fmtN(p.ped_h)}<small>${L('people/h','人/时')}</small></div></div>
@@ -3047,14 +3058,14 @@ function eng4HTML(){
   const n=a?a.options.length:0,rule=!a||a.src==='rule';
   let h=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${rule?L('Planning advisor · rules · engine-checked','规划顾问 · 规则 · 引擎复核'):L('AI planning advisor · engine-checked','AI 规划顾问 · 引擎复核')}</span><span class="eyebrow">${a?`${n} ${n===1?L('option','个改法'):L('options','个改法')}`:''}</span></div>`;
   if(!a)return h+`<div class="card eng-note"><b>${EP.advBusy?L('Trying alternatives across the works period…','正在把整个施工期的改法逐个试一遍…'):L('The advisor could not run','顾问没跑起来')}</b></div>`;
-  const kindL={text:L('Reword','改字'),move:L('Move','挪位置'),shift:L('Reschedule','错开日期')};
+  const kindL={text:L('Edit sign','改字'),move:L('Move sign','挪位置'),shift:L('Reschedule','错开日期')};
   const opts=a.options.map((o,i)=>{
     const what=o.kind==='text'&&o.frames?o.frames.map(f=>f.join(' / ')).join('  ▸  '):o.kind==='move'?`${esc(o.equipment||'')} → ${fmtN(o.at_m)} m ${L('upstream','上游')}`:o.kind==='shift'?`${o.days>0?'+':''}${fmtN(o.days)} ${L('days','天')}`:'';
     const d=Number(o.delta_min),hrs=Math.round(Math.abs(d)/60),gain=o.better&&Number.isFinite(d)&&a.flags.ok;
     return`<button type="button" class="eng-opt" data-opt="${i}" aria-pressed="${EP.pick===i}" ${o.plan&&!o.skipped?'':'disabled'}><span class="k">${kindL[o.kind]||esc(o.kind)}</span><span class="w"><b data-optwhy="${i}"></b><span class="mono">${esc(what)}</span></span><span class="d" style="color:${gain?'var(--accent)':'var(--fg-3)'}">${o.skipped?L('skipped','跳过'):!Number.isFinite(d)?'—':hrs===0?L('no change','没变化'):`${d<0?'−':'+'}${fmtN(hrs)} ${L('veh·h','车·时')}<small>${a.window.single_hour?L('this hour','这一小时'):L('whole works','全施工期')}</small>`}</span></button>`;}).join('');
   if(!a.flags.ok)h+=`<div class="card eng-note warn"><b>${L('Some sign readings are missing — savings below are not reliable','有读数没拿到 —— 下面的节省量不可信')}</b><span>${L(`missing ${a.flags.missing} · failed ${a.flags.failed}`,`缺 ${a.flags.missing} 条 · 失败 ${a.flags.failed} 条`)}</span></div>`;
   h+=`<div class="stack eng-opts">${opts||`<div class="card eng-note"><b>${L('No change beats this plan','没有比现在更好的改法')}</b><span>${L('The advisor tried rewording and moving the signs; none reduced total delay.','顾问试过改字和挪屏，都没让总延误变少。')}</span></div>`}</div>
-  <p class="eng-assume">${engWindowTxt(a.window)} ${L(`Advisor: ${a.src==='rule'?'rules (LLM advisor pending)':esc(a.src)}.`,`顾问：${a.src==='rule'?'规则（大模型顾问待接）':esc(a.src)}。`)}</p>`;
+  <p class="eng-assume eng-units">${engWindowTxt(a.window)}</p>`;
   const o=a.options[EP.pick];
   if(o){
     const c=EP.cmp;
@@ -3065,7 +3076,7 @@ function eng4HTML(){
       const B=c.before,A=c.after,D=c.delta,qa=Math.max(0,B.queue_m+D.queue_m),da=B.detour_share+D.detour_share;
       const row=(k,x,y,better)=>`<div><span class="muted">${k}</span><span class="o">${x}</span><span class="ar">→</span><span class="a" style="color:${better==null?'var(--fg)':better?'var(--accent)':'var(--works)'}">${y}</span></div>`; // better null = neither good nor bad
       h+=`<div class="table eng-table">${row(L('Extra per vehicle','每车多等'),`${fmtN(B.mean_delay_s)} s`,`${fmtN(A.mean_delay_s)} s`,D.mean_delay_s<=0)}${row(L(`Queue on ${esc(shortSt(D.street))}`,`${esc(shortSt(D.street))} 排队`),`${fmtN(B.queue_m)} m`,`${fmtN(qa)} m`,D.queue_m<=0)}${row(L('Drivers detouring','绕行的车'),pctS(B.detour_share),pctS(da),null)}${row(L('Network delay · veh·min this hour','全网延误 · 车·分钟（这一小时）'),fmtN(B.delay_min),fmtN(A.delay_min),D.delay_min<=0)}${hasTransit(B)&&hasTransit(A)?row(L('Tram & bus riders · rider·min','电车公交乘客 · 人·分钟'),fmtN(B.transit.pax_min),fmtN(A.transit.pax_min),A.transit.pax_min<=B.transit.pax_min):''}</div>
-      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is what the route-choice model predicts drivers do with the changed sign (trust in signs is an assumed value); if fewer follow it, the gain shrinks.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型按各类司机的参数推算他们看到改后的屏会怎么走（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
+      <p class="eng-assume">${L(`Detour ${pctS(B.detour_share)} → ${pctS(da)} is a route-choice model prediction (trust in signs is an assumed value); fewer followers, smaller gain.`,`绕行 ${pctS(B.detour_share)} → ${pctS(da)} 的前提：路线选择模型推算（对标志的信任度是假设值）；照做的人少，收益就小。`)}</p>
       ${D.main_changed?`<p class="small" style="color:var(--works)">${L(`After the change the worst street is ${esc(shortSt(A.street))}; the queue row still compares ${esc(shortSt(D.street))}.`,`改完以后最堵的换成了 ${esc(shortSt(A.street))}；排队那一行仍然比的是 ${esc(shortSt(D.street))}。`)}</p>`:''}
       ${engBadges(A.flags,A)}<button type="button" class="btn ghost" id="applyBtn">${L('Apply to my plan','用到我的方案上')}</button>`;
     }
@@ -3075,10 +3086,10 @@ function eng4HTML(){
 }
 // "−1,580 veh·h" is summed over every sampled hour of the works; the before/after table is one hour in veh·min (T20 addendum 3)
 function engWindowTxt(w){
-  if(!w||w.single_hour)return L('Savings are for this hour only, in vehicle-hours.','节省量只算这一小时，单位车·时。');
+  if(!w||w.single_hour)return L('Savings: this hour only (veh·h).','节省量只算这一小时（车·时）。');
   const days=Math.round((Date.parse(WORKS_TIME.to)-Date.parse(WORKS_TIME.from))/864e5)+1,per=w.whens%days?0:w.whens/days;
-  return per?L(`Savings are vehicle-hours over the whole works period: ${days} days × ${per} sampled hour${per===1?'':'s'} a day = ${w.whens} hours. The table below is one hour, in vehicle-minutes.`,`节省量是整个施工期的合计（车·时）：${days} 天 × 每天采样 ${per} 个小时 = ${w.whens} 小时。下面的对比表只算一小时，单位车·分钟。`)
-    :L(`Savings are vehicle-hours summed over ${w.whens} sampled hours of the works period. The table below is one hour, in vehicle-minutes.`,`节省量是施工期采样的 ${w.whens} 个小时合计（车·时）。下面的对比表只算一小时，单位车·分钟。`);
+  return per?L(`Savings: whole works, ${days} days × ${per} sampled h = ${w.whens} h (veh·h). Table below: one hour (veh·min).`,`节省量：全施工期 ${days} 天 × 每天采样 ${per} 小时 = ${w.whens} 小时（车·时）；下表只算一小时（车·分钟）。`)
+    :L(`Savings: ${w.whens} sampled hours of the works (veh·h). Table below: one hour (veh·min).`,`节省量：施工期采样的 ${w.whens} 个小时（车·时）；下表只算一小时（车·分钟）。`);
 }
 function engRender4(){
   cmpRender(); // T23: follows the advisor (8-compare.js)
@@ -3355,7 +3366,8 @@ function applyGlass(){
 }
 
 /* ---------- compact analysis panel ---------- */
-const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox'; // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
+const SEC_KEEP='textarea,input,select,.metrics,.eng-opts,#engOut,#eng4,#aiBox';
+const SEC_FOLD='#clashBox,.eng-where,#cmp4'; // brief mode opens these folded (09-30, tutor: fewer words) — the header says the gist, a tap opens them // #aiBox：AI 路人面板在简洁模式下也默认展开（演示要一眼看到）
 function compactPanel(){
   const P=document.getElementById('panel');if(!P)return;
   if(GL.obs)GL.obs.disconnect();
@@ -3370,7 +3382,7 @@ function compactPanel(){
     if(sec===tools||!sec.classList.contains('stack'))continue;
     const head=sec.firstElementChild;if(!head||!head.classList.contains('row')||!head.querySelector('.eyebrow')||sec.children.length<2)continue;
     const key=`${S.step}${tab}:${n++}`;
-    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280));
+    if(!GL.def.has(key+sec.childElementCount))GL.def.set(key+sec.childElementCount,!sec.matches(SEC_FOLD)&&(sec.matches(SEC_KEEP)||!!sec.querySelector(SEC_KEEP)||(n<=2&&sec.offsetHeight<=280)));
     const open=GL.open.has(key)?GL.open.get(key):(GL.mode==='full'||GL.def.get(key+sec.childElementCount));
     sec.classList.add('sec');sec.classList.toggle('sec-closed',!open);
     head.classList.add('sec-head');head.setAttribute('role','button');head.tabIndex=0;head.setAttribute('aria-expanded',String(open));
@@ -3475,7 +3487,7 @@ function clashHTML(){
   if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
   const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
   const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
-  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow"${r.flags.reliable&&r.cost>0?' style="color:var(--risk)"':''}>${r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`:L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
   <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
   const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable&&x.r.cost>0?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
   // Not reliable: negative delay (baseline over capacity, #58) or failed sign readings — never show a number
@@ -3503,7 +3515,8 @@ function clashBtnHTML(){
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;compactPanel();} // signature guard: same state → keep the DOM;
+  // the section fills in after the panel was laid out (async engine calls): let the brief / full folding see it (7-glass.js)
   const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
   a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }
@@ -3625,7 +3638,7 @@ function cmpLoad(){
 }
 // The engine's own link records carry len_m / name / lanes / tram, which is all pack.js reads
 function cmpLinks(ws){const net=engNet(),m=new Map();if(!net||!ws)return m;for(const id of ws.links||[]){const l=net.links.get(id);if(l)m.set(id,l);}return m;}
-function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Reword the VMS','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
+function cmpLabel(r){return r.kind==='kit'?L(r.label||r.tier,r.label_zh||r.label||r.tier):r.kind==='now'?L('Your plan','现在的方案'):r.kind==='text'?L('Edit the sign text','改屏上的字'):r.kind==='move'?L('Move the VMS','挪 VMS'):r.kind;}
 function cmpWhat(r){ // textContent only
   if(r.kind==='move')return(r.equipment||'VMS')+' → '+r.at_m+' m '+L('upstream','上游');
   const v=cmpVms(r.plan)||L('No VMS','没有 VMS');if(r.kind!=='kit')return v;
@@ -3691,13 +3704,16 @@ function cmpExplainRender(el){
     }
   });
   const lean=el.querySelector('[data-cmplean]'),decide=el.querySelector('[data-cmpdecide]');
-  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.textContent=row?L('Leaning toward ','倾向 ')+cmpLabel(row)+' · '+result.lean.why:'';}
+  // the pick in bold; its reason (model text, often long) only in Details mode (.cmp-lean-why, styles.css)
+  if(lean){const row=CP.rows.find(r=>r.id===result?.lean?.option);lean.replaceChildren();
+    if(row){const b=document.createElement('b'),w=document.createElement('span');b.textContent=L('Leaning toward ','倾向：')+cmpLabel(row);w.className='cmp-lean-why';w.textContent=' · '+result.lean.why;lean.append(b,w);}
+    const hd=el.querySelector('[data-cmphead]');if(hd)hd.textContent=row?L('Leaning: ','倾向：')+cmpLabel(row):engHour(EP.hour);} // the folded header says the pick
   if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
 }
 
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
-  const head=`<div class="between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div>`;
+  const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
   if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
   const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
@@ -3726,7 +3742,7 @@ function cmpHTML(){
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
   cmpUpdate();cmpExplainUpdate();
-  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);
+  const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
@@ -3840,13 +3856,14 @@ function aiPersonaHTML(t,p){
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
 // One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
-// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
-function aiTileHTML(t,p,sel){
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open.
+// adv false → no advice line (the panel says once, under the tiles, that none of them got any)
+function aiTileHTML(t,p,sel,adv){
   const nm=esc(aiWho(t)),r=p&&p.reading;
   const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
   const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
     :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
-    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span>${adv===false?'':`<span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`}`;
   const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
   return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
 }
@@ -3910,9 +3927,10 @@ function aiHTML(rd,st){
   const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
   const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
-  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+  const none=L('no route advice','没给路线建议'),noAdv=TYPES4.every(t=>!ps[t]||!ps[t].reading||aiAdvice(ps[t].reading)===none); // said once, not four times
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel,!noAdv)).join('')}</div>${noAdv?`<p class="ai-noadv">→ ${L('None of them was told which way to go','屏上没告诉任何人该走哪条路')}</p>`:''}
     ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
-    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
+    <p class="ai-note">${L(`The LLM only reads the signs · the engine computes every number · ${sel?'bar = reading, box = range · tap again to close':'tap a tile for details'}`,`大模型只读屏上的字 · 数字都由引擎算 · ${sel?'条 = 读数，框 = 区间 · 再点一次收起':'点方块看详情'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }

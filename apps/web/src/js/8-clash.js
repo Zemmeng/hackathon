@@ -44,7 +44,7 @@ function clashHTML(){
   if(!CL.other)return one(L('no other registered works overlap this plan’s dates.','登记表里没有和本方案同期的其他施工。'));
   const{o,ws,r}=CL.other,net=engNet(),l0=net&&net.links.get(ws.links[0]),street=esc(shortSt(l0&&l0.name||'')),title=esc(o.title);
   const U=L('veh·min','车·分钟'),hrs=r.hours.map(engHour).join(', '),days=r.overlap.days;
-  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow">${L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
+  const head=`<div class="row between"><span class="eyebrow">${L('Nearby works · clash check','附近施工 · 叠加检查')}</span><span class="eyebrow"${r.flags.reliable&&r.cost>0?' style="color:var(--risk)"':''}>${r.flags.reliable&&r.cost>0?`+${fmtN(r.cost)} ${U}`:L(`${days} day${days===1?'':'s'} overlap`,`重叠 ${days} 天`)}</span></div>
   <div class="card eng-note"><b>${title}</b><span class="small muted">${street?street+' · ':''}${r.overlap.from} → ${r.overlap.to}${CL.src==='seed'?L(' · demo register (offline)',' · 演示登记表（离线）'):''}</span></div>`;
   const more=CL.more.length?`<p class="small muted">${L('Also overlapping: ','同期还有：')}${CL.more.map(x=>`${esc(x.o.title)} (${x.r.flags.reliable&&x.r.cost>0?'+'+fmtN(x.r.cost):'≈ 0'} ${U})`).join(' · ')}</p>`:'';
   // Not reliable: negative delay (baseline over capacity, #58) or failed sign readings — never show a number
@@ -72,7 +72,8 @@ function clashBtnHTML(){
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;compactPanel();} // signature guard: same state → keep the DOM;
+  // the section fills in after the panel was laid out (async engine calls): let the brief / full folding see it (7-glass.js)
   const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
   a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }

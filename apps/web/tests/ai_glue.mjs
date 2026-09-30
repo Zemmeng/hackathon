@@ -79,6 +79,8 @@ ok(!/<img|<svg|onmouseover=1/.test(tile) && tile.includes('98<small>%</small>') 
 ok(tile.includes('class="metric ai-tile on"') && tile.includes('aria-expanded="true"') && tile.includes('data-aip="commuter"')
   && G.aiTileHTML('tourist', null, false).includes(' disabled') && G.aiTileHTML('delivery', { signs, src: 'error', reading: null }, false).includes('not persuaded'),
   '小方块：选中的有 .on / aria-expanded；没屏的点不了；没读成写一句');
+ok(!G.aiTileHTML('local', { src: 'llm', reading: { notice: .9, understand: .9, trust: .9 } }, false, false).includes('ai-tadv') && G.aiTileHTML('local', { src: 'llm', reading: { notice: .9, understand: .9, trust: .9 } }, false).includes('ai-tadv'),
+  '四类人都没拿到路线建议时，方块里不再各写一遍（adv=false），默认照写');
 
 // 4 下载的 JSON：只放白名单字段（反向：日志条目里多带的 header / token 不出现在文件里）
 const fake = 'sk' + '-' + 'Z'.repeat(24);

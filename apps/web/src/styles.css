@@ -455,6 +455,9 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .panel-hide{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--raised);color:var(--fg-2);display:none;place-items:center;cursor:pointer}
 .panel-hide:hover{color:var(--fg)}
 .panel.compact p.muted{display:none}
+/* Compact (the default view): numbers, actions and one-line assumptions. Source footnotes, each plan's AI write-up (it repeats
+   the numbers on the card) and the reason behind the advisor's pick are in Details (09-30, tutor: limit the words) */
+.panel.compact .legend-src,.panel.compact .cmp-explain,.panel.compact .cmp-lean-why,.panel.compact .eng-badges,.panel.compact .eng-impacts,.panel.compact .eng-units,.panel.compact .note-more{display:none}
 .panel.compact #copyFallback p.muted{display:block}
 .sec-head{cursor:pointer;border-radius:10px;margin:-4px -6px;padding:4px 6px;user-select:none}
 .sec-head:hover{background:var(--raised)}
@@ -505,7 +508,13 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
   .panel{position:fixed;z-index:5;top:var(--safe-t);right:12px;bottom:var(--safe-b);width:var(--panel-w);border-radius:26px;padding:16px 20px 20px;gap:16px;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s}
   .timeline{position:fixed;z-index:5;left:12px;right:12px;bottom:12px;height:88px;border-radius:24px;padding:0 18px}
   .panel-hide{display:grid}
-  .panel .cta{position:sticky;bottom:-20px;z-index:2;margin:auto -20px -20px;padding:12px 20px 20px;border-top:1px solid var(--shell-line);border-radius:0 0 26px 26px;background:color-mix(in srgb,var(--shell-solid) 86%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);box-shadow:0 -10px 24px -12px rgba(0,0,0,.45)}
+  /* the step's buttons float at the foot of the panel (09-30 ask): no band, no card, no orange — each button is one dark
+     liquid-glass pill like the weather chip (.glass). A second backdrop blur does not stack inside the refracting panel
+     (Chromium), so the frost is a near-solid tint + the chip's top-left highlight, lit rim and shadow */
+  .panel .cta{position:sticky;bottom:-8px;z-index:2;margin:auto -8px -8px;padding:10px 8px 8px;background:none;border:0;box-shadow:none}
+  .panel .cta .btn:not(:disabled){background:linear-gradient(150deg,var(--hl),transparent 40%,transparent 74%,var(--hl-2)),color-mix(in srgb,var(--shell-solid) 95%,transparent);color:var(--fg);border:1px solid var(--glass-line);border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,.28),var(--rim)}
+  .panel .cta .btn:not(:disabled):hover{filter:none;border-color:var(--line-2)}
+  .panel .cta .note{color:var(--fg-2);text-shadow:0 0 2px var(--shell-solid),0 0 6px var(--shell-solid),0 0 12px var(--shell-solid)}
   .app.no-time{--safe-b:24px}
   .app.panel-min{--safe-r:64px}
   .app.panel-min .panel{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s,visibility 0s .32s}
@@ -538,10 +547,10 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 
 /* ---------- fallbacks ---------- */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid)}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid)}
 }
 @media (prefers-reduced-transparency: reduce){
-  .top,.rail,.panel,.timeline,.panel-open,.glass,.panel .cta{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .top,.rail,.panel,.timeline,.panel-open,.glass{background:var(--shell-solid);-webkit-backdrop-filter:none;backdrop-filter:none}
   .card,.list,.metric,.agents3 div,.table,.pre{background:var(--shell-solid)}
 }
 @media (prefers-reduced-motion: reduce){
@@ -661,6 +670,8 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+.ai-note{margin:0;font-size:11px;line-height:1.4;color:var(--fg-3)}
+.ai-noadv{margin:0;font-size:12.5px;font-weight:600;color:var(--works)}
 /* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
 .ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
 .ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
