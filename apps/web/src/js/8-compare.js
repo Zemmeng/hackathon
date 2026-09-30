@@ -124,6 +124,21 @@ function cmpSameP(rows){
     rows.forEach((x,i)=>{if(i!==j&&ok(x)&&x.p===r.p&&x.hire<r.hire&&(of<0||x.hire<rows[of].hire))of=i;});
     return of<0?null:{of,extra:r.hire-rows[of].hire};});
 }
+// T50: rows → the SUMO options request [{ id, p }] (plans with a reading only), and the key a run is cached under: seed + each
+// id:p (same p and seed = the same SUMO run by construction, whatever else differs in the plan)
+function cmpSuAsk(rows){return(rows||[]).map(r=>({id:r&&r.id,p:r?cmpP(r.s):null})).filter(o=>o.id&&o.p!=null);}
+function cmpSuKey(ask,seed){return`${seed}|${(ask||[]).map(o=>o.id+':'+o.p).join(',')}`;}
+// T50 (lead): the guided kit (o3: one VMS naming the fastest detour) next to the standard kit (o2: two VMS reporting the delay) —
+// when it costs less yet moves more drivers off the works route (p, the engine's sign reading) → on its column
+// { of: o2's index, save: A$ less, fewer: VMS fewer }, else null. A neutral note, not a verdict; works hours only
+function cmpLeaner(rows){
+  const out=(rows||[]).map(()=>null),iB=out.length?rows.findIndex(r=>r&&r.tier==='o2'):-1,iC=out.length?rows.findIndex(r=>r&&r.tier==='o3'):-1;
+  if(iB<0||iC<0)return out;
+  const B=rows[iB],C=rows[iC],pB=cmpP(B.s),pC=cmpP(C.s),off=r=>!!(r.flags&&r.flags.inactive);
+  if(!Number.isFinite(B.hire)||!Number.isFinite(C.hire)||!(C.hire<B.hire)||pB==null||pC==null||!(pC>pB)||off(B)||off(C))return out;
+  out[iC]={of:iB,save:B.hire-C.hire,fewer:Math.max(0,cmpKit(B.plan).vms-cmpKit(C.plan).vms)};
+  return out;
+}
 // be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
 function cmpFromOptions(res){
   return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
@@ -198,6 +213,14 @@ function cmpWhat(r){ // textContent only
   return v+' · '+[[k.vms,'VMS','VMS','VMS'],[k.barrier,'barrier','barriers','护栏'],[k.sign,'sign','signs','标志牌'],[k.arrow,'arrow board','arrow boards','箭头板']].filter(x=>x[0]>0).map(x=>x[0]+' '+L(x[0]===1?x[1]:x[2],x[3])).join(' · ');
 }
 
+// T50: be.options() for a plan, shared by 04 (cmpUpdate) and the step-2 prefetch (cmpPrefetch), so the plans are built once.
+// The latest plan only; a failure is not kept (the next call builds again)
+const CPO={key:'',p:null};
+function cmpOptions(plan){
+  const key=JSON.stringify(plan);
+  if(CPO.key!==key||!CPO.p){const p=Promise.resolve().then(()=>BE.api.options(plan,{n:CMP_MAX}));CPO.key=key;CPO.p=p;p.catch(()=>{if(CPO.p===p){CPO.key='';CPO.p=null;}});}
+  return CPO.p;
+}
 async function cmpUpdate(){
   if(!engOn()||EP.badText)return;
   const plan=planFrom(EP),kits=typeof BE.api.options==='function';
@@ -206,7 +229,7 @@ async function cmpUpdate(){
   if(key===CP.key)return;
   CP.key=key;CP.rows=[];CP.pick=null;CP.busy=true;const seq=++CP.seq;
   let rows=null,src='';
-  if(kits){try{rows=cmpFromOptions(await BE.api.options(plan,{n:CMP_MAX}));src='kits';}catch(e){console.warn('compare: options() failed, using the advisor instead',e);}}
+  if(kits){try{rows=cmpFromOptions(await cmpOptions(plan));src='kits';}catch(e){console.warn('compare: options() failed, using the advisor instead',e);}}
   if(!rows||!rows.length){
     if(!EP.adv){if(seq===CP.seq){CP.key='';CP.busy=false;}return;} // retried when the advisor lands (engRender4 → cmpRender)
     rows=[];src='advisor';
@@ -319,33 +342,74 @@ function cmpExplainRender(el){
 // ---- T49 (lead D-0930): 04 / 05 traffic numbers on the SUMO plan come from SUMO ----
 // Each option's p (cmpP: the engine's sign reading, behind the scenes) → the SUMO client's runOptions([{ id, p }…], { seed })
 // (sumo-client.js, T49-a; loaded by 5-app.js sumoClient(), feature-detected). Missing, failing or empty → '—' + the reason,
-// never engine numbers. CP.su = { key, busy, t0, res: { id: metrics | null } | null, err, src: { source, elapsedMs, why (the client's reason, labelled), seed, hour }, tick }
+// never engine numbers. CP.su = { key, busy, t0, job, res: { id: metrics | null } | null, err, src: { source, elapsedMs, why (the client's reason, labelled), seed, hour }, tick }
+// T50: runs go through CSU (below), shared with the prefetch that starts right after step 2's live run — 04 joins it
+const CSU=new Map(),CSU_MAX=8;
+// T50: the SUMO options run for ask + seed, one per cmpSuKey: started once, joined by whoever asks next (04, the step-2
+// prefetch, a second visit). job = { key, t0 (asked), wait (queued in sumoLane behind another cloud run — never two at once
+// from this page), t1 (its cloud call began), p: Promise<out>, out: { r } | { fail: 'load' | 'fn' | 'run', why } once settled }.
+// Only a run that gave results stays cached (the newest CSU_MAX); a failure is dropped, so "Try again" really runs again
+function cmpSuJob(ask,seed){
+  const key=cmpSuKey(ask,seed),hit=CSU.get(key);if(hit)return hit;
+  const job={key,t0:Date.now(),t1:0,wait:false,out:null,p:null};CSU.set(key,job);
+  while(CSU.size>CSU_MAX)CSU.delete(CSU.keys().next().value);
+  const why=e=>typeof sumoErr==='function'?sumoErr(e):String((e&&e.message)||e).slice(0,160); // plain text: esc() when shown (cmpSuRows)
+  const ping=()=>{if(CP.su&&CP.su.job===job&&typeof cmpRender==='function')cmpRender();}; // queued → computing: the spinner's words change
+  job.p=(async()=>{
+    let fn=null;
+    try{const cli=typeof sumoClient==='function'?await sumoClient():null,mod=typeof SU==='object'&&SU?SU.mod:null;
+      fn=cli&&typeof cli.runOptions==='function'?cli.runOptions.bind(cli):mod&&typeof mod.runOptions==='function'?mod.runOptions:null;}
+    catch(e){return{fail:'load',why:why(e)};}
+    if(!fn)return{fail:'fn'};
+    const go=()=>{job.wait=false;job.t1=Date.now();ping();return fn(ask,{seed});};
+    try{if(typeof sumoLane!=='function')return{r:await go()};job.wait=true;const run=sumoLane(go);ping();return{r:await run};} // lane free → go() runs before the next paint
+    catch(e){job.wait=false;return{fail:'run',why:why(e)};}
+  })().then(out=>{job.out=out;if(!(out.r&&Object.values(cmpSuParse(out.r,ask.map(o=>o.id))).some(Boolean))&&CSU.get(key)===job)CSU.delete(key);return out;});
+  return job;
+}
+// T50: right after step 2's live SUMO run (sumoRerun in 5-app.js, seed = that run's), build 04's plans exactly as 04 does
+// (cmpOptions → cmpFromOptions → cmpP) and start their options run in the background; nothing is rendered. 04 then finds it
+// in CSU: finished → shown at once, still running → joined. Off the SUMO plan / no options() / plan or seed changed while the
+// plans were built → nothing. → the job, or null
+async function cmpPrefetch(seed){
+  try{
+    if(!suPlan()||!engOn()||EP.badText||!BE.api||typeof BE.api.options!=='function')return null;
+    const plan=planFrom(EP),key=JSON.stringify(plan),sd=Number.isFinite(seed)?seed:typeof SU==='object'&&SU?SU.seed:42;
+    const rows=cmpFromOptions(await cmpOptions(plan));
+    if(!suPlan()||JSON.stringify(planFrom(EP))!==key||(typeof SU==='object'&&SU&&SU.seed!==sd)||rows.length<2)return null;
+    const ask=cmpSuAsk(rows);
+    return ask.length?cmpSuJob(ask,sd):null;
+  }catch(e){console.info('04 prefetch skipped:',(e&&e.message)||e);return null;}
+}
+// seconds the spinner shows: since the cloud call began, or since it was asked while it waits / the client loads
+function cmpSuEl(su){const j=su&&su.job,t=j?(j.t1||j.t0):su&&su.t0;return Math.max(0,Math.round((Date.now()-(t||Date.now()))/1000));}
 async function cmpSuUpdate(){
   if(!suPlan()||(S.ui!==4&&S.ui!==5)||CP.busy||CP.rows.length<2||!engOn()||EP.badText)return;
   const ps=CP.rows.map(r=>cmpP(r.s)),seed=typeof SU==='object'&&SU?SU.seed:42,key=`${CP.key}|${ps.join(',')}|${seed}`;
   if(CP.su&&CP.su.key===key)return;
   if(CP.su&&CP.su.tick)clearInterval(CP.su.tick);
-  const st=CP.su={key,busy:true,t0:Date.now(),res:null,err:null,src:null,tick:0},alive=()=>CP.su===st;
-  const ask=CP.rows.map((r,i)=>({id:r.id,p:ps[i]})).filter(o=>o.p!=null);
+  const st=CP.su={key,busy:true,t0:Date.now(),job:null,res:null,err:null,src:null,tick:0},alive=()=>CP.su===st;
+  const ask=cmpSuAsk(CP.rows);
   const done=err=>{if(!alive())return;st.busy=false;if(err)st.err=err;clearInterval(st.tick);st.tick=0;cmpRender();};
   if(!ask.length)return done(L('the engine read no sign for these plans, so SUMO has no input','引擎没读出这几套方案的牌，SUMO 没有输入'));
+  const fin=out=>{
+    if(!alive())return;
+    if(out.fail==='load')return done(L(`the SUMO client did not load (${out.why})`,`SUMO 客户端没加载上（${out.why}）`));
+    if(out.fail==='fn')return done(L('this SUMO client has no runOptions yet — the options run is not deployed','这个版本的 SUMO 客户端还没有 runOptions —— 多方案计算还没上线'));
+    if(out.fail)return done(L(`the SUMO options run failed (${out.why})`,`SUMO 多方案计算失败（${out.why}）`));
+    const r=out.r,res=cmpSuParse(r,ask.map(o=>o.id)),ix=r&&r.index&&typeof r.index==='object'?r.index:{},rs=r&&r.reason?String(typeof sumoReason==='function'?sumoReason(r.reason):r.reason):'';
+    st.src={source:r&&r.source||'',elapsedMs:r&&r.elapsedMs,why:rs,seed:Number.isFinite(+ix.seed)?+ix.seed:seed,hour:Number.isFinite(+ix.hour)?+ix.hour:null};
+    if(!Object.values(res).some(Boolean))return done(rs?L(`SUMO gave no result for these plans (${rs})`,`SUMO 没给出这几套方案的结果（${rs}）`):L('SUMO gave no result for these plans','SUMO 没给出这几套方案的结果'));
+    st.res=res;done(null);
+  };
+  // T50: the run the step-2 prefetch (or an earlier visit) started is joined — finished: shown at once, no spinner;
+  // still running: the spinner goes on from its elapsed time; waiting behind step 2's run: says so
+  const job=st.job=cmpSuJob(ask,seed);
+  if(job.out)return fin(job.out);
   // the seconds tick in place (the table itself is not rebuilt every second)
-  st.tick=setInterval(()=>{if(!alive()||!st.busy){clearInterval(st.tick);return;}const e=document.querySelector('[data-cmpsuel]');if(e)e.textContent=String(Math.round((Date.now()-st.t0)/1000));},1000);
+  st.tick=setInterval(()=>{if(!alive()||!st.busy){clearInterval(st.tick);return;}const e=document.querySelector('[data-cmpsuel]');if(e)e.textContent=String(cmpSuEl(st));},1000);
   cmpRender();
-  const why=e=>typeof sumoErr==='function'?sumoErr(e):String((e&&e.message)||e).slice(0,160); // plain text: esc() when shown (cmpSuRows)
-  let fn=null;
-  try{const cli=typeof sumoClient==='function'?await sumoClient():null,mod=typeof SU==='object'&&SU?SU.mod:null;
-    fn=cli&&typeof cli.runOptions==='function'?cli.runOptions.bind(cli):mod&&typeof mod.runOptions==='function'?mod.runOptions:null;}
-  catch(e){return done(L(`the SUMO client did not load (${why(e)})`,`SUMO 客户端没加载上（${why(e)}）`));}
-  if(!alive())return;
-  if(!fn)return done(L('this SUMO client has no runOptions yet — the options run is not deployed','这个版本的 SUMO 客户端还没有 runOptions —— 多方案计算还没上线'));
-  let r;
-  try{r=await fn(ask,{seed});}catch(e){return done(L(`the SUMO options run failed (${why(e)})`,`SUMO 多方案计算失败（${why(e)}）`));}
-  if(!alive())return;
-  const res=cmpSuParse(r,ask.map(o=>o.id)),ix=r&&r.index&&typeof r.index==='object'?r.index:{},rs=r&&r.reason?String(typeof sumoReason==='function'?sumoReason(r.reason):r.reason):'';
-  st.src={source:r&&r.source||'',elapsedMs:r&&r.elapsedMs,why:rs,seed:Number.isFinite(+ix.seed)?+ix.seed:seed,hour:Number.isFinite(+ix.hour)?+ix.hour:null};
-  if(!Object.values(res).some(Boolean))return done(rs?L(`SUMO gave no result for these plans (${rs})`,`SUMO 没给出这几套方案的结果（${rs}）`):L('SUMO gave no result for these plans','SUMO 没给出这几套方案的结果'));
-  st.res=res;done(null);
+  fin(await job.p);
 }
 // cmpSuNums per row (null = no SUMO number for that column yet)
 function cmpSuAll(){const su=CP.su,res=su&&su.res;return CP.rows.map(r=>res?cmpSuNums(res[r.id]):null);}
@@ -368,7 +432,9 @@ function cmpSuRows(rc){
     [L('Extra per vehicle through the works','过施工段每车多花'),L('s vs no works','秒 · 比不施工'),'ex',x=>x.ex,null],
     [L('Total extra delay in the SUMO area','SUMO 范围内总延误增量'),L('veh·min','车·分钟'),'tot',x=>x.tot,x=>x.totEst?L('≈ mean × vehicles','≈ 平均 × 车数'):''],
     [L('Detoured vehicles','绕行的车'),L('vehicles · this run','辆 · 本次'),'',x=>x.dv,null]];
-  if(su&&su.busy)h+=`<tr class="cmp-su-wait"><td colspan="${n+1}"><div class="sumo-wait" role="status"><span class="spin" aria-hidden="true"></span><span>${L('SUMO computing the options in the cloud','SUMO 正在云端计算这几套方案')} · <span data-cmpsuel>${Math.round((Date.now()-su.t0)/1000)}</span> s ${L('(about 1 min)','（约 1 分钟）')}</span></div></td></tr>`;
+  // T50: queued behind another cloud run (one at a time from this page) → says whose, then these plans
+  const q=su&&su.busy&&su.job&&su.job.wait,s2=typeof SU==='object'&&SU&&SU.busy;
+  if(su&&su.busy)h+=`<tr class="cmp-su-wait"><td colspan="${n+1}"><div class="sumo-wait" role="status"><span class="spin" aria-hidden="true"></span><span>${q?(s2?L('Waiting for step 2’s SUMO run to finish, then these plans','等第 2 步的 SUMO 算完，再算这几套方案'):L('Waiting for the previous SUMO run to finish, then these plans','等上一次 SUMO 计算结束，再算这几套方案'))+` · <span data-cmpsuel>${cmpSuEl(su)}</span> s ${L('(one cloud run at a time)','（云端一次只算一个）')}`:`${L('SUMO computing the options in the cloud','SUMO 正在云端计算这几套方案')} · <span data-cmpsuel>${cmpSuEl(su)}</span> s ${L('(about 1 min)','（约 1 分钟）')}`}</span></div></td></tr>`;
   else{
     h+=M.map(([lab,unit,k,g,note])=>tr(lab,unit,CP.rows.map((r,i)=>{const x=sn[i],v=x?g(x):null,t=x&&note?note(x):'';
       return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${t?`<small class="cmp-u">${t}</small>`:''}${v!=null&&lo(k,i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join(''))).join('');
@@ -408,10 +474,16 @@ function cmpHTML(){
   const days=CP.rows[0].days,dup=cmpSameAs(CP.rows),dupL=d=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);return L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`);};
   // T49: on the SUMO plan the same p means the same SUMO run by construction — say the models can't value the extra kit (the arrow
   // board, when that is what it adds), not that the money is wasted
+  // T50: the guided kit next to the standard one — one VMS fewer, cheaper, more drivers detour: a neutral note on its column
+  const lean2=cmpLeaner(CP.rows),leanL=d=>{const b=String.fromCharCode(65+d.of),amt=fmtN(d.save),n=d.fewer;
+    return n===1?L(`One VMS fewer than ${b}, A$${amt} cheaper · just better wording`,`比 ${b} 少一块 VMS、便宜 A$${amt} · 只靠写对屏上的字`)
+      :n>1?L(`${n} VMS fewer than ${b}, A$${amt} cheaper · just better wording`,`比 ${b} 少 ${n} 块 VMS、便宜 A$${amt} · 只靠写对屏上的字`)
+      :L(`A$${amt} cheaper than ${b} · just better wording`,`比 ${b} 便宜 A$${amt} · 只靠写对屏上的字`);};
   const dupP=su?cmpSameP(CP.rows.map(r=>({p:cmpP(r.s),hire:r.hire,flags:r.flags}))):null,dupS=(d,i)=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);
-    return cmpKit(CP.rows[i].plan).arrow>cmpKit(CP.rows[d.of].plan).arrow?L(`Same traffic effect as ${a} · models don't value the arrow board's safety role · +A$${amt}`,`交通效果和 ${a} 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}`)
+    const kx=cmpKit(CP.rows[i].plan),ko=cmpKit(CP.rows[d.of].plan); // T50: the arrow-board wording only when that is all it adds (B also adds two VMS)
+    return kx.arrow>ko.arrow&&kx.vms<=ko.vms&&kx.sign<=ko.sign?L(`Same traffic effect as ${a} · models don't value the arrow board's safety role · +A$${amt}`,`交通效果和 ${a} 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}`)
       :L(`Same traffic effect as ${a} · models don't value the extra equipment's safety role · +A$${amt}`,`交通效果和 ${a} 相同 · 模型不评价多出来的设备的安全作用 · 多 A$${amt}`);};
-  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${su?dupP[i]?`<i class="cmp-dup" data-eq>${dupS(dupP[i],i)}</i>`:'':dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${su?dupP[i]?`<i class="cmp-dup" data-eq>${dupS(dupP[i],i)}</i>`:'':dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${lean2[i]?`<i class="cmp-dup" data-eq data-lean>${leanL(lean2[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
     ${su?cmpSuRows(rc):mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
     ${cmpClashRow(rc)}
     <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
@@ -420,7 +492,7 @@ function cmpHTML(){
   </tbody></table><div class="cmp-cap">${su?L(`Traffic ${engHour(cmpSuHour())}–${engHour(cmpSuHour()+1)} weekday · SUMO on the real CBD network around the works${cmpSuSrc()?` · ${cmpSuSrc()}`:''} · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(cmpSuHour())}–${engHour(cmpSuHour()+1)} 工作日 · SUMO 在施工附近的真实 CBD 路网上算${cmpSuSrc()?` · ${cmpSuSrc()}`:''} · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)
     :L(`Traffic ${engHour(EP.hour)}–${engHour(EP.hour+1)} · engine estimate on real CBD flows · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(EP.hour)}–${engHour(EP.hour+1)} · 引擎估算 · 真实 CBD 车流 · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)}</div></div>`;
   if(exp&&!(CP.pick!=null&&CP.rows[CP.pick]))return head+`<div class="card eng-note"><b>${L('Choose a plan first','先选一套方案')}</b><span>${L('Pick one in 04 Compare, or here:','在 04 比较方案里选，或者直接在这里选：')}</span></div><div class="chips">${CP.rows.map((x,i)=>`<button type="button" data-cmppick="${i}" aria-pressed="false">${String.fromCharCode(65+i)} · ${esc(cmpLabel(x))}</button>`).join('')}</div><p class="cmp-lean" data-cmplean></p>`;
-  const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
+  const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory — cheapest (barriers and signs, no VMS) / standard (+ arrow board, two VMS giving the delay) / guided (+ arrow board, one VMS naming the fastest detour). ','方案：引擎 T22 按 RPM 库存配的三套 —— 最省（护栏 + 标志牌，没有 VMS）/ 标准（+ 箭头板、两块 VMS 报要堵几分钟）/ 引导（+ 箭头板、一块 VMS 点名最快的绕行）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
   let h=head+`${exp?`<div class="cmp-cards">${cardsA[CP.pick]}</div>`:table}<p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
     <p class="legend-src">${planNote}${su?L('Traffic numbers: SUMO, on the real CBD network around the works (cars only). The engine works behind the scenes: it only reads each plan’s signs into the share of drivers who detour, which is SUMO’s input. Trams, buses, pedestrians and the rest of the CBD are not covered by SUMO. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.','交通数字：SUMO 在施工附近的真实 CBD 路网上算（只有小汽车）。引擎退到幕后：只把每套方案的牌读成「会绕行的司机」比例，作为 SUMO 的输入。电车公交、行人和 CBD 其他地方 SUMO 暂不覆盖。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。')
       :L(`Car, tram & bus and on-foot numbers: engine estimate, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎估算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;

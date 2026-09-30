@@ -283,8 +283,9 @@ check("T49：SUMO 方案的判断和 5-app.js 的 sumoImpactHTML 同一口径（
       "function suPlan(){return typeof SUMO_LINK==='string'&&EP.link===SUMO_LINK&&!EP.all&&EP.lanes===1;}" in CMP
       and "if(EP.link!==SUMO_LINK||EP.all||EP.lanes!==1)return'';" in app_js)
 check("T49：04 用 sumo-client.js 的 runOptions（经 5-app.js 的 sumoClient() 加载、按有没有这个方法判断），p 来自引擎读牌、带上 SU.seed；不另 import",
-      "await sumoClient()" in CMP and "typeof cli.runOptions==='function'" in CMP and "r=await fn(ask,{seed})" in CMP
-      and "ask=CP.rows.map((r,i)=>({id:r.id,p:ps[i]}))" in CMP and "cmpUpdate();cmpExplainUpdate();cmpClashUpdate();cmpSuUpdate();" in CMP)
+      "await sumoClient()" in CMP and "typeof cli.runOptions==='function'" in CMP and "return fn(ask,{seed});" in CMP  # T50：经 cmpSuJob（缓存 + sumoLane）
+      and "const ask=cmpSuAsk(CP.rows);" in CMP and "function cmpSuAsk(rows){return(rows||[]).map(r=>({id:r&&r.id,p:r?cmpP(r.s):null}))" in CMP
+      and "cmpUpdate();cmpExplainUpdate();cmpClashUpdate();cmpSuUpdate();" in CMP)
 check("T49：没有 runOptions / 失败 → 写原因（中英成对），不拿引擎的数顶上；报错文字进 HTML 前过 esc()",
       "this SUMO client has no runOptions yet" in CMP and "SUMO 客户端还没有 runOptions" in CMP and "${esc(su.err)}" in CMP and "${esc(s.why)}" in CMP)
 check("T49：SUMO 方案 04 表的交通几行换成 cmpSuRows（会绕行的司机 / 09:00 排队 / 每车 / 总延误 / 绕行车数 / 电车公交、行人 SUMO 暂不覆盖）",

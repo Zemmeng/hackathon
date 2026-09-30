@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,cmpClashOther,cmpClashWhen,cmpWin,cmpP,cmpSuParse,cmpSuNums,cmpSameP,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, cmpClashOther, cmpClashWhen, cmpWin, cmpP, cmpSuParse, cmpSuNums, cmpSameP, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,cmpClashOther,cmpClashWhen,cmpWin,cmpP,cmpSuParse,cmpSuNums,cmpSameP,cmpSuAsk,cmpSuKey,cmpLeaner,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, cmpClashOther, cmpClashWhen, cmpWin, cmpP, cmpSuParse, cmpSuNums, cmpSameP, cmpSuAsk, cmpSuKey, cmpLeaner, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -136,10 +136,10 @@ if (typeof be.options !== 'function') {
   const kn = kits.map(k => cmpNumbers(k.s));
   ok(kn.every(n => n.transit !== null && n.peds !== null), 'options() 的结果里电车公交、行人也有数');
 
-  // T43：真路网 Lonsdale 08:00 —— 最省那套没有 VMS，标准那套的 VMS 只写 ROADWORK / AHEAD：结果一样、多花钱
+  // T43 → T50：原来标准那套的 VMS 只写 ROADWORK / AHEAD、结果和最省一样；现在标准档两块 VMS 报延误（T5 读得出分钟数），三套结果各不相同
   const sa = cmpSameAs(kits);
-  ok(sa[0] === null && sa[1] && sa[1].of === 0 && sa[1].extra === kits[1].hire - kits[0].hire && sa[2] === null,
-    `T43：B 标「结果和 A 一样 · 多花 A$${kits[1] && kits[0] ? kits[1].hire - kits[0].hire : '?'}」，A、C 不标`);
+  ok(sa.every(x => x === null) && kits[1].s.delay_min !== kits[0].s.delay_min && kits[0].hire < kits[2].hire && kits[2].hire < kits[1].hire,
+    `T50：A、B 结果不再一样（全网 ${Math.round(kits[0].s.delay_min)} / ${Math.round(kits[1].s.delay_min)} 车·分钟），谁都不标「结果和 A 一样」；租金 A < C < B（A$${kits.map(k => k.hire).join(' / ')}）`);
   // T43：对比表「和附近施工叠加」逐套算，和 03 页（表单里的方案）同一处施工、同一口径
   const wsUrl = APPS + 'api/public/js/worksites.js';
   if (!existsSync(wsUrl)) console.log('⏭ 跳过叠加一段：没有 apps/api 的 worksites.js');
@@ -154,7 +154,7 @@ if (typeof be.options !== 'function') {
     if (other) {
       const cells = [];
       for (const k of kits) cells.push((await be.clash(k.plan.worksites[0], other.ws)).cost);
-      ok(cells[0] === other.r.cost && cells[1] === other.r.cost, `默认文案：03 页叠加 +${other.r.cost}，对比表 A、B 两格一样（${cells.join(' / ')}）`);
+      ok(cells[0] === other.r.cost && cells[1] !== other.r.cost, `默认文案：03 页叠加 +${other.r.cost}，对比表 A 格一样；B 报延误（T50）叠加不同（${cells.join(' / ')}）`);
       const cf = kits[2].plan.worksites[0].equipment.find(e => e.type === 'vms').frames;
       const curC = planFrom({ ...EP, f1: cf[0].join('\n'), f2: (cf[1] || []).join('\n') }).worksites[0];
       const rc = await be.clash(curC, other.ws);
@@ -283,6 +283,16 @@ if (typeof be.options !== 'function') {
   const sp = cmpSameP([{ p: 0.14, hire: 515 }, { p: 0.14, hire: 1765 }, { p: 0.605, hire: 1765 }]);
   ok(sp[0] === null && sp[1] && sp[1].of === 0 && sp[1].extra === 1765 - 515 && sp[2] === null, 'T49 p 一样 = SUMO 结果一样（按构造）→ 贵的那套对照便宜的、记差价');
   ok(cmpSameP([{ p: 0.14, hire: 515, flags: { inactive: true } }, { p: 0.14, hire: 900, flags: { inactive: true } }]).every(x => x === null) && cmpSameP([{ p: null, hire: 1 }, { p: null, hire: 2 }]).every(x => x === null), 'T49 不施工 / 没读数 → 不标');
+  // T50 纯函数：SUMO 请求 + 缓存键；C 比 B 少一块 VMS、更便宜、绕行更多 → C 列一条中性说明
+  const K = (tier, stay, hire, vms, flags = {}) => ({ id: { o1: 'A', o2: 'B', o3: 'C' }[tier], tier, s: { routes: [{ id: 'stay', share: stay }] }, hire, flags, plan: { worksites: [{ equipment: Array.from({ length: vms }, () => ({ type: 'vms' })) }] } });
+  const kk = [K('o1', 0.86, 515, 0), K('o2', 0.508, 2515, 2), K('o3', 0.395, 1765, 1)];
+  ok(JSON.stringify(cmpSuAsk(kk)) === '[{"id":"A","p":0.14},{"id":"B","p":0.492},{"id":"C","p":0.605}]' && cmpSuAsk([{ id: 'A', s: null }]).length === 0 && cmpSuKey(cmpSuAsk(kk), 42) === '42|A:0.14,B:0.492,C:0.605' && cmpSuKey(cmpSuAsk(kk), 7) !== cmpSuKey(cmpSuAsk(kk), 42),
+    'T50 cmpSuAsk → [{id, p}]（没读数的不问）；缓存键 = 种子 + 每套 id:p（种子变了键就变）');
+  const le = cmpLeaner(kk);
+  ok(le[0] === null && le[1] === null && le[2] && le[2].of === 1 && le[2].save === 750 && le[2].fewer === 1, 'T50 C 比 B 便宜 A$750、少一块 VMS、绕行更多 → 只在 C 列标');
+  ok(cmpLeaner([kk[0], kk[1], K('o3', 0.508, 1765, 1)]).every(x => x === null) && cmpLeaner([kk[0], kk[1], K('o3', 0.395, 2515, 1)]).every(x => x === null)
+    && cmpLeaner([kk[0], kk[1], K('o3', 0.395, 1765, 1, { inactive: true })]).every(x => x === null) && cmpLeaner([kk[0], kk[2]]).every(x => x === null) && cmpLeaner(null).length === 0,
+    'T50 反向：C 绕行不比 B 多 / 不比 B 便宜 / 不施工 / 没有 B → 不标');
   ok(cmpWin(3, 2, false) === '3 days × 2 peak hours' && cmpWin(1, 1, false) === '1 day × 1 peak hour' && cmpWin(3, 2, true) === '3 天 × 2 个高峰小时' && cmpWin(0, 2, false) === '', 'T49 叠加的窗口写成「3 days × 2 peak hours」（别的行是一小时）；错开后不重叠 → 空');
 
   // 5b 真路网 + 页面真的 04 / 03 代码
@@ -320,9 +330,9 @@ if (typeof be.options !== 'function') {
   ok(/SUMO computing the options in the cloud · <span data-cmpsuel>\d+<\/span> s \(about 1 min\)/.test(busyHtml) && busyHtml.includes('class="spin"') && !leaks(busyHtml).length,
     `T49 SUMO 在算时：表里一行转圈「SUMO computing the options in the cloud · X s (about 1 min)」，没有引擎数${leaks(busyHtml).length ? '（漏了 ' + leaks(busyHtml) + '）' : ''}`);
   const pRow = /Drivers who detour \(AI sign reading\)[\s\S]*?<\/tr>/.exec(busyHtml);
-  ok(pRow && (pRow[0].match(/>14%</g) || []).length === 2 && pRow[0].includes('>61%<') && pRow[0].includes('SUMO’s input'), `T49 「AI 读牌 → 会绕行的司机」一行：引擎读牌得到的 p（14% / 14% / 61%），标明是 SUMO 的输入`);
+  ok(pRow && pRow[0].includes('>14%<') && pRow[0].includes('>49%<') && pRow[0].includes('>61%<') && pRow[0].includes('SUMO’s input'), `T49 / T50 「AI 读牌 → 会绕行的司机」一行：引擎读牌得到的 p（14% / 49% / 61%），标明是 SUMO 的输入`);
   release(); await pend;
-  ok(calls.length === 1 && JSON.stringify(calls[0].opts) === JSON.stringify([{ id: 'A', p: 0.14 }, { id: 'B', p: 0.14 }, { id: 'C', p: cmpP(kits5[2].s) }]) && calls[0].params.seed === 42,
+  ok(calls.length === 1 && JSON.stringify(calls[0].opts) === JSON.stringify([{ id: 'A', p: 0.14 }, { id: 'B', p: cmpP(kits5[1].s) }, { id: 'C', p: cmpP(kits5[2].s) }]) && calls[0].params.seed === 42,
     `T49 调 runOptions([{id,p}…], {seed: SU.seed})：${calls[0] && calls[0].opts.map(o => o.id + ' ' + o.p).join(' / ')} · seed ${calls[0] && calls[0].params.seed}`);
   const html = c.cmpHTML(), lk = leaks(html);
   ok(!lk.length, `T49 反向断言：04 表里没有任何引擎交通数（查了 ${[...engNums].join(' / ')}）${lk.length ? ' —— 漏了 ' + lk.join(', ') : ''}`);
@@ -334,13 +344,18 @@ if (typeof be.options !== 'function') {
     `T49 SUMO 的数逐格进表：09:00 排队 ${q.join(' / ')} m · 每车 ${ex.join(' / ')} s · 总延误 ${tot.join(' / ')} 车·分钟 · 绕行 ${dv.join(' / ')} 辆`);
   ok(html.includes('≈ mean × vehicles') && /Trams &amp; buses|Trams & buses/.test(html) && /Pedestrians/.test(html) && (html.match(/not covered by SUMO/g) || []).length >= 6,
     'T49 电车公交、行人两行每格写「not covered by SUMO」；总延误标「≈ mean × vehicles」');
-  const amt = H(kits5[1].hire - kits5[0].hire);
-  ok(html.includes(`<i class="cmp-dup" data-eq>Same traffic effect as A · models don't value the arrow board's safety role · +A$${amt}</i>`) && !html.includes('Same result as'),
-    `T49 B 的标记：「Same traffic effect as A · models don't value the arrow board's safety role · +A$${amt}」，不再写「结果一样」（像是白花钱）`);
+  const amt = H(kits5[1].hire - kits5[2].hire);
+  ok(html.includes(`<i class="cmp-dup" data-eq data-lean>One VMS fewer than B, A$${amt} cheaper · just better wording</i>`) && !html.includes('Same traffic effect') && !html.includes('Same result as'),
+    `T50 C 的标记：「One VMS fewer than B, A$${amt} cheaper · just better wording」；p 各不相同 → 没有「Same traffic effect」`);
   ok(/SUMO computed live in the cloud · 61\.2 s · seed 42/.test(html) && html.includes('Traffic 08:00–09:00 weekday · SUMO on the real CBD network') && !/engine on real CBD flows|Car, tram &amp; bus and on-foot numbers|Car, tram & bus and on-foot numbers/.test(html),
     'T49 表尾写 SUMO（现场计算 · 秒 · seed），不再写「引擎在真实 CBD 车流上算」');
   c.LANG.cur = 'zh'; const zh = c.cmpHTML(); c.LANG.cur = 'en';
-  ok(zh.includes(`交通效果和 A 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}`) && zh.includes('AI 读牌 → 会绕行的司机') && zh.includes('SUMO 暂不覆盖') && !leaks(zh).length, 'T49 中文：「交通效果和 A 相同 · 模型不评价箭头板的安全作用 · 多 A$…」、「AI 读牌 → 会绕行的司机」、「SUMO 暂不覆盖」');
+  ok(zh.includes(`比 B 少一块 VMS、便宜 A$${amt} · 只靠写对屏上的字`) && zh.includes('AI 读牌 → 会绕行的司机') && zh.includes('SUMO 暂不覆盖') && !leaks(zh).length, 'T50 中文：「比 B 少一块 VMS、便宜 A$… · 只靠写对屏上的字」、「AI 读牌 → 会绕行的司机」、「SUMO 暂不覆盖」');
+  // T49-b 的「交通效果相同」只在 p 一样时出现（这里把 B 的读数换成 A 的）；B 比 A 多两块 VMS + 箭头板 → 说「多出来的设备」，不说只是箭头板
+  const eqP = page(async () => cli); Object.assign(eqP.X.CP, { rows: [kits5[0], { ...kits5[1], s: kits5[0].s }, kits5[2]], key: 'k5eq' });
+  const he2 = eqP.cmpHTML(), amtBA = H(kits5[1].hire - kits5[0].hire);
+  ok(he2.includes(`<i class="cmp-dup" data-eq>Same traffic effect as A · models don't value the extra equipment's safety role · +A$${amtBA}</i>`) && !he2.includes('arrow board&#39;s') && !he2.includes("arrow board's"),
+    `T50 p 一样才标「Same traffic effect as A」（B 多的是两块 VMS + 箭头板 → 说「extra equipment」，不说只是箭头板 · +A$${amtBA}）`);
 
   // 附近施工一行：列出哪处施工、日期、窗口、建议错开几天；不给引擎叠加成本，也不逐套跑 be.clash
   if (W) {
@@ -409,8 +424,109 @@ if (typeof be.options !== 'function') {
   const e = page(async () => ({ runOptions: async () => { n.push(1); return {}; } }), { ...EP, lanes: 2 });
   await e.cmpSuUpdate();
   const he = e.cmpHTML();
-  ok(n.length === 0 && he.includes(`>${H(kits5[0].s.queue_m)}<`) && he.includes(`>${H(kits5[0].s.delay_min)}<`) && he.includes(`Same result as A · +A$${amt}`) && he.includes('engine estimate on real CBD flows') && !he.includes('not covered by SUMO'),
-    `T49 SUMO 范围以外：照旧引擎的数（排队 ${H(kits5[0].s.queue_m)} m、全网 ${H(kits5[0].s.delay_min)} 车·分钟）和「Same result as A」，标「engine estimate」，不调 runOptions`);
+  ok(n.length === 0 && he.includes(`>${H(kits5[0].s.queue_m)}<`) && he.includes(`>${H(kits5[0].s.delay_min)}<`) && !he.includes('Same result as A') && he.includes(`One VMS fewer than B, A$${amt} cheaper · just better wording`) && he.includes('engine estimate on real CBD flows') && !he.includes('not covered by SUMO'),
+    `T49 SUMO 范围以外：照旧引擎的数（排队 ${H(kits5[0].s.queue_m)} m、全网 ${H(kits5[0].s.delay_min)} 车·分钟），C 也标「One VMS fewer than B…」，标「engine estimate」，不调 runOptions`);
+
+  // 6 T50 后台预取：第 2 步现场 SUMO 算成功（5-app.js sumoRerun）→ 马上按 04 的做法配三套、读 p、调 runOptions（不渲染）；04 打开时
+  //   缓存命中就立刻出数、还在算就接上（转圈从已过去的秒数接着数）；第 2 步还在算 → 04 排在它后面；页面同时最多一个云端任务。
+  //   跑页面真的 8-compare.js + 5-app.js 的 sumoLane / sumoRerun，SUMO 客户端换成假的（runReal / runOptions 都能卡住、数并发）
+  {
+    const APPX = readFileSync(WEB + 'src/js/5-app.js', 'utf8');
+    const laneSrc = APPX.slice(APPX.indexOf('let sumoTail='), APPX.indexOf('\n', APPX.indexOf('function sumoLane(')) + 1);
+    const i0 = APPX.indexOf('async function sumoRerun(){'), rerunSrc = APPX.slice(i0, APPX.indexOf('\n}\n', i0) + 3);
+    ok(laneSrc.includes('function sumoLane(fn)') && rerunSrc.includes('cmpPrefetch(seed)'), 'T50 5-app.js 有 sumoLane / sumoRerun（这一节跑的就是它们）');
+    const settle = async (n = 30, until = () => false) => { for (let i = 0; i < n && !until(); i++) await new Promise(r => setImmediate(r)); };
+    const mkCli = () => {
+      const log = { real: 0, opts: 0, active: 0, max: 0, last: null }, gates = [];
+      const busy = async () => { log.active++; log.max = Math.max(log.max, log.active); await new Promise(r => gates.push(r)); log.active--; };
+      const cli = {
+        runReal: async params => { log.real++; await busy(); return { source: 'live', runId: 'r' + log.real, elapsedMs: 50000, index: { hour: 8, seed: params.seed } }; },
+        runOptions: async (opts, params) => { log.opts++; log.last = { opts, params }; await busy(); return { source: 'live', runId: 'o' + log.opts, elapsedMs: 61234, index: { hour: 8, seed: params.seed, options: opts.map(o => ({ id: o.id, p: o.p, metrics: metricsFor(o.p) })) } }; },
+      };
+      return { cli, log, open: () => { const g = gates.shift(); if (g) g(); return !!g; } };
+    };
+    const nOpt = { n: 0 }, beApi = { ...be, options: (...a) => { nOpt.n++; return be.options(...a); } };
+    const page2 = cli => {
+      const c = { console, EP: { ...EP, all: false }, BE: { api: beApi }, S: { ui: 2, step: 2, sim: null }, LANG: { cur: 'en' }, SUMO_LINK,
+        SU: { cli, seed: 42, mod: null, index: null, busy: false, tok: 0, ref: { source: 'baked' }, src: { source: 'baked' }, failed: false },
+        document: { getElementById: () => null, querySelector: () => null }, compactPanel() {}, toast() {}, creditLines: () => [], engOn: () => true, engNet: () => be.engine.net,
+        setInterval: () => 1, clearInterval() {}, sumoErr: e => String((e && e.message) || e), sumoReason: k => 'why:' + k, sumoClient: async () => cli,
+        sumoWant: () => true, renderPanel() {}, gridShown: () => false, sumoPAi: () => 0.53, sumoKey: () => 'k', performance: { now: () => Date.now() }, sumoBaked: async () => {}, sumoPlay: async () => {} };
+      c.L = (en, zh) => (c.LANG.cur === 'zh' ? zh : en);
+      vm.createContext(c);
+      vm.runInContext(pure('6-engine.js') + '\n' + fmt + '\n' + CLS + '\n' + CMS + '\n' + laneSrc + '\n' + rerunSrc + '\n;globalThis.X={CP,CL,CSU};', c);
+      const pf = [], orig = c.cmpPrefetch; c.cmpPrefetch = seed => { const p = orig(seed); pf.push({ seed, p }); return p; }; // 记下 sumoRerun 调了几次预取
+      return { c, pf };
+    };
+    const open04 = c => { Object.assign(c.X.CP, { rows: kits5, key: 'k5', src: 'kits', busy: false }); c.S.ui = 4; };
+    const nums04 = html => { const m = /Works queue at 09:00[\s\S]*?<\/tr>/.exec(html); return m ? [...m[0].matchAll(/<span class="cmp-num">([^<]+)<\/span>/g)].map(x => x[1]) : []; };
+    const wantQ = kits5.map(k => H(metricsFor(cmpP(k.s)).works_queue_equiv_end_m)).join();
+
+    // 6a 第 2 步算成功 → 预取一次；04 打开时它还在算 → 接上；之后再来 04 → 缓存命中立刻出数
+    {
+      const f = mkCli(), { c, pf } = page2(f.cli);
+      const run = c.sumoRerun(); await settle(30, () => f.log.real === 1);
+      ok(f.log.real === 1 && c.SU.busy && pf.length === 0, 'T50 第 2 步在云端算时还不预取');
+      f.open(); await run;
+      ok(pf.length === 1 && pf[0].seed === 42, 'T50 第 2 步现场算成功（source live）→ 调一次 cmpPrefetch(这次的 seed 42)，不等它');
+      const job = await pf[0].p; await settle(60, () => f.log.opts === 1);
+      ok(job && f.log.opts === 1 && JSON.stringify(f.log.last.opts) === JSON.stringify(cmpSuAsk(kits5)) && f.log.last.params.seed === 42 && nOpt.n === 1,
+        `T50 预取：按 04 的做法配三套（be.options 一次）、p = 1 − 原路份额，后台调 runOptions(${f.log.last && f.log.last.opts.map(o => o.id + ' ' + o.p).join(' / ')}, {seed: 42})`);
+      ok(await c.cmpOptions(c.planFrom(c.EP)) && nOpt.n === 1, 'T50 04 配方案用同一份 be.options() 结果（cmpOptions），不再算一遍');
+      const run2 = c.sumoRerun(); await settle(30);
+      ok(f.log.real === 1 && c.SU.busy, 'T50 预取还在云端算时再点「运行 SUMO」→ 第 2 步排在它后面，不同时发第二个任务');
+      open04(c); job.t1 -= 30000; // 预取已经算了 30 秒
+      const u = c.cmpSuUpdate(), h = c.cmpHTML();
+      ok(c.X.CP.su.job === job && /SUMO computing the options in the cloud · <span data-cmpsuel>3\d<\/span> s/.test(h) && f.log.opts === 1,
+        'T50 04 打开时预取还在算 → 接上同一个任务：转圈从已经过去的 30 s 接着数，不再发 runOptions');
+      f.open(); await u; await settle(30, () => f.log.real === 2);
+      const h2 = c.cmpHTML();
+      ok(f.log.opts === 1 && nums04(h2).join() === wantQ && !h2.includes('class="spin"'), `T50 预取算完 → 04 直接出 SUMO 的数（09:00 排队 ${nums04(h2).join(' / ')} m），runOptions 一共 1 次`);
+      ok(f.log.real === 2, 'T50 预取算完才轮到第 2 步重跑的 runReal');
+      f.open(); await run2; await settle(60);
+      ok(pf.length === 2 && f.log.opts === 1, 'T50 第 2 步重跑（同一种子、同一组 p）后又预取一次 → 缓存命中，不再跑');
+      c.X.CP.su = null; c.X.CP.key = 'k5b';
+      c.cmpSuUpdate(); const h3 = c.cmpHTML();
+      ok(nums04(h3).join() === wantQ && !h3.includes('class="spin"') && f.log.opts === 1, 'T50 再进 04（缓存命中）→ 立刻出数：不转圈、不再调 runOptions');
+      c.SU.seed = 7; c.X.CP.su = null; const u7 = c.cmpSuUpdate(); await settle(30, () => f.log.opts === 2);
+      ok(f.log.opts === 2 && f.log.last.params.seed === 7 && c.cmpHTML().includes('class="spin"'), 'T50 种子改了 → 新的键 → 重新算');
+      f.open(); await u7;
+      ok(f.log.max === 1, `T50 整个过程云端同时最多 1 个任务（最多 ${f.log.max} 个）`);
+    }
+
+    // 6b 第 2 步还在算时进 04 → 04 排队等它（写明在等第 2 步）；第 2 步算完 04 才跑；预取算出同一个键 → 接上，不跑第二次
+    {
+      const f = mkCli(), { c, pf } = page2(f.cli);
+      const run = c.sumoRerun(); await settle(30, () => f.log.real === 1);
+      open04(c);
+      const drew = [], r0 = c.cmpRender; c.cmpRender = () => { drew.push(!!(c.X.CP.su && c.X.CP.su.job && c.X.CP.su.job.wait)); return r0(); }; // 真页面靠重绘换字
+      const u = c.cmpSuUpdate(); await settle(30, () => c.X.CP.su.job && c.X.CP.su.job.wait);
+      const h = c.cmpHTML();
+      ok(f.log.opts === 0 && c.X.CP.su.job.wait && drew.includes(true) && h.includes('Waiting for step 2’s SUMO run to finish, then these plans') && h.includes('(one cloud run at a time)'),
+        'T50 第 2 步还在云端算 → 04 排在它后面（开始排队时重绘一次），写「等第 2 步的 SUMO 算完，再算这几套方案」，不同时发第二个任务');
+      c.LANG.cur = 'zh'; ok(c.cmpHTML().includes('等第 2 步的 SUMO 算完，再算这几套方案'), 'T50 中文：等第 2 步的 SUMO 算完，再算这几套方案'); c.LANG.cur = 'en';
+      f.open(); await run; await settle(30, () => f.log.opts === 1);
+      ok(f.log.opts === 1 && !c.X.CP.su.job.wait && c.X.CP.su.job.t1 > 0 && c.cmpHTML().includes('SUMO computing the options in the cloud'), 'T50 第 2 步算完 → 04 的任务开始（转圈改成「SUMO 正在云端计算这几套方案」）');
+      const pj = await pf[0].p; await settle(30);
+      ok(pf.length === 1 && pj === c.X.CP.su.job && f.log.opts === 1, 'T50 第 2 步算完触发的预取算出同一个键（种子 + p）→ 接上 04 的任务，不跑第二次');
+      f.open(); await u;
+      ok(nums04(c.cmpHTML()).join() === wantQ && f.log.real === 1 && f.log.opts === 1 && f.log.max === 1, 'T50 出数；runReal 1 次、runOptions 1 次，同时最多 1 个');
+    }
+
+    // 6c 预取失败不进缓存（04 的「重试」真的重跑）；第 2 步没算成（预跑兜底）不预取
+    {
+      const f = mkCli(), { c, pf } = page2(f.cli);
+      let fails = 1; const ro = f.cli.runOptions; f.cli.runOptions = async (o, p) => (fails-- > 0 ? (f.log.opts++, { source: 'none', reason: 'sumo_busy', index: null }) : ro(o, p));
+      const j = await c.cmpPrefetch(42); await j.p;
+      ok(j.out && !j.out.r.index && !c.X.CSU.has(j.key), 'T50 预取没算成（source none）→ 不留在缓存里');
+      open04(c); const u = c.cmpSuUpdate(); await settle(30, () => f.log.opts === 2);
+      ok(f.log.opts === 2 && c.X.CP.su.job !== j, 'T50 之后进 04 → 重新算，不拿失败的那次');
+      f.open(); await u;
+      const g = mkCli(), p2 = page2(g.cli); g.cli.runReal = async () => { g.log.real++; return { source: 'baked', reason: 'sumo_busy', index: { hour: 8, seed: 42 } }; };
+      await p2.c.sumoRerun(); await settle(10);
+      ok(g.log.real === 1 && p2.pf.length === 0 && g.log.opts === 0, 'T50 第 2 步用的是预跑（云端没算成）→ 不预取');
+    }
+  }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

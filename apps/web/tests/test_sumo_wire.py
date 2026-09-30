@@ -175,5 +175,18 @@ check("T48：引擎地图上的排队标签（第 1 / 3 步）写明是 09:00 �
 check("T47：跑之前设种子——第 1 步「保存并进入仿真」上面有种子框和随机按钮，进第 2 步就用 SU.seed 算",
       "${typeof sumoPreHTML==='function'?sumoPreHTML():''}${navHTML()}" in APP and "engBind1();vlMount();sumoPreBind();" in APP
       and 'id="sumoSeedPre"' in APP and 'id="sumoDicePre"' in APP and "const tok=++SU.tok,seed=SU.seed" in APP)
+# T50：第 2 步现场算成功 → 后台预取 04 的多方案 SUMO；页面同时最多一个云端任务（sumoLane）。行为测试在 tests/compare_glue.mjs 第 6 节
+CMP = JS["8-compare.js"]
+lane = re.search(r"let sumoTail=Promise\.resolve\(\);\nfunction sumoLane\(fn\)\{(.*?)\}\n", APP, re.S)
+check("T50：sumoLane(fn) 把云端任务串起来——前一个结束（成功或失败）才开始下一个",
+      bool(lane) and "const run=sumoTail.then(()=>fn());sumoTail=run.then(()=>{},()=>{});return run;" in lane.group(1))
+check("T50：第 2 步的 runReal 走 sumoLane；只有 source==='live' 且有 runId 那一支才 cmpPrefetch(seed)（预跑兜底不预取），不 await",
+      "r=await sumoLane(()=>SU.cli.runReal({seed,p_original:.14,p_ai:sumoPAi()},{timeoutMs:180000}))" in rr
+      and rr.index("r.source==='live'&&r.runId") < rr.index("cmpPrefetch(seed)") < rr.index("else if(r&&r.index)")
+      and "await cmpPrefetch" not in rr and "if(typeof cmpPrefetch==='function')cmpPrefetch(seed);" in rr)
+check("T50：04 的 runOptions 也走 sumoLane；04 和预取共用 cmpOptions（be.options 只算一次）和 CSU 缓存（键 = 种子 + 每套 id:p）",
+      "job.wait=true;const run=sumoLane(go);ping();return{r:await run};" in fn(CMP, "cmpSuJob") and "rows=cmpFromOptions(await cmpOptions(plan))" in fn(CMP, "cmpUpdate")
+      and "cmpFromOptions(await cmpOptions(plan))" in fn(CMP, "cmpPrefetch") and "const job=st.job=cmpSuJob(ask,seed);" in fn(CMP, "cmpSuUpdate")
+      and "if(job.out)return fin(job.out);" in fn(CMP, "cmpSuUpdate") and "BE.api.options(plan,{n:CMP_MAX})" in fn(CMP, "cmpOptions"))
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

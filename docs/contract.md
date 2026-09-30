@@ -146,7 +146,7 @@ D-0929-1435：大模型只「读懂」屏上的字，比例由引擎算。T5 在
 }
 ```
 
-- `id` 固定 `o1` Minimum（护栏 + 静态标志）/ `o2` Standard（+ 箭头板 + VMS「ROADWORK / AHEAD」）/ `o3` Guided（同一块 VMS 加一帧点名引擎算出的最快绕行，另带 `guide: { frames, at_m, why }`）
+- `id` 固定 `o1` Minimum（护栏 + 静态标志，没有 VMS）/ `o2` Standard（+ 箭头板 + **两块** VMS 报延误、不点名路线，如「EXPECT / DELAYS ▸ 10 MIN」，N = 最省那套走原路每车多等的整分钟，另带 `delay: { min, frames }`，不到 1 分钟写「ROADWORK / AHEAD」、`flags.no_delay_min`；最贵）/ `o3` Guided（+ 箭头板 + **一块** VMS 点名引擎算出的最快绕行和省几分钟，另带 `guide: { frames, at_m, why }`；比 `o2` 少租一块 VMS）（T50）
 - `plan` 是完整的 §施工方案 方案，可以直接交给 `run / compare`；每件设备带 `item`（`equipment.json` 的 id）和 `qty`，和 `equipment[].item / qty` 同口径
 - `hire.assumed` 恒为 `true`：库存件数和日租价是假设值，界面要标「假设值」（D-0929-1536）；天数 = `time.from`–`time.to` 日历天数含两头
 - 每种设备件数 + 同一份方案里时间重叠（`overlaps()`：日期和每天时段都有交集）的其他施工已经带的件数（按它们 `equipment[].item / qty` 数）≤ 库存；不够的只摆剩下的，缺口进 `stock.short[{ equipment, item, need, got, stock, why }]`，`flags.ok = false`；`stock.shared_with` = 共用库存的那些施工 id

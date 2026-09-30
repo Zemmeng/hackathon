@@ -379,6 +379,11 @@ function sumoWant(){return typeof SumoReplay==='function'&&gridOn()&&EP.link===S
 function sumoWin(idx){const I=idx||SU.index,w=I&&I.params&&I.params.hour_window,h=I&&isFinite(+I.hour)?+I.hour:8,a=Array.isArray(w)&&w.length===2&&isFinite(+w[0])&&isFinite(+w[1])?[+w[0],+w[1]]:[h,h+1];
   return`${engHour(a[0]%24)}–${engHour(a[1]%24)}`;}
 const sumoNap=ms=>new Promise(r=>setTimeout(r,ms));
+// T50: one cloud SUMO job at a time from this page — step 2's runReal and 04's runOptions (8-compare.js cmpSuJob) queue here:
+// fn starts once the job before it has settled (the Worker answers 429 sumo_busy at 2 active jobs, and two runs share the
+// container's 4 cores). A step-2 run in progress → 04's run waits for it, then runs
+let sumoTail=Promise.resolve();
+function sumoLane(fn){const run=sumoTail.then(()=>fn());sumoTail=run.then(()=>{},()=>{});return run;}
 function sumoClient(){
   if(!SU.cliP)SU.cliP=import('/sumo/public/js/sumo-client.js').then(m=>{SU.mod=m;SU.cli=typeof m.createSumoClient==='function'?m.createSumoClient():m;return SU.cli;},e=>{SU.cliP=null;throw e;});
   return SU.cliP;
@@ -440,11 +445,12 @@ async function sumoRerun(){
   if(S.sim&&S.sim.isSumo&&SU.grid)S.sim=SU.grid; // T42: the old run leaves the screen while the new one computes
   renderPanel();
   let r=null;
-  try{r=await SU.cli.runReal({seed,p_original:.14,p_ai:sumoPAi()},{timeoutMs:180000});} // T48: the whole hour takes ~40–60 s in the cloud
+  try{r=await sumoLane(()=>SU.cli.runReal({seed,p_original:.14,p_ai:sumoPAi()},{timeoutMs:180000}));} // T48: the whole hour takes ~40–60 s in the cloud; T50: after any 04 run in flight
   catch(e){console.info('SUMO run failed:',sumoErr(e));}
   SU.busy=false;if(tok!==SU.tok)return;
   try{
-    if(r&&r.index&&r.source==='live'&&r.runId){SU.index=r.index;SU.ref={source:'live',runId:r.runId};SU.src={source:'live',elapsedMs:r.elapsedMs,seed};SU.liveKey=sumoKey();SU.liveAt=performance.now();}
+    if(r&&r.index&&r.source==='live'&&r.runId){SU.index=r.index;SU.ref={source:'live',runId:r.runId};SU.src={source:'live',elapsedMs:r.elapsedMs,seed};SU.liveKey=sumoKey();SU.liveAt=performance.now();
+      if(typeof cmpPrefetch==='function')cmpPrefetch(seed);} // T50: 04's options run starts now in the background (not awaited), so 04 opens on it
     else if(r&&r.index){SU.index=SU.baked=r.index;SU.ref={source:'baked'};SU.src={source:'baked',reason:r.reason||'network',seed:r.index.seed};}
     else await sumoBaked(r&&r.reason);
     if(!gridShown()||!sumoWant())return;
