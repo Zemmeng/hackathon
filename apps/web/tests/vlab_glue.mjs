@@ -1,4 +1,4 @@
-// T42 VMS 试验台：src/js/6d-vmslab.js 的纯函数段（vlab-pure:begin…end）+ 6-engine.js 的 planFrom()，在真路网上跑 backend.js。
+// T45 VMS 试验台：src/js/6d-vmslab.js 的纯函数段（vlab-pure:begin…end）+ 6-engine.js 的 planFrom()，在真路网上跑 backend.js。
 // 由 tests/test_vlab.py 调：node tests/vlab_glue.mjs；每条断言打一行 ✅ / ❌，不联网。数字只记录不钉死，断言的是关系
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';

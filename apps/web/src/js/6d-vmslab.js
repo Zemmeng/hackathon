@@ -1,5 +1,5 @@
 /* ============================================================
-   T42 · VMS lab (01 Configure › Signs). The same plan with only VMS-1's words changed — or only where it stands —
+   T45 · VMS lab (01 Configure › Signs). The same plan with only VMS-1's words changed — or only where it stands —
    scored side by side by the engine, with the one it recommends. Click a row or a distance to use it.
    Every number is BE.api.run() on planFrom(); nothing is typed into the page. The wordings are built from the engine's
    own routes (now_min, turn_m) and delay, so a sign never claims more minutes than the engine gives.

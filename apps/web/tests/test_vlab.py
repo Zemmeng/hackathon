@@ -1,4 +1,4 @@
-"""T42 VMS 试验台：静态断言（挂载、文案成对、没有写死的数字）+ 调 node tests/vlab_glue.mjs 在真路网上跑。
+"""T45 VMS 试验台：静态断言（挂载、文案成对、没有写死的数字）+ 调 node tests/vlab_glue.mjs 在真路网上跑。
 
 用法：python3 apps/web/tests/test_vlab.py（要 node ≥ 18，不联网）
 最后一行固定输出「N passed, M failed」，有失败退出码 1。

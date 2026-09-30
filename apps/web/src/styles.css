@@ -773,7 +773,7 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-row .adv{color:var(--fg-2);overflow-wrap:anywhere}
 .cmp-explain{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;font-size:13px;line-height:1.55;overflow-wrap:anywhere}
 .cmp-explain small{display:block;opacity:.7}.cmp-explain p{margin:8px 0}.cmp-explain ul{padding-left:18px;margin:6px 0 12px}.cmp-lean{font-size:14px;line-height:1.6}
-/* T42 VMS lab (6d-vmslab.js): same plan, other words on VMS-1 — one row per wording, bar = queue */
+/* T45 VMS lab (6d-vmslab.js): same plan, other words on VMS-1 — one row per wording, bar = queue */
 .vlab{display:flex;flex-direction:column;gap:7px}
 .vlab-rows{display:flex;flex-direction:column;gap:4px}
 .vlab-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 54px;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:4px;padding:6px;color:var(--fg);cursor:pointer;font:inherit;font-size:12px}
