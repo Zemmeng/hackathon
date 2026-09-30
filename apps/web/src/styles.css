@@ -654,6 +654,26 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+/* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
+.ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ai-tile:hover{border-color:var(--fg-3)}
+.ai-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ai-tile.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),inset 0 1px 0 var(--hl-edge)}
+.ai-tile:disabled{cursor:default;opacity:.7}
+.ai-th{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ai-th .eyebrow{font-size:11px;letter-spacing:.06em;color:var(--fg-2)}
+.ai-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--works)}
+.ai-dot.ok{background:var(--accent)}
+.ai-dot.risk{background:var(--risk)}
+.ai-ns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.ai-n{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ai-n b{font:700 19px/1 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ai-n b small{font-size:10px;font-weight:400;color:var(--fg-3);margin-left:1px}
+.ai-n em{font-style:normal;font-size:10.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-tadv{font-size:11.5px;color:var(--fg-2);overflow-wrap:anywhere}
+.ai-tnote{font-size:11.5px;color:var(--fg-3)}
+.ai-detail .ai-p{border-color:var(--accent)}
 .ai-log{border:1px solid var(--line);border-radius:6px;background:var(--raised);min-width:0}
 .ai-log summary{cursor:pointer;padding:9px 12px;font:600 11px/1.2 var(--f-mono);letter-spacing:.04em}
 .ai-log-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 12px 8px}

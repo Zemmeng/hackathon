@@ -664,6 +664,26 @@ input[type="range"]#vmsAt{accent-color:var(--sun)}
 .ai-adv{font-size:12px;overflow-wrap:anywhere}
 .ai-why{font-size:11.5px;color:var(--fg-2);font-style:italic;overflow-wrap:anywhere}
 .ai-why:empty{display:none}
+/* four road users as metric tiles (2 × 2); tap one → its full card opens underneath */
+.ai-tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-width:0}
+.ai-tile{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.ai-tile:hover{border-color:var(--fg-3)}
+.ai-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ai-tile.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent),inset 0 1px 0 var(--hl-edge)}
+.ai-tile:disabled{cursor:default;opacity:.7}
+.ai-th{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.ai-th .eyebrow{font-size:11px;letter-spacing:.06em;color:var(--fg-2)}
+.ai-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--works)}
+.ai-dot.ok{background:var(--accent)}
+.ai-dot.risk{background:var(--risk)}
+.ai-ns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.ai-n{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ai-n b{font:700 19px/1 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ai-n b small{font-size:10px;font-weight:400;color:var(--fg-3);margin-left:1px}
+.ai-n em{font-style:normal;font-size:10.5px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ai-tadv{font-size:11.5px;color:var(--fg-2);overflow-wrap:anywhere}
+.ai-tnote{font-size:11.5px;color:var(--fg-3)}
+.ai-detail .ai-p{border-color:var(--accent)}
 .ai-log{border:1px solid var(--line);border-radius:6px;background:var(--raised);min-width:0}
 .ai-log summary{cursor:pointer;padding:9px 12px;font:600 11px/1.2 var(--f-mono);letter-spacing:.04em}
 .ai-log-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:0 12px 8px}
@@ -3512,6 +3532,17 @@ function aiPersonaHTML(t,p){
     <div class="ai-adv">→ ${esc(aiAdvice(r))}</div><q class="ai-why" data-aiwhy="${esc(t)}"></q>${p.fallback?`<span class="small muted">${L('Reader error → keyword rules','读屏出错 → 改用关键词规则')}</span>`:''}`
     :`<p class="small muted">${L('No reading for this road user — the engine counts them as not persuaded.','这类人没读成 —— 引擎按没被说动算。')}</p>`}</div>`;
 }
+// One small tile per road user (2 × 2, same look as the metric tiles): the reading's three numbers and the route advice.
+// A button: tap → that persona's full card (aiPersonaHTML) opens under the tiles; sel = it is the one open
+function aiTileHTML(t,p,sel){
+  const nm=esc(aiWho(t)),r=p&&p.reading;
+  const n=(k,v)=>{const x=aiPct(v);return`<span class="ai-n"><b>${x==null?'—':`${x}<small>%</small>`}</b><em>${k}</em></span>`;};
+  const body=!p?`<span class="ai-tnote">${L('No signs on this road','这段路上没有屏')}</span>`
+    :!r?`<span class="ai-tnote">${L('Not read · counted as not persuaded','没读成 · 按没被说动算')}</span>`
+    :`<span class="ai-ns">${n(L('Seen','看到'),r.notice)}${n(L('Got it','看懂'),r.understand)}${n(L('Trusts','相信'),r.trust)}</span><span class="ai-tadv">→ ${esc(aiAdvice(r))}</span>`;
+  const dot=p?`<i class="ai-dot ${aiSrcTone(p.src)}" title="${esc(aiSrcLabel(p.src,p.ms))}"></i>`:'';
+  return`<button type="button" class="metric ai-tile${sel?' on':''}" data-aip="${esc(t)}" aria-expanded="${sel?'true':'false'}"${p?'':' disabled'}><span class="ai-th"><span class="eyebrow">${nm}</span>${dot}</span>${body}</button>`;
+}
 function aiTime(t){const d=new Date(t);return Number.isNaN(d.getTime())?'—':d.toTimeString().slice(0,8);}
 // One call-log row (every string through esc())
 function aiLogRowHTML(e){
@@ -3533,7 +3564,7 @@ function aiLogJSON(log,meta){
 }
 /* pure:end */
 
-const AI={log:[],open:false,timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
+const AI={log:[],open:false,sel:'',timer:0,ex:{key:'',seq:0,busy:false,res:null,err:false}};
 
 // Subscribe once the backend is up: snapshot + subscribe in the same tick, so no call is missed
 BE.ready.then(()=>{
@@ -3568,10 +3599,13 @@ const AI_NO={err:['No readings — the engine could not score this plan.','没�
   bad:['No readings — fix the sign text in step 1 first.','没有读数 —— 先回第 1 步把屏上文字改合规范。'],
   wait:['Readings appear once the engine has scored this plan.','引擎算完这个方案后，这里显示各类路人的读数。']};
 function aiHTML(rd,st){
-  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span><span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span></div>`;
+  const so=rd&&st==='ok'?aiSrcOf(rd):null;
+  const head=`<div class="row between"><span class="eyebrow">${L('AI road users · what each one read','AI 路人 · 各自读到了什么')}</span>${so&&so.src!=='none'?`<span class="pill ${so.tone}">${esc(aiSrcLabel(so.src))}</span>`:`<span class="eyebrow">${rd?esc(aiSt(rd.street||'')):''}</span>`}</div>`;
   if(st&&st!=='ok'){const m=AI_NO[st]||AI_NO.wait;return head+`<p class="small muted">${L(m[0],m[1])}</p>`+aiLogHTML();} // matches the panel above: no stale cards
-  const body=rd?`<div class="ai-grid">${TYPES4.map(t=>aiPersonaHTML(t,rd.personas&&rd.personas[t])).join('')}</div>
-    <p class="legend-src">${L('The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. Bar = the reading; outlined band = the reader’s range.','大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。条 = 读数；框 = 读屏给的区间。')}</p>`
+  const ps=rd&&rd.personas||{},sel=AI.sel&&ps[AI.sel]?AI.sel:''; // four tiles; the tapped one's full card opens under them
+  const body=rd?`<div class="ai-tiles" role="group">${TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel)).join('')}</div>
+    ${sel?`<div class="ai-detail" id="aiDetail">${aiPersonaHTML(sel,ps[sel])}</div>`:''}
+    <p class="legend-src">${L(`The LLM only reads the signs: noticed, understood, trusts, route advice and a reason. Detour shares and minutes above are computed by the engine. ${sel?'Tap the tile again to close. Bar = the reading; outlined band = the reader’s range.':'Tap a tile for the signs it read, the reader’s ranges and its reason in its own words.'}`,`大模型只读懂屏上的字：看到没、看懂没、信不信、路线建议和一句理由；上面的绕行比例和分钟数由引擎算。${sel?'再点一次方块收起。条 = 读数；框 = 读屏给的区间。':'点方块看它读到的屏、读屏给的区间和它自己说的理由。'}`)}</p>`
     :`<p class="small muted">${L('No sign readings for this hour — no works, or no signs on the approach.','这个小时没有读屏 —— 不施工，或这段路上没有屏。')}</p>`;
   return head+body+aiLogHTML();
 }
@@ -3593,6 +3627,10 @@ function aiRender(){
   const d=el.querySelector('#aiLogBox');if(d)d.addEventListener('toggle',()=>{AI.open=d.open;});
   const nr=el.querySelector('.ai-rows');if(nr)nr.scrollTop=keepScroll;
   const b=el.querySelector('#aiDl');if(b)b.onclick=aiDownload;
+  el.querySelectorAll('[data-aip]').forEach(x=>x.onclick=()=>{
+    AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();
+    const d=el.querySelector('#aiDetail');if(d)d.scrollIntoView({block:'nearest',behavior:'smooth'}); // bring the opened card into view
+  });
 }
 // JSON built here and handed to the browser as a file: no upload, no network
 function aiDownload(){

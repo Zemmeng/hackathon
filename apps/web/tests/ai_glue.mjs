@@ -21,7 +21,7 @@ ok(!!escLine && !!typeLine, '从 6-engine.js 取到 esc() 和 TYPE_L');
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(i18n + '\n' + escLine + '\n' + typeLine + '\n' + m[1] +
-  '\n;globalThis.G={LANG,aiSrcLabel,aiSrcTone,aiExplainLabel,aiExplainTone,aiPct,aiSigns,aiAdvice,aiLabel,aiPersonaHTML,aiLogRowHTML,aiLogJSON,AI_LOG_KEEP,aiSrcOf,aiState};', ctx);
+  '\n;globalThis.G={LANG,aiSrcLabel,aiSrcTone,aiExplainLabel,aiExplainTone,aiPct,aiSigns,aiAdvice,aiLabel,aiPersonaHTML,aiTileHTML,aiLogRowHTML,aiLogJSON,AI_LOG_KEEP,aiSrcOf,aiState};', ctx);
 const G = ctx.G;
 const zh = f => { G.LANG.cur = 'zh'; try { return f(); } finally { G.LANG.cur = 'en'; } };
 
@@ -72,6 +72,13 @@ ok(G.aiPersonaHTML('tourist', null).includes('No signs on this road') && G.aiPer
 const row = G.aiLogRowHTML({ t: '2026-09-29T12:00:00Z', persona: '<b>x</b>', signs: [{ kind: 'sign', text: evil }], src: '<i>', ms: 5, reading: { advice: { [evil]: 'avoid' } } });
 ok(!/<img|<b>x|<i>/.test(row), '日志一行：人、屏上文字、来源、建议都转义');
 ok(!G.aiPersonaHTML('__proto__', null).includes('undefined'), '不认识的人的类型不会查到原型链上');
+const tile = G.aiTileHTML('commuter', { signs: [{ kind: 'vms', frames: [[evil]] }], src: 'llm', ms: 900,
+  reading: { notice: 0.98, understand: '0.9"><i onmouseover=1', trust: 0.92, advice: { [evil]: 'use' }, saving_min: 3, why: 'WHY<svg onload=1>TEXT' } }, true);
+ok(!/<img|<svg|onmouseover=1/.test(tile) && tile.includes('98<small>%</small>') && tile.includes('92<small>%</small>') && tile.includes('—') && !tile.includes('WHY'),
+  '小方块：三个读数（坏掉的写 —）、路线建议转义；理由不进方块（只在点开的卡片里用 textContent 写）');
+ok(tile.includes('class="metric ai-tile on"') && tile.includes('aria-expanded="true"') && tile.includes('data-aip="commuter"')
+  && G.aiTileHTML('tourist', null, false).includes(' disabled') && G.aiTileHTML('delivery', { signs, src: 'error', reading: null }, false).includes('not persuaded'),
+  '小方块：选中的有 .on / aria-expanded；没屏的点不了；没读成写一句');
 
 // 4 下载的 JSON：只放白名单字段（反向：日志条目里多带的 header / token 不出现在文件里）
 const fake = 'sk' + '-' + 'Z'.repeat(24);
