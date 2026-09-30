@@ -56,9 +56,9 @@ check("日志只从 backend.js 来：aiLog() 快照 + onAiLog() 订阅，同一�
 check("why 用 textContent 写（data-aiwhy）", "q.textContent=p&&p.reading&&p.reading.why||''" in AI)
 check("反向：整个 9-ai.js 只有一处 innerHTML（aiRender 写 aiHTML() 的结果，里面每个字符串过 esc()）",
       code.count("innerHTML") == 1 and "el.innerHTML=h;" in body("aiRender", AI))
-interp = re.findall(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", body("aiPersonaHTML", AI) + body("aiLogRowHTML", AI))
+interp = re.findall(r"\$\{((?:[^{}]|\{[^{}]*\})*)\}", body("aiPersonaHTML", AI) + body("aiLogRowHTML", AI) + body("aiTileHTML", AI))
 raw = [x for x in interp if re.search(r"\.(text|why|src|error|persona)\b|\b(txt|adv|who)\b|aiAdvice\(|aiSrcLabel\(|aiKind\(|aiTime\(", x) and "esc(" not in x and not x.startswith("aiSrcTone(")]
-check("读数卡片 / 日志行里的字都过 esc()", not raw, str(raw[:3]))
+check("读数卡片 / 小方块 / 日志行里的字都过 esc()", not raw, str(raw[:3]))
 # 4 签名守卫（CLAUDE.md §9）：同样的状态不重建 DOM
 check("aiRender 有签名守卫（HTML + why 一起算签名）", "if(el.dataset.sig===sig)return;" in AI and "const sig=h+'\\u0000'+whys;" in AI)
 check("一次 run 问 ~20 条读数只重画一次（aiRenderSoon 防抖）", "setTimeout(aiRender,120)" in AI)
@@ -69,6 +69,13 @@ check("aiRender 按状态画：不是 ok 就只写一行和面板一致的说明
       "aiHTML(rd,st)" in body("aiRender", AI) and "if(st&&st!=='ok')" in body("aiHTML", AI))
 check("中英：面板标题和日志标题两边都有", "L('AI road users · what each one read','AI 路人 · 各自读到了什么')" in AI and "L(`AI call log (${n})`,`AI 调用日志（${n}）`)" in AI)
 
+# 7 四个小方块（09-30 @unicornnnnnny：面板在右侧不显眼 → 2 × 2 方块，点一个展开它的详细卡片）
+ah = body("aiHTML", AI)
+check("四类路人画成 2 × 2 小方块（aiTileHTML），点开的那一个在方块下面画完整卡片（aiPersonaHTML）",
+      "TYPES4.map(t=>aiTileHTML(t,ps[t],t===sel))" in ah and "aiPersonaHTML(sel,ps[sel])" in ah and ".ai-tiles{display:grid;grid-template-columns:1fr 1fr" in (HERE.parent / "src" / "styles.css").read_text(encoding="utf-8"))
+rr = body("aiRender", AI)
+check("点方块切换 AI.sel（再点一次收起），重画后把卡片滚进视野；签名里带着选中状态（HTML 里有 .on）",
+      "AI.sel=AI.sel===x.dataset.aip?'':x.dataset.aip;aiRender();" in rr and "scrollIntoView" in rr and "class=\"metric ai-tile${sel?' on':''}\"" in AI)
 GLASS = (HERE.parent / "src" / "js" / "7-glass.js").read_text(encoding="utf-8")
 check("简洁模式下 AI 路人面板默认展开（SEC_KEEP 含 #aiBox）", "#aiBox" in re.search(r"const SEC_KEEP='([^']*)'", GLASS).group(1))
 

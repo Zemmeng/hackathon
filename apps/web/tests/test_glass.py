@@ -118,5 +118,19 @@ check("底图重画时调 emphasizeRoads（每次视图变化一次，不是每�
       re.search(r"function renderBase\(\)\{[\s\S]*?emphasizeRoads\(", APP) is not None
       and not re.search(r"function render\(dt\)\{[^}]*emphasizeRoads", APP))
 
+# 09-30 @unicornnnnnny：面板底部按钮一直悬浮（不用滑到最下面）；左侧图层栏缩小、位置不变
+CLASH = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
+desk = CSS[CSS.index("@media (min-width:821px){"):]
+check("桌面：面板里的 .cta（找更好的方案 / 错开 N 天 / 复制处置手册）sticky 贴在面板底部，背景近乎不透明（滚过去的字不透出来）",
+      re.search(r"\.panel \.cta\{position:sticky;bottom:-20px;[^}]*color-mix\(in srgb,var\(--shell-solid\) 86%", desk) is not None)
+check("没有毛玻璃 / 减少透明度时，底部按钮条也是实心背景",
+      all(".glass,.panel .cta{background:var(--shell-solid)" in blk for blk in [CSS[CSS.index("@supports not"):], CSS[CSS.index("prefers-reduced-transparency"):]]))
+check("「错开 N 天」挪进底部按钮条的 #clashAct 槽位（clashBtnHTML），叠加检查那一节只留说明",
+      "cta.prepend(a)" in CLASH and "a.id='clashAct'" in CLASH and "function clashBtnHTML()" in CLASH
+      and CLASH.count('id="clashStagger"') == 1 and "面板底部的「错开 ${n} 天」" in CLASH)
+check("左侧图层栏缩小（50 px 宽、按钮 36 px、图标 17 px），仍按顶栏和时间轴之间居中",
+      "left:12px;width:50px;" in desk and "translateY(-50%)" in desk[desk.index("  .rail{"):desk.index("  .rail{") + 200]
+      and ".rail button{width:36px;height:36px;" in CSS and ".rail button svg{width:17px;height:17px}" in CSS)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

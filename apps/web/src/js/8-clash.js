@@ -59,19 +59,29 @@ function clashHTML(){
   const st=CL.st,b=st&&st.best;
   if(b&&!b.reliable)act=`<div class="card eng-note warn"><b>${L(`No reliable stagger within ${clashDays(ws)} day${clashDays(ws)===1?'':'s'}`,`${clashDays(ws)} 天内没找到可信的错开方案`)}</b><span class="small muted">${L('The engine flags every shifted date it tried as not reliable (baseline flow over capacity or failed sign readings).','引擎把试过的每个挪后日子都标成不可信（基线车流超出通行能力，或屏上文字没读成）。')}</span></div>`;
   else if(b){const p=st.period;act=`<div class="card eng-note"><b>${L(`Stagger by ${b.days>0?'+':''}${b.days} day${Math.abs(b.days)===1?'':'s'} → clash cost ${fmtN(b.cost)} ${U}`,`错开 ${b.days>0?'+':''}${b.days} 天 → 叠加冲突 ${fmtN(b.cost)} ${U}`)}</b><span class="small muted">${L(`Was +${fmtN(r.cost)}. Moves ${title} later; this plan keeps its dates.${p&&p.reliable?` Whole period ${p.from} → ${p.to}: network delay ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}.`:''}`,`原来 +${fmtN(r.cost)}。挪的是「${title}」，本方案日期不变。${p&&p.reliable?`整段时间 ${p.from} → ${p.to} 全网延误 ${fmtN(p.ab_before)} → ${fmtN(p.ab_after)} ${U}。`:''}`)}</span></div>`;}
-  else if(r.cost>0){const n=clashDays(ws);act=`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button><p class="small muted">${CL.stErr?L('Stagger failed — try again.','错开没算成，再试一次。'):L(`Moves ${title} later, re-scored by the engine day by day.`,`把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
+  else if(r.cost>0){const n=clashDays(ws);act=`<p class="small muted">${CL.stErr?L('Stagger failed — try again (button at the bottom of the panel).','错开没算成，再点一次面板底部的按钮。'):L(`“Stagger by ${n} day${n===1?'':'s'}” at the bottom of the panel moves ${title} later, re-scored by the engine day by day.`,`面板底部的「错开 ${n} 天」把「${title}」往后挪，引擎逐天重算。`)}</p>`;}
   return`${head}${metrics}${sub}${why}${act}${more}`;
+}
+// The stagger button lives in the panel's sticky footer next to "Find a better plan" (09-30: always in reach, no scrolling),
+// shown in exactly the case clashHTML() explains it: a reliable clash cost > 0 and no stagger result yet
+function clashBtnHTML(){
+  const x=CL.other,st=CL.st;
+  if(!x||!engOn()||EP.badText||CL.busy||CL.err||!x.r.flags.reliable||(st&&st.best)||!(x.r.cost>0))return'';
+  const n=clashDays(x.ws);
+  return`<button type="button" class="btn ghost" id="clashStagger"${CL.stBusy?' disabled':''}>${CL.stBusy?L('Re-scoring…','重算中…'):L(`Stagger by ${n} day${n===1?'':'s'}`,`错开 ${n} 天`)}</button>`;
 }
 function clashRender(){
   const el=document.getElementById('clashBox');if(!el)return;
-  const h=clashHTML();if(el.dataset.sig===h)return; // signature guard: same state → keep the DOM (and the button under the pointer)
-  el.innerHTML=h;el.dataset.sig=h;const b=el.querySelector('#clashStagger');if(b)b.onclick=clashStagger;
+  const h=clashHTML();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;} // signature guard: same state → keep the DOM
+  const a=document.getElementById('clashAct'),b=clashBtnHTML();if(!a||a.dataset.sig===b)return; // same guard: the button under the pointer stays
+  a.innerHTML=b;a.dataset.sig=b;const x=a.querySelector('#clashStagger');if(x)x.onclick=clashStagger;
 }
 // Called by renderPanel() after the step-3 network panel is built: add the section above the CTA, (re)score when the plan changed
 function clashMount(){
   const P=document.getElementById('panel');if(!P||S.step!==3||EP.tab3!=='net')return;
   const box=document.createElement('div');box.id='clashBox';box.className='stack';
   const cta=P.querySelector('.cta');if(cta&&cta.parentNode)cta.parentNode.insertBefore(box,cta);else P.appendChild(box);
+  if(cta){const a=document.createElement('div');a.id='clashAct';a.className='cta-act';cta.prepend(a);} // slot for the stagger button
   if(engOn()&&!EP.badText){const key=JSON.stringify(clashCur());if(key!==CL.key){CL.key=key;clashRun();return;}}
   clashRender();
 }
