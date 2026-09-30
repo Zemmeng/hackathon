@@ -1,5 +1,6 @@
 // Grid micro-sim (src/js/4b-grid.js) on the real network: 4×4 computed, the 2×2 at the works shown. Gridlock, works queue,
-// red lights, overlaps, determinism, flows entering the 2×2, and that nothing outside the 2×2 is handed to the page.
+// red lights, overlaps, determinism, flows entering the 2×2, and that `agents` (the stats) stay inside the 2×2 while the
+// page draws `all` and the signal heads of all 16 junctions (T38).
 // Called by tests/test_grid.py; one ✅ / ❌ line per assertion, no network access.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -107,7 +108,9 @@ ok(A.inPoly + Bw.inPoly === 0, `reverse: no car centre ever inside a closed-lane
 ok(A.red + Bw.red === 0 && A.sim.redRun + Bw.sim.redRun === 0, `reverse: no car crosses a stop line on red (${A.red + Bw.red} independent, ${A.sim.redRun + Bw.sim.redRun} self-reported)`);
 ok(A.overlap + Bw.overlap === 0, `reverse: no overlaps on any lane (gap ≥ 0) — ${A.overlap + Bw.overlap} violations`);
 ok(A.outBox + Bw.outBox === 0, `reverse: the page is never handed a car outside the 2×2 view (${A.outBox + Bw.outBox} outside GRID_VIEW)`);
-ok([...A.heads, ...Bw.heads].every(id => SHOWN.includes(id)) && A.heads.size === 4, `reverse: signal heads only at the 4 shown junctions (${[...A.heads].join(' ')})`);
+ok(A.heads.size === 16 && Bw.heads.size === 16, `signal heads at all 16 junctions — the page draws the whole 4×4 (T38; ${[...A.heads].join(' ')})`);
+{ const hs = A.sim.signalHeads(), sh = new Set(hs.filter(h => h.shown).map(h => h.id));
+  ok(sh.size === 4 && SHOWN.every(id => sh.has(id)) && hs.every(h => h.shown === SHOWN.includes(h.id)), `signalHeads() flags exactly the 2×2 at the works as shown: ${[...sh].join(' ')}`); }
 
 // 6 determinism
 const d1 = run(sp8w, 42, 600), d2 = run(sp8w, 42, 600);

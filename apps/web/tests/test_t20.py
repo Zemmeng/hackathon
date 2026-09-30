@@ -80,7 +80,7 @@ check("3 顾问的节省量标「全施工期」，并写清天数 × 采样小�
 check("3 对比表写明「这一小时」，全网延误标「车·分钟（这一小时）」", "这一小时 · ${engHour(EP.hour)}" in ENG and "车·分钟（这一小时）" in ENG)
 
 # ---- 补充 4：一个施工、一个时间 ----
-check("4 microOn() 决定画不画 La Trobe 微观场景（护栏、小人、标注、Δ；T27 起小人 / 标注再加一条：缩放 ≥ 1）", all(x in APP for x in ["if(micro)drawWorks('before')", "&&walkers)planNotes()", "&&micro)drawDeltas()", "walkers=micro&&fine", "if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);"]))
+check("4 microOn() 决定画不画 La Trobe 微观场景（护栏、小人、标注、Δ；T27 起小人 / 标注再加一条：缩放 ≥ 1，T38 第 2 步网格仿真例外）", all(x in APP for x in ["if(micro)drawWorks('before')", "&&walkers)planNotes()", "&&micro)drawDeltas()", "walkers=micro&&(fine||gridShown())", "if(micro)drawWorks('before');if(walkers){drawAgents(S.sim);"]))
 check("4 引擎连着且方案不在 La Trobe 时不画微观场景；连接中也不先闪一下", re.search(r"if\(!BE\.api\)return false;.*?return /la trobe/i\.test\(EP\.street", fn(APP, "microOn"), re.S) is not None)
 check("4 时间轴跟着微观场景走（.app.no-time 隐藏，桌面上 --safe-b 收回）", "classList.toggle('no-time',!on)" in APP and ".app.no-time .timeline{display:none}" in CSS and ".app.no-time{--safe-b:24px}" in CSS)
 check("4 第 1 步的 La Trobe 设备清单 / 道路使用者只在微观场景显示", "${microOn()?`<div class=\"stack\"><div class=\"row between\"><span class=\"eyebrow\">${L('Junction micro-model" in APP)

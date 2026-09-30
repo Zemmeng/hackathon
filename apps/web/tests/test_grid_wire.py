@@ -61,8 +61,16 @@ check("goStep(2) 网格分支把 S.stress 置空（第 3 步会自己重建 La T
 # 5. La Trobe-only drawing skips the grid sim
 check("drawRisk / fogRings 遇到 isGrid 直接返回",
       "if(!sim||sim.isGrid)return;" in APP and "if(!sim||sim.isGrid||S.wx!=='fog'" in APP)
-check("render 第 2 步网格不画 La Trobe 施工，画网格的施工和信号灯",
-      "if(micro&&!grid)drawWorks('before')" in APP and "if(grid&&fine)drawJunctions(S.sim)" in APP)
+check("render 第 2 步网格不画 La Trobe 施工，画网格的施工和信号灯（T38：缩小也画）",
+      "if(micro&&!grid)drawWorks('before')" in APP and "if(grid)drawJunctions(S.sim)" in APP)
+check("T38：第 2 步网格缩放 < 1 也画车（walkers 含 gridShown()），La Trobe 场景仍只在 fine 里画",
+      "walkers=micro&&(fine||gridShown())" in APP)
+check("T38：网格仿真画整个 4×4（sim.all），统计仍用 sim.agents（施工处 2×2）",
+      "const list=sim.isGrid&&sim.all?sim.all:sim.agents" in APP and "for(const a of list)" in APP)
+check("T38：施工段醒目（光晕 + 标签），标签写街名和封几条道",
+      "drawTag(ctx,px,py,0,-34" in fn_body(APP, "drawJunctions") or "drawTag(ctx,px,py,0,-34" in APP)
+check("T38：时钟 / 时间轴按方案时段（第 2 步网格用 EP.hour，其余 17:00），不再写死「17:」",
+      "function clockHour(){return gridShown()?" in APP and "`17:${" not in APP)
 
 # 6. plan change in step 2 rebuilds the grid
 run = ENG[ENG.find("async function engRun("):]
