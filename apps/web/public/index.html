@@ -292,13 +292,13 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .sumo-run{padding:10px 12px;font-size:13px}
 .sumo-run [data-live]{font-variant-numeric:tabular-nums}
 /* T42: cloud SUMO run in progress; seed box */
-.sumo-wait{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line2);border-radius:10px;font-size:13px}
+.sumo-wait{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line-2);border-radius:10px;font-size:13px}
 .sumo-wait [data-live]{font-variant-numeric:tabular-nums}
-.spin{flex:none;width:16px;height:16px;border:2px solid var(--line2);border-top-color:var(--works);border-radius:50%;animation:spin .8s linear infinite}
+.spin{flex:none;width:16px;height:16px;border:2px solid var(--line-2);border-top-color:var(--works);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
 .sumo-seed{flex-wrap:wrap;gap:6px 8px;align-items:center}
-.sumo-seed input{width:120px;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;background:transparent;color:inherit;font:inherit;font-variant-numeric:tabular-nums}
+.sumo-seed input{width:120px;padding:8px 10px;border:1px solid var(--line-2);border-radius:8px;background:transparent;color:inherit;font:inherit;font-variant-numeric:tabular-nums}
 .sumo-seed .btn{padding:8px 12px;font-size:13px}
 .eng-routes{display:flex;flex-direction:column;gap:8px}
 .eng-route{display:grid;grid-template-columns:minmax(0,1fr) 60px 34px 86px;align-items:center;gap:8px;font-size:12.5px}
@@ -2769,7 +2769,7 @@ function sumoPill(){const s=S.sim.src||{},sd=isFinite(s.seed)?` · seed ${s.seed
   return`<span class="pill" data-sumo-src="baked">${L('SUMO · pre-computed (cloud unavailable)','SUMO · 预先跑好的（云端没算成）')}${sd}</span>${s.reason?`<span class="small muted">${esc(sumoReason(s.reason))}</span>`:''}`;}
 // Seed box + run button (T42): the lead picks the random seed; the same seed gives the same run
 function sumoSeedHTML(){const dis=SU.busy?' disabled':'';
-  return`<div class="row sumo-seed"><label class="eyebrow" for="sumoSeed">${L('Seed','种子')}</label><input id="sumoSeed" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"${dis}><button type="button" class="btn ghost" id="sumoDice"${dis}>${L('Random','随机')}</button><button type="button" class="btn sumo-run" id="sumoRerun"${dis}>${SU.busy?`${L('Computing','计算中')} · <span data-live="suEl">0</span> s`:L('▶ Run SUMO (~15 s)','▶ 运行 SUMO（约 15 s）')}</button></div>`;}
+  return`<div class="row sumo-seed"><label class="eyebrow" for="sumoSeed">${L('Seed','种子')}</label><input id="sumoSeed" type="number" inputmode="numeric" min="0" max="2147483647" step="1" value="${SU.seed}"${dis}><button type="button" class="btn ghost" id="sumoDice"${dis}>${L('Random','随机')}</button><button type="button" class="btn sumo-run" id="sumoRerun"${dis}>${SU.busy?L('Computing…','计算中…'):L('▶ Run SUMO (~15 s)','▶ 运行 SUMO（约 15 s）')}</button></div>`;}
 // While the cloud run computes: no cars from anywhere else, just a spinner (panel + map)
 function sumoWaiting(){return gridShown()&&!!S.sim&&!S.sim.isSumo&&sumoWant()&&!SU.failed;}
 function sumoWaitHTML(){return`<p class="eng-assume">${L('SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed','SUMO 1.27.1 · 真实 CBD 路网（OSM）+ SCATS 08:00 车流 · 信号配时和转弯比例是假设值')}</p>
