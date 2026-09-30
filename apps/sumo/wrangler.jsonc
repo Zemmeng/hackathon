@@ -17,14 +17,15 @@
   "observability": { "enabled": true },
 
   // 容器：image 是 Dockerfile，构建上下文是 apps/（Dockerfile 里 COPY web/tools/sumo/… 和实网要的 roads/public/cbd/*.json）
-  // standard-2 = 1 vCPU / 6 GiB / 12 GB 盘：SUMO 单核跑满，给多了也用不上；lite / basic 只有 1/16、1/4 核，4 种情景要慢好几倍
+  // standard-4 = 4 vCPU / 12 GiB / 20 GB 盘（Cloudflare 容器上限）：跑满一小时时几个情景各开一个 SUMO 进程并行（SUMO_REAL_JOBS=4），
+  // 1 核要约 1.5 分钟一次；lead 10-01 定「狠狠提升」、总预算 20 美元（内存按醒着计费，到评审结束约 1.5–3 美元）
   // max_instances 1：serve.py 的任务状态只在这一个实例里（worker.js 固定用 getContainer(…, 'main')）
   "containers": [
     {
       "class_name": "SumoContainer",
       "image": "./Dockerfile",
       "image_build_context": "..",
-      "instance_type": "standard-2",
+      "instance_type": "standard-4",
       "max_instances": 1
     }
   ],

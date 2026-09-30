@@ -14,9 +14,13 @@
 // 真实 CBD 路网（contract v2，T40）：
 //   const real = await sumo.loadReal();                               // {source:'baked', network:'real', index}，/sumo/public/real/index.json
 //   const m = await sumo.realManifest(real, 'original'); const c = await sumo.realChunk(real, 'original', m.chunks[0]);
-//   const r = await sumo.runReal({ seed, p_original: 0.14, p_ai: 0.53 }, { onStatus, signal, timeoutMs: 90000 });
+//   const r = await sumo.runReal({ seed, p_original: 0.14, p_ai: 0.53 }, { onStatus, signal, timeoutMs: 180000 });
 //   // → {source:'live', runId, elapsedMs, index} 或 {source:'baked', reason, index}（reason：health_down / sumo_rate / sumo_busy / timeout / sumo_failed / network / not_found / cancelled …）
 //   sourceLabel(r, 'en') → 'Cloud · live · 31.4 s' | 'SUMO · pre-computed'；realLabels[lang].caveats 是必须同屏的说明
+// 任意方案的绕行比例（T49，同一路网、同一施工，只换 p）：没有预跑兜底，拿不到就 source:'none'，页面显示「—」+ reasonLabel(r.reason)
+//   const r = await sumo.runOptions([{ id: 'A', p: 0.14 }, { id: 'B', p: 0.14 }, { id: 'C', p: 0.607 }], { seed, onStatus, signal, timeoutMs: 180000 });
+//   // → {source:'live', network:'real', runId, elapsedMs, index} 或 {source:'none', network:'real', reason, index:null}
+//   // index.scenarios = baseline + opt-A / opt-B / opt-C（metrics 同 original / ai）；p 相同的方案只跑一次，后一个带 reused_from:'opt-A'；默认不写逐帧（manifest.chunks = []）
 // 浏览器和 node 都能跑（node 里传 fetch 和绝对地址）；不依赖任何库
 
 export const SCENARIOS = Object.freeze(['baseline', 'closure', 'guided', 'footpath']);
@@ -32,9 +36,14 @@ const KNOWN = new Set(['sumo_off', 'sumo_down', 'sumo_starting', 'sumo_rate', 's
 // 真实路网（contract v2）：情景 id、默认绕行比例（引擎对「ROADWORK AHEAD」/「USE RUSSELL / SAVE 9 MIN」的读数）
 export const REAL_SCENARIOS = Object.freeze(['baseline', 'original', 'ai']);
 export const REAL_DEFAULTS = Object.freeze({ p_original: 0.14, p_ai: 0.53 });
-const REAL_TIMEOUT_MS = 90000; // 一次真实路网三情景：本机 ≤ 30 s，云端约 1.5–2 倍，再留冷启动
+export const REAL_TIMEOUT_MS = 180000; // 一次真实路网三情景（T48：整整 08:00–09:00 一小时）：云端约 40–60 s，再留冷启动和排队
 const REAL_HEALTH_MS = 12000;  // 用户点了「云端重跑」才查活，容器刚醒可以多等一会儿
 const LIVE = Symbol('live');   // drive() 成功的标记，和回退结果区分（回退结果是普通对象）
+
+// 方案模式（T49）：方案 id、默认总时限（baseline + 最多 5 个方案，1 小时仿真也够）
+export const OPTION_IDS = Object.freeze(['A', 'B', 'C', 'D', 'E']);
+const OPTIONS_TIMEOUT_MS = 180000;
+const isRealScenario = (s) => REAL_SCENARIOS.includes(s) || /^opt-[A-E]$/.test(s);
 
 export class SumoError extends Error {
   constructor(code, msg) {
@@ -399,7 +408,7 @@ export function createSumoClient({ base = '/api/sumo/v1', baked = '/sumo/public/
   }
 
   async function realManifest(ref, scenario, { signal } = {}) {
-    if (!REAL_SCENARIOS.includes(scenario)) throw new SumoError('bad_params', `未知情景：${scenario}`);
+    if (!isRealScenario(scenario)) throw new SumoError('bad_params', `未知情景：${scenario}`);
     const r = await request(`${realBase(ref)}/${scenario}/manifest.json`, { ms: FILE_MS, signal });
     if (r.status !== 200 || !r.data || !Array.isArray(r.data.chunks)) throw new SumoError(reasonOf(r.status, r.data), msgOf(r));
     return r.data;
@@ -408,7 +417,7 @@ export function createSumoClient({ base = '/api/sumo/v1', baked = '/sumo/public/
   // file 可以是文件名，也可以直接传 manifest.chunks[i]：带 sha256 且有 WebCrypto 时核对；没有 WebCrypto（http 页面等）就跳过，不让页面挂
   async function realChunk(ref, scenario, file, { signal } = {}) {
     const entry = file && typeof file === 'object' ? file : { file };
-    if (!REAL_SCENARIOS.includes(scenario) || !/^frames-\d{3}\.json$/.test(entry.file || '')) throw new SumoError('bad_params', `不认识的块：${scenario}/${entry.file}`);
+    if (!isRealScenario(scenario) || !/^frames-\d{3}\.json$/.test(entry.file || '')) throw new SumoError('bad_params', `不认识的块：${scenario}/${entry.file}`);
     const r = await request(`${realBase(ref)}/${scenario}/${entry.file}`, { ms: FILE_MS, signal });
     if (r.status !== 200 || !r.data || !Array.isArray(r.data.frames)) throw new SumoError(reasonOf(r.status, r.data), msgOf(r));
     if (entry.sha256) {
@@ -444,5 +453,37 @@ export function createSumoClient({ base = '/api/sumo/v1', baked = '/sumo/public/
     return r.data;
   }
 
-  return { health, run, loadBaked, bakedFor, manifest, chunk, loadReal, runReal, realManifest, realChunk };
+  // ---- 方案模式（T49）：baseline + 每个方案一个 opt-<id> 情景；没有预跑兜底 ----
+  // 请求体：options 1–5 个 {id: A–E 不重复, p: 0–1 的有限数}，不合规返回 null（不发请求）；seed 只带有限数，范围由 serve.py 判
+  function optionsBody(options, seed) {
+    if (!Array.isArray(options) || options.length < 1 || options.length > OPTION_IDS.length) return null;
+    const seen = new Set();
+    const opts = [];
+    for (const o of options) {
+      if (!o || !OPTION_IDS.includes(o.id) || seen.has(o.id) || typeof o.p !== 'number' || !Number.isFinite(o.p) || o.p < 0 || o.p > 1) return null;
+      seen.add(o.id);
+      opts.push({ id: o.id, p: o.p });
+    }
+    const body = { network: 'real' };
+    if (typeof seed === 'number' && Number.isFinite(seed)) body.seed = seed;
+    body.options = opts;
+    return body;
+  }
+
+  // 成功 {source:'live', network:'real', runId, elapsedMs, index, engine, params}；任何失败 {source:'none', network:'real', reason, index:null, …}
+  async function runOptions(options, { seed, onStatus, signal, timeoutMs: limitMs = OPTIONS_TIMEOUT_MS } = {}) {
+    const none = (reason, extra = {}) => ({ network: 'real', reason, ...extra, index: null, source: 'none' });
+    const body = optionsBody(options, seed);
+    if (!body) return none('bad_params', { error: 'options 要 1–5 个 {id: A–E 不重复, p: 0–1}' });
+    const want = body.options.map((o) => `opt-${o.id}`);
+    const r = await drive(body, {
+      onStatus, signal, limitMs, fb: none, healthMs: REAL_HEALTH_MS,
+      indexOk: (d) => isRealIndex(d) && want.every((id) => d.scenarios.some((x) => x && x.id === id && x.metrics)),
+      healthReason: (h) => (h.error === 'cancelled' ? 'cancelled' : 'health_down'),
+    });
+    if (!r || !r[LIVE]) return r;
+    return { network: 'real', runId: r.runId, elapsedMs: r.elapsedMs, index: r.data, engine: r.data.engine || r.h.engine, params: r.data.params || body, source: 'live' };
+  }
+
+  return { health, run, loadBaked, bakedFor, manifest, chunk, loadReal, runReal, runOptions, realManifest, realChunk };
 }

@@ -74,6 +74,56 @@ function cmpClashWhen(x,zh,hour){
   const t=x.ws.time,n=x.days;
   return`${cmpSpan(t.from,t.to,zh)}${x.overlapDays>0&&hrs?' · '+hrs:''} · ${zh?`已错开 ${n} 天`:`staggered ${n} day${Math.abs(n)===1?'':'s'}`}`;
 }
+// T49: the window a clash number is summed over, next to the dates (the other rows are one hour): "3 days × 2 peak hours".
+// days < 1 (staggered apart) → ''
+function cmpWin(days,hours,zh){
+  const d=Math.round(+days||0),h=Math.round(+hours||0);if(d<1||h<1)return'';
+  return zh?`${d} 天 × ${h} 个高峰小时`:`${d} day${d===1?'':'s'} × ${h} peak hour${h===1?'':'s'}`;
+}
+// ---- T49 (lead D-0930 「SUMO 为主，引擎退幕后」): on the SUMO plan 04's traffic numbers come from SUMO, never the engine ----
+// The engine only reads each option's signs into p, the share of drivers who detour = 1 − the 'stay' route's share in the
+// option's summary (options() brief or run() summary; detour_share when there are no routes), to 0.1 % — SUMO's input. null = no reading
+function cmpP(s){
+  if(!s)return null;
+  const st=Array.isArray(s.routes)?s.routes.find(r=>r&&r.id==='stay'):null;
+  const p=st&&Number.isFinite(st.share)?1-st.share:Number.isFinite(s.detour_share)?s.detour_share:NaN;
+  return Number.isFinite(p)?Math.round(Math.min(1,Math.max(0,p))*1000)/1000:null;
+}
+// runOptions() result → { id: SUMO metrics | null } for the ids asked. The client is written elsewhere (T49-a), so accept the
+// shapes it may take: an array, { options }, { index: { options | scenarios } } or { scenarios } of { id (A, opt-A, option_A…), metrics }
+// (or the metrics inline), or { metrics: { A: {…} } }
+function cmpSuParse(res,ids){
+  const r=res&&typeof res==='object'?res:{},ix=r.index&&typeof r.index==='object'?r.index:{},arr=a=>Array.isArray(a)?a:null;
+  const list=arr(res)||arr(r.options)||arr(ix.options)||arr(ix.scenarios)||arr(r.scenarios)||[];
+  const key=x=>x&&typeof x==='object'?String(x.id!=null?x.id:x.option!=null?x.option:'').replace(/^opt(ion)?[-_ ]?/i,'').toUpperCase():'';
+  const out={};
+  for(const id of ids){
+    const x=list.find(o=>key(o)===String(id).toUpperCase());
+    let m=x?(x.metrics&&typeof x.metrics==='object'?x.metrics:x):null;
+    if(!m&&r.metrics&&typeof r.metrics==='object'&&r.metrics[id]&&typeof r.metrics[id]==='object')m=r.metrics[id];
+    out[id]=m||null;
+  }
+  return out;
+}
+// One option's SUMO metrics → the table's numbers (null = SUMO did not give it). q: works queue at the end of the hour
+// (works_queue_equiv_end_m, T48's hour run), else the run's longest (qMax); ex: extra seconds per vehicle through the works;
+// dv: vehicles detoured. tot: total extra delay in the SUMO area in veh·min — SUMO's own total when the run has one
+// (total_extra_veh_min), else mean_extra_s (extra time per vehicle against the no-works run, over the vehicles both runs
+// share) × cohort_vehicles (the vehicles counted; vehicles if missing) / 60, flagged totEst so the table says "≈ mean × vehicles"
+function cmpSuNums(m){
+  if(!m||typeof m!=='object')return null;
+  const n=v=>v!=null&&v!==''&&Number.isFinite(+v)?+v:null;
+  const qe=n(m.works_queue_equiv_end_m),qm=n(m.works_queue_max_m),t0=n(m.total_extra_veh_min),me=n(m.mean_extra_s),nv=n(m.cohort_vehicles)!=null?n(m.cohort_vehicles):n(m.vehicles);
+  return{q:qe!=null?qe:qm,qMax:qe==null&&qm!=null,ex:n(m.works_traffic_extra_s),tot:t0!=null?t0:me!=null&&nv!=null?me*nv/60:null,totEst:t0==null&&me!=null&&nv!=null,dv:n(m.detour_vehicles)};
+}
+// Same p → same SUMO run by construction (T49): { of: the cheapest such plan, extra: hire difference } per plan, as cmpSameAs.
+// rows = [{ p, hire, flags }]; a plan with no reading, no hire or no works this hour is never flagged
+function cmpSameP(rows){
+  const ok=r=>!!r&&Number.isFinite(r.p)&&Number.isFinite(r.hire)&&!(r.flags&&r.flags.inactive);
+  return rows.map((r,j)=>{if(!ok(r))return null;let of=-1;
+    rows.forEach((x,i)=>{if(i!==j&&ok(x)&&x.p===r.p&&x.hire<r.hire&&(of<0||x.hire<rows[of].hire))of=i;});
+    return of<0?null:{of,extra:r.hire-rows[of].hire};});
+}
 // be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
 function cmpFromOptions(res){
   return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
@@ -90,16 +140,17 @@ function cmpVms(plan){
   const ws=plan&&plan.worksites&&plan.worksites[0],v=ws&&(ws.equipment||[]).find(e=>e.type==='vms');
   return v&&v.frames?v.frames.map(f=>f.join(' / ')).join('  ▸  '):'';
 }
-// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date, credits }
-// (credits = creditLines(): data attribution the licences ask for, printed above the footer)
+// Execution pack → one printable page. d = pack.js packDoc(p, lang); x = { rows: [{ id, label, car, transit, peds, hire }], pick, by, hour, date, credits, src }
+// (credits = creditLines(): data attribution the licences ask for, printed above the footer; src 'sumo' (T49, the SUMO plan):
+// car = SUMO's total extra delay in its area, trams & buses / on foot not covered by SUMO — never the engine's)
 // (the plans compared, numbers from the engine); h = { L, esc, fmt } passed in so tests/compare_glue.mjs runs this in node.
 // Every string goes through esc(), every number through fmt(). The page is paper-white in both themes.
 function cmpDocHTML(d,x,h){
-  const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v);
+  const{L,esc,fmt}=h,lb=d.labels,c=lb.cols,aud=v=>v==null?'—':'A$'+fmt(v),su=x.src==='sumo',na=v=>v==null?(su?esc(L('not covered by SUMO','SUMO 暂不覆盖')):'—'):fmt(v);
   const ch=(x.rows||[])[x.pick],wp=String(d.when||'').split(' · ');
   const facts=[[lb.when,esc(wp[0]),esc(wp.slice(1).join(' · '))],[lb.decision,ch?esc(ch.id)+' · '+esc(ch.label):esc(d.decision||'—'),ch?esc(x.by||''):''],
     [lb.total,d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud),esc(L('assumed day rates','日租价为假设值'))]];
-  const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${r.transit==null?'—':fmt(r.transit)}</td><td class="n">${r.peds==null?'—':fmt(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
+  const opts=(x.rows||[]).map((r,i)=>`<tr${i===x.pick?' class="pick"':''}><td>${esc(r.id)} · ${esc(r.label)}${i===x.pick?` <em>${esc(L('chosen','已选'))}</em>`:''}</td><td class="n">${r.car==null?'—':fmt(r.car)}</td><td class="n">${na(r.transit)}</td><td class="n">${na(r.peds)}</td><td class="n">${aud(r.hire)}</td></tr>`).join('');
   const eq=d.quote.lines.map(l=>`<tr><td>${esc(l.name||l.item)}${l.over?`<div class="pd-over">${esc(l.over)}</div>`:''}</td><td class="n">${l.qty==null?'?':fmt(l.qty)}</td><td class="n">${l.rate==null?'—':'A$'+fmt(l.rate)+esc(d.quote.per_day)}</td><td class="n">${fmt(l.days)}</td><td class="n">${aud(l.cost)}</td></tr>`).join('');
   const vms=d.vms.map(v=>`<div class="pd-vms"><div class="pd-vms-meta"><b>${esc(v.id)}</b><span>${esc(v.at)}</span><span>${esc(v.when)}</span></div><div class="pd-frames">${v.frames.map(f=>`<figure><figcaption>${esc(f.label)}</figcaption><div class="pd-led">${f.lines.map(esc).join('<br>')}</div></figure>`).join('')}</div></div>`).join('');
   const signs=d.signs.map(g=>`<li><b>${esc(g.id)}</b> · ${esc(g.at)}${g.text?` · <span class="pd-mono">${esc(g.text)}</span>`:''}</li>`).join('');
@@ -111,18 +162,23 @@ function cmpDocHTML(d,x,h){
 <p class="pd-sub">${esc(d.id||'')} · ${esc(d.where)}</p>
 <div class="pd-facts">${facts.map(([k,v,n])=>`<div><span>${esc(k)}</span><b>${v}</b>${n?`<small>${n}</small>`:''}</div>`).join('')}</div>
 ${d.reason?`<blockquote class="pd-reason"><span>${esc(lb.reason)}</span>${esc(d.reason)}</blockquote>`:''}
-${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(L('Car delay','车延误'))}<small>${esc(L('veh·min','车·分钟'))}</small></th><th class="n">${esc(L('Tram & bus','电车公交'))}<small>${esc(L('rider·min','人·分钟'))}</small></th><th class="n">${esc(L('On foot','行人'))}<small>${esc(L('ped·min','人·分钟'))}</small></th><th class="n">${esc(L('Hire','租金'))}<small>${esc(L('works period','整个工期'))}</small></th></tr></thead><tbody>${opts}</tbody></table></div><p class="pd-note">${esc(L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
+${opts?`<section><h2>${esc(L('Plans compared','比较过的方案'))}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(L('Plan','方案'))}</th><th class="n">${esc(su?L('Extra delay · SUMO area','SUMO 范围延误增量'):L('Car delay','车延误'))}<small>${esc(L('veh·min','车·分钟'))}</small></th><th class="n">${esc(L('Tram & bus','电车公交'))}<small>${esc(L('rider·min','人·分钟'))}</small></th><th class="n">${esc(L('On foot','行人'))}<small>${esc(L('ped·min','人·分钟'))}</small></th><th class="n">${esc(L('Hire','租金'))}<small>${esc(L('works period','整个工期'))}</small></th></tr></thead><tbody>${opts}</tbody></table></div><p class="pd-note">${esc(su?L(`Traffic numbers: SUMO on the real CBD network around the works, weekday ${x.hour}, one hour; trams, buses and pedestrians are not covered by SUMO. Hire: whole works period.`,`车流数字：SUMO 在施工附近的真实 CBD 路网上算的工作日 ${x.hour} 这一小时；电车公交和行人 SUMO 暂不覆盖。租金：整个工期。`):L(`Traffic numbers: simulation engine, weekday ${x.hour}, one hour. Hire: whole works period.`,`车流数字：仿真引擎，工作日 ${x.hour} 这一小时。租金：整个工期。`))}</p></section>`:''}
 <section><h2>${esc(lb.quote)}</h2><div class="pd-scroll"><table class="pd-t"><thead><tr><th>${esc(c.item)}</th><th class="n">${esc(c.qty)}</th><th class="n">${esc(c.rate)}</th><th class="n">${esc(c.days)}</th><th class="n">${esc(c.cost)}</th></tr></thead><tbody>${eq}</tbody><tfoot><tr><td colspan="4">${esc(lb.total)}</td><td class="n">${d.quote.total_aud==null?esc(d.quote.at_least)+' '+aud(d.quote.partial_aud):aud(d.quote.total_aud)}</td></tr></tfoot></table></div><p class="pd-note">${esc(d.quote.note)}</p></section>
 <section><h2>${esc(lb.vms)}</h2>${vms||`<p class="pd-note">${esc(lb.none)}</p>`}</section>
 ${signs?`<section><h2>${esc(lb.signs)}</h2><ul class="pd-list">${signs}</ul></section>`:''}
 <section class="pd-two"><div><h2>${esc(lb.checks)}</h2><ul class="pd-list pd-checks">${checks}</ul></div><div><h2>${esc(lb.notify)}</h2><table class="pd-t pd-notify"><tbody>${notify}</tbody></table></div></section>
 ${(x.credits||[]).length?`<section class="pd-src"><h2>${esc(L('Data sources','数据来源'))}</h2><ul class="pd-list">${x.credits.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></section>`:''}
-<footer class="pd-foot"><span>${esc(d.foot)}</span><span>RippleTwin</span></footer>
+<footer class="pd-foot"><span>${esc(su?cmpSuFoot(L):d.foot)}</span><span>RippleTwin</span></footer>
 </article>`;
 }
+// The pack's footer on the SUMO plan (T49): pack.js says the figures come from the engine; here the traffic figures are SUMO's
+function cmpSuFoot(L){return L('Traffic figures come from SUMO (a model, not field measurements); trams, buses and pedestrians are not covered by SUMO; hire rates are assumptions.','交通数字来自 SUMO（模型，不是实测）；电车公交和行人 SUMO 暂不覆盖；租金是假设值。');}
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,cl:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,cl:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false,su:null};
+// T49: the plan SUMO covers (the Lonsdale demo works, one lane closed — as sumoImpactHTML in 5-app.js). On it no engine traffic
+// outcome is shown in 04 / 05, 03's nearby works or the VMS lab: SUMO's numbers, or 「SUMO 暂不覆盖」 where SUMO has none
+function suPlan(){return typeof SUMO_LINK==='string'&&EP.link===SUMO_LINK&&!EP.all&&EP.lanes===1;}
 
 // Execution pack, AI explanation and inventory; all model text is rendered as textContent.
 function cmpLoad(){
@@ -181,7 +237,7 @@ async function cmpClashUpdate(){
     if(in3)x=x3; // 03's pick, shifted if 03 staggered it
     else{const sc=await clashPick(cur,alive);if(!sc)return;x=sc[0]||null;}
     st.other=x;cmpRender();
-    for(let i=0;x&&i<CP.rows.length;i++){
+    for(let i=0;x&&!suPlan()&&i<CP.rows.length;i++){ // T49: the SUMO plan shows no engine clash cost → not scored per plan
       const r=CP.rows[i];let v='err';
       if(r.s)try{v=await BE.api.clash(r.plan.worksites[0],x.ws);}catch(e){console.warn('compare: clash check failed for plan',r.id,e);}
       if(!alive())return;st.cells[i]=v;cmpRender();
@@ -194,7 +250,12 @@ function cmpClashRow(rc){
   let wlab='…';
   if(c&&c.err)wlab='—';
   else if(x===null)wlab=L('no other registered works overlap','登记表里没有同期的其他施工');
-  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpClashWhen(x,LANG.cur==='zh',engHour)}`;}
+  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpClashWhen(x,LANG.cur==='zh',engHour)}`;
+    const w=cmpWin(x.days==null?x.r.overlap.days:x.overlapDays,x.r.hours.length,LANG.cur==='zh');if(w)wlab+=` · ${w}`; // T49: the clash number is summed over this window
+    if(suPlan())wlab+=x.days==null?` · ${L(`suggest staggering it ${clashDays(x.ws)} day${clashDays(x.ws)===1?'':'s'}`,`建议错开 ${clashDays(x.ws)} 天`)}`:'';
+    else wlab+=` · ${L('engine estimate','引擎估算')}`;}
+  // T49: the SUMO plan — which works overlap, when, and the stagger suggestion (days, from the dates alone); no engine clash cost
+  if(suPlan())return`<tr><th scope="row"${x?` title="${esc(x.o.title)}"`:''}>${L('Nearby works','和附近施工叠加')}<small>${wlab}</small></th>${CP.rows.map((r,i)=>`<td${rc(i)}>${c&&c.err?'—':x===null?L('none','无'):x?`<span class="cmp-na">${L('combined impact not covered by SUMO','叠加影响 SUMO 暂不覆盖')}</span>`:'…'}</td>`).join('')}</tr>`;
   const cell=i=>{
     if(c&&c.err)return'—';
     if(x===null)return L('none','无');
@@ -209,7 +270,9 @@ function cmpClashRow(rc){
 function cmpExplainUpdate(){
   const lang=LANG.cur==='zh'?'zh':'en';
   const key=CP.key+'|'+lang;
-  if(CP.busy||!CP.rows.length){
+  // T49: on the SUMO plan the AI explanation is not asked for — explain.js reads the engine's numbers (optionFromRun) and would
+  // quote them; hidden rather than fed SUMO's, whose metrics it has no fields for (safer: nothing it says can carry an engine number)
+  if(CP.busy||!CP.rows.length||suPlan()){
     if(CP.exKey){CP.exKey='';++CP.exSeq;CP.explain=null;CP.exBusy=false;}
     return;
   }
@@ -224,6 +287,12 @@ function cmpExplainUpdate(){
     .finally(()=>{if(seq===CP.exSeq){CP.exBusy=false;cmpRender();}});
 }
 function cmpExplainRender(el){
+  if(suPlan()){ // T49: no AI explanation, no "leaning" on the SUMO plan (cmpExplainUpdate) — say why once, where the advice line goes
+    el.querySelectorAll('[data-cmpexplain],[data-cmplean]').forEach(b=>b.replaceChildren());
+    const hd=el.querySelector('[data-cmphead]'),dc=el.querySelector('[data-cmpdecide]');if(hd)hd.textContent=engHour(EP.hour);
+    if(dc)dc.textContent=L('No AI explanation for this plan: it would quote the engine’s numbers, and here the traffic numbers come from SUMO. The person responsible chooses the plan and records why.','这套方案不显示 AI 解读：它会引用引擎的数，而这里的交通数字来自 SUMO。由负责人选择方案并记录理由。');
+    return;
+  }
   const result=CP.explain;
   el.querySelectorAll('[data-cmpexplain]').forEach(box=>{
     box.replaceChildren();
@@ -247,21 +316,85 @@ function cmpExplainRender(el){
   if(decide)decide.textContent=result?.decide||L('This is advice only. The person responsible chooses the plan and records why.','这只是建议，由负责人选择方案并记录理由。');
 }
 
+// ---- T49 (lead D-0930): 04 / 05 traffic numbers on the SUMO plan come from SUMO ----
+// Each option's p (cmpP: the engine's sign reading, behind the scenes) → the SUMO client's runOptions([{ id, p }…], { seed })
+// (sumo-client.js, T49-a; loaded by 5-app.js sumoClient(), feature-detected). Missing, failing or empty → '—' + the reason,
+// never engine numbers. CP.su = { key, busy, t0, res: { id: metrics | null } | null, err, src: { source, elapsedMs, why (the client's reason, labelled), seed, hour }, tick }
+async function cmpSuUpdate(){
+  if(!suPlan()||(S.ui!==4&&S.ui!==5)||CP.busy||CP.rows.length<2||!engOn()||EP.badText)return;
+  const ps=CP.rows.map(r=>cmpP(r.s)),seed=typeof SU==='object'&&SU?SU.seed:42,key=`${CP.key}|${ps.join(',')}|${seed}`;
+  if(CP.su&&CP.su.key===key)return;
+  if(CP.su&&CP.su.tick)clearInterval(CP.su.tick);
+  const st=CP.su={key,busy:true,t0:Date.now(),res:null,err:null,src:null,tick:0},alive=()=>CP.su===st;
+  const ask=CP.rows.map((r,i)=>({id:r.id,p:ps[i]})).filter(o=>o.p!=null);
+  const done=err=>{if(!alive())return;st.busy=false;if(err)st.err=err;clearInterval(st.tick);st.tick=0;cmpRender();};
+  if(!ask.length)return done(L('the engine read no sign for these plans, so SUMO has no input','引擎没读出这几套方案的牌，SUMO 没有输入'));
+  // the seconds tick in place (the table itself is not rebuilt every second)
+  st.tick=setInterval(()=>{if(!alive()||!st.busy){clearInterval(st.tick);return;}const e=document.querySelector('[data-cmpsuel]');if(e)e.textContent=String(Math.round((Date.now()-st.t0)/1000));},1000);
+  cmpRender();
+  const why=e=>typeof sumoErr==='function'?sumoErr(e):String((e&&e.message)||e).slice(0,160); // plain text: esc() when shown (cmpSuRows)
+  let fn=null;
+  try{const cli=typeof sumoClient==='function'?await sumoClient():null,mod=typeof SU==='object'&&SU?SU.mod:null;
+    fn=cli&&typeof cli.runOptions==='function'?cli.runOptions.bind(cli):mod&&typeof mod.runOptions==='function'?mod.runOptions:null;}
+  catch(e){return done(L(`the SUMO client did not load (${why(e)})`,`SUMO 客户端没加载上（${why(e)}）`));}
+  if(!alive())return;
+  if(!fn)return done(L('this SUMO client has no runOptions yet — the options run is not deployed','这个版本的 SUMO 客户端还没有 runOptions —— 多方案计算还没上线'));
+  let r;
+  try{r=await fn(ask,{seed});}catch(e){return done(L(`the SUMO options run failed (${why(e)})`,`SUMO 多方案计算失败（${why(e)}）`));}
+  if(!alive())return;
+  const res=cmpSuParse(r,ask.map(o=>o.id)),ix=r&&r.index&&typeof r.index==='object'?r.index:{},rs=r&&r.reason?String(typeof sumoReason==='function'?sumoReason(r.reason):r.reason):'';
+  st.src={source:r&&r.source||'',elapsedMs:r&&r.elapsedMs,why:rs,seed:Number.isFinite(+ix.seed)?+ix.seed:seed,hour:Number.isFinite(+ix.hour)?+ix.hour:null};
+  if(!Object.values(res).some(Boolean))return done(rs?L(`SUMO gave no result for these plans (${rs})`,`SUMO 没给出这几套方案的结果（${rs}）`):L('SUMO gave no result for these plans','SUMO 没给出这几套方案的结果'));
+  st.res=res;done(null);
+}
+// cmpSuNums per row (null = no SUMO number for that column yet)
+function cmpSuAll(){const su=CP.su,res=su&&su.res;return CP.rows.map(r=>res?cmpSuNums(res[r.id]):null);}
+// SUMO's hour: the run's own (index.hour), else the pre-computed replay's, else 8 (SUMO runs weekday 08:00–09:00)
+function cmpSuHour(){const h=CP.su&&CP.su.src&&CP.su.src.hour;return Number.isFinite(h)?h:typeof SU==='object'&&SU&&SU.index&&Number.isFinite(+SU.index.hour)?+SU.index.hour:8;}
+// Where the numbers came from, for the caption: live (seconds, seed) / pre-computed (+ why) / '' while nothing
+function cmpSuSrc(){
+  const s=CP.su&&CP.su.res&&CP.su.src;if(!s)return'';const sd=Number.isFinite(s.seed)?` · seed ${s.seed}`:'';
+  if(s.source==='live')return L(`SUMO computed live in the cloud${Number.isFinite(s.elapsedMs)?` · ${(s.elapsedMs/1000).toFixed(1)} s`:''}${sd}`,`云端 SUMO 现场计算${Number.isFinite(s.elapsedMs)?` · ${(s.elapsedMs/1000).toFixed(1)} s`:''}${sd}`);
+  return L(`SUMO · pre-computed (cloud unavailable)${s.why?` · ${esc(s.why)}`:''}${sd}`,`SUMO · 预先跑好的（云端没算成）${s.why?` · ${esc(s.why)}`:''}${sd}`);
+}
+// 04's traffic rows on the SUMO plan: p (SUMO's input), then SUMO's numbers — a spinner row while the cloud runs, '—' + the
+// reason when it could not — then trams & buses / pedestrians, which SUMO does not cover. rc = the column attributes
+function cmpSuRows(rc){
+  const su=CP.su,ps=CP.rows.map(r=>cmpP(r.s)),sn=cmpSuAll(),n=CP.rows.length,H=cmpSuHour();
+  const best=cmpBest(sn.map(x=>x||{}),['q','ex','tot']),lo=(k,i)=>!!(k&&best[k]&&best[k].includes(i));
+  const tr=(lab,sub,cells)=>`<tr><th scope="row">${lab}${sub?`<small>${sub}</small>`:''}</th>${cells}</tr>`;
+  let h=tr(L('Drivers who detour (AI sign reading)','AI 读牌 → 会绕行的司机'),L('SUMO’s input · the engine reads each plan’s signs','SUMO 的输入 · 引擎读每套方案的牌'),CP.rows.map((r,i)=>`<td${rc(i)}><span class="cmp-num">${ps[i]==null?'—':pctS(ps[i])}</span></td>`).join(''));
+  const M=[[L(`Works queue at ${engHour(H+1)}`,`${engHour(H+1)} 施工排队`),'m','q',x=>x.q,x=>x.qMax?L('longest in the run','本次最长'):''],
+    [L('Extra per vehicle through the works','过施工段每车多花'),L('s vs no works','秒 · 比不施工'),'ex',x=>x.ex,null],
+    [L('Total extra delay in the SUMO area','SUMO 范围内总延误增量'),L('veh·min','车·分钟'),'tot',x=>x.tot,x=>x.totEst?L('≈ mean × vehicles','≈ 平均 × 车数'):''],
+    [L('Detoured vehicles','绕行的车'),L('vehicles · this run','辆 · 本次'),'',x=>x.dv,null]];
+  if(su&&su.busy)h+=`<tr class="cmp-su-wait"><td colspan="${n+1}"><div class="sumo-wait" role="status"><span class="spin" aria-hidden="true"></span><span>${L('SUMO computing the options in the cloud','SUMO 正在云端计算这几套方案')} · <span data-cmpsuel>${Math.round((Date.now()-su.t0)/1000)}</span> s ${L('(about 1 min)','（约 1 分钟）')}</span></div></td></tr>`;
+  else{
+    h+=M.map(([lab,unit,k,g,note])=>tr(lab,unit,CP.rows.map((r,i)=>{const x=sn[i],v=x?g(x):null,t=x&&note?note(x):'';
+      return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${t?`<small class="cmp-u">${t}</small>`:''}${v!=null&&lo(k,i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join(''))).join('');
+    if(!su||!su.res)h+=`<tr class="cmp-su-note"><td colspan="${n+1}">${su&&su.err?`${L('SUMO numbers unavailable','SUMO 数字暂时没有')}: ${esc(su.err)} · <button type="button" class="linkbtn" data-cmpsure>${L('Try again','重试')}</button>`:L('SUMO numbers appear once the plans are built.','方案配好后这里显示 SUMO 的数。')}</td></tr>`;
+  }
+  const nc=`<span class="cmp-na">${L('not covered by SUMO','SUMO 暂不覆盖')}</span>`;
+  return h+[L('Trams & buses','电车公交'),L('Pedestrians','行人')].map(nm=>tr(nm,'',CP.rows.map((r,i)=>`<td${rc(i)}>${nc}</td>`).join(''))).join('');
+}
+
 function cmpHTML(){
   if(!engOn()||EP.badText)return'';
   const exp=S.ui===5; // 05 Export (6-step UI) shows the picked plan + the decision; 04 Compare shows all of them
   const head=`<div class="row between cmp-head"><span class="eyebrow" style="color:var(--sun-ink)">${exp?L('Confirm & export','确认导出'):L('Compare plans · choose one','方案对比 · 选一套')}</span><span class="eyebrow" data-cmphead>${engHour(EP.hour)}</span></div>`;
-  if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
+  if(CP.busy||!CP.rows.length)return head+`<div class="card eng-note"><b>${CP.busy||EP.advBusy?suPlan()?L('Building plans from the RPM inventory and reading each plan’s signs…','正在按 RPM 库存配方案，并逐套读屏上的字…'):L('Building plans from the RPM inventory and scoring each on the real CBD network…','正在按 RPM 库存配方案，并在真实 CBD 路网上逐套计算…'):L('No plans to compare yet','还没有可以对比的方案')}</b></div>`;
   if(CP.rows.length<2)return head+`<div class="card eng-note"><b>${L('The advisor found no alternative for this hour — only your plan to compare.','顾问这个时段没有别的改法 —— 只有现在这一套。')}</b></div>`;
-  const nums=CP.rows.map(r=>({...cmpNumbers(r.s),hire:r.hire})),best=cmpBest(nums,['car','transit','peds','hire']);
+  // T49: the SUMO plan's cards (05) carry SUMO's total extra delay in its area; trams & buses / on foot are not covered by SUMO
+  const su=suPlan(),sn=su?cmpSuAll():null,NC=L('not covered by SUMO','SUMO 暂不覆盖');
+  const nums=CP.rows.map((r,i)=>su?{car:sn[i]?sn[i].tot:null,transit:null,peds:null,hire:r.hire}:{...cmpNumbers(r.s),hire:r.hire}),best=cmpBest(nums,['car','transit','peds','hire']);
   const mark=(k,i)=>best[k]&&best[k].includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:'';
-  const cell=(k,i,v,unit)=>`<div><span class="eyebrow">${{car:L('Car delay','车延误'),transit:L('Tram & bus','电车公交'),peds:L('On foot','行人'),hire:L('Hire','租金')}[k]}</span><b>${v}</b><small>${unit}</small>${mark(k,i)}</div>`;
+  const cell=(k,i,v,unit)=>`<div><span class="eyebrow">${{car:su?L('Extra delay · SUMO area','SUMO 范围延误增量'):L('Car delay','车延误'),transit:L('Tram & bus','电车公交'),peds:L('On foot','行人'),hire:L('Hire','租金')}[k]}</span><b>${v}</b><small>${unit}</small>${mark(k,i)}</div>`;
   const cardsA=CP.rows.map((r,i)=>{
     const n=nums[i],ok=!!r.s,picked=CP.pick===i,f=r.flags||{};
     const warn=[f.stock_ok===false?L('Not enough stock for this kit','库存不够配这一套'):'',f.inactive?L('No works this hour — numbers are 0','这个时段不施工 —— 数字是 0'):''].filter(Boolean);
     return`<div class="card cmp-card" aria-current="${picked}"><div class="cmp-hd"><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><span class="chips"><button type="button" data-cmppick="${i}" aria-pressed="${picked}" ${ok?'':'disabled'}>${picked?L('Chosen','已选'):L('Choose this','选这个')}</button></span></div>
       <span class="cmp-what" data-cmpwhat="${i}"></span>${warn.map(w=>`<span class="cmp-warn">! ${w}</span>`).join('')}
-      ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
+      ${ok?`<div class="cmp-nums">${cell('car',i,n.car==null?'—':fmtN(n.car),L('veh·min','车·分钟'))}${cell('transit',i,n.transit==null?'—':fmtN(n.transit),su?NC:L('rider·min','人·分钟'))}${cell('peds',i,n.peds==null?'—':fmtN(n.peds),su?NC:L('ped·min','人·分钟'))}${cell('hire',i,r.hire==null?'—':'A$'+fmtN(r.hire),r.days?L(`${fmtN(r.days)} days · assumed`,`${fmtN(r.days)} 天 · 假设值`):L('no inventory','无库存数据'))}</div>`
         :`<p class="small" style="color:var(--risk)">${L('The engine could not score this plan.','引擎算不了这套方案。')}</p>`}<div class="cmp-explain" data-cmpexplain="${i}"></div></div>`;}),cards=cardsA.join('');
   // 04 Compare: one table, plans across and measures down (the team template's horizontal comparison); the panel widens for it
   const lean=CP.explain&&CP.explain.lean?CP.explain.lean.option:null,budget=+EP.budget||0,lo=(B,k,i)=>!!(B[k]&&B[k].includes(i));
@@ -273,17 +406,24 @@ function cmpHTML(){
   const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
     [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
   const days=CP.rows[0].days,dup=cmpSameAs(CP.rows),dupL=d=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);return L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`);};
-  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
-    ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
+  // T49: on the SUMO plan the same p means the same SUMO run by construction — say the models can't value the extra kit (the arrow
+  // board, when that is what it adds), not that the money is wasted
+  const dupP=su?cmpSameP(CP.rows.map(r=>({p:cmpP(r.s),hire:r.hire,flags:r.flags}))):null,dupS=(d,i)=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);
+    return cmpKit(CP.rows[i].plan).arrow>cmpKit(CP.rows[d.of].plan).arrow?L(`Same traffic effect as ${a} · models don't value the arrow board's safety role · +A$${amt}`,`交通效果和 ${a} 相同 · 模型不评价箭头板的安全作用 · 多 A$${amt}`)
+      :L(`Same traffic effect as ${a} · models don't value the extra equipment's safety role · +A$${amt}`,`交通效果和 ${a} 相同 · 模型不评价多出来的设备的安全作用 · 多 A$${amt}`);};
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${su?dupP[i]?`<i class="cmp-dup" data-eq>${dupS(dupP[i],i)}</i>`:'':dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+    ${su?cmpSuRows(rc):mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
     ${cmpClashRow(rc)}
     <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
     <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
     <tr><th scope="row">${L('Choose','选定方案')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}><button type="button" class="cmp-pickbtn" data-cmppick="${i}" aria-pressed="${CP.pick===i}" ${r.s?'':'disabled'}>${CP.pick===i?L('Chosen','已选择'):L('Choose','选择')}</button></td>`).join('')}</tr>
-  </tbody></table><div class="cmp-cap">${L(`Traffic ${engHour(EP.hour)}–${engHour(EP.hour+1)} · engine on real CBD flows · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(EP.hour)}–${engHour(EP.hour+1)} · 引擎在真实 CBD 车流上算 · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)}</div></div>`;
+  </tbody></table><div class="cmp-cap">${su?L(`Traffic ${engHour(cmpSuHour())}–${engHour(cmpSuHour()+1)} weekday · SUMO on the real CBD network around the works${cmpSuSrc()?` · ${cmpSuSrc()}`:''} · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(cmpSuHour())}–${engHour(cmpSuHour()+1)} 工作日 · SUMO 在施工附近的真实 CBD 路网上算${cmpSuSrc()?` · ${cmpSuSrc()}`:''} · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)
+    :L(`Traffic ${engHour(EP.hour)}–${engHour(EP.hour+1)} · engine estimate on real CBD flows · hire over the works period${budget?` · budget A$${fmtN(budget)}`:''}`,`交通 ${engHour(EP.hour)}–${engHour(EP.hour+1)} · 引擎估算 · 真实 CBD 车流 · 租金按整个施工期${budget?` · 预算 A$${fmtN(budget)}`:''}`)}</div></div>`;
   if(exp&&!(CP.pick!=null&&CP.rows[CP.pick]))return head+`<div class="card eng-note"><b>${L('Choose a plan first','先选一套方案')}</b><span>${L('Pick one in 04 Compare, or here:','在 04 比较方案里选，或者直接在这里选：')}</span></div><div class="chips">${CP.rows.map((x,i)=>`<button type="button" data-cmppick="${i}" aria-pressed="false">${String.fromCharCode(65+i)} · ${esc(cmpLabel(x))}</button>`).join('')}</div><p class="cmp-lean" data-cmplean></p>`;
   const planNote=CP.src==='kits'?L('Plans: engine T22, three kits from the RPM inventory (cheapest / standard / guided). ','方案：引擎 T22 按 RPM 库存配的三套（最省 / 标准 / 引导）。'):L('Plans: your plan + the advisor’s alternatives. ','方案：现在的方案 + 顾问的改法。');
   let h=head+`${exp?`<div class="cmp-cards">${cardsA[CP.pick]}</div>`:table}<p class="cmp-lean" data-cmplean></p><p class="legend-src" data-cmpdecide></p>
-    <p class="legend-src">${planNote}${L(`Car, tram & bus and on-foot numbers: engine, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
+    <p class="legend-src">${planNote}${su?L('Traffic numbers: SUMO, on the real CBD network around the works (cars only). The engine works behind the scenes: it only reads each plan’s signs into the share of drivers who detour, which is SUMO’s input. Trams, buses, pedestrians and the rest of the CBD are not covered by SUMO. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.','交通数字：SUMO 在施工附近的真实 CBD 路网上算（只有小汽车）。引擎退到幕后：只把每套方案的牌读成「会绕行的司机」比例，作为 SUMO 的输入。电车公交、行人和 CBD 其他地方 SUMO 暂不覆盖。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。')
+      :L(`Car, tram & bus and on-foot numbers: engine estimate, this hour (${engHour(EP.hour)}), person- or vehicle-minutes. Hire: RPM inventory × day rate × works days — day rates and stock are assumptions, RPM Hire’s formal quote applies.`,`车、电车公交、行人：引擎估算的这一小时（${engHour(EP.hour)}），单位是车·分钟或人·分钟。租金：RPM 库存 × 日租价 × 施工天数 —— 日租价和库存件数是假设值，以 RPM Hire 正式报价为准。`)}</p>`;
   if(exp&&CP.pick!=null&&CP.rows[CP.pick]){
     h+=`<div class="stack cmp-choose"><div class="between cmp-head"><span class="eyebrow">${L('Decision','决定')} · ${String.fromCharCode(65+CP.pick)}</span><span class="eyebrow">${L('a person decides, not the tool','由人拍板，工具只给数字')}</span></div>
       <div class="chips">${[['contractor',L('Contractor','施工方')],['council',L('Council','市政')]].map(([k,t])=>`<button type="button" data-cmpby="${k}" aria-pressed="${CP.by===k}">${t}</button>`).join('')}</div>
@@ -293,7 +433,8 @@ function cmpHTML(){
   }
   if(exp){const row=(t,ok)=>`<div><i class="dot" style="background:${ok?'var(--accent)':'var(--works)'}"></i><span class="grow">${t}</span></div>`;
     h+=`<div class="stack"><div class="row between"><span class="eyebrow">${L('Before handing over','交付前确认')}</span><span class="eyebrow">${L('a person signs off','由人确认')}</span></div><div class="list eng-evd">
-      ${row(L(`Numbers: engine, ${engHour(EP.hour)}, real CBD flows — model estimates, not field-validated`,`数字：引擎在真实 CBD 车流上算的 ${engHour(EP.hour)} —— 模型估算，未经实地验证`),1)}
+      ${row(su?L(`Traffic numbers: SUMO, weekday ${engHour(cmpSuHour())}, real CBD network around the works — model estimates, not field-validated; trams, buses and pedestrians not covered by SUMO`,`交通数字：SUMO 在施工附近的真实 CBD 路网上算的工作日 ${engHour(cmpSuHour())} —— 模型估算，未经实地验证；电车公交和行人 SUMO 暂不覆盖`)
+        :L(`Numbers: engine estimate, ${engHour(EP.hour)}, real CBD flows — model estimates, not field-validated`,`数字：引擎估算，真实 CBD 车流上的 ${engHour(EP.hour)} —— 模型估算，未经实地验证`),1)}
       ${row(L('Trust in signs, riders per trip and hire day rates are assumed values','对标志的信任度、每班乘客、日租价是假设值'),0)}
       ${row(L('Traffic management plan and site checks by the responsible engineer','交通组织方案和现场条件由负责工程师复核'),0)}</div></div>`;}
   return h;
@@ -301,7 +442,7 @@ function cmpHTML(){
 
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
-  cmpUpdate();cmpExplainUpdate();cmpClashUpdate();
+  cmpUpdate();cmpExplainUpdate();cmpClashUpdate();cmpSuUpdate();
   const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});
@@ -309,6 +450,7 @@ function cmpRender(){
   el.querySelectorAll('[data-cmpby]').forEach(b=>b.onclick=()=>{CP.by=b.dataset.cmpby;cmpRender();});
   const ta=document.getElementById('cmpReason');if(ta){ta.value=CP.reason;ta.oninput=()=>{CP.reason=ta.value;};}
   const ex=document.getElementById('cmpExport');if(ex)ex.onclick=cmpExport;
+  const re=el.querySelector('[data-cmpsure]');if(re)re.onclick=()=>{CP.su=null;cmpRender();}; // T49: SUMO options run again
 }
 
 // Chosen plan → pack.js execution pack → a print / copy sheet. Every string goes in with textContent.
@@ -316,12 +458,18 @@ function cmpExport(){
   const r=CP.rows[CP.pick];if(!r||!r.s||!CP.mod||!CP.inv)return;
   const ws=r.plan.worksites[0],lang=LANG.cur==='zh'?'zh':'en';let txt='',doc='';
   try{
-    const impacts=CP.mod.ex.optionFromRun(r.id,'plan',r.s).metrics;
+    const impacts=CP.mod.ex.optionFromRun(r.id,'plan',r.s).metrics,su=suPlan();
     const p=CP.mod.pack.buildPack({...ws,title:ws.name,status:'decided',decision:{option:r.id,by:CP.by,reason:CP.reason.trim(),at:new Date().toISOString()}},{inventory:CP.inv,links:cmpLinks(ws),impacts});
+    // T49: the SUMO plan's pack names who to notify (the engine still decides that behind the scenes) without the engine's numbers
+    if(su){p.impacts=null;for(const n of p.notify||[])if(n&&n.why)for(const k of ['pax_min','blocked_pax_h','blocked_vph','peds_extra_min'])if(k in n.why)n.why[k]=null;}
     txt=CP.mod.pack.packText(p,lang)+`\n\n${L('Data sources','数据来源')}\n`+creditLines().map(s=>'- '+s).join('\n');
     if(typeof CP.mod.pack.packDoc==='function'){ // older pack.js (before packDoc) → plain text below
-      const rows=CP.rows.map(x=>({id:x.id,label:cmpLabel(x),...cmpNumbers(x.s),hire:x.hire}));
-      doc=cmpDocHTML(CP.mod.pack.packDoc(p,lang),{rows,pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'}),credits:creditLines()},{L,esc,fmt:fmtN});
+      const sn=su?cmpSuAll():null,rows=CP.rows.map((x,i)=>({id:x.id,label:cmpLabel(x),...(su?{car:sn[i]?sn[i].tot:null,transit:null,peds:null}:cmpNumbers(x.s)),hire:x.hire}));
+      const d=CP.mod.pack.packDoc(p,lang);
+      if(su){ // T49: the text pack gets the same SUMO footer; a notify line whose reason was only the engine's number says so
+        if(d.foot)txt=txt.split(d.foot).join(cmpSuFoot(L));
+        for(const n of d.notify||[])if(n&&!n.why)n.why=L('affected — impact not covered by SUMO','受影响 —— 影响 SUMO 暂不覆盖');}
+      doc=cmpDocHTML(d,{rows,src:su?'sumo':'engine',pick:CP.pick,by:CP.by==='council'?L('Council','市政'):L('Contractor','施工方'),hour:engHour(su?cmpSuHour():EP.hour),date:new Date().toLocaleString(lang==='zh'?'zh-CN':'en-AU',{dateStyle:'medium',timeStyle:'short'}),credits:creditLines()},{L,esc,fmt:fmtN});
     }
   }catch(e){console.warn('export failed',e);toast(L('Could not build the pack','执行包生成失败'));return;}
   let sh=document.getElementById('cmpSheet');

@@ -94,54 +94,80 @@ curl http://127.0.0.1:8021/sumo/v1/runs \
 
 ## 真实 CBD 路网（contract v2，`build_real.py`）
 
-第 2 步地图上的车改由 SUMO 在**真实路网**上算：`build_real.py` 读 `apps/roads/public/cbd/` 的 `network.json`（OSM 路段）、`signals.json`（SCATS 路口）、`flows.json`（工作日 08:00 各路段车流），在 Elizabeth–Spring × Bourke–La Trobe 这块（外扩 35 m，含 La Trobe / Little Lonsdale / Lonsdale / Little Bourke × Elizabeth / Swanston / Russell / Exhibition 16 个路口和施工点人行灯 2935）跑三个情景：
+第 2 步地图上的车改由 SUMO 在**真实路网**上算：`build_real.py` 读 `apps/roads/public/cbd/` 的 `network.json`（OSM 路段）、`signals.json`（SCATS 路口）、`flows.json`（工作日 08:00–09:00 各路段车流）。**T48（lead 定的方案 B）**：SUMO 跑满 **08:00–09:00 一整小时**，自己算 09:00 的排队；施工段的放行能力对上引擎的假设，好跟引擎的「排队 918 m」公平比。
+
+- **路网**：Elizabeth–Spring × Bourke–La Trobe（外扩 35 m，含 16 个 SCATS 路口和施工点人行灯 2935），再给排队留地方：Russell St 以东到 `network.json` 的东边界（Spring 以东的 Albert St 到 Gisborne St、Nicholson St、Victoria Pde），南到 Collins St，北过 La Trobe 约 170 m（`AREA_BOXES`；197 个节点 / 356 条路段）。施工段上游的 Lonsdale → Albert St 西行链 849 m（Spring 在 437 m 处）。试过只切 Albert St 一条走廊、不要东北角那几个 OSM 合并大路口：routeSampler 换了一套路线，Russell 南行在 Russell × Lonsdale 右转锁死，无施工时 09:00 就有近 200 辆要过施工段的车等着进路网——更糟，所以留着东北角。
+- **时间**：07:57:00 空网起步、用 08:00 的车流、**还没施工**，预热 180 s 不展示；**08:00:00 整封道**（`works.add.xml`：rerouter 的 `closingLaneReroute` 封中央侧车道 + 限速牌把剩下那条改 30 km/h），展示和统计 08:00–09:00（`clock0_s = 0`、`duration_s = 3600`、`sample_s = 2`）。
+- **通行能力**：2935 给 Lonsdale 车流的绿 + 黄 **50%**（42 s 绿 / 3 s 黄 / 45 s 红）。这样两车道约 1 800 辆/小时、封一条后约 800，对上引擎的 1 800 × ½ × 0.9 = **810 辆/小时**；实放多少写在 `metrics.works_throughput_vph`（烘焙副本：原方案 805、AI 方案 788、无施工 1 161 = 需求）。
+- **堵车和死锁**：车不会被删。`--ignore-junction-blocker 60`（堵在路口里 60 s 的车，横向车流不再让它）+ `--time-to-teleport 300`（SUMO 默认：整整 300 s 一动不动才沿路线挪到前面）。完全关掉瞬移试过：无施工情景 07:03 起 Little Bourke × Swanston 一辆右转车等不到下游空位，Swanston / La Trobe / Elizabeth 一圈锁死，09:00 有 500 多辆车原地不动——那是 SUMO 路口模型的死锁，不是施工。施工排队里的车每个 90 s 周期都往前挪，不会被瞬移；每次瞬移都记数、记位置（`teleports_in_hour`、`teleports_works_bound`、`teleport_edges`；烘焙副本 0–2 次，都不在施工路线上）。
+- **回放**：只写 `original` / `ai` 两个情景的帧（`baseline` 的 `chunks: []`、`agents: []`，只有指标，页面不播），只写页面视野里的车：`VIEW_BOX` = 16 个路口外扩 12 m、往东（朝 Spring）140 m。每 2 s 一帧，每块 60 帧（2 分钟），共 30 块。
 
 | id | 施工 | 绕行比例 | 说明 |
 |---|---|---|---|
-| `baseline` | 无 | 0 | 对照 |
-| `original` | Lonsdale 西行 `l595594354_9756035316`（42 m）封右侧车道，剩一条限速 30 km/h | `p_original`，默认 0.14 | 引擎对「ROADWORK AHEAD」的读法 |
+| `baseline` | 无 | 0 | 对照（只出指标） |
+| `original` | 08:00 起 Lonsdale 西行 `l595594354_9756035316`（42 m）封右侧车道，剩一条限速 30 km/h | `p_original`，默认 0.14 | 引擎对「ROADWORK AHEAD」的读法 |
 | `ai` | 同上 | `p_ai`，默认 0.53 | 引擎对「USE RUSSELL / SAVE 9 MIN」的读法 |
 
-目录格式（烘焙副本和在线运行的输出一样）：`index.json` + `<id>/manifest.json` + `<id>/frames-NNN.json`，字段见 `docs/contract.md` 的 contract v2。要点：位置是**车身中心**（已从 FCD 的车头换算）、经纬度 ×1e6 取整；`angle_deg` 是 SUMO 约定（0 = 北、顺时针），页面坐标（x 东、y 北）里朝向 = `[sin a, cos a]`；每帧 `tls` 是全部 23 个控制器的原始灯色串，信号头 `signal_heads[].idx` 指向串里的位置（有 `G/g` 算绿，否则有 `y/Y` 算黄，否则红）；`q` 是施工段起点往上游、断档 ≤ 60 m 的连续排队米数（车速 < 1.5 m/s）。回放 t = 0 对应 08:00:00 之后 `clock0_s` = 180 s；展示 720 s（08:03–08:15），每块 60 帧、约 0.5–0.6 MB（硬上限 1.5 MB）。
+目录格式（烘焙副本和在线运行的输出一样）：`index.json` + `<id>/manifest.json` + `<id>/frames-NNN.json`，字段见 `docs/contract.md` 的 contract v2。要点：位置是**车身中心**（已从 FCD 的车头换算）、经纬度 ×1e6 取整；`angle_deg` 是 SUMO 约定（0 = 北、顺时针，取整到 1°），页面坐标（x 东、y 北）里朝向 = `[sin a, cos a]`；每帧 `tls` 是视野里有信号头的那些控制器（19 个）的原始灯色串，信号头 `signal_heads[].idx` 指向串里的位置（有 `G/g` 算绿，否则有 `y/Y` 算黄，否则红）；`q` 是施工段起点往上游、断档 ≤ 60 m 的连续排队米数（车速 < 1.5 m/s）。`index.params` 新增 `hour_window: [8, 9]`、`green_2935`、`network_extent`（中文 `network_extent_zh`）、`sim_s`（3 780）、`warmup_s`（180，在 08:00 之前）、`sample_s`、`chain_m`、`engine_capacity_vph`、`time_to_teleport_s`、`ignore_junction_blocker_s`。
 
 ```bash
-# 烘焙副本（apps/sumo/public/real/，输出目录必须为空；约 5 s）
-rm -rf apps/sumo/public/real
-/tmp/rippletwin-sumo-venv/bin/python apps/web/tools/sumo/build_real.py --seed 42 \
-  --output apps/sumo/public/real --work-dir /tmp/sumo-real-raw-42
-# 只建缓存（路网 + 需求），镜像构建时预热用
+# 烘焙副本必须用云端同一个镜像（linux/amd64）跑：routeSampler 在 macOS 和 Linux 上挑的需求不一样
+docker build --platform linux/amd64 -f apps/sumo/Dockerfile -t hackathon-sumo:hour apps
+mkdir -p ~/.cache/t48bake && rm -rf ~/.cache/t48bake/bake42   # colima 只挂载家目录，/tmp 不行
+docker run --rm --platform linux/amd64 --cpus 4 -e SUMO_REAL_SOURCE=docker-linux-amd64 -v ~/.cache/t48bake:/bake hackathon-sumo:hour \
+  python web/tools/sumo/build_real.py --seed 42 --output /bake/bake42 --work-dir /bake/bake42-raw
+rm -rf apps/sumo/public/real && cp -R ~/.cache/t48bake/bake42 apps/sumo/public/real
+# 本机试跑（结果和 Linux 不同，只看形状 / 耗时）；只建缓存（路网 + 需求），镜像构建时预热用
+/tmp/rippletwin-sumo-venv/bin/python apps/web/tools/sumo/build_real.py --seed 42 --output /tmp/sumo-real-42 --work-dir /tmp/sumo-real-raw-42
 /tmp/rippletwin-sumo-venv/bin/python apps/web/tools/sumo/build_real.py --prepare-only
 ```
 
-`requirements.txt` 之外第一次建缓存还要 `numpy scipy`（SUMO 自带的 `routeSampler.py` 要）。Python 接口：`build_real.build(args)`（`args.seed / p_original / p_ai / scenarios / output / work_dir`，失败抛异常）和 `build_real.validate_real(payload)`（白名单 `seed` 0–2147483647 整数、`p_original` / `p_ai` 0–1、`scenarios` ⊆ `baseline / original / ai` 非空不重复；可带 `"network": "real"`；其他字段一律 `ValueError`）。改了 `build_real.py` 就要重烘，`test_sumo_real.py` 会对 `generator_sha256`。
+`requirements.txt` 之外第一次建缓存还要 `numpy scipy`（SUMO 自带的 `routeSampler.py` 要）。Python 接口：`build_real.build(args)`（`args.seed / p_original / p_ai / scenarios / output / work_dir`，失败抛异常）和 `build_real.validate_real(payload)`（白名单 `seed` 0–2147483647 整数、`p_original` / `p_ai` 0–1、`scenarios` ⊆ `baseline / original / ai` 非空不重复；可带 `"network": "real"`；其他字段一律 `ValueError`）。`build()` 每个情景起一个子进程（`build_real.py --job`，SUMO 和读 FCD 都在里面），几个情景真并行。改了 `build_real.py` 就要重烘，`test_sumo_real.py` 会对 `generator_sha256`。
 
 | 环境变量 | 默认 | 说明 |
 |---|---|---|
 | `SUMO_ROADS_DIR` | 仓库的 `apps/roads/public/cbd` | 容器里是 `/app/roads/public/cbd` |
 | `SUMO_REAL_CACHE` | 系统临时目录下 `rippletwin-sumo-real-cache/` | 按「本脚本 + SUMO 版本 + 三个输入文件 + 2935 绿信比」的哈希分目录，原子改名，多进程安全 |
-| `SUMO_REAL_JOBS` | `min(3, CPU 数)` | 三个情景同时跑几个 SUMO |
-| `SUMO_REAL_SOURCE` | macOS arm64 上是 `local-macos-arm64`，否则 `<平台>-<架构>` | 写进 `index.params.source`；云端设成 `cloud` 之类 |
+| `SUMO_REAL_JOBS` | `min(3, CPU 数)` | 三个情景同时跑几个 |
+| `SUMO_REAL_SOURCE` | macOS arm64 上是 `local-macos-arm64`，否则 `<平台>-<架构>` | 写进 `index.params.source`；烘焙副本是 `docker-linux-amd64` |
 
-**实测耗时**（Apple 芯片，seed 42，三个情景）：缓存冷 7.9 s（其中建路网 + routeSampler 约 2.5–3.5 s）；缓存热、单核串行 4.4 s（每个 SUMO 0.8–0.9 s，其余是解析 FCD 和写 JSON）；缓存热、3 个并行 2.8 s。输出 40 个文件、共 20 MB，最大一个 0.62 MB。
+**实测耗时**（seed 42，三个情景，缓存热）：Apple 芯片本机 32–35 s（每个情景 SUMO 20–27 s + 读 FCD 6–8 s，3 个并行）；colima linux/amd64（Rosetta 转译）`--cpus 4` 50 s、`--cpus 1` 99 s。云端是 1 vCPU、原生 amd64（不用转译），页面等 180 s。缓存冷另加约 6 s（镜像构建时已经建好）。回放：原方案 15.1 MB、AI 方案 16.1 MB（各 30 块，最大一块 0.58 MB），baseline 只有 11 KB 的 manifest。
 
-**需求**：108 条路段都有 SCATS 计数（61 条实测，其余插值），routeSampler 选出 79 条路线、约 8 000 辆/小时；每个 seed 按泊松到达重新抽出发时刻（三个情景同一批车、同一个绕行抽签数，所以比例高的情景绕行车只多不少）。只有小汽车。**信号**：SCATS 没有配时，全部用 netconvert 默认的 90 s 定周期；2935 人行灯给 Lonsdale 车流的绿 + 黄占 70%（60 s 绿 / 3 s 黄 / 27 s 红，`--green-2935` 可改，只给烘焙用，不进 API）。灯色按程序算，跟 TraCI 对过（400 s × 23 个灯全一致）。**安全**：车道上的碰撞直接失败；路口内部的「碰撞」（OSM 合并出来的大路口内部车道几何重叠，SUMO 默认根本不查）以 `warn` 记录、不改动力学，单独报在 `metrics.junction_collisions`；瞬移（300 s 卡死）如实报在 `teleports`。
+**需求**：207 条路段都有 SCATS 计数（97 条实测，其余插值），routeSampler 选出约 150 条路线、约 15 700 辆/小时，其中穿过施工段 1 143 辆/小时（SCATS 计数 1 144）。每个 seed 按泊松到达重新抽出发时刻（三个情景同一批车、同一个绕行抽签数）。只有小汽车。注意：SCATS 在施工段是 1 144 辆/小时，Russell 路口的 Lonsdale 西行只有 513——中间多出来的车，routeSampler 一部分让它们从 Russell St 转进来，一部分直接从 Russell 两侧的 Lonsdale 路段中间出发（相当于停车场 / 小巷出来的车）；排队堵到那里时这些车进不了路网，算在「还没能进路网」里。东北角（Nicholson / Victoria Pde）和 Swanston St 北段的入口在 netconvert 默认配时下无施工也进不去车（09:00 积压约 900 辆），跟施工无关，报在 `insertion_backlog_end`，也把三个情景的 `mean_timeloss_s` 一起抬高（`mean_extra_s` 是同一批车相减，抵掉了）。**安全**：车道上的碰撞直接失败；路口内部的「碰撞」（OSM 合并出来的大路口内部车道几何重叠 + ignore-junction-blocker 放行的车）以 `warn` 记录、不改动力学，单独报在 `metrics.junction_collisions`（烘焙副本 66–67 次）。
 
-**指标**：`mean_timeloss_s` = 计划在展示窗口里出发的同一批车，到窗口结束时累计的损失时间（含等着进路网）；`mean_extra_s` = 同一批车比 `baseline` 多出的；`works_traffic_extra_s` = 其中原路线穿过施工段的车（指示牌管的就是它们）；`detour_vehicles` / `eligible_vehicles` = 窗口里实际绕行的 / 有资格绕行的（Russell 之前在 Lonsdale 西行、要穿过施工段）；`per_minute.halting` = 每分钟平均停着（< 0.1 m/s）的车数，`per_minute.harsh` = 每分钟踩到 4.5 m/s² 急刹的次数。
+**指标**（旧的都留着）：`mean_timeloss_s` = 08:00–09:00 出发的同一批车到 09:00 累计的损失时间（含等着进路网）；`mean_extra_s` = 同一批车比 `baseline` 多出的；`works_traffic_extra_s` = 其中原路线穿过施工段的车；`detour_vehicles` / `eligible_vehicles` = 这一小时实际绕行的 / 有资格绕行的；`per_minute.halting` / `harsh` = 视野里每分钟平均停着的车数 / 急刹次数（每 2 s 采样）。T48 新增：
 
-**2935 绿信比敏感性**（seed 1–3 平均，180 s 预热 + 720 s 展示；x = 全体每车多出秒数，w = 穿施工段的车每车多出秒数；全部 0 瞬移）：
+| 字段 | 含义 |
+|---|---|
+| `works_queue_end_m` | 09:00 的**实际排队**：Lonsdale / Albert St 西行链上停着的车（< 1.5 m/s、断档 ≤ 60 m）从施工段往上游排到哪，取最后一个 90 s 周期里最长的 |
+| `works_queue_equiv_end_m` | 09:00 的**引擎算法**：要穿过施工段、排在它后面的车（沿各自路线到施工段的距离，断档 ≤ 60 m 连成一串，含回溢到 Russell / Exhibition / Spring St 上的）+ 还没能进路网的，取最后一个周期的平均车数 × 7 m ÷ 2 |
+| `works_queue_equiv_end_vehicles` | 上面那个车数拆开：`lonsdale_albert` / `side_streets` / `waiting_to_enter` |
+| `queue_series` | `[[分钟, 实际排队 m, 引擎算法 m], …]`，0–60 每分钟一项，规则同上 |
+| `works_queue_vs_baseline_end_m` | 对照组算法（同一次也跑了 `baseline` 才有）：同一批车无施工时 09:00 前已经过了施工点、有施工时还没过的车数 × 3.5 m，就是 D/D/1 的排队车数 |
+| `works_throughput_vph` / `works_demand_vph` | 这一小时施工段末端线圈实际通过的车数 / 这一小时出发、路线穿过施工段（没绕行）的车数 |
+| `works_capacity_assumption_vph` | 810（引擎的假设，不是 SUMO 的输入；SUMO 实放多少看上一行） |
+| `insertion_backlog_end`、`teleports_in_hour`、`teleports_works_bound`、`teleport_edges`、`works_queue_equiv_max_m` | 见上 |
 
-| 2935 绿 + 黄 | 原方案 最长 / 平均排队 m | AI 方案 最长 / 平均排队 m | 原方案 x / w | AI 方案 x / w |
-|---|---|---|---|---|
-| 60% | 243 / 90 | 135 / 47 | +10.6 / +57 | +8.4 / +37 |
-| 65% | 208 / 77 | 133 / 41 | +7.8 / +43 | +7.7 / +32 |
-| **70%（默认）** | 189 / 58 | 135 / 37 | +6.2 / +28 | +6.5 / +27 |
+**烘焙副本（linux/amd64，seed 42）**：
 
-排队 AI 方案一直短（最长约少 30%，平均少 35–50%）；延误要看 2935 的配时：70% 时两种方案差不多（绕行本身多走几个灯），绿越短 AI 方案省得越多。烘焙用的 seed 42（70%）恰好是 AI 方案延误略高的一次：原方案 +2.5 s / +15 s，AI 方案 +4.3 s / +21 s，排队 168 / 38 m 对 127 / 31 m。原型在 50% 时研究区边上堵死、有瞬移，91%（netconvert 默认）时施工几乎看不出。这是模型之间的交叉检验，不是实测。
+| | 实际排队 09:00 / 最长 | 引擎算法 09:00 | 对照组算法 | 放行 辆/小时 | 需求 辆/小时 | 09:00 那些车在哪（链上 / 横街 / 没进路网） | 绕行 | 瞬移 |
+|---|---|---|---|---|---|---|---|---|
+| 无施工 | 23 / 152 m | 15 m | — | 1 161 | 1 173 | 3.5 / 0 / 0.8 | 0 | 1 |
+| 原方案 | 246 / 373 m | **973 m** | 991 m | 805 | 1 100 | 22 / 15 / 241 | 73 / 538 | 0 |
+| AI 方案 | 260 / 278 m | **305 m** | 312 m | 788 | 886 | 8 / 1 / 78 | 287 / 538 | 2 |
+
+跟引擎的 918 m 比：引擎 = 需求 1 144 − 513 × 0.14 = 1 072 辆/小时、能力 810 → 每小时多 262 辆 → 918 m。SUMO 用同一个能力假设（实放 805），这一抽的需求略高（1 100：泊松抽样，绕行 73 辆），多 295 辆 → 引擎算法 973 m、对照组算法 991 m，比 918 m 长 6–8%，差在需求抽样上。但**停在路上的**排队只有约 250 m（最长 373 m，到 Exhibition 前），不是引擎地图上那样沿 Lonsdale 一直排到 Spring：Russell 到施工段只有约 100 m，上游路段装不下；被耽误的车大多是本该从 Russell 两侧的 Lonsdale 路段中间进来（SCATS 513 → 1 144）、被排队挡在外面的，少数回溢到 Russell St 上。本机（macOS）同一 seed 的需求抽样不同：原方案 1 065 m、AI 方案 394 m。这是模型之间的交叉检验，不是实测。
+
+### 方案模式（T49，`options`）
+
+同一路网、同一施工（封一条车道），每个方案只换绕行比例 p：`POST /sumo/v1/runs` 带 `{"network":"real","seed":42,"options":[{"id":"A","p":0.14},{"id":"B","p":0.14},{"id":"C","p":0.607}]}`（`options` 1–5 个，`id` ∈ A–E 不重复，`p` 0–1；可选 `"frames":true`，默认 `false`；不能和 `p_original` / `p_ai` / `scenarios` 混用，否则 400 `bad_config`）→ 一个任务跑 `baseline` + `opt-A` / `opt-B` / `opt-C`（T48 的一小时：08:00 封道、跑到 09:00），目录还是 contract v2（`index.json` + `<id>/manifest.json`，指标字段同 `original` / `ai`，含 `works_queue_equiv_end_m` / `works_queue_end_m` / `queue_series` / `works_throughput_vph` / `works_traffic_extra_s` / `detour_vehicles` 等全部 T48 指标；`label` = `Option A` / `方案 A`）。`frames:true` 只给 `opt-<id>` 写帧，`baseline` 照旧只出指标。p 相同的方案（同一 seed、同一批车、同一个抽签数，结果本来一样）只跑一次，后面的照抄 manifest 并带 `reused_from: "opt-A"`（`index.timing.sumo_s` 里没有它）；`frames:false` 时 `chunks: []`、不写 `frames-NNN.json`。命令行：`build_real.py --options A=0.14 B=0.14 C=0.607 [--frames] --output …`。p = 0.14 的方案和 `original` 指标逐项相同（`test_sumo_real.py` 真跑对过）。
+
+实测（T48 一小时版，Apple 芯片 10 核，seed 42，A 0.14 / B 0.14 / C 0.605 + baseline，只写指标，实际跑 3 个 SUMO）：3 个并行 16.6–18.3 s（缓存冷 18.3 s，建缓存约 3 s）；`SUMO_REAL_JOBS=1` 一个一个跑（约等于单核）35.4 s。原三情景同一台机器 16.9–17.9 s。没有预跑兜底：`sumo-client.js` 的 `runOptions(options, {seed, onStatus, signal, timeoutMs = 180000})` 成功回 `{source:'live', runId, index}`，失败回 `{source:'none', reason}`。
 
 ## 验证
 
 ```bash
-python3 apps/web/tests/test_sumo_real.py   # 烘焙副本的形状 / 哈希 / 范围；设 SUMO_PY=<venv 的 python> 再真跑两次查可复现
+python3 apps/web/tests/test_sumo_real.py   # 烘焙副本的形状 / 哈希 / 范围 / 排队指标；设 SUMO_PY=<venv 的 python> 再真跑查可复现（约 1–2 分钟）
 python3 apps/web/tests/test_sumo_backend.py
 # 服务启动后：提交真实任务并检验所有轨迹块和接口
 python3 apps/web/tools/sumo/smoke.py

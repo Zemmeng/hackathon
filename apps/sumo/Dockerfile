@@ -19,7 +19,7 @@ RUN apt-get update \
 # LANG=C.UTF-8：build_demo.py 读 `sumo --version` 的第一行，locale 不对会读歪
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     LANG=C.UTF-8 LC_ALL=C.UTF-8 \
-    HOST=0.0.0.0 PORT=8080 SUMO_DATA_DIR=/data SUMO_KEEP_RUNS=20
+    HOST=0.0.0.0 PORT=8080 SUMO_DATA_DIR=/data SUMO_KEEP_RUNS=20 SUMO_REAL_JOBS=4
 
 WORKDIR /app
 COPY web/tools/sumo/requirements.txt web/tools/sumo/requirements.txt

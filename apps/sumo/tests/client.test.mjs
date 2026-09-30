@@ -3,7 +3,8 @@
 //       真实 CBD 路网（contract v2）：loadReal / runReal / realManifest / realChunk 两种来源、回退原因、文案（§11–§15）
 // 用法：node apps/sumo/tests/client.test.mjs（test.sh 会自动跑）；不联网、不需要 wrangler；最后一行固定「N passed, M failed」
 import { createHash } from 'node:crypto';
-import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS, realLabels, realSourceLabel, REAL_SCENARIOS, REAL_DEFAULTS } from '../public/js/sumo-client.js';
+import { readFileSync } from 'node:fs';
+import { createSumoClient, labels, sourceLabel, reasonLabel, SCENARIOS, DEFAULT_PARAMS, realLabels, realSourceLabel, REAL_SCENARIOS, REAL_DEFAULTS, REAL_TIMEOUT_MS, OPTION_IDS } from '../public/js/sumo-client.js';
 
 let P = 0, F = 0;
 const ok = (cond, msg) => { if (cond) { P++; console.log('✅ ' + msg); } else { F++; console.log('❌ ' + msg); } };
@@ -397,12 +398,84 @@ try {
     ok(realLabels.en.note === 'SUMO 1.27.1 · real CBD network (OSM) + SCATS 08:00 flows · signal timing and turn shares assumed' && realLabels.zh.note.includes('OSM'), `面板备注：${realLabels.en.note}`);
     ok(Object.isFrozen(realLabels) && Object.isFrozen(realLabels.en.caveats) && Object.isFrozen(REAL_SCENARIOS) && Object.isFrozen(REAL_DEFAULTS), 'realLabels / REAL_SCENARIOS / REAL_DEFAULTS 冻结');
     ok(JSON.stringify(REAL_SCENARIOS) === '["baseline","original","ai"]' && REAL_DEFAULTS.p_original === 0.14 && REAL_DEFAULTS.p_ai === 0.53, 'REAL_SCENARIOS 和默认绕行比例 0.14 / 0.53 按 contract v2');
+    { const src = readFileSync(new URL('../public/js/sumo-client.js', import.meta.url), 'utf8');
+      ok(REAL_TIMEOUT_MS === 180000 && /async function runReal\(params = \{\}, \{ onStatus, signal, timeoutMs: limitMs = REAL_TIMEOUT_MS \} = \{\}\)/.test(src),
+        `T48：runReal 不传 timeoutMs 时默认等 ${REAL_TIMEOUT_MS / 1000} s（整整一小时云端约 40–60 s，再留冷启动）`); }
     const forged = { network: 'real', source: 'baked', elapsedMs: 1234, runId: RID };
     ok(sourceLabel(forged, 'en') === 'SUMO · pre-computed' && realSourceLabel(forged, 'zh') === 'SUMO · 预先跑好', '反向：baked 结果就算带了 elapsedMs / runId，文案也还是「pre-computed」');
     ok(realSourceLabel({ network: 'real', source: 'live' }, 'en') === realLabels.en.none && realSourceLabel(undefined, 'zh') === realLabels.zh.none, '反向：live 但没有用时 / 空值 → 不显示「Cloud · live」');
     ok(sourceLabel({ source: 'baked' }, 'en') === labels.en.baked, '没有 network=real 的结果照旧用合成 2×2 的文案（不影响旧接口）');
     const codes = ['health_down', 'sumo_rate', 'sumo_busy', 'timeout', 'sumo_failed', 'network', 'not_found', 'cancelled', 'bad_params', 'bad_response', 'bad_chunk'];
     ok(codes.every((c) => labels.zh.reasons[c] && labels.en.reasons[c] && reasonLabel(c, 'en') === labels.en.reasons[c]), 'runReal 会给出的每个 reason 都有中英文案');
+  }
+
+  // ---- 16. runOptions（T49）：POST {network:'real', seed?, options} → 轮询 → index（baseline + opt-<id>）；没有预跑兜底，失败一律 source=none ----
+  {
+    const optIdx = (ids, extra = {}) => ({
+      ...realIdx('live-options'), params: { seed: 7, options: [], frames: false },
+      scenarios: ['baseline', ...ids].map((id) => ({ id, label: { en: id, zh: id }, diversion_share: 0, manifest: `${id}/manifest.json`, metrics: { works_queue_max_m: 1 } })), ...extra,
+    });
+    const OPTS = [{ id: 'A', p: 0.14 }, { id: 'B', p: 0.14 }, { id: 'C', p: 0.607 }];
+    const live = () => json(200, optIdx(['opt-A', 'opt-B', 'opt-C']));
+    const noBaked = (f) => f.calls.every((c) => !c.url.startsWith('/sumo/public/'));
+    const neverLiveOpt = (r, msg) => ok(r.source === 'none' && r.network === 'real' && r.index === null && r.runId === undefined
+      && sourceLabel(r, 'en') === realLabels.en.none && sourceLabel(r, 'zh') === realLabels.zh.none, `${msg}：source=none、index=null、文案「${sourceLabel(r, 'zh')}」、不带 runId`);
+
+    const f = fake({ polls: ['queued', 'running', 'complete'], index: live });
+    const phases = [];
+    const r = await client(f).runOptions(OPTS.map((o) => ({ ...o, label: 'x' })), { seed: 7, onStatus: (s) => phases.push(s.phase), timeoutMs: 2000 });
+    ok(r.source === 'live' && r.network === 'real' && r.runId === RID && r.index.tag === 'live-options' && r.index.scenarios.length === 4 && r.engine === ENGINE && r.reason === undefined,
+      `runOptions live：source=live、runId、index 有 baseline + 3 个方案（${r.source} ${r.reason || ''}）`);
+    ok(f.posts()[0].body === '{"network":"real","seed":7,"options":[{"id":"A","p":0.14},{"id":"B","p":0.14},{"id":"C","p":0.607}]}', `POST 体：${f.posts()[0].body}`);
+    ok(/^Cloud · live · \d+\.\d s$/.test(sourceLabel(r, 'en')) && /^云端现场 · 用时 \d+\.\d s$/.test(sourceLabel(r, 'zh')), `runOptions live 文案：${sourceLabel(r, 'zh')}`);
+    ok(['health', 'submit', 'queued', 'running', 'complete', 'done'].every((p) => phases.includes(p)) && noBaked(f), `runOptions onStatus：${phases.join(' → ')}；不碰预跑文件`);
+    const g = fake({ index: live });
+    await client(g).runOptions(OPTS);
+    ok(!('seed' in JSON.parse(g.posts()[0].body)), '不传 seed → 请求体不带 seed（默认值由 serve.py 定）');
+    const s = client(f);
+    await s.realManifest(r, 'opt-B').catch(() => null); // 假服务器没有这个文件（404），这里只看地址
+    ok(f.calls.at(-1).url === `/api/sumo/v1/runs/${RID}/opt-B/manifest.json`, 'realManifest 认 opt-B → /api/sumo/v1/runs/<id>/opt-B/manifest.json');
+    ok(await s.realManifest(r, 'opt-F').then(() => 'no-throw', (e) => e.code) === 'bad_params' && await s.realChunk(r, 'opt-a', 'frames-000.json').then(() => 'no-throw', (e) => e.code) === 'bad_params',
+      'opt-F / opt-a 不认 → bad_params');
+
+    // 参数不合规：不发任何请求
+    for (const bad of [[], undefined, 'A', [{ id: 'F', p: 0.1 }], [{ id: 'a', p: 0.1 }], [{ id: 'A', p: 0.1 }, { id: 'A', p: 0.2 }], [{ id: 'A', p: 1.01 }], [{ id: 'A', p: -0.1 }],
+      [{ id: 'A', p: NaN }], [{ id: 'A', p: '0.5' }], [{ id: 'A' }], [null], ['A', 'B', 'C', 'D', 'E', 'A'].map((id) => ({ id, p: 0.1 }))]) {
+      const h = fake({ index: live });
+      const rb = await client(h).runOptions(bad);
+      ok(rb.reason === 'bad_params' && h.calls.length === 0, `runOptions(${JSON.stringify(bad)}) → reason=bad_params，一个请求都不发`);
+      neverLiveOpt(rb, 'runOptions 参数不合规');
+    }
+
+    // 失败：没有预跑兜底 → source=none + 原因短码
+    for (const [name, o, reason, extra] of [
+      ['查活连不上', { health: () => { throw new TypeError('fetch failed'); } }, 'health_down', { detail: 'network', noPost: true }],
+      ['查活 503 sumo_starting', { health: () => json(503, { ok: false, error: 'sumo_starting', msg: '启动中' }) }, 'health_down', { detail: 'sumo_starting', noPost: true }],
+      ['POST 429 sumo_rate', { post: () => json(429, { ok: false, error: 'sumo_rate', msg: '每分钟最多 3 次' }) }, 'sumo_rate', {}],
+      ['POST 429 sumo_busy', { post: () => json(429, { ok: false, error: 'sumo_busy', msg: '正忙' }) }, 'sumo_busy', {}],
+      ['POST 400（旧容器不认 options）', { post: () => json(400, { ok: false, error: 'bad_config', msg: '参数不合规范：Unknown field: options' }) }, 'bad_params', { text: 'options' }],
+      ['运行 failed', { polls: ['running', 'failed'] }, 'sumo_failed', { text: FAIL_TEXT, liveRunId: true }],
+      ['一直 running', { polls: ['running'] }, 'timeout', { ms: 120, liveRunId: true }],
+      ['轮询 404', { poll: () => json(404, { ok: false, error: 'not_found', msg: '没有这个运行' }) }, 'not_found', { liveRunId: true }],
+      ['index 少了一个方案', { index: () => json(200, optIdx(['opt-A', 'opt-B'])) }, 'bad_response', { liveRunId: true }],
+      ['index 是原来三情景', { index: realLive }, 'bad_response', { liveRunId: true }],
+      ['index 不是 v2 真实路网', { index: () => json(200, idx('live')) }, 'bad_response', { liveRunId: true }],
+    ]) {
+      const h = fake({ index: live, ...o });
+      const t0 = Date.now();
+      const rf = await client(h).runOptions(OPTS, { timeoutMs: extra.ms || 2000 });
+      ok(rf.reason === reason && (!extra.detail || rf.detail === extra.detail) && (!extra.noPost || h.posts().length === 0)
+        && (!extra.text || String(rf.error).includes(extra.text)) && (!extra.liveRunId || rf.liveRunId === RID) && noBaked(h),
+        `runOptions ${name} → none，reason=${rf.reason}${rf.detail ? `（detail ${rf.detail}）` : ''}，不去取预跑文件`);
+      neverLiveOpt(rf, `runOptions ${name}`);
+      if (extra.ms) ok(Date.now() - t0 < 1500, `runOptions ${name}：按 timeoutMs 收住（${Date.now() - t0} ms）`);
+    }
+    const ctl = new AbortController();
+    const h = fake({ polls: ['running'], index: live });
+    const rc = await client(h, { pollMs: 20 }).runOptions(OPTS, { signal: ctl.signal, timeoutMs: 2000, onStatus: (st) => { if (st.phase === 'running') ctl.abort(); } });
+    ok(rc.reason === 'cancelled' && rc.liveRunId === RID && noBaked(h), `runOptions 用户取消 → none，reason=${rc.reason}`);
+    neverLiveOpt(rc, 'runOptions 取消');
+    ok(Object.isFrozen(OPTION_IDS) && OPTION_IDS.join('') === 'ABCDE', 'OPTION_IDS = A–E，冻结');
   }
 } catch (e) {
   F++;
