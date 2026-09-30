@@ -329,5 +329,13 @@ check("T50：WORLD 盖住 16 个路口（x −195…401、y −300…9）外加�
 check("T50：精细窗口的街道补上 Exhibition St（x ≈ 401）和 Little Bourke St（y ≈ −300）",
       "{id:'exhibition',name:'Exhibition St',zh:'展览街',axis:'v',c:402," in WORLD_JS and "{id:'lbourke',name:'Little Bourke St',zh:'小博克街',axis:'h',c:-300," in WORLD_JS)
 
+# 15. T51（@unicornnnnnny 10-01）：SUMO 方案的 04 表 / 05 卡片不再满屏「SUMO 暂不覆盖」—— 去掉电车公交、行人两行（表尾写「只含机动车」），
+#     叠加一行每格写「建议错开 N 天」；执行包（打印文档）照旧写明 SUMO 不覆盖电车公交和行人
+check("T51：04 表 SUMO 方案不拼电车公交 / 行人两行，表尾写 cars only / 只含机动车；叠加一行用 cmpSuStagger()",
+      "[L('Trams & buses','电车公交'),L('Pedestrians','行人')].map(" not in CMP and "around the works · cars only${" in CMP and "路网上算 · 只含机动车${" in CMP
+      and "function cmpSuStagger(x){" in CMP and "x?cmpSuStagger(x):'…'" in CMP and "L('combined impact not covered by SUMO'" not in CMP)
+check("T51：05 卡片 SUMO 方案不放电车公交 / 行人两格；执行包照旧写明 SUMO 不覆盖（打印文档要写清楚）",
+      "${su?'':cell('transit'," in CMP and "trams, buses and pedestrians are not covered by SUMO. Hire: whole works period." in CMP)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

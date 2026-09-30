@@ -144,6 +144,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 | T48 | （@unicornnnnnny 10-01 自提，编号自取）左上角换成团队最后定的 logo：原稿裁边缩成 314×64 PNG，拆成两层：路 + Twin 照原稿，「Ripple」做成遮罩、用主题文字色填（深色主题白字、浅色主题黑字），内嵌进页面（约 27 KB） | 🔨 | `unicornnnnnny/web/T48-logo` | 10-01 00:35 |
 | T49 | （@unicornnnnnny 10-01 自提，编号自取）第 2 步镜头框住整个 4×4（16 个路口：Elizabeth–Exhibition × La Trobe–Little Bourke），原来只框施工处 2×2；「再点一次缩小」和 ⌖ 也回到 4×4。取景算法抽成 fitView()，和 engFit 共用 | 🔨 | `unicornnnnnny/web/T49-grid-frame` | 10-01 01:10 |
 | T50 | （@unicornnnnnny 10-01 自提，编号自取）精细窗口（高清影像、楼房阴影、天气 / 风险栅格）往东、往南扩到盖住第 2 步整个 4×4：WORLD 从 x −320…320、y −300…300 改成 x −320…480、y −380…300（西、北不动，La Trobe 示意场景照旧），STREETS 补 Exhibition St、Little Bourke St。原来 Exhibition 一列和 Little Bourke 一行落在矢量底图上，影像和仿真对不上 | 🔨 | `unicornnnnnny/web/T50-fine-window` | 10-01 02:30 |
+| T51 | （@unicornnnnnny 10-01 自提，编号自取）SUMO 方案的 04 比较表 / 05 卡片不再满屏「SUMO 暂不覆盖」：去掉电车公交、行人两行 / 两格（表尾写「只含机动车」），「和附近施工叠加」每格写「建议错开 N 天」；不填引擎的数（不改 #130「屏上只用 SUMO 的数」）；执行包照旧写明 SUMO 不覆盖电车公交和行人 | 🔨 | `unicornnnnnny/web/T51-sumo-rows` | 10-01 02:30 |
 
 卡住了：
 
