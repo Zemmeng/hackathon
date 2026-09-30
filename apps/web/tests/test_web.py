@@ -243,7 +243,18 @@ check("T43②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.ap
       and "console.warn('compare: clash check failed for plan'" in CMP and "console.warn('compare: nearby works check failed'" in CMP
       and "L('Nearby works','和附近施工叠加')" in CMP)
 check("T43②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
-      "CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other" in CMP)
+      "in3=CL.m&&CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err;" in CMP and "x3=in3?cmpClashOther(CL.other,CL.st):null" in CMP
+      and "if(in3)x=x3;" in CMP)
+# T46（lead 09-30 拍板，跟 #123）：03 点了「错开 N 天」，04 的叠加一行跟 03 走 —— 用 03 的 stagger().worksite，行名写挪后的日期 + 已错开 N 天
+check("T46：04 叠加一行用 03 错开后的同一个 worksite（cmpClashOther 读 CL.st 的可信 best），缓存键带上 N，03 错开 / 撤掉后 04 重算",
+      "function cmpClashOther(x,st){" in CMP and "b&&b.reliable&&st.worksite?{...x,ws:st.worksite,days:b.days" in CMP
+      and "key=CP.key+(x3&&x3.days!=null?`|+${x3.days}`:'')" in CMP and "if(CP.cl&&CP.cl.key===key)return;" in CMP
+      and "CP.cl.key===CP.key" not in CMP)
+check("T46：行名写挪后的日期 + 「已错开 N 天」/ staggered N days（中英成对，cmpClashWhen 在 pure 段）；错开算完时人已在 04 也跟上（clashStagger 结尾 cmpRender()）",
+      "function cmpClashWhen(x,zh,hour){" in CMP and "`已错开 ${n} 天`:`staggered ${n} day${Math.abs(n)===1?'':'s'}`" in CMP
+      and "${cmpClashWhen(x,LANG.cur==='zh',engHour)}" in CMP
+      and CMP.index("function cmpClashWhen(") < CMP.index("/* pure:end */")
+      and "CL.stBusy=false;clashRender();\n  cmpRender();" in CLASHJS)
 
 # 11. T44（@unicornnnnnny 09-30）：01 施工信息 / 设备诱导不放引擎四个数；02 仿真的冲突 / 严重 / 急刹在地图上标出来
 GRIDJS = (SRC / "js" / "4b-grid.js").read_text(encoding="utf-8")

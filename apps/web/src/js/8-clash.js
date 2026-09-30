@@ -37,6 +37,7 @@ async function clashStagger(){
   try{const st=await BE.api.stagger(clashCur(),x.ws,{maxDays:clashDays(x.ws)});if(seq!==CL.seq)return;CL.st=st;}
   catch(e){if(seq!==CL.seq)return;CL.stErr=e;console.warn('stagger failed',e);}
   CL.stBusy=false;clashRender();
+  cmpRender(); // T46: 04's Nearby works row follows the stagger (cmpClashOther) — if the user already moved on to 04 while this re-scored
 }
 function clashHTML(){
   const one=t=>`<p class="small muted">${L('Nearby works','附近施工')} · ${t}</p>`;
