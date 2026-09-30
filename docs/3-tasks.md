@@ -103,6 +103,7 @@ lead 以 `hackathon.conf` 的 `LEAD` 为准。每人只改自己那一节。节�
 
 | T# | 任务 | 状态 | 分支 / PR | 开始时间（MM-DD HH:MM） |
 |---|---|---|---|---|
+| T34 | （原编号 T33，和 lead 的 T33 撞号，lead 合并时改）用户授权接入 SUMO：2×2 四路口 SUMO 后端与数据接口，输出同次运行轨迹、排队、延误和安全诊断；用户明确禁止前端改动 | ✅ | `jinmingq/web/T33-sumo-backend` | 09-30 10:58 |
 | T5 | 大模型读懂屏上的字：新建 `apps/api`，`readSigns()` + 关键词规则 + Worker `/api/health` `/api/read`（`docs/arch/T5-PRD.md`）。已合 #22 #26 #29；DeepSeek 卡 #37；大模型接口由 lead 在 T19 留好，演示先用规则（D-0929-1718 / 1830） | ✅ | #22 #26 #29 #37 | 09-29 14:40 |
 | T5 | 施工登记表（提案 #48 第 ⑤ 步，只做后端）：`/api/worksites` GET / POST、`/api/worksites/<id>` GET / PATCH，Durable Object `WorksiteRegister`，改要凭 `edit_token`；预置 3 条演示施工（含一条和 Lonsdale 叠加的）；浏览器端 `public/js/worksites.js` 等网页来接（D-0929-2011：页面接入不排在冻结前） | ✅ | #53 | 09-29 20:20 |
 | T5 | AI 解读（提案 #48 第 ⑥ 步，只做后端）：`POST /api/explain` 规则版 + 数字追溯（解读里的数只能来自引擎）+ 浏览器端 `explainOptions()` / `optionFromRun()`；大模型版后续（D-0929-2011：页面接入不排在冻结前） | ✅ | #54 | 09-29 20:55 |
