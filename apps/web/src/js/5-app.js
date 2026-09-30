@@ -561,7 +561,7 @@ function loop(now){
 
 /* ---------- boot ---------- */
 function boot(){
-  const th=ls.get('rt-theme');if(th==='light'||th==='dark')document.documentElement.dataset.theme=th;
+  document.documentElement.dataset.theme=ls.get('rt-theme')==='light'?'light':'dark'; // dark unless the viewer picked light with the toggle (not the OS setting)
   document.documentElement.dataset.wx=S.wx; // always clear on arrival: the demo machine must not open under a storm (D-0929-2012)
   const lg=ls.get('rt-lang');LANG.cur=lg==='zh'?'zh':'en'; // English unless the viewer picked 中文 with the toggle (not the browser language)
   applyLangDom();document.querySelectorAll('#langToggle span').forEach(s=>s.classList.toggle('on',s.dataset.l===LANG.cur));
