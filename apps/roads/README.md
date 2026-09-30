@@ -41,6 +41,14 @@ apps/roads/.venv/bin/python apps/roads/tools/build_walk.py       # → public/cb
 
 `peds.json`：bbox 内 71 个传感器（70 个挂上人行道），2026-08-01..09-27，工作日 39 天、周末 18 天。核对：Swanston St `Swa148_T` 工作日 17 点平均 1938 人（PRD-2 参考 09-27 周六 17 点 1626）；最忙的是 Collins St `Col620_T` 17 点 3299 人。
 
+真实矢量底图（T35，给网页 CITY 层当底图的水域 / 绿地 / 用地 / 铁路）：
+
+```bash
+python3 apps/roads/tools/fetch_vectormap.py                      # → public/cbd/vectormap.json（6 块瓦片，约 10 秒）
+```
+
+数据来自 OpenFreeMap 公共实例的 OpenMapTiles 矢量瓦片（`.pbf`，免 key、无请求上限），构建期拉下来解码成 lat/lon 存进仓库，网页运行时只取这一个同源文件、不连任何瓦片服务器（瓦片源记在文件的 `tile_source` 里）。只用标准库，不要 venv。核对（09-30，z14）：336 个面（水 25 / 草地 208 / 运动场 21 / 公共设施 23 / 用地 38 / 林地 14 / 公园 5）+ 328 条线（电车 146 / 铁路 175 / 河道 7），雅拉河最大的一块 17.1 万 m²、落在 bbox 南侧，铁路总长 54 km（Flinders St 车场那片多条股道各记一条）。
+
 | method | 怎么算 | 条数 |
 |---|---|---|
 | `sensor` | 传感器挂的那条人行道，8 周分小时平均 | 67 |
@@ -127,7 +135,7 @@ python3 apps/roads/tools/backtest_weather.py    # → public/cbd/weather_backtes
 
 不调接口，全是提前下载的公开数据，来源和坑见 `PRD.md` 第 6 节。不需要任何 key。
 
-⚠️ **许可**：`public/cbd/` 下的 `network.json`、`walk.json`、`buildings.json` 由 OpenStreetMap 衍生，按 **ODbL 1.0 share-alike** 分发，**不是 MIT**（署名「© OpenStreetMap contributors」）。要再分发这些文件，得连许可一起给。其余数据和代码的许可见 `docs/submission.md` 与根 `README.md`。
+⚠️ **许可**：`public/cbd/` 下的 `network.json`、`walk.json`、`buildings.json`、`vectormap.json` 由 OpenStreetMap 衍生（`vectormap.json` 还带 OpenMapTiles 的 schema，图层数据来自 OpenFreeMap），按 **ODbL 1.0 share-alike** 分发，**不是 MIT**（署名「© OpenStreetMap contributors」；矢量底图另加「© OpenMapTiles / OpenFreeMap」）。要再分发这些文件，得连许可一起给。其余数据和代码的许可见 `docs/submission.md` 与根 `README.md`。
 
 ## 结构
 
@@ -146,8 +154,10 @@ python3 apps/roads/tools/backtest_weather.py    # → public/cbd/weather_backtes
 | `tools/backtest_weather.py` | 天气回测 → `weather_backtest.json`（只用标准库） |
 | `tests/test_weather.py` | 天气两个文件的校验和反向断言 |
 | `tools/build_walk.py` | 生成 `walk.json` + `peds.json`：人行道挂车行道和左右、传感器挂人行道、插值 |
+| `tools/fetch_vectormap.py` | 拉 OpenFreeMap 的 OpenMapTiles 矢量瓦片，解码出真实矢量底图图层 → `vectormap.json`（只用标准库，含最小 MVT 解码器） |
 | `requirements.txt` | 只有 osmnx（带 networkx、geopandas、shapely） |
 | `tests/test_roads.py` | 三个文件的校验 |
+| `tests/test_vectormap.py` | `vectormap.json` 的校验（kind 枚举 / 坐标范围 / 几何有效性）与反向断言 |
 | `raw/` | 原始数据（已 gitignore，不提交） |
 
 ## 本模块固定模式

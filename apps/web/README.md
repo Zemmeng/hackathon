@@ -7,11 +7,13 @@ Owner: @unicornnnnnny
 - **第二层**：La Trobe × Swanston 路口的微观仿真 + 六种天气（晴 / 雷暴 / 内涝 / 浓雾 / 高温 / 大风）压力测试、冲突因果链、护栏改法的滑动对比。冲突数、安全分等仍是模拟 / 预设值，页面标「模拟结果」
 - 引擎连不上（双击打开、只起了本模块的静态服务器、离线）时页面照常能用，显示预设数字并注明「引擎未连接」
 - **地图上的楼是真的（T15）**：`/roads/public/cbd/buildings.json`（OSM + 墨尔本市政 2018 楼宇轮廓，约 395 栋落在画面里）换到页面方格上画，影像 / 近红外 / 矢量三种底图、楼影、高温和大风图层都按真轮廓算，大楼标真名；取不到这个文件时退回程序生成的随机街区，页面不会空白
+- **细窗以外是真实 OSM 矢量底图（T35）**：整个 Hoddle Grid 那一层底下垫的是 `/roads/public/cbd/vectormap.json` —— 用水域、绿地、用地、铁路这几层从 OpenFreeMap 的 OpenMapTiles 矢量瓦片解出来的真数据（雅拉河、Flagstaff / Carlton / Fitzroy 花园、Flinders St 车场、电车线），再由 `buildings.json` 的真轮廓和 `network.json` 的真实车行道压在上面。瓦片是 `tools/fetch_vectormap.py` 在构建期拉的，页面运行时只取这一个同源文件；取不到就退回原来的扁平城市层（只有楼和路）。细窗（La Trobe × Swanston）仍是手绘建模的那套，因为它的坐标是分段拉伸的，真瓦片对不齐
 
 ## 怎么跑
 
 - 带引擎（推荐）：起 `site`（全站同源，8790），开 http://localhost:8790/web/public/ ；或手动 `python3 -m http.server 8000 -d apps`，开 http://localhost:8000/web/public/ （从 `apps/` 起，路径和线上一样）
 - 只看页面：`python3 -m http.server 4175 -d apps/web/public`，或双击 `public/index.html`，引擎连不上，显示预设数字
+- ⚠️ 只有从 `apps/` 起服务（`-d apps`）才会有 `/roads/` —— 换成 `-d apps/web/public` 或双击打开，`buildings.json` 和 `vectormap.json` 都取不到，细窗外面就退回程序生成的随机街区和只有楼 / 路的扁平城市层（不是 bug）；两种情况控制台各留一行说明。要看到真的楼和真的矢量底图，必须用上面第一条的起法
 - 改了 `src/` 之后：`python3 apps/web/build.py` 重新生成 `public/index.html`（测试会检查两者一致；Mac 自带 python3 3.9 能跑）
 
 ## 怎么部署
@@ -41,6 +43,7 @@ Owner: @unicornnnnnny
 | `/engine/public/js/index.js` | 只用 `affected()` + `capFactors()` 取绕行路线经过的路段，画在地图上（和 `run()` 内部是同一个函数） |
 | `/params/public/params.json` | 只读路人占比的区间和置信度，结果旁标「假设值」+ 区间（D-0929-1536） |
 | `/roads/public/cbd/buildings.json` | T15：启动时 `fetch` 一次，`buildings[].footprint`（`[lat, lon]` 环）用 `geoToWorld` 换到页面方格，`height_m` 当楼高，`use` 定屋顶色调，`name` 做注记；左上角「建筑」一栏显示画出的栋数和出处（OSM · 墨尔本市政，ODbL / CC BY 要求署名）。失败 / 少于 `REAL_MIN`（50）栋 → 留着程序生成的城市 |
+| `/roads/public/cbd/vectormap.json` | T35：`loadVectorMap()` 单独 `fetch` 一次（不进 `loadBuildings()` 的首帧竞速，CITY 层自己重画）。`polygons[].polys[][][]`、`lines[].pts[][]` 都是 `[lat, lon]`，`geoToWorld` 换到页面方格，`kind` 挑 `VEC.<主题>.vmap` 里的颜色；一个 kind 只开一条路径填一次，瓦片接缝不会露出细线。失败 → 只有楼和路的扁平城市层 |
 
 页面拼的方案：施工 id `W-1`，一个路段、`closes.lanes` = 1 或该路段车道数、工期 2026-10-05 → 10-09 每天 7–19 点，设备 VMS-1 / S-1 / A-1 / B-1。T5 读屏会 `POST /api/read`：api Worker 没接上时 site 回 503，读屏自动退回关键词规则（`flags.reading_src = 'rule'`，页面标「读屏 · 规则估算」）。
 
@@ -55,7 +58,8 @@ Owner: @unicornnnnnny
 | `src/head.html` `src/body.html` `src/styles.css` | 页面骨架、深浅两套颜色 token；静态文案的中文写在 `data-zh` 属性里 |
 | `src/js/0-i18n.js` | `L(英, 中)` 取当前语言的文案 |
 | `src/js/1-world.js` | 路口一带的世界模型（米，x 向东 y 向北）：街道、建筑、地标，2 m 地表分类 / 阴影 / 风影栅格。`buildWorld()` 是程序生成的兜底城市（矩形楼）；`buildWorldReal(data, geoToWorld)` 把真轮廓换成多边形楼（`pts` + 包围盒 + 楼内标注点 `cx, cy`），`clipStreets()` 切掉压在街上的部分（切在街边外 `CLIP_EPS` = 0.05 m；Little La Trobe / A'Beckett 只切 `STREET_SPAN` 那段；丢掉 < `MIN_PIECE_W` 宽的细条）；`buildGrids()` 对多边形用扫描线栅格化、沿太阳 / 风向扫出楼影和风影 |
-| `src/js/2-basemap.js` | 底图：正射影像（RGB / 近红外假彩色）预渲染，矢量街道图分浅色 / 深色。真楼按用途 + 高度着色（`roofRgb` / `vecRgb`），楼影是轮廓沿太阳方向拉伸后的并集（`extrudePath`）；楼名注记按面积排、互相压住的跳过 |
+| `src/js/2-basemap.js` | 底图：正射影像（RGB / 近红外假彩色）预渲染，矢量街道图分浅色 / 深色。真楼按用途 + 高度着色（`roofRgb` / `vecRgb`），楼影是轮廓沿太阳方向拉伸后的并集（`extrudePath`）；楼名注记按面积排、互相压住的跳过。`VEC.<主题>.vmap` 是真实 OSM 矢量底图九种 `kind` 的颜色（水 / 林地 / 草地 / 公园 / 运动场 / 沙地 / 机场 / 公共设施 / 用地）和三条线（河道 / 铁路 / 电车） |
+| `src/js/6c-city.js` | 细窗以外那一层（T27）：`cityCanvas()` 按主题预渲染一次整块画布，`cityDraw()` 贴到细窗底下。从下到上：`vecLayers()` 画 `vectormap.json` 的真实 OSM 矢量底图（T35）→ `buildings.json` 的每栋轮廓（平涂，不挤出）→ 引擎路网的车行道（同一条双向路只画一遍）。`cityKey()` 把「路网 / 建筑 / 矢量底图」到没到编进缓存签名，哪个后到都会重画一次 |
 | `src/js/3-weather.js` | 天气图层：雷达 dBZ、SAR 淹没深度、雾、地表温度、风场；等值线、粒子流、闪电、鼠标取值 |
 | `src/js/4-sim.js` | 多智能体仿真：IDM 跟驰、信号相位、行人放行、TTC 冲突检测、脚本化的 C-17 / D-42 / Bus 250 事件 |
 | `src/js/5-app.js` | 视图、渲染管线、四步面板、图例、时间轴、主题和语言切换。`loadBuildings()` 取真建筑，分几个 task 先建好轮廓、栅格、当前底图的影像，最后 `rebuildWorld(nw, g, imgs)` 在一帧里换掉 `W / G / IMG`（`WX.rebind()` 重建天气栅格）；存下来的天气（如高温）的栅格只在 `start()` 里建一次 |

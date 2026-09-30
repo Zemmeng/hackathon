@@ -43,7 +43,7 @@ check("页面有 DataVic SCATS 署名（Traffic Signal Volume Data，CC BY 4.0�
       and "https://discover.data.vic.gov.au/dataset/traffic-signal-volume-data" in credits)
 
 # 2. 数据文件自己记的每个来源，署名里都有（以后加了新数据、忘了署名，这条会红）
-KEYS = ["OpenStreetMap", "Traffic Signal Volume Data", "Victorian traffic signals", "PTV GTFS", "City of Melbourne"]
+KEYS = ["OpenStreetMap", "OpenMapTiles", "Traffic Signal Volume Data", "Victorian traffic signals", "PTV GTFS", "City of Melbourne"]
 missing = []
 for f in sorted(DATA.glob("*.json")):
     if f.name == "equipment.json":  # 设备：RPM Hire 产品页 + 假设的日租价，执行包里已写明，不是开放数据许可
@@ -68,7 +68,7 @@ check("桌面在地图可见区域下方居中（--safe-l 和 --safe-r 之间）
 check("执行包打印页：页脚上方有「数据来源」一节", "<section class=\"pd-src\"><h2>${esc(L('Data sources','数据来源'))}</h2>" in CMP and "credits:creditLines()" in CMP)
 check("执行包复制的文字末尾带数据来源", "packText(p,lang)+`\\n\\n${L('Data sources','数据来源')}\\n`+creditLines()" in CMP)
 check("处置手册（第 4 步复制）末尾带数据来源", APP.count("creditLines().map(s=>'- '+s)") >= 2)
-check("署名文字都有中英两版", credits.count("short:[") == credits.count("full:[") == 4)
+check("署名文字都有中英两版", credits.count("short:[") == credits.count("full:[") == 5)
 
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
