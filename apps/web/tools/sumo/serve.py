@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """SUMO job API. Native engine execution; no frontend files are written.
-Local by default; in the cloud the same file runs in a Cloudflare Container behind Worker hackathon-sumo."""
+Local by default; in the cloud the same file runs in a Cloudflare Container behind Worker hackathon-sumo.
+Two networks: POST {} (or network:'synthetic') = the 2×2 demo of build_demo.py, unchanged;
+POST {network:'real', seed?, p_original?, p_ai?, scenarios?} = the real CBD network of build_real.py (contract v2)."""
 import argparse
+import importlib
+import importlib.util
 import collections
 import functools
 import hmac
@@ -26,6 +30,9 @@ import build_demo as model
 PREFIX = '/sumo/v1'
 MAX_BODY = 16384
 RUN_ID = r'[0-9a-f]{32}'
+# 输出文件白名单：合成 2×2 的四种情景 + 实网（contract v2）的 original / ai；别的路径一律 404，读不到 raw/ 和 job.json
+OUTPUT_FILE = r'(index\.json|(?:baseline|closure|guided|footpath|original|ai)/(?:manifest|frames-\d{3})\.json)'
+NETWORKS = ('synthetic', 'real')
 # docs/contract.md §错误格式: the Worker passes container errors through, so they carry the same short codes.
 CODES = {400: 'bad_request', 401: 'bad_key', 403: 'bad_origin', 404: 'not_found', 409: 'not_ready',
          413: 'too_big', 415: 'bad_type', 429: 'sumo_busy', 500: 'sumo_error'}
@@ -43,6 +50,18 @@ def now():
 @functools.lru_cache(maxsize=8)
 def read_json(path):
     return json.loads(path.read_text(encoding='utf-8'))
+
+
+class FileJson(dict):
+    """输出文件原样发字节（.raw）：manifest 里的 chunk sha256 是按文件字节算的，重新序列化一遍浏览器就核对不上；dict 本身给测试和 frame_at 读。"""
+
+
+@functools.lru_cache(maxsize=8)
+def read_file(path):
+    raw = path.read_bytes()
+    value = FileJson(json.loads(raw))
+    value.raw = raw
+    return value
 
 
 def frame_at(output, scenario, time):
@@ -68,11 +87,17 @@ def frame_at(output, scenario, time):
             'queues': [{'lane_id': meta['geometry']['lanes'][i]['id'], 'length_m': length} for i, length in frame['q']]}
 
 
+def load_real():
+    # 懒加载：只有第一次收到 network:'real' 才 import build_real（它要 apps/roads 的数据；缺了只影响实网，不影响 2×2）
+    return importlib.import_module('build_real')
+
+
 class Jobs:
-    def __init__(self, root, engine, runner=None, limit=4, keep=20):
+    def __init__(self, root, engine, runner=None, limit=4, keep=20, real=None):
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.engine, self.runner, self.limit, self.keep = engine, runner or model.build, limit, max(int(keep), 1)
+        self._real = real  # 测试注入的假 build_real（要有 validate_real / build）；None = 用到时再 import
         self.lock = threading.RLock()
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='sumo')
         self.active = 0
@@ -98,9 +123,28 @@ class Jobs:
             if not file.exists(): raise ApiError(404, '没有这次运行（可能已被清理，或服务重启过）')
             return json.loads(file.read_text())
 
+    def real(self):
+        if self._real is None:
+            try: self._real = load_real()
+            except Exception as e: raise ApiError(500, '这台服务没装实网模型（build_real.py 或 apps/roads 数据缺失）：' + str(e)[-300:]) from e
+        return self._real
+
+    def networks(self):
+        # 只报真能跑的：镜像里没有 build_real.py 就只有 synthetic（页面据此直接回预跑结果，不白等 90 s）
+        real = self._real is not None or importlib.util.find_spec('build_real') is not None
+        return list(NETWORKS) if real else ['synthetic']
+
+    def configure(self, payload):
+        """合成网络的 config 和以前一模一样（不加 network 字段）；实网的 config = {'network':'real', **validate_real(其余字段)}。"""
+        network = payload.get('network', 'synthetic') if isinstance(payload, dict) else 'synthetic'
+        if network not in NETWORKS: raise ValueError('network 只能是 synthetic 或 real')
+        rest = {k: v for k, v in payload.items() if k != 'network'} if isinstance(payload, dict) and 'network' in payload else payload
+        if network == 'synthetic': return model.validate_config(rest)
+        return {'network': 'real', **self.real().validate_real(rest)}
+
     def create(self, payload):
-        try: config = model.validate_config(payload)
-        except ValueError as e: raise ApiError(400, '参数不合规范：' + str(e), 'bad_config') from e
+        try: config = self.configure(payload)
+        except (ValueError, TypeError) as e: raise ApiError(400, '参数不合规范：' + str(e), 'bad_config') from e
         with self.lock:
             if self.active >= self.limit: raise ApiError(429, '排队已满，等正在跑的任务完成再试', 'sumo_busy')
             self.active += 1
@@ -114,8 +158,10 @@ class Jobs:
         root = self.root / job['id']
         try:
             self.update(job, status='running')
-            args = SimpleNamespace(**job['config'], output=root / 'output', work_dir=root / 'raw')
-            self.runner(args)
+            config = dict(job['config'])
+            runner = self.real().build if config.pop('network', 'synthetic') == 'real' else self.runner
+            args = SimpleNamespace(**config, output=root / 'output', work_dir=root / 'raw')
+            runner(args)
             if not (root / 'output/index.json').exists(): raise RuntimeError('No complete result index was produced')
             self.update(job, status='complete', result=f"{PREFIX}/runs/{job['id']}/index.json")
             shutil.rmtree(root / 'raw', ignore_errors=True)  # ~300 MB of SUMO XML per default run; output/ keeps the replay
@@ -142,8 +188,8 @@ class Jobs:
             for _, folder in sorted(done)[:-self.keep]:
                 shutil.rmtree(folder, ignore_errors=True)
 
-    def output(self, run_id):
-        job = self.get(run_id)
+    def output(self, run_id, job=None):
+        job = job or self.get(run_id)
         if job['status'] != 'complete': raise ApiError(409, '这次运行还没完成，先查状态')
         return self.root / run_id / 'output'
 
@@ -151,25 +197,28 @@ class Jobs:
         parsed = urlsplit(target)
         path = parsed.path
         if method == 'GET' and path == PREFIX + '/health':
-            return 200, {'version': 1, 'engine': self.engine, 'status': 'ready', 'active_jobs': self.active}
+            return 200, {'version': 1, 'engine': self.engine, 'status': 'ready', 'active_jobs': self.active, 'networks': self.networks()}
         if path == PREFIX + '/runs' and method == 'POST': return 202, self.create(payload)
         match = re.fullmatch(PREFIX + '/runs/(' + RUN_ID + r')(?:/(.*))?', path)
         if method != 'GET' or not match: raise ApiError(404, '没有这个接口')
         run_id, resource = match.groups()
-        if not resource: return 200, self.get(run_id)
-        output = self.output(run_id)
+        job = self.get(run_id)
+        if not resource: return 200, job
+        output = self.output(run_id, job)
         if resource == 'frame':
+            # 单帧接口只认 2×2 的 manifest 格式；实网请读 manifest.json + frames-NNN.json 分块（contract v2）
+            if job['config'].get('network') == 'real': raise ApiError(404, '实网运行没有 frame 接口，请读 <情景>/manifest.json 和 frames-NNN.json')
             query = parse_qs(parsed.query)
             if set(query) != {'scenario', 't'} or any(len(v) != 1 for v in query.values()):
                 raise ApiError(400, '只接受 scenario 和 t 两个查询参数，各一个')
             try: time = float(query['t'][0])
             except ValueError as e: raise ApiError(400, 't 必须是非负数') from e
             return 200, frame_at(output, query['scenario'][0], time)
-        if not re.fullmatch(r'(index\.json|(?:baseline|closure|guided|footpath)/(?:manifest|frames-\d{3})\.json)', resource):
+        if not re.fullmatch(OUTPUT_FILE, resource):
             raise ApiError(404, '没有这个输出文件')
         file = output / resource
         if not file.exists(): raise ApiError(404, '没有这个输出文件')
-        return 200, read_json(file)
+        return 200, read_file(file)
 
     def close(self, wait=True):
         # wait=False (SIGTERM): queued runs are dropped, the running one still finishes before the process exits.
@@ -178,7 +227,7 @@ class Jobs:
 
 class Handler(BaseHTTPRequestHandler):
     def reply(self, status, value):
-        data = (json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n').encode()
+        data = getattr(value, 'raw', None) or (json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n').encode()
         self.send_response(status)
         origin = self.headers.get('Origin')
         if origin and origin in self.server.origins:

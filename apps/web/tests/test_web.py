@@ -38,8 +38,9 @@ check("public/index.html 与 src/ 打包结果一致", committed == PAGE, "先�
 size = len(PAGE.encode("utf-8"))
 check(f"打包后 {size} 字节 < 2MB", size < 2 * 1024 * 1024)
 
-# 3. 反向断言（隐私）：页面只从同源取东西（/engine/ /roads/ /params/ /api/，T13 PRD 第 6 节），不往别的服务器发数据
-SAME_ORIGIN = ("/engine/", "/roads/", "/params/", "/api/")
+# 3. 反向断言（隐私）：页面只从同源取东西（/engine/ /roads/ /params/ /api/，T13 PRD 第 6 节；T40 加 /sumo/：
+#    只 import 同源的 sumo-client.js，由它去取 /sumo/public/real/ 和 /api/sumo/v1/），不往别的服务器发数据
+SAME_ORIGIN = ("/engine/", "/roads/", "/params/", "/api/", "/sumo/")
 loads = re.findall(r"\b(import|fetch)\s*\(\s*([^)]*?)\s*[,)]", JS)
 bad = [f"{k}({a})" for k, a in loads if not re.fullmatch(r"'(/[^']*)'", a) or not a.strip("'").startswith(SAME_ORIGIN)]
 check(f"import() / fetch() 只用同源的固定路径（{len(loads)} 处）", loads and not bad, f"不合规 {bad}")
