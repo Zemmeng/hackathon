@@ -74,6 +74,25 @@ check("第 2 步面板 SUMO 模式：说明、两个方案按钮、重跑按钮�
       and "▶ Run SUMO (~15 s)" in APP and all(k in APP for k in ["Vehicles on map", "Works queue now", "Extra time per vehicle", "Detoured vehicles"]))
 check("中文也有", all(k in APP for k in ["真实 CBD 路网（OSM）", "原方案 · ROADWORK AHEAD", "AI 方案 · USE RUSSELL", "运行 SUMO（约 15 s）", "地图上的车"]))
 check("不在 SUMO 模式时第 2 步原来的四个 GridSim 指标还在", "${su?sumoTiles():wait?'':`" in APP and "L('Road users','道路使用者')" in APP and "TTC &lt; 1.5 s" in APP)
+# T46（lead 拍板）：SUMO 回放也标急刹、时间轴也画 100% 堆叠柱；冲突 / 严重没法算，写 —，绝不写 0
+tiles, lg, hs, dh = fn(APP, "sumoTiles"), fn(APP, "sumoEvLegend"), fn(APP, "histShare"), fn(APP, "drawHist")
+check("T46：SUMO 模式的指标多两格——急刹（data-live=\"harsh\"，阈值取 GRID_P.harsh）、冲突 · 严重写 —「SUMO: not computed / SUMO 不算冲突」",
+      'data-live="harsh"' in tiles and "-GRID_P.harsh/GRID_K" in tiles and "SUMO: not computed" in tiles and "SUMO 不算冲突" in tiles
+      and "L('Conflicts · critical','冲突 · 严重')" in tiles)
+check("T46 反向：SUMO 指标里没有 conf / crit 的实时格子（不会被写成 0）；页面把 stats 里的 null 写成 —",
+      'data-live="conf"' not in tiles and 'data-live="crit"' not in tiles
+      and "set('conf',sim.stats.conflicts==null?'—':sim.stats.conflicts);set('crit',sim.stats.critical==null?'—':sim.stats.critical);" in APP
+      and "conflicts:null,critical:null" in SU)
+check("T46：SUMO 模式面板有图例（急刹菱形；冲突 / 严重 —、SUMO 不算冲突；时间轴按回放的柱宽）",
+      "${su?sumoEvLegend():''}" in APP and 'class="eng-legend ev-legend"' in lg and "SUMO: not computed" in lg and "SUMO 不算冲突" in lg
+      and "per ${n} min" in lg and "每 ${n} 分钟" in lg)
+check("T46：时间轴 histShare 按 sim.bins {m0, n} 分柱（4×4 没有 bins 时仍是每 10 分钟），柱子摆在它那几分钟的钟点上；SUMO 回放不再走每分钟急刹那条路",
+      "const B=sim.bins||{m0:0,n:10}" in hs and "x=m0*mw+(W-bw)/2" in hs and "this.bins={m0:Math.floor(this.clock0/60),n:2}" in SU
+      and "this.mSeen=new Float32Array(60);this.mHit=new Float32Array(60);" in SU and "sumo?Math.max(2,top1*.67)" not in dh and "per_minute" not in SU)
+add, stp, sk = re.search(r"addChunk\(k,data\)\{.*?\n  \}", SU, re.S), re.search(r"\n  step\(dt\)\{.*?\n  \}", SU, re.S), re.search(r"\n  seek\(t\)\{[^\n]*", SU)
+check("T46：急刹只在 addChunk 时扫一遍新到的样本（_harsh），step() / seek() 不扫，只挪指针（_stats）",
+      bool(add and stp and sk) and "this._harsh(this.nLoaded);this._stats();" in add.group(0) and "_harsh" not in stp.group(0) and "_harsh" not in sk.group(0)
+      and "this._stats();" in stp.group(0) and "gridIn(V,px,py)" in SU and "a<P.harsh" in SU)
 check("时钟跟回放走（clock0_s + t），时间轴点击跳过去，时段用回放的 hour",
       "if(S.sim&&S.sim.isSumo)S.clock=S.sim.clock();" in APP and "S.sim.seek(S.clock-S.sim.clock0)" in APP and "S.sim.isSumo?S.sim.hour:" in APP)
 
