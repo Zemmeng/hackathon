@@ -13,8 +13,8 @@ const pure = f => { const m = readFileSync(WEB + 'src/js/' + f, 'utf8').match(/\
 
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,CMP_MAX};', ctx);
-const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, CMP_MAX } = ctx.G;
+vm.runInContext(pure('6-engine.js') + '\n' + pure('8-compare.js') + '\n;globalThis.G={planFrom,cmpSources,cmpNumbers,cmpBest,cmpVms,cmpFromOptions,cmpKit,cmpDocHTML,cmpSameAs,cmpSpan,CMP_MAX};', ctx);
+const { planFrom, cmpSources, cmpNumbers, cmpBest, cmpVms, cmpFromOptions, cmpKit, cmpDocHTML, cmpSameAs, cmpSpan, CMP_MAX } = ctx.G;
 
 // 1 选哪几套来比（纯函数）
 const P = { worksites: [{ id: 'W-1', links: ['x'], equipment: [{ id: 'VMS-1', type: 'vms', at_m: 300, frames: [['ROADWORK', 'AHEAD'], ['USE', 'RUSSELL ST']] }] }] };
@@ -56,6 +56,21 @@ const b = cmpBest([{ car: 10, hire: 5 }, { car: 4, hire: 5 }, { car: 4, hire: nu
 ok(JSON.stringify(b.car) === '[1,2]', '并列最少的都标');
 ok(!('hire' in b), '两套一样多：不标');
 ok(!('peds' in b), '都没有这个数：不标');
+
+// 2b T43「结果一样、却多花钱」（纯函数）：交通数字（每车多等 / 排队 / 全网 / 电车公交 / 行人）和人行道都一样、租金更贵 → 标出便宜的那套和差价
+const R = (md, q, car, hire, flags = {}) => ({ s: { mean_delay_s: md, queue_m: q, delay_min: car, transit: { src: 'gtfs', pax_min: 40 }, peds: { src: 'peds', extra_min: 0 } }, hire, flags: { footpath: 'none', ...flags } });
+{
+  const sa = cmpSameAs([R(60, 300, 900, 100), R(60, 300, 900.2, 340), R(12, 50, 200, 340)]);
+  ok(sa[0] === null && sa[1] && sa[1].of === 0 && sa[1].extra === 240 && sa[2] === null, '贵的那套结果和便宜的一样（按屏上精度）→ 标「和 A 一样 · 多花差价」；便宜的、结果不同的都不标');
+  const sb = cmpSameAs([R(60, 300, 900, 300), R(60, 300, 900, 100), R(60, 300, 900, 200)]);
+  ok(sb[1] === null && sb[0].of === 1 && sb[0].extra === 200 && sb[2].of === 1 && sb[2].extra === 100, '几套都一样时对照最便宜的那套，差价逐列算（不是只认 B 列）');
+  ok(cmpSameAs([R(60, 300, 900, 100), R(60, 300, 900, 100)]).every(x => x === null), '租金一样 → 不标');
+  ok(cmpSameAs([R(60, 300, 900, 100), R(60, 300, 900, 200, { footpath: 'left' })])[1] === null, '人行道不一样 → 不算同样的结果');
+  ok(cmpSameAs([R(0, 0, 0, 100, { inactive: true }), R(0, 0, 0, 200, { inactive: true })]).every(x => x === null), '这个时段不施工（全是 0）→ 不标');
+  ok(cmpSameAs([R(60, 300, 900, null), { ...R(60, 300, 900, 200), s: null }, R(60, 300, 900, 200)]).every(x => x === null), '没有租金或没算出来 → 不参与比较');
+  ok(cmpSpan('2026-10-07', '2026-10-09', false) === '7–9 Oct' && cmpSpan('2026-10-07', '2026-10-09', true) === '10/7–9', '重叠日期：英文日在前（墨尔本读法），中文 10/7–9');
+  ok(cmpSpan('2026-09-30', '2026-10-02', false) === '30 Sep – 2 Oct' && cmpSpan('2026-09-30', '2026-10-02', true) === '9/30–10/2' && cmpSpan('2026-10-07', '2026-10-07', false) === '7 Oct' && cmpSpan(null, null, true) === '', '跨月、同一天、没有日期');
+}
 
 // 3 真路网：页面默认方案（只写 ROADWORK / AHEAD）→ 顾问 → 逐套 run() → pack.js 执行包
 const file = p => APPS + p.replace(/^\//, '');
@@ -104,6 +119,32 @@ if (typeof be.options !== 'function') {
   ok(kits.every(k => Number.isFinite(k.hire) && k.hire > 0), `每套都有租金：${kits.map(k => 'A$' + k.hire).join(' / ')}`);
   const kn = kits.map(k => cmpNumbers(k.s));
   ok(kn.every(n => n.transit !== null && n.peds !== null), 'options() 的结果里电车公交、行人也有数');
+
+  // T43：真路网 Lonsdale 08:00 —— 最省那套没有 VMS，标准那套的 VMS 只写 ROADWORK / AHEAD：结果一样、多花钱
+  const sa = cmpSameAs(kits);
+  ok(sa[0] === null && sa[1] && sa[1].of === 0 && sa[1].extra === kits[1].hire - kits[0].hire && sa[2] === null,
+    `T43：B 标「结果和 A 一样 · 多花 A$${kits[1] && kits[0] ? kits[1].hire - kits[0].hire : '?'}」，A、C 不标`);
+  // T43：对比表「和附近施工叠加」逐套算，和 03 页（表单里的方案）同一处施工、同一口径
+  const wsUrl = APPS + 'api/public/js/worksites.js';
+  if (!existsSync(wsUrl)) console.log('⏭ 跳过叠加一段：没有 apps/api 的 worksites.js');
+  else {
+    const W = await import(pathToFileURL(wsUrl).href), cur = plan.worksites[0];
+    const same = o => o.links.length === cur.links.length && o.links.every(id => cur.links.includes(id));
+    const sc = [];
+    for (const o of W.overlapping(cur, W.SEEDS).filter(o => !same(o)).slice(0, 3)) { const ws = W.toEngineWorksite(o); sc.push({ o, ws, r: await be.clash(cur, ws) }); }
+    sc.sort((x, y) => (y.r.flags.reliable - x.r.flags.reliable) || (y.r.cost - x.r.cost) || (x.o.id < y.o.id ? -1 : 1));
+    const other = sc[0];
+    ok(other && other.r.flags.reliable && other.r.cost > 0, `演示登记表里有和 Lonsdale 同期、叠加成本 > 0 的施工：${other ? other.o.id + ' +' + other.r.cost : '无'}`);
+    if (other) {
+      const cells = [];
+      for (const k of kits) cells.push((await be.clash(k.plan.worksites[0], other.ws)).cost);
+      ok(cells[0] === other.r.cost && cells[1] === other.r.cost, `默认文案：03 页叠加 +${other.r.cost}，对比表 A、B 两格一样（${cells.join(' / ')}）`);
+      const cf = kits[2].plan.worksites[0].equipment.find(e => e.type === 'vms').frames;
+      const curC = planFrom({ ...EP, f1: cf[0].join('\n'), f2: (cf[1] || []).join('\n') }).worksites[0];
+      const rc = await be.clash(curC, other.ws);
+      ok(cells[2] === rc.cost && rc.cost < other.r.cost, `表单改成 C 的屏上文字后 03 页叠加 +${rc.cost}，和对比表 C 列一样，也比只写 ROADWORK / AHEAD 少`);
+    }
+  }
   if (existsSync(packUrl)) {
     const pack = await import(pathToFileURL(packUrl).href), ex = await import(pathToFileURL(exUrl).href);
     const inventory = await pack.loadInventory({ fetch: fakeFetch });

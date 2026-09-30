@@ -39,6 +39,26 @@ function cmpBest(rows,keys){
   }
   return out;
 }
+// A plan that buys nothing (T43): every traffic number the table shows (extra per vehicle, queue, network delay, trams &
+// buses, on foot) and the footpath are the same as a cheaper plan's, at the precision on screen → { of: that plan's index,
+// extra: hire difference A$ }, else null. The cheapest such plan is named (then the first). Needs an engine result and a hire
+// figure; an hour with no works (all zeros) is never flagged.
+function cmpSameAs(rows){
+  const sig=r=>{const s=r&&r.s,f=(r&&r.flags)||{};if(!s||!Number.isFinite(r.hire)||f.inactive)return null;
+    const n=cmpNumbers(s),v=x=>Number.isFinite(x)?Math.round(x):null;
+    return JSON.stringify([v(s.mean_delay_s),v(s.queue_m),v(n.car),v(n.transit),v(n.peds),f.footpath==null?null:f.footpath]);};
+  const k=rows.map(sig);
+  return rows.map((r,j)=>{if(k[j]==null)return null;let of=-1;
+    rows.forEach((x,i)=>{if(i!==j&&k[i]===k[j]&&x.hire<r.hire&&(of<0||x.hire<rows[of].hire))of=i;});
+    return of<0?null:{of,extra:r.hire-rows[of].hire};});
+}
+// Overlap dates, short: en "7–9 Oct" (day first, as read in Melbourne), zh "10/7–9". from / to are yyyy-mm-dd
+function cmpSpan(from,to,zh){
+  if(!from||!to)return'';
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p=s=>[+s.slice(5,7),+s.slice(8,10)],[m0,d0]=p(from),[m1,d1]=p(to),one=from.slice(0,7)===to.slice(0,7);
+  if(zh)return from===to?`${m0}/${d0}`:one?`${m0}/${d0}–${d1}`:`${m0}/${d0}–${m1}/${d1}`;
+  return from===to?`${d0} ${M[m0-1]}`:one?`${d0}–${d1} ${M[m0-1]}`:`${d0} ${M[m0-1]} – ${d1} ${M[m1-1]}`;
+}
 // be.options() result → card rows (A, B, C); result is the engine's brief summary for this hour, hire is over the works period
 function cmpFromOptions(res){
   return ((res&&res.options)||[]).slice(0,CMP_MAX).map((o,i)=>({id:String.fromCharCode(65+i),tier:o.id,kind:'kit',label:o.label,label_zh:o.label_zh,plan:o.plan,s:o.result||null,
@@ -87,7 +107,7 @@ ${(x.credits||[]).length?`<section class="pd-src"><h2>${esc(L('Data sources','�
 }
 /* pure:end */
 
-const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
+const CP={key:'',seq:0,busy:false,rows:[],src:'',pick:null,cl:null,by:'contractor',reason:'',mod:null,inv:null,invErr:null,loading:null,exKey:'',exSeq:0,exBusy:false,explain:null,exError:false};
 
 // Execution pack, AI explanation and inventory; all model text is rendered as textContent.
 function cmpLoad(){
@@ -128,6 +148,41 @@ async function cmpUpdate(){
   }
   if(seq!==CP.seq)return;
   CP.rows=rows;CP.src=src;CP.busy=false;cmpRender();
+}
+
+// 04 Compare, "Nearby works" row (T43): each plan against the one overlapping works 03 Impact shows for this plan (same pick,
+// clashPick in 8-clash.js), by be.clash(). Filled in after the table is on screen, cell by cell; never holds the table up.
+// CP.cl = { key, other: undefined (still picking) | null (none overlap) | { o, ws, r }, cells: [clash result | 'err'], err }
+async function cmpClashUpdate(){
+  if(S.ui!==4||CP.busy||CP.rows.length<2||!engOn()||EP.badText||(CP.cl&&CP.cl.key===CP.key))return;
+  const st=CP.cl={key:CP.key,other:undefined,cells:[],err:false},alive=()=>CP.cl===st;
+  try{
+    const cur=clashCur();let x;
+    if(CL.m&&CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other; // 03 already picked it for this same plan
+    else{const sc=await clashPick(cur,alive);if(!sc)return;x=sc[0]||null;}
+    st.other=x;cmpRender();
+    for(let i=0;x&&i<CP.rows.length;i++){
+      const r=CP.rows[i];let v='err';
+      if(r.s)try{v=await BE.api.clash(r.plan.worksites[0],x.ws);}catch(e){console.warn('compare: clash check failed for plan',r.id,e);}
+      if(!alive())return;st.cells[i]=v;cmpRender();
+    }
+  }catch(e){if(!alive())return;st.err=true;console.warn('compare: nearby works check failed',e);cmpRender();}
+}
+function cmpClashRow(rc){
+  const c=CP.cl,x=c&&c.other,U=L('veh·min','车·分钟');
+  const vals=CP.rows.map((_,i)=>{const r=c&&c.cells[i];return r&&r!=='err'&&r.flags.reliable?r.cost:null;}),best=cmpBest(vals.map(v=>({v})),['v']);
+  let wlab='…';
+  if(c&&c.err)wlab='—';
+  else if(x===null)wlab=L('no other registered works overlap','登记表里没有同期的其他施工');
+  else if(x){const net=engNet(),l=net&&net.links.get(x.ws.links[0]);wlab=`${esc(shortSt(l&&l.name||x.o.title))} · ${cmpSpan(x.r.overlap.from,x.r.overlap.to,LANG.cur==='zh')} · ${x.r.hours.map(engHour).join(' & ')}`;}
+  const cell=i=>{
+    if(c&&c.err)return'—';
+    if(x===null)return L('none','无');
+    const r=x&&c.cells[i];if(!r)return'…';if(r==='err')return'—';
+    if(!r.flags.reliable)return`<span class="cmp-num">≈ 0</span><small class="cmp-u">${L('not reliable','结果不可信')}</small>`;
+    return`<span class="cmp-num"${r.cost>0?' style="color:var(--risk)"':''}>${r.cost>0?'+':''}${fmtN(r.cost)}</span><small class="cmp-u">${U}</small>${best.v&&best.v.includes(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}`;
+  };
+  return`<tr><th scope="row"${x?` title="${esc(x.o.title)}"`:''}>${L('Nearby works','和附近施工叠加')}<small>${wlab}</small></th>${CP.rows.map((r,i)=>`<td${rc(i)}>${cell(i)}</td>`).join('')}</tr>`;
 }
 
 // Independent of scoring: never delay choosing/exporting a plan for AI text.
@@ -197,9 +252,10 @@ function cmpHTML(){
   const sel=CP.pick!=null&&CP.rows[CP.pick]?CP.pick:CP.rows.findIndex(r=>r.id===lean),rc=i=>` data-cmpcol="${i}"${i===sel?' class="cmp-sel"':''}`;
   const mRows=[[L('Extra per vehicle','每车多等'),'s',i=>ext[i].md,i=>lo(best2,'md',i)],[L('Queue','最长排队'),'m',i=>ext[i].q,i=>lo(best2,'q',i)],
     [L('Network delay','全网延误'),L('veh·min','车·分钟'),i=>nums[i].car,i=>lo(best,'car',i)],[L('Trams & buses','电车公交'),L('rider·min','人·分钟'),i=>nums[i].transit,i=>lo(best,'transit',i)]];
-  const days=CP.rows[0].days;
-  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
+  const days=CP.rows[0].days,dup=cmpSameAs(CP.rows),dupL=d=>{const a=String.fromCharCode(65+d.of),amt=fmtN(d.extra);return L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`);};
+  const table=`<div class="cmp-table-wrap"><table class="cmp-table"><thead><tr><th scope="col">${L('Measure','评价维度')}</th>${CP.rows.map((r,i)=>`<th scope="col"${rc(i)}><b>${String.fromCharCode(65+i)} · ${esc(cmpLabel(r))}</b><small class="cmp-what" data-cmpwhat="${i}"></small>${tag(r,i)?`<i class="cmp-best">${tag(r,i)}</i>`:''}${lo(best,'hire',i)?`<i class="cmp-best">${L('Cheapest','最省')}</i>`:''}${dup[i]?`<i class="cmp-dup">${dupL(dup[i])}</i>`:''}${(r.flags||{}).stock_ok===false?`<i class="cmp-over">${L('not enough stock','库存不够')}</i>`:''}</th>`).join('')}</tr></thead><tbody>
     ${mRows.map(([n,u,g,l])=>`<tr><th scope="row">${n}<small>${u}</small></th>${CP.rows.map((r,i)=>{const v=g(i);return`<td${rc(i)}><span class="cmp-num">${v==null?'—':fmtN(v)}</span>${v!=null&&l(i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>`).join('')}
+    ${cmpClashRow(rc)}
     <tr><th scope="row">${L('Hire','租金')}<small>${days?L(`A$ · ${fmtN(days)} days · rates assumed`,`澳元 · ${fmtN(days)} 天 · 日租价为假设`):'A$'}</small></th>${CP.rows.map((r,i)=>{const over=budget>0&&r.hire!=null&&r.hire>budget;return`<td${rc(i)}><span class="cmp-num"${over?' style="color:var(--risk)"':''}>${r.hire==null?'—':'A$'+fmtN(r.hire)}</span>${over?`<i class="cmp-over">${L('over budget','超预算')}</i>`:lo(best,'hire',i)?`<i class="cmp-best">${L('lowest','最少')}</i>`:''}</td>`;}).join('')}</tr>
     <tr><th scope="row">${L('Footpath','行人通道')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}>${(r.flags||{}).footpath==='none'?L('kept','保留'):L('closed','封闭')}</td>`).join('')}</tr>
     <tr><th scope="row">${L('Choose','选定方案')}</th>${CP.rows.map((r,i)=>`<td${rc(i)}><button type="button" class="cmp-pickbtn" data-cmppick="${i}" aria-pressed="${CP.pick===i}" ${r.s?'':'disabled'}>${CP.pick===i?L('Chosen','已选择'):L('Choose','选择')}</button></td>`).join('')}</tr>
@@ -225,7 +281,7 @@ function cmpHTML(){
 
 function cmpRender(){
   const el=document.getElementById('cmp4');if(!el)return;
-  cmpUpdate();cmpExplainUpdate();
+  cmpUpdate();cmpExplainUpdate();cmpClashUpdate();
   const h=cmpHTML();if(el.dataset.sig===h){cmpExplainRender(el);return;}el.innerHTML=h;el.dataset.sig=h;cmpExplainRender(el);compactPanel(); // filled in after the panel was laid out: let the folding see it
   el.querySelectorAll('[data-cmpwhat]').forEach(x=>{const r=CP.rows[+x.dataset.cmpwhat];x.textContent=r?cmpWhat(r):'';});
   el.querySelectorAll('[data-cmppick]').forEach(b=>b.onclick=()=>{CP.pick=+b.dataset.cmppick;cmpRender();});

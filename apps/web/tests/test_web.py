@@ -223,5 +223,27 @@ check("T23：方案名称（可能是顾问给的 kind）过 esc()", "esc(cmpLab
 probe_cmp = "`<b>${cmpLabel(r)}</b><i>${r.kind}</i>`"
 check("自检：T23 去掉 esc() 会被抓到", len(unsafe_in(probe_cmp)) >= 1)
 
+# 10. T43 决赛亮点（lead 派单）：①对比表标出「结果一样、却多花钱」的那套 ②加一行「和附近施工叠加」（③「比只写 ROADWORK AHEAD 少排多少」由 VMS 试验台（qjm 交接单写 T42，GitHub 上 T42 已被 #121 用，改 T45）包含，按交接单不做）
+#     只把引擎已有的数摆出来：页面不自己算、源码里不写死验收时看到的数
+CLASHJS = (SRC / "js" / "8-clash.js").read_text(encoding="utf-8")
+T43_SRC = JS + "\n" + BODY + "\n" + (SRC / "styles.css").read_text(encoding="utf-8")
+t40_lits = [x for x in ["1,250", "1250", "33,015", "33015", "25,719", "25719"] if x in T43_SRC or x in PAGE] \
+    + re.findall(r"(?<![\w.])725(?!\d)", T43_SRC + PAGE)
+check("T43 反向断言：源码和打包页里没有验收时的数（1,250 / 33,015 / 25,719 / 725），都从引擎来", not t40_lits, str(t40_lits[:4]))
+check("T43①：「结果和 A 一样 · 多花 A$…」由 cmpSameAs(CP.rows) 逐列算，字母和金额都不写死（中英成对）",
+      "dup=cmpSameAs(CP.rows)" in CMP and "function cmpSameAs(rows){" in CMP and "String.fromCharCode(65+d.of),amt=fmtN(d.extra)" in CMP
+      and "L(`Same result as ${a} · +A$${amt}`,`结果和 ${a} 一样 · 多花 A$${amt}`)" in CMP and 'class=\\"cmp-dup\\"' in CMP.replace('"', '\\"'))
+t40_same = CMP[CMP.index("function cmpSameAs(rows){"):CMP.index("function cmpSpan(")]
+check("T43① 反向断言：不是只认 B 列的特判（cmpSameAs 里没有 rows[1] / 'B' / i===1）",
+      not re.search(r"rows\[1\]|'B'|===1\b", t40_same))
+check("T43②：叠加一行用 8-clash.js 的同一挑法（clashPick）+ BE.api.clash 逐套算；表先出、这一行后补；无重叠写 none、算失败写 — 并 console.warn",
+      "async function clashPick(cur,alive){" in CLASHJS and "await clashPick(clashCur(),()=>seq===CL.seq)" in CLASHJS
+      and "await clashPick(cur,alive)" in CMP and "BE.api.clash(r.plan.worksites[0],x.ws)" in CMP and "${cmpClashRow(rc)}" in CMP
+      and "cmpUpdate();cmpExplainUpdate();cmpClashUpdate();" in CMP and "L('none','无')" in CMP
+      and "console.warn('compare: clash check failed for plan'" in CMP and "console.warn('compare: nearby works check failed'" in CMP
+      and "L('Nearby works','和附近施工叠加')" in CMP)
+check("T43②：进过 03 就沿用它挑好的那处施工（CL.other），没进过就按同一规则现挑",
+      "CL.key===JSON.stringify(cur)&&!CL.busy&&!CL.err)x=CL.other" in CMP)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
