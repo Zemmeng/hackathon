@@ -252,5 +252,17 @@ check("T40③：当前就是 ROADWORK AHEAD 时不显示；更长时用 var(--ri
       and "L(`vs ${wt} only: queue" in t40_vs and "`只写 ${wt} 时：排队" in t40_vs)
 check("T40③ 反向断言：基准那行的 ROADWORK / AHEAD 字样来自引擎的 WARN_FRAME，不在页面里写死", "ROADWORK" not in t40_vs and "AHEAD" not in t40_vs)
 
+# 11. T42（@unicornnnnnny 09-30）：01 施工信息 / 设备诱导不放引擎四个数；02 仿真的冲突 / 严重 / 急刹在地图上标出来
+GRIDJS = (SRC / "js" / "4b-grid.js").read_text(encoding="utf-8")
+check("T42：01 施工信息 / 设备诱导两个页签不再放「引擎 · 真实 CBD 车流」四个数，只在没选街 / 引擎算不了时留一行提示",
+      "engOutSec()" not in app_js and app_js.count("engStateSec()") == 2 and "function engStateHTML(){" in ENG and "['engState',engStateHTML]" in ENG)
+check("T42：4×4 仿真的急刹和冲突都带位置记进 sim.events（冲突 TTC < 1.5 s、严重 < 1.0 s，只算 2×2）；地图 drawEvents 画出来",
+      "kind:'harsh'" in GRIDJS and "kind:'conflict'" in GRIDJS and "ttc:1.5,ttcCrit:1" in GRIDJS and "if(e.kind==='harsh'){" in app_js
+      and "const keep=sim.isGrid?EV_KEEP_GRID:25" in app_js)
+check("T42 反向断言：02 面板急刹写的阈值来自 4×4 仿真自己的 GRID_P.harsh（3.5），不再写旧场景的 4.2",
+      "-GRID_P.harsh/GRID_K" in app_js and "grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'" in app_js)
+check("T42：02 面板有图例说明地图上的标记（中英成对）",
+      "L(`marked on the map · last ${EV_KEEP_GRID} s`,`地图上标出最近 ${EV_KEEP_GRID} 秒`)" in app_js and 'class="eng-legend ev-legend"' in app_js)
+
 print(f"{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

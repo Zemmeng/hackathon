@@ -307,6 +307,9 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 10px/1.2 var(--f-mono);color:var(--fg-2)}
 .eng-legend span{display:inline-flex;align-items:center;gap:6px}
 .eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
+/* T42: step 2 — what the safety marks on the map are */
+.ev-legend .ev-dot{width:8px;height:8px;border-radius:50%}
+.ev-legend .ev-dia{width:7px;height:7px;border-radius:1px;background:var(--fg);transform:rotate(45deg)}
 .eng-wrap{flex-wrap:wrap;gap:8px}
 .eng-impacts>div{padding:7px 11px;font-size:12px}
 .eng-impacts .val{font:600 10.5px/1.2 var(--f-mono);color:var(--works)}

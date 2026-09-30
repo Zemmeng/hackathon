@@ -186,13 +186,20 @@ function drawBody(a){
   else if(a.type!=='bike'){ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(L/2-Math.max(2,L*.24),-Wd/2+1,Math.max(1,L*.08),Wd-2);}
   ctx.restore();
 }
+const EV_KEEP_GRID=60; // step 2 (4×4): safety marks stay this many sim seconds (conflicts are rare there)
 function drawEvents(sim){
-  if(!sim)return;ctx.save();
-  for(const e of sim.events){const age=sim.t-e.t;if(age>25||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
+  if(!sim)return;ctx.save();const keep=sim.isGrid?EV_KEEP_GRID:25;
+  for(const e of sim.events){const age=sim.t-e.t;if(age>keep||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
     if(e.kind==='noroute'){ctx.strokeStyle=TK.aWc;ctx.lineWidth=2;ctx.globalAlpha=Math.max(.3,1-age/25);ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.stroke();if(age<7){ctx.globalAlpha=1;drawTag(ctx,px,py,-30,-40,L('NO STEP-FREE ROUTE','无障碍路线中断'),TK.aWc);}continue;}
+    if(e.kind==='harsh'){ // T42: harsh braking — a small diamond in the text colour, one ring as it happens
+      ctx.globalAlpha=Math.max(.25,1-age/keep);ctx.fillStyle=TK.fg;ctx.strokeStyle=TK.bg;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+6,py);ctx.lineTo(px,py+6);ctx.lineTo(px-6,py);ctx.closePath();ctx.fill();ctx.stroke();
+      if(age<1.6){const f=age/1.6;ctx.globalAlpha=1-f;ctx.strokeStyle=TK.fg;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,6+f*16,0,7);ctx.stroke();}
+      continue;}
     const col=e.sev===2?TK.risk:TK.works;
     if(age<2.4){const f=age/2.4;ctx.strokeStyle=col;ctx.lineWidth=2;for(const k of[0,.33,.66]){const ff=(f+k)%1;ctx.globalAlpha=(1-ff)*(1-f*.5);ctx.beginPath();ctx.arc(px,py,4+ff*34,0,7);ctx.stroke();}}
-    ctx.globalAlpha=Math.max(.2,1-age/25);ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,e.sev===2?4.5:3,0,7);ctx.fill();
+    ctx.globalAlpha=Math.max(.2,1-age/keep);ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,sim.isGrid?(e.sev===2?7:5.5):(e.sev===2?4.5:3),0,7);ctx.fill();
+    if(sim.isGrid&&e.ttc!=null&&age<8){ctx.globalAlpha=1;drawTag(ctx,px,py,-24,-30,`TTC ${e.ttc.toFixed(1)} s`,col);}
   }
   ctx.restore();
 }
@@ -394,7 +401,7 @@ function renderPanel(){
     const tabs1=`<div class="eng-seg eng-seg3" role="tablist" aria-label="${L('Plan setup','方案设置')}">${[['site',L('Site','施工信息')],['signs',L('Signs','设备诱导')],['checks',L('Checks','约束检查')]].map(([k,n])=>`<button type="button" role="tab" data-tab1="${k}" aria-selected="${t===k}">${n}</button>`).join('')}</div>`;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan · draft','施工方案 · 草稿')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engOutSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engOutSec()):engOfflineCard()}
+    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engStateSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engStateSec()):engOfflineCard()}
     ${microOn()&&t==='site'?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
@@ -414,7 +421,8 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
-      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
+      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; ${grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'} m/s²</small></div></div></div>
+    ${grid?`<div class="eng-legend ev-legend"><span><i class="ev-dot" style="background:var(--works)"></i>${L('Conflict','冲突')}</span><span><i class="ev-dot" style="background:var(--risk)"></i>${L('Critical','严重')}</span><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span>${L(`marked on the map · last ${EV_KEEP_GRID} s`,`地图上标出最近 ${EV_KEEP_GRID} 秒`)}</span></div>`:''}
     ${navHTML()}`;
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);

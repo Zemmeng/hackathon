@@ -146,5 +146,33 @@ ok(a0 && ['id', 'kind', 'type', 'x', 'y', 'hx', 'hy', 'v', 'acc', 'len', 'wid', 
 ok(h.length >= 8 && h.every(x => (x.axis === 'EW' || x.axis === 'NS') && 'GAR'.includes(x.state)), `signalHeads(): ${h.length} heads with axis and G / A / R`);
 ok(s.all.some(a => a.type === 'tram'), 'trams run on Swanston St');
 s.setWeather('storm', null); s.step(5); ok(s.wxk === 'storm', 'setWeather switches the weather multipliers');
+
+// T42 safety events with a place on the map (sim.events): harsh braking and TTC conflicts, 2×2 only, old ones forgotten
+{
+  const sim = new G.GridSim(G.gridSpec(net.links, flows, 8, WORKS), { seed: 4218 });
+  while (sim.t < 180) sim.step(0.25); sim.resetStats();
+  while (sim.t < 280) sim.step(0.25); // 100 s < evKeep: every event is still kept
+  const ev = sim.events, hb = ev.filter(e => e.kind === 'harsh'), cf = ev.filter(e => e.kind === 'conflict');
+  ok(hb.length > 0 && hb.length === sim.stats.harsh && cf.length === sim.stats.conflicts && cf.filter(e => e.sev === 2).length === sim.stats.critical,
+    `T42: every harsh braking / conflict / critical counted has a mark on the map (${hb.length} / ${cf.length} / ${sim.stats.critical} in 100 s)`);
+  ok(ev.every(e => Number.isFinite(e.x) && Number.isFinite(e.y) && e.x >= VW.x0 && e.x <= VW.x1 && e.y >= VW.y0 && e.y <= VW.y1), 'T42: the marks sit inside the 2×2 (GRID_VIEW), where the counts are taken');
+  // a follower forced onto a stopped leader in the same lane → one critical conflict (TTC < 1 s), marked between the two
+  const inV = c => c.x >= VW.x0 + 20 && c.x <= VW.x1 - 20 && c.y >= VW.y0 + 20 && c.y <= VW.y1 - 20 && !c.arc && c.turn === null;
+  let pair = null;
+  for (const l of sim.lanes) { for (let i = 1; i < l.cars.length && !pair; i++) if (l.cars[i - 1].type === 'car' && inV(l.cars[i - 1]) && inV(l.cars[i])) pair = [l.cars[i - 1], l.cars[i]]; if (pair) break; }
+  if (!pair) ok(false, 'T42: found two cars one behind the other inside the 2×2');
+  else {
+    const [ld, c] = pair, n0 = sim.stats.conflicts, k0 = sim.stats.critical;
+    ld.v = 0; ld.acc = 0; c.s = ld.s - ld.len - 5 * G.GRID_K; c.v = 10 * G.GRID_K;
+    sim.step(0.25);
+    const e = sim.events.filter(x => x.kind === 'conflict').pop();
+    ok(sim.stats.conflicts === n0 + 1 && sim.stats.critical === k0 + 1 && e && e.sev === 2 && e.ttc < 1, `T42: closing at 10 m/s on a stopped car 5 m ahead → 1 critical conflict (TTC ${e ? e.ttc.toFixed(2) : '?'} s)`);
+    sim.step(0.25);
+    ok(sim.stats.conflicts === n0 + 1, 'T42: the same pair is counted once (within 6 s)');
+  }
+  ok(cf.every(e => e.ttc < 1.5 && (e.sev === 2) === (e.ttc < 1)), 'T42: conflict = TTC < 1.5 s, critical = TTC < 1.0 s');
+  while (sim.t < 600) sim.step(0.25);
+  ok(sim.events.every(e => sim.t - e.t <= 120) && sim.stats.harsh > sim.events.filter(e => e.kind === 'harsh').length, 'T42: marks older than 2 minutes are dropped; the counts keep them');
+}
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

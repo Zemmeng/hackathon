@@ -317,6 +317,9 @@ input[type="range"]#vmsAt{width:100%;accent-color:var(--accent)}
 .eng-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:500 10px/1.2 var(--f-mono);color:var(--fg-2)}
 .eng-legend span{display:inline-flex;align-items:center;gap:6px}
 .eng-legend i{width:16px;height:4px;border-radius:2px;display:inline-block}
+/* T42: step 2 — what the safety marks on the map are */
+.ev-legend .ev-dot{width:8px;height:8px;border-radius:50%}
+.ev-legend .ev-dia{width:7px;height:7px;border-radius:1px;background:var(--fg);transform:rotate(45deg)}
 .eng-wrap{flex-wrap:wrap;gap:8px}
 .eng-impacts>div{padding:7px 11px;font-size:12px}
 .eng-impacts .val{font:600 10.5px/1.2 var(--f-mono);color:var(--works)}
@@ -1865,6 +1868,10 @@ class Sim{
 // amber 40–43, NS green 45–80, amber 80–83, else red), offsets for a westbound green wave at 11 m/s; 15 % of cars
 // turn left at each junction with a left exit, no right turns; trams on Swanston every 90 s each way, through only;
 // IDM v0 11 m/s, T 1.2 s, s0 2 m, a 1.2, b 2 (× weather). Drive on the left; lane k = 0 is the kerb lane (outermost).
+// Safety events (T42), 2×2 only, each with x, y for the map (sim.events): harsh braking < −3.5 m/s²; conflict = a follower
+// moving ≥ 1.5 m/s closing on its leader in the same lane at ≥ 1 m/s with time-to-collision < 1.5 s (critical < 1.0 s), once
+// per pair within 6 s — the La Trobe scene's definition (4-sim.js). Rear-end only: signals keep crossing streams apart and
+// there are no pedestrians here; IDM keeps safe gaps, so conflicts are rare and most marks are harsh braking.
 // Stop lines sit just behind the zebra 2-basemap.js draws (GRID_W); nobody enters a junction unless all of the vehicle fits
 // past the far zebra; left turns go straight past the stop line, then a quarter circle of radius ≤ rTurn into the kerb lane.
 const GRID_BOX={x0:-100,x1:300,y0:-300,y1:0};
@@ -1887,7 +1894,8 @@ const GRID_JN=[['2922','La Trobe Street','Elizabeth Street'],['2921','La Trobe S
 function gridIn(B,x,y){return x>=B.x0&&x<=B.x1&&y>=B.y0&&y<=B.y1;}
 const GRID_H={E:[1,0],W:[-1,0],N:[0,1],S:[0,-1]},GRID_LEFT={E:'N',N:'W',W:'S',S:'E'};
 const GRID_P={v0:11*GRID_K,vT:10*GRID_K,T:1.2,s0:2*GRID_K,a:1.2*GRID_K,b:2*GRID_K,bStop:4*GRID_K,harsh:-3.5*GRID_K,
-  cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25};
+  cycle:90,stopGap:5,rTurn:9,turn:.15,cap:1800,fallback:400,tramHw:90,car:[4,1.8],tram:[28,2.6],slow:2,dt:.25,
+  ttc:1.5,ttcCrit:1,ttcV:1.5*GRID_K,ttcDv:1*GRID_K,evKeep:120}; // safety events (T42); evKeep: seconds of events kept
 // Street widths (page units) as 1-world.js draws them. 2-basemap.js puts the zebra w/2 + 0.4 … w/2 + 4.0 from the crossing
 // street's centre line and the stop line at w/2 + 4.6 … w/2 + 5.0, so a junction's stop line is w/2 + stopGap before it and
 // its far-side zebra ends w/2 + 4 after it
@@ -2015,7 +2023,7 @@ function gridStopsAt(o){return o.s-o.len+(o.v<1||o.v<GRID_P.slow&&o.acc<=.1?0:o.
 class GridSim{
   constructor(spec,opts={}){
     this.isGrid=true;this.spec=spec;this.R=rng((opts.seed|0)||1);this.t=0;this.clock0=opts.clock0||0;this.nid=1;
-    this.agents=[];this.all=[];this.events=[];this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
+    this.agents=[];this.all=[];this.events=[];this.recent=new Map();this.risk=new Float32Array(RNX*RNY);this.riskVer=0;this.critical=null;this.minute=new Float32Array(60);
     this.wxk='clear';this.wx=WXP.clear;this.env=null;this.onCross=null;this.redRun=0;
     const cl=spec.close;this.lanes=[];
     this.dl=spec.dirs.map((D,di)=>{const a=[];for(let k=0;k<D.lanes;k++){
@@ -2032,7 +2040,7 @@ class GridSim{
   }
   _exp(rate){return this.t-Math.log(1-this.R())*3600/(rate*((this.wx&&this.wx.rate)||1));}
   resetStats(){
-    this.events=[];this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
+    this.events=[];this.recent=new Map();this.critical=null;this.stats={conflicts:0,critical:0,harsh:0,delay:0,done:0,noRoute:0,merges:0};
     this.minute.fill(0);this.risk.fill(0);this.riskVer++;this.redRun=0;
     this.entry=this.spec.dirs.map(D=>({id:D.entry,street:D.street,dir:D.dir,vph:D.vph,arr:0,ins:0,div:0}));
   }
@@ -2137,6 +2145,18 @@ class GridSim{
         c.acc=acc;c.wall=wall;
       }
     }
+    // 3b conflicts, on the state before this step's move (as 4-sim.js does: IDM here has no braking limit, a car can stop
+    //   within one step, so after the move the closing speed is gone): same-lane follower closing on its leader, TTC < 1.5 s
+    //   (critical < 1.0 s), once per pair within 6 s
+    for(const ln of this.lanes){const a=ln.cars;for(let i=1;i<a.length;i++){
+      const c=a[i],ld=a[i-1],dv=c.v-ld.v;if(c.v<P.ttcV||dv<P.ttcDv||!gridIn(GRID_VIEW,c.x,c.y))continue;
+      const ttc=Math.max(.1*GRID_K,ld.s-ld.len-c.s)/dv;if(ttc>=P.ttc)continue;
+      const key=c.id+'-'+ld.id,prev=this.recent.get(key);
+      if(prev&&t-prev.t<6){if(ttc<prev.ttc){prev.ttc=ttc;if(ttc<P.ttcCrit&&prev.sev<2){prev.sev=2;this.stats.critical++;}}continue;}
+      const ev={t,x:(c.x+ld.x)/2,y:(c.y+ld.y)/2,ttc,sev:ttc<P.ttcCrit?2:1,kind:'conflict',types:[c.type,ld.type]};
+      this.recent.set(key,ev);this.events.push(ev);this.stats.conflicts++;if(ev.sev===2)this.stats.critical++;
+      this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(ev.x,ev.y,ev.sev===2?1.6:1);
+    }}
     // 4 move; hard walls and no-overlap are enforced, stop-line crossings reported
     for(const ln of this.lanes){
       const D=ln.D,cars=ln.cars;
@@ -2146,7 +2166,7 @@ class GridSim{
         if(i>0){const ld=cars[i-1],mx=ld.s-ld.len-.05;if(s>mx){s=mx;v=Math.min(v,ld.v);}}
         c.s=s;c.v=v;c.dist+=Math.max(0,s-s0);
         const ra=(v-v1)/dt;c.acc=ra;
-        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);}}}
+        if(ra<P.harsh){if(!c.hb){c.hb=true;if(gridIn(GRID_VIEW,c.x,c.y)){this.stats.harsh++;this.minute[clamp(Math.floor((this.clock0+t)/60),0,59)]+=1;this._splat(c.x,c.y,.6);this.events.push({t,x:c.x,y:c.y,kind:'harsh',sev:0,type:c.type});}}}
         else if(ra>-1)c.hb=false;
         for(const q of D.jn)if(s0<q.stop&&s>=q.stop){if(sig[q.j][D.axis]==='R')this.redRun++;if(this.onCross)this.onCross(c,ln,q,t);}
       }
@@ -2184,6 +2204,9 @@ class GridSim{
       all.push(c);if(gridIn(GRID_VIEW,c.x,c.y))ag.push(c);
     }
     this.agents=ag;this.all=all;
+    // forget events older than evKeep (the counts keep them)
+    if(this.events.length&&this.t-this.events[0].t>P.evKeep)this.events=this.events.filter(e=>this.t-e.t<=P.evKeep);
+    if(this.recent.size>64)for(const[k,e]of this.recent)if(this.t-e.t>=6)this.recent.delete(k);
   }
   _pos(c){
     const ln=c.ln,D=ln.D,m=c.s-c.len/2,a=c.arc;
@@ -2406,13 +2429,20 @@ function drawBody(a){
   else if(a.type!=='bike'){ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(L/2-Math.max(2,L*.24),-Wd/2+1,Math.max(1,L*.08),Wd-2);}
   ctx.restore();
 }
+const EV_KEEP_GRID=60; // step 2 (4×4): safety marks stay this many sim seconds (conflicts are rare there)
 function drawEvents(sim){
-  if(!sim)return;ctx.save();
-  for(const e of sim.events){const age=sim.t-e.t;if(age>25||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
+  if(!sim)return;ctx.save();const keep=sim.isGrid?EV_KEEP_GRID:25;
+  for(const e of sim.events){const age=sim.t-e.t;if(age>keep||age<0)continue;const px=V.X(e.x),py=V.Y(e.y);if(px<-40||py<-40||px>V.w+40||py>V.h+40)continue;
     if(e.kind==='noroute'){ctx.strokeStyle=TK.aWc;ctx.lineWidth=2;ctx.globalAlpha=Math.max(.3,1-age/25);ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.stroke();if(age<7){ctx.globalAlpha=1;drawTag(ctx,px,py,-30,-40,L('NO STEP-FREE ROUTE','无障碍路线中断'),TK.aWc);}continue;}
+    if(e.kind==='harsh'){ // T42: harsh braking — a small diamond in the text colour, one ring as it happens
+      ctx.globalAlpha=Math.max(.25,1-age/keep);ctx.fillStyle=TK.fg;ctx.strokeStyle=TK.bg;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+6,py);ctx.lineTo(px,py+6);ctx.lineTo(px-6,py);ctx.closePath();ctx.fill();ctx.stroke();
+      if(age<1.6){const f=age/1.6;ctx.globalAlpha=1-f;ctx.strokeStyle=TK.fg;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,6+f*16,0,7);ctx.stroke();}
+      continue;}
     const col=e.sev===2?TK.risk:TK.works;
     if(age<2.4){const f=age/2.4;ctx.strokeStyle=col;ctx.lineWidth=2;for(const k of[0,.33,.66]){const ff=(f+k)%1;ctx.globalAlpha=(1-ff)*(1-f*.5);ctx.beginPath();ctx.arc(px,py,4+ff*34,0,7);ctx.stroke();}}
-    ctx.globalAlpha=Math.max(.2,1-age/25);ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,e.sev===2?4.5:3,0,7);ctx.fill();
+    ctx.globalAlpha=Math.max(.2,1-age/keep);ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,sim.isGrid?(e.sev===2?7:5.5):(e.sev===2?4.5:3),0,7);ctx.fill();
+    if(sim.isGrid&&e.ttc!=null&&age<8){ctx.globalAlpha=1;drawTag(ctx,px,py,-24,-30,`TTC ${e.ttc.toFixed(1)} s`,col);}
   }
   ctx.restore();
 }
@@ -2614,7 +2644,7 @@ function renderPanel(){
     const tabs1=`<div class="eng-seg eng-seg3" role="tablist" aria-label="${L('Plan setup','方案设置')}">${[['site',L('Site','施工信息')],['signs',L('Signs','设备诱导')],['checks',L('Checks','约束检查')]].map(([k,n])=>`<button type="button" role="tab" data-tab1="${k}" aria-selected="${t===k}">${n}</button>`).join('')}</div>`;
     P.innerHTML=`<div class="row between"><span class="eyebrow" style="color:var(--sun-ink)">${L('Roadwork plan · draft','施工方案 · 草稿')}</span>${engStatusPill()}</div>
     <div class="stack"><h2>${eng?L(`${esc(shortSt(EP.street)||'Unnamed road')} ${dirL(EP.dir)} ${EP.all?'full closure':'lane closure'}`,`${esc(shortSt(EP.street)||'无名道路')} ${dirL(EP.dir)}${EP.all?'全封':'封道'}`):L('La Trobe St westbound cycle-lane closure','La Trobe St 西行自行车道封闭')}</h2><p class="muted small">${eng?L('Place the closure, write the sign, pick the hour. The engine re-scores the plan on real CBD traffic as you type.','放好封道、写好屏上的字、选好时段，边改边由引擎在真实 CBD 车流上重算。'):L('40 m water-filled barrier and site hoarding outside Melbourne Central. Weekday peak 17:00–18:00, four-week programme.','在 Melbourne Central 门前设置 40 m 注水护栏和施工围挡。工作日晚高峰 17:00–18:00，工期四周。')}</p></div>
-    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engOutSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engOutSec()):engOfflineCard()}
+    ${BE.api?tabs1+(t==='signs'?engSignsHTML()+engStateSec():t==='checks'?checksHTML()+'<div id="engMore" class="stack eng-more"></div>':engSiteHTML()+engStateSec()):engOfflineCard()}
     ${microOn()&&t==='site'?`<div class="stack"><div class="row between"><span class="eyebrow">${L('Junction micro-model · La Trobe × Swanston','路口微观模型 · La Trobe × Swanston')}</span><span class="eyebrow">${L('4 items','4 项')}</span></div><div class="list">
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Barrier B-12','护栏 B-12')}</span><span class="val">${L('40 m · bike lane + 1.4 m','40 m · 自行车道 + 1.4 m')}</span></div>
       <div><i class="sw" style="background:var(--works)"></i><span class="grow">${L('Site hoarding','施工围挡')}</span><span class="val">${L('leaves 1.1 m footpath','人行道只剩 1.1 m')}</span></div>
@@ -2634,7 +2664,8 @@ function renderPanel(){
       <div class="metric"><span class="eyebrow">${L('Road users','道路使用者')}</span><div class="v"><span data-live="agents">0</span></div></div>
       <div class="metric"><span class="eyebrow">${L('Conflicts','冲突')}</span><div class="v" style="color:var(--works)"><span data-live="conf">0</span><small>TTC &lt; 1.5 s</small></div></div>
       <div class="metric"><span class="eyebrow">${L('Critical','严重')}</span><div class="v" style="color:var(--risk)"><span data-live="crit">0</span><small>TTC &lt; 1.0 s</small></div></div>
-      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; 4.2 m/s²</small></div></div></div>
+      <div class="metric"><span class="eyebrow">${L('Harsh braking','急刹')}</span><div class="v"><span data-live="harsh">0</span><small>&gt; ${grid?fmtN(-GRID_P.harsh/GRID_K*10)/10:'4.2'} m/s²</small></div></div></div>
+    ${grid?`<div class="eng-legend ev-legend"><span><i class="ev-dot" style="background:var(--works)"></i>${L('Conflict','冲突')}</span><span><i class="ev-dot" style="background:var(--risk)"></i>${L('Critical','严重')}</span><span><i class="ev-dia"></i>${L('Harsh braking','急刹')}</span><span>${L(`marked on the map · last ${EV_KEEP_GRID} s`,`地图上标出最近 ${EV_KEEP_GRID} 秒`)}</span></div>`:''}
     ${navHTML()}`;
   }else if(S.step===3&&BE.api&&EP.tab3==='net'){
     P.innerHTML=engPanel3();engBindTabs3();engBind3();clashMount();aiMount();const rb=$('#repairBtn');if(rb)rb.onclick=()=>goStep(4);
@@ -3226,7 +3257,7 @@ function engMoreHTML(){
   const stale=EP.busy||EP.badText||!!EP.runErr;
   return`<div class="eng-out${stale?' stale':''}">${engWhy(s)}${engImpacts(s)}${engBadges(s.flags,s)}${s.flags.inactive?`<p class="small muted">${L(`Works run ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}; at ${engHour(s.when.hour)} nothing is closed.`,`施工时段 ${engHour(WORKS_TIME.hours[0])}–${engHour(WORKS_TIME.hours[1])}；${engHour(s.when.hour)} 没有封路。`)}</p>`:''}</div>`;
 }
-function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML],['vmsVs',engVsHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
+function engRenderOut(){for(const[id,f]of[['engOut',engOutHTML],['engMore',engMoreHTML],['engState',engStateHTML],['vmsVs',engVsHTML]]){const el=document.getElementById(id);if(!el)continue;const h=f();if(el.dataset.sig!==h){el.innerHTML=h;el.dataset.sig=h;}}}
 // T5's check messages are Chinese (PRD §3): English mode maps the code and keeps the quoted line
 const CHECK_EN={line_too_long:'A line is longer than 10 characters',too_many_lines:'A frame has more than 4 lines',too_many_frames:'Only 2 frames fit on the sign',
   too_many_words:'More than 8 words in total',bad_chars:'Use A–Z, 0–9 and basic punctuation only',empty_frame:'A frame is empty',empty_sign:'The sign is empty',
@@ -3253,6 +3284,15 @@ function engSiteHTML(){
     <div class="opt-row"><span class="opt-k">${L('Lanes','车道')}</span><div class="chips">${[[false,L('1 lane','封 1 条道')],[true,L('All lanes','全封')]].map(([v,t])=>`<button type="button" data-all="${v}" aria-pressed="${EP.all===v}">${t}</button>`).join('')}</div></div>
     <div class="opt-row"><span class="opt-k">${L('Hour','时段')}</span><div class="chips">${[7,8,12,17].map(h=>`<button type="button" data-hour="${h}" aria-pressed="${EP.hour===h}">${engHour(h)}</button>`).join('')}</div></div>
     <div class="opt-row"><span class="opt-k">${L('Footpath','人行道')}</span><div class="chips">${[['none',L('Open','照常')],['left',L('Works side closed','施工侧封')],['both',L('Both sides closed','两侧都封')]].map(([k,t])=>`<button type="button" data-foot="${k}" aria-pressed="${EP.foot===k}">${t}</button>`).join('')}</div></div></div></div>`;
+}
+// 01 Site / Signs (09-30 @unicornnnnnny): the four engine figures are off these two tabs; only what needs doing shows here
+// (no street picked yet, or the engine could not score the plan). The figures are in 03 Impact and 04 Compare.
+function engStateSec(){return'<div id="engState" class="stack"></div>';}
+function engStateHTML(){
+  if(!BE.api)return'';
+  if(!EP.link)return`<div class="card eng-note warn"><b>${L('Click a street on the map to place the work zone','在地图上点一条街来放施工区')}</b></div>`;
+  if(EP.runErr)return`<div class="card eng-note warn"><b>${L('The engine could not score this plan','引擎算不了这个方案')}</b><span>${esc(EP.runErr.message||EP.runErr)}</span></div>`;
+  return'';
 }
 function engOutSec(){return`<div class="stack eng-sec"><div class="row between"><span class="eyebrow">${L('Engine · real CBD flows','引擎 · 真实 CBD 车流')}</span><span class="eyebrow">${engHour(EP.hour)}</span></div><div id="engOut"></div></div>`;}
 function engSignsHTML(){return`<div class="stack"><div class="row between"><span class="eyebrow">VMS-1 · ${L('message sign','可变信息屏')}</span><span class="eyebrow" id="vmsAtLbl">${EP.vmsAt} m ${L('upstream','上游')}</span></div>
