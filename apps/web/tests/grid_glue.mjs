@@ -17,13 +17,16 @@ function rng(seed){let a=seed>>>0;return()=>{a=(a+0x6D2B79F5)|0;let t=Math.imul(
 const WXP={clear:{v:1,T:1,b:1,ped:1,bike:1,wob:0,rate:1},storm:{v:.82,T:1.4,b:.72,ped:1.12,bike:.85,wob:.15,rate:.9}};
 const WORLD={x0:-320,x1:320,y0:-300,y1:300};const RISK_CELL=4,RNX=(WORLD.x1-WORLD.x0)/RISK_CELL,RNY=(WORLD.y1-WORLD.y0)/RISK_CELL;`;
 const ctx = {}; vm.createContext(ctx);
-vm.runInContext(stubs + '\n' + eng + '\n' + grid + '\n;globalThis.geoToWorld=geoToWorld;globalThis.G={gridSpec,GridSim,GRID_BOX,GRID_SIM,GRID_VIEW,gridSigState,GRID_K};', ctx);
+vm.runInContext(stubs + '\n' + eng + '\n' + grid + '\n;globalThis.geoToWorld=geoToWorld;globalThis.G={gridSpec,GridSim,GRID_BOX,GRID_SIM,GRID_VIEW,gridSigState,GRID_K,GRID_W};', ctx);
 const G = ctx.G;
 const net = JSON.parse(readFileSync(APPS + 'roads/public/cbd/network.json', 'utf8'));
 const flows = JSON.parse(readFileSync(APPS + 'roads/public/cbd/flows.json', 'utf8'));
 const B = G.GRID_BOX, SB = G.GRID_SIM, VW = G.GRID_VIEW, W = { x0: -320, x1: 320, y0: -300, y1: 300 };
 const SHOWN = ['2913', '2912', '2904', '2903'];
 const WORKS = { link: 'l595594354_9756035316', lanes: 1 };
+// crossing street of junction q for direction D, and how far its zebra reaches from the junction centre (2-basemap.js: w/2 + 4)
+const crossOf = (spec, D, q) => { const J = spec.junctions[q.j]; return D.axis === 'EW' ? J.ns : J.ew; };
+const zebraEnd = (spec, D, q) => G.GRID_W[crossOf(spec, D, q)] / 2 + 4;
 
 const sp8 = G.gridSpec(net.links, flows, 8, null), sp8w = G.gridSpec(net.links, flows, 8, WORKS);
 ok(B.x0 >= W.x0 && B.x1 <= W.x1 && B.y0 >= W.y0 && B.y1 <= W.y1, 'GRID_BOX lies inside WORLD');
@@ -42,7 +45,7 @@ ok(sp8w.close && sp8w.dirs[sp8w.close.di].street === 'Lonsdale Street' && sp8w.d
   `works link maps to Lonsdale St westbound kerb lane, s ${sp8w.close && Math.round(sp8w.close.s0)}..${sp8w.close && Math.round(sp8w.close.s1)}`);
 
 function run(spec, seed, secs, opt = {}) {
-  const sim = new G.GridSim(spec, { seed }); const r = { red: 0, overlap: 0, inPoly: 0, outBox: 0, outer: 0, heads: new Set(), maxStop: 0, q: [], samples: 0 };
+  const sim = new G.GridSim(spec, { seed }); const r = { red: 0, overlap: 0, inPoly: 0, outBox: 0, outer: 0, heads: new Set(), maxStop: 0, q: [], samples: 0, boxMax: 0, boxWho: '', tramBox: 0 };
   const cnt = spec.dirs.map(() => 0), prev = new WeakMap();
   sim.onCross = (c, ln, q, t) => { if (G.gridSigState(spec, q.j, ln.D.axis, t) === 'R') r.red++; };
   const polys = sim.works().polys;
@@ -51,6 +54,13 @@ function run(spec, seed, secs, opt = {}) {
   for (let k = 0; k < secs / 0.25; k++) {
     sim.step(0.25);
     for (const ln of sim.lanes) for (let i = 1; i < ln.cars.length; i++) if (ln.cars[i - 1].s - ln.cars[i - 1].len - ln.cars[i].s < 0) r.overlap++;
+    // how long each vehicle has been standing (v < 0.5) with any part of it inside a junction or on one of its zebras
+    for (const ln of sim.lanes) for (const c of ln.cars) {
+      const q = c.v < 0.5 && ln.D.jn.find(q => c.s > q.s - zebraEnd(spec, ln.D, q) && c.s - c.len < q.s + zebraEnd(spec, ln.D, q));
+      c._box = q ? (c._box || 0) + 0.25 : 0;
+      if (q && c.type === 'tram') r.tramBox++;
+      if (c._box > r.boxMax) { r.boxMax = c._box; r.boxWho = `${c.type} ${ln.D.street.replace(' Street', '')} ${ln.D.dir} @${spec.junctions[q.j].id}, front ${(c.s - q.s).toFixed(1)} from centre`; }
+    }
     for (const a of sim.agents) if (a.x < VW.x0 || a.x > VW.x1 || a.y < VW.y0 || a.y > VW.y1) r.outBox++;
     for (const a of sim.all) {
       if (a.x < B.x0 || a.x > B.x1 || a.y < B.y0 || a.y > B.y1) r.outer++;
@@ -110,6 +120,19 @@ ok(fC.every(x => Math.abs(x.got - x.D.target) <= Math.max(45, 0.15 * x.D.target)
 ok(C.maxStop < 0.9 && sC.every(x => x.f >= 0.8) && C.red + C.overlap + C.outBox === 0, `17:00: no gridlock — stopped share peaks at ${(C.maxStop * 100).toFixed(0)} %, ${C.sim.stats.done} cars, entries ≥ 80 %`);
 const Cw = run(G.gridSpec(net.links, flows, 17, WORKS), 3, 1800);
 ok(Cw.maxStop < 0.9 && Cw.inPoly + Cw.red + Cw.overlap === 0, `17:00 with works: no gridlock (${(Cw.maxStop * 100).toFixed(0)} %), no car in the works, none on red`);
+
+// stop lines: behind the zebra, on the stop line 2-basemap.js draws (w/2 + 4.6 … w/2 + 5.0 from the crossing street's centre)
+const world = readFileSync(WEB + 'src/js/1-world.js', 'utf8');
+const wOf = n => { const m = world.match(new RegExp(`name:'${n.replace(' Street', ' St')}'[^}]*?\\bw:(\\d+)`)); return m ? +m[1] : NaN; };
+const drawn = Object.entries(G.GRID_W).filter(([n]) => !isNaN(wOf(n)));
+ok(drawn.length >= 6 && drawn.every(([n, w]) => wOf(n) === w) && sp8.junctions.every(J => J.ew in G.GRID_W && J.ns in G.GRID_W),
+  'GRID_W has every computed street and matches 1-world.js where it draws them: ' + drawn.map(([n, w]) => `${n.replace(' Street', '')} ${w}/${wOf(n)}`).join(', '));
+const stops = sp8w.dirs.flatMap(D => D.jn.map(q => ({ D, q, w: G.GRID_W[crossOf(sp8w, D, q)] })));
+ok(stops.length >= 8 && stops.every(({ q, w }) => q.s - q.stop >= w / 2 + 4.6 && q.s - q.stop <= w / 2 + 5.2),
+  'reverse: every stop line sits behind its zebra — ' + [...new Set(stops.map(({ D, q, w }) => `${crossOf(sp8w, D, q).replace(' Street', '')} w ${w}: ${(q.s - q.stop).toFixed(1)}`))].join(', '));
+const R4 = [A, Bw, C, Cw].sort((u, w) => w.boxMax - u.boxMax)[0];
+ok(R4.boxMax <= 6, `reverse: nobody waits inside a junction or on a zebra — longest stand there ${R4.boxMax} s (≤ 6 s; ${R4.boxWho})`);
+ok(A.tramBox + Bw.tramBox + C.tramBox + Cw.tramBox === 0, `reverse: no tram ever stands with its tail in a junction or on a zebra (${A.tramBox + Bw.tramBox + C.tramBox + Cw.tramBox} samples)`);
 
 // API shape the page codes against
 const s = Bw.sim, a0 = s.agents[0], h = s.signalHeads();
