@@ -4,9 +4,9 @@
 
 **Team Uncapped** · FEIT Hackathon Festival 2026 · Challenge 5 — RPM Hire, *Future Cities: Digital Tool for Temporary Infrastructure*
 
-[![Watch the RippleTwin demo: traffic simulation, AI sign interpretation and plan comparison](docs/pitch-assets/demo-video-cover.svg)](https://youtu.be/y2zOMj6vj7k)
+[![Watch the RippleTwin demo: traffic simulation, AI sign interpretation and plan comparison](docs/pitch-assets/demo-video-cover.svg)](https://youtu.be/tb_P3QXtKkw)
 
-[▶ Demo video (1 min 25 sec · 1440p)](https://youtu.be/y2zOMj6vj7k) · [Live demo](https://hackathon-site.zemmmeng.workers.dev) · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
+[▶ Demo video (1 min 32 sec · 1080p60)](https://youtu.be/tb_P3QXtKkw) · [Live demo](https://hackathon-site.zemmmeng.workers.dev) · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
 
 ---
 
