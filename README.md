@@ -6,7 +6,7 @@
 
 [![Watch the RippleTwin demo: traffic simulation, AI sign interpretation and plan comparison](docs/pitch-assets/demo-video-cover.svg)](https://youtu.be/y2zOMj6vj7k)
 
-[▶ Demo video (1 min 25 sec · 1440p)](https://youtu.be/y2zOMj6vj7k) · [Live demo](https://hackathon-site.zemmmeng.workers.dev) · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
+[▶ Demo video (1 min 25 sec · 1440p)](https://youtu.be/y2zOMj6vj7k) · [Live demo](https://hackathon-site.zemmmeng.workers.dev/web/public/) · **Built:** 29 Sep 09:30 → 1 Oct 12:00 AEST 2026 · **Repo:** public
 
 ---
 
@@ -21,9 +21,9 @@ RippleTwin is a digital twin of the Melbourne CBD for temporary works. Place the
 | Step | What happens |
 |---|---|
 | **01 Plan** | Pick a street and an hour (or click any CBD street), close one lane or all lanes, keep or close the footpaths, and write the text on the VMS frames and the static sign. |
-| **02 Junction sim** | An animated micro-simulation in the browser (our own JavaScript). For works in the demo block it runs the four junctions around them (Lonsdale and Little Lonsdale × Swanston and Russell) and counts harsh braking; elsewhere it plays a scripted Swanston × La Trobe scene that also flags near-misses. Signal timing and turn shares are assumed; the headline numbers come from the engine, not from this animation. |
-| **03 Impact** | See *why*: the queue, the extra delay per vehicle, where drivers go instead, which streets slow down, what it costs tram and bus riders and pedestrians — and how each type of driver read the sign. |
-| **04 Improve** | A rule-based advisor suggests better sign wording and checks it with the engine. Compare three plans (A · Minimum, B · Standard, C · Guided) with equipment counts and assumed hire costs, choose one, and export a one-page pack. |
+| **02 Junction sim** | A micro-simulation played on the map. For the demo closure (one lane of Lonsdale Street) it is Eclipse SUMO on the real CBD street network: the whole hour 08:00–09:00, cars only, computed in the cloud in about a minute; if the cloud run fails, the page plays a run computed ahead of time and says so. For other works it is an animation in the browser (our own JavaScript). Signal timings are assumed in both. |
+| **03 Impact** | See *why*: the queue, the extra delay per vehicle, where drivers go instead, which streets slow down, what it costs tram and bus riders and pedestrians — and how each type of driver read the sign. On the demo closure the traffic figures are SUMO's, which cover cars only. |
+| **04 Improve** | A rule-based advisor suggests better sign wording. Compare three plans (A · Minimum, B · Standard, C · Guided) with equipment counts and assumed hire costs, choose one, and export a one-page pack. On the demo closure each plan gets its own SUMO run; elsewhere the engine scores them. |
 
 ### One lane on Lonsdale Street, 8 am
 
@@ -34,11 +34,26 @@ RippleTwin is a digital twin of the Melbourne CBD for temporary works. Place the
 
 Same barriers, same sign board, same hire bill — only the words changed. RippleTwin lets you test the words before the barriers go out, and its rule-based advisor suggests better ones: with `USE / RUSSELL / SAVE 9 MIN` the engine puts the queue at about 215 m, if drivers trust the sign as much as we assume.
 
+**These are the engine's figures, and SUMO counts a queue differently.** The numbers above come from our fast planning engine (§3). Since 1 Oct the live page shows a one-hour SUMO run for this closure instead, so the numbers on screen differ from the table. In the run that ships with the site (seed 42):
+
+| | `ROADWORK AHEAD` (14% detour) | `USE RUSSELL / SAVE 9 MIN` (53% detour) |
+|---|---|---|
+| Vehicles held up by the works at 09:00 | 278 | 87 |
+| The same, as a queue length the engine's way (vehicles × 7 m ÷ 2 lanes) | 973 m | 305 m |
+| Queue actually standing on Lonsdale Street at 09:00 | 246 m | 260 m |
+
+The engine's ≈ 900 m is a number of queued vehicles written as a length (vehicles × 7 m ÷ lanes). It is close to SUMO's 973 m counted the same way, but it is not the queue you would see on the street. In SUMO, 241 of the 278 held-up vehicles are still waiting to enter the simulated area and 15 are on side streets; the queue standing on Lonsdale Street is about 250 m with either sign. What the better wording changes is how many vehicles are held up, not the length of that queue.
+
 ## 3. It's live, and the numbers are computed — not written into the page
 
-The engine runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. No impact figure is typed into the page: every queue, delay, detour share and rider-minute is computed by the engine from the plan you draw, hire costs come from the equipment list's assumed day rates, and without the engine those panels stay empty. (The step 02 animation and the weather layer are separate from the engine, and the page labels their assumptions.)
+Two models produce the traffic numbers, and the page says which one each figure comes from.
 
-A language model does two jobs, and neither is arithmetic. It reads each sign the way a driver would — would they notice it, understand it, trust it, and which way does it send them? — and it words the plain-English explanation of the plan comparison, where any sentence with a number the engine did not produce is dropped. Both run on DeepSeek through our own Cloudflare Worker, so the key never reaches the browser. The demo's sign wordings were read ahead of time and ship with the site (labelled "LLM · precomputed"); any new wording you type is sent to DeepSeek, with answers cached; the Worker still counts every call against a daily ceiling (50,000), and the prepaid DeepSeek balance is the real spending limit. Without a key, over the ceiling, once the balance runs out or on an error, both fall back to transparent rules, and the screen always says which source was used. The model's only numbers are each road user's chances of noticing, understanding and trusting a sign; the engine turns those into route choices, and every minute, queue length and detour share comes from the engine.
+- **The engine** runs in the browser in **under 10 ms** on the real CBD network and returns the same answer every time. It works for any CBD street: queue, delay, detour share and rider-minutes are computed from the plan you draw.
+- **SUMO** (Eclipse SUMO, an open-source traffic micro-simulator) runs the demo closure — one lane of Lonsdale Street at 8 am — for the full hour on the real street network, in a Cloudflare Container. For that plan, steps 02–05 show SUMO's traffic figures and none of the engine's. The engine still works behind the scenes there: it turns the reading of each sign into the share of drivers who detour, which is SUMO's input. SUMO models cars only, so on that plan tram, bus and pedestrian effects are not estimated.
+
+No impact figure is typed into the page: hire costs come from the equipment list's assumed day rates, and without the engine or a SUMO run the panels stay empty. A SUMO run computed ahead of time ships with the site; it is used only when the cloud run fails, and the screen then says "pre-computed". (The weather layer is separate from both models, and the page labels its assumptions.)
+
+A language model does two jobs, and neither is arithmetic. It reads each sign the way a driver would — would they notice it, understand it, trust it, and which way does it send them? — and it words the plain-English explanation of the plan comparison, where any sentence with a number the engine did not produce is dropped. Both run on DeepSeek through our own Cloudflare Worker, so the key never reaches the browser. The demo's sign wordings were read ahead of time and ship with the site (labelled "LLM · precomputed"); any new wording you type is sent to DeepSeek, with answers cached; the Worker still counts every call against a daily ceiling (50,000), and the prepaid DeepSeek balance is the real spending limit. Without a key, over the ceiling, once the balance runs out or on an error, both fall back to transparent rules, and the screen always says which source was used. The model's only numbers are each road user's chances of noticing, understanding and trusting a sign; the engine turns those into route choices, and every minute, queue length and detour share comes from the engine or from SUMO. On the SUMO plan the plain-English explanation is hidden, because it would quote engine numbers.
 
 ## 4. What's real and what's assumed
 
@@ -46,7 +61,7 @@ We say which is which, on screen, everywhere.
 
 **Real, open data:** 1,513 CBD road links (street segments) with real geometry and speeds · 8 weeks of hourly traffic-signal detector counts (SCATS, via DataVic) · Public Transport Victoria tram and bus timetables (GTFS) · City of Melbourne pedestrian counts · building footprints and floor counts · 8 weeks of hourly weather from Open-Meteo, used offline to back-test the weather layer. All downloaded ahead of time by scripts in `apps/roads/tools/`; **no data API is called at runtime.**
 
-**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items: the 7 hire products link to their RPM Hire product pages, and the 9 static signs use Transport for NSW sign codes) · the pull of "save 9 minutes" on driver choice is our model's assumption. How many drivers follow a recommended detour is calibrated to a field study at two motorway sites outside Oslo, where about every fifth vehicle changed route as recommended (Erke, Sagberg & Hagman, 2007). What drivers say they would do is not taken at face value: in London, only one-fifth as many drivers diverted as a survey predicted (Chatterjee et al., 2002). Sources in §10. The weather layer on the map is illustrative and labelled so; the engine ignores weather, and our back-test against 8 weeks of real hourly weather found that rain barely changes CBD car volumes.
+**Our assumptions, labelled:** about three-quarters of link flows are interpolated · 29 of 37 behaviour parameters are low-confidence and shown with a range · equipment quantities and day rates are ours, because RPM Hire publishes no prices (16 equipment items: the 7 hire products link to their RPM Hire product pages, and the 9 static signs use Transport for NSW sign codes) · the pull of "save 9 minutes" on driver choice is our model's assumption. How many drivers follow a recommended detour is calibrated to a field study at two motorway sites outside Oslo, where about every fifth vehicle changed route as recommended (Erke, Sagberg & Hagman, 2007). What drivers say they would do is not taken at face value: in London, only one-fifth as many drivers diverted as a survey predicted (Chatterjee et al., 2002). Sources in §10. In the SUMO run, every signal uses SUMO's default 90-second plan because the detector data has counts but no timings, the signal at the works is timed so that the capacity past them matches the engine's assumption (810 vehicles an hour), the share of drivers who detour is fixed by the sign reading, and only cars are simulated; it is a second model checking the first, not a field measurement. The weather layer on the map is illustrative and labelled so; the engine ignores weather, and our back-test against 8 weeks of real hourly weather found that rain barely changes CBD car volumes.
 
 ## 5. How to run it
 
@@ -63,6 +78,8 @@ cd apps/site && npm ci && npm run dev  # → http://localhost:8790/web/public/
 
 Serving `apps/web/public` on its own is only for UI work: without the other modules it cannot load the engine or the real city, so it shows no engine numbers.
 
+The live SUMO service is a separate Worker and container (`apps/sumo`, needs Docker and a paid Cloudflare plan — see `apps/sumo/README.md`). Without it, the page plays the SUMO run computed ahead of time and labels it.
+
 `bash scripts/check.sh` runs the full suite (nine checks, all module tests). `bash scripts/check.sh --e2e` smoke-tests the deployed URL. Deployment goes through `apps/site` (one Cloudflare Worker that mounts every module's `public/` and proxies `/api/*` to the API Worker, `apps/api`, deployed as `hackathon-api`) — see `apps/site/README.md`.
 
 ## 6. Tech stack
@@ -73,15 +90,15 @@ Serving `apps/web/public` on its own is only for UI work: without the other modu
 | Road/traffic engine | Plain JavaScript, no framework | Runs in the browser and in Node; deterministic, <10 ms |
 | Web page | Hand-written HTML/CSS/JS, one build script (`apps/web/build.py`) | No bundler and no JavaScript from a CDN; only the web fonts load from Google Fonts |
 | Sign reading / explain API | Cloudflare Worker (`apps/api`) calling DeepSeek, with a Cloudflare KV cache and rule fallback | Service binding behind the same origin; the key never reaches the browser |
-| Junction micro-sim, SUMO version (prototype) | Eclipse SUMO 1.27.1 + sumolib, Python (`apps/web/tools/sumo`) | Runs locally only; the step 02 animation on the live page is our own JavaScript |
-| Hosting | Cloudflare Workers (`apps/site`) | One origin, no CORS |
+| Micro-simulation | Eclipse SUMO 1.27.1 + sumolib, Python (`apps/web/tools/sumo`), served by a Cloudflare Worker + Container (`apps/sumo`, one 4-vCPU instance) at `/api/sumo/v1/*` | Step 02 and the demo closure's traffic figures on the live page; a run computed ahead of time ships as a labelled fallback |
+| Hosting | Cloudflare Workers (`apps/site`), Workers Paid plan for the container | One origin, no CORS |
 | Fonts | Google Fonts (Inter, JetBrains Mono, Noto Sans SC, Space Grotesk, Barlow, Barlow Condensed, IBM Plex Mono) | SIL OFL 1.1 |
 
 All code under `apps/` was written during the event — by the team, with the AI coding assistants listed in §7 — except two small test helpers in `apps/api` copied from our pre-event template (see §7). SUMO and the Python libraries are installed, not copied in, and the data files under `apps/roads/public/` are built from the open datasets in §4. No map tiles, no CDN JavaScript, no stock images, no 3D assets — the map is drawn from that JSON.
 
 ## 7. Third-party material, APIs and AI tools
 
-The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL; DataVic / Department of Transport and Planning and Open-Meteo CC BY 4.0; City of Melbourne open data — see the table for each dataset's terms); one paid API in the product — DeepSeek, called from our Cloudflare Worker to read sign text and to word the plan explanations, on pay-as-you-go credit with a daily call cap; one open-source simulator used offline (Eclipse SUMO); AI coding assistants (Claude Code, OpenAI Codex), listed there too; and no image or video generation models anywhere in the project.
+The full list — every dataset with its licence and attribution line, every purchase, and how AI was used — is in **[docs/submission.md](docs/submission.md)**. In short: only open data (OSM ODbL; DataVic / Department of Transport and Planning and Open-Meteo CC BY 4.0; City of Melbourne open data — see the table for each dataset's terms); one paid API in the product — DeepSeek, called from our Cloudflare Worker to read sign text and to word the plan explanations, on pay-as-you-go credit with a daily call cap; one open-source simulator (Eclipse SUMO), run as a cloud service in a Cloudflare Container, which needs the paid Workers plan (US$5 a month plus container time); AI coding assistants (Claude Code, OpenAI Codex), listed there too; and no image or video generation models anywhere in the project.
 
 **Before the event.** Before 29 Sep 09:30 the repository held only team-workflow tooling — process docs, git hooks, CI, check and deploy scripts, AI-assistant settings and starter templates for practising the GitHub workflow — with no RippleTwin product code, design, graphics or data. The product was built during the event; the only carry-over is two small test helpers in `apps/api`, with no product logic. The templates, process docs and AI-assistant settings have since been removed from the working tree and stay readable in the public git history. Details in [docs/submission.md](docs/submission.md) §3.
 
@@ -95,7 +112,7 @@ Most internal docs are in Chinese; the English essentials are this README and [d
 
 | Path | What |
 |---|---|
-| [`apps/`](apps/README.md) | Seven modules: `sim`, `roads`, `web`, `engine`, `api`, `params`, `site` |
+| [`apps/`](apps/README.md) | Eight modules: `sim`, `roads`, `web`, `engine`, `api`, `params`, `site`, `sumo` |
 | [`docs/1-brief.md`](docs/1-brief.md) | The challenge we picked, the rules, the marking criteria |
 | [`docs/2-plan.md`](docs/2-plan.md) | Approach, module split, milestones |
 | [`docs/contract.md`](docs/contract.md) | Interfaces between modules |
